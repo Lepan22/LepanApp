@@ -1,80 +1,20 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cadastro de Produtos</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="assets/style.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script type="module" src="assets/produto.js" defer></script>
-  <style>
-    #formProduto {
-      max-width: 500px;
-    }
-  </style>
-</head>
-<body class="container py-4">
-  <h1 class="mb-4">Produtos</h1>
+// assets/firebase-config.js
 
-  <form id="formProduto" class="row g-3">
-    <input type="hidden" id="produtoId">
-    <div class="col-12">
-      <label for="nome" class="form-label">Nome do Produto</label>
-      <input type="text" class="form-control" id="nome" required>
-    </div>
-    <div class="col-12">
-      <label for="categoria" class="form-label">Categoria</label>
-      <input type="text" class="form-control" id="categoria">
-    </div>
-    <div class="col-md-6">
-      <label for="valorVenda" class="form-label">Valor de Venda</label>
-      <input type="number" class="form-control" id="valorVenda" step="0.01">
-    </div>
-    <div class="col-md-6">
-      <label for="custo" class="form-label">Custo</label>
-      <input type="number" class="form-control" id="custo" step="0.01">
-    </div>
-    <div class="col-md-6">
-      <label for="quantidadePorCaixa" class="form-label">Qtd por Caixa</label>
-      <input type="number" class="form-control" id="quantidadePorCaixa">
-    </div>
-    <div class="col-md-6">
-      <label for="tipo" class="form-label">Tipo</label>
-      <input type="text" class="form-control" id="tipo">
-    </div>
-    <div class="col-md-6">
-      <label for="quantidade" class="form-label">Quantidade</label>
-      <input type="number" class="form-control" id="quantidade">
-    </div>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getDatabase } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    <div class="col-12">
-      <label class="form-label">Embalagens</label>
-      <div id="embalagemContainer"></div>
-      <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnAddEmbalagem">+ Adicionar Embalagem</button>
-    </div>
+const firebaseConfig = {
+  apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+  authDomain: "lepanapp.firebaseapp.com",
+  databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+  projectId: "lepanapp",
+  storageBucket: "lepanapp.firebasestorage.app",
+  messagingSenderId: "542989944344",
+  appId: "1:542989944344:web:576e28199960fd5440a56d",
+  measurementId: "G-VTNGJR7YRL"
+};
 
-    <div class="col-12">
-      <button type="submit" class="btn btn-primary">Salvar Produto</button>
-      <button type="reset" class="btn btn-secondary">Limpar</button>
-      <button type="button" class="btn btn-outline-success" id="btnImportar">Importar Dados</button>
-    </div>
-  </form>
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-  <hr class="my-4">
-
-  <h2 class="mb-3">Lista de Produtos</h2>
-  <table class="table table-bordered table-striped" id="tabelaProdutos">
-    <thead class="table-dark">
-      <tr>
-        <th>Nome</th>
-        <th>Valor</th>
-        <th>Custo</th>
-        <th>Embalagens</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</body>
-</html>
+export { db };
