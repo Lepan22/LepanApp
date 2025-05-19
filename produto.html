@@ -9,19 +9,19 @@
   <style>
     :root {
       --cor-primaria: #ff7f00;
-      --cor-secundaria: #f4f4f4;
+      --cor-secundaria: #f9f9f9;
       --cor-texto: #333;
     }
 
     body {
+      font-family: "Segoe UI", sans-serif;
       background-color: #fff;
       color: var(--cor-texto);
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
     }
 
-    h1, h2, h3 {
+    h1, h2 {
       color: var(--cor-primaria);
-      font-weight: 600;
     }
 
     .btn-primary {
@@ -44,87 +44,94 @@
       color: white;
     }
 
-    .table th {
+    .form-wrapper {
+      max-width: 420px;
+    }
+
+    .form-control,
+    .btn {
+      font-size: 0.9rem;
+    }
+
+    table.table {
+      font-size: 0.875rem;
+      margin-top: 20px;
+    }
+
+    table.table th,
+    table.table td {
+      padding: 6px 8px;
+      vertical-align: middle;
+    }
+
+    table.table th {
       background-color: var(--cor-primaria);
       color: white;
     }
 
-    .table td, .table th {
-      vertical-align: middle;
-    }
-
-    input[type="text"],
-    input[type="number"] {
-      border-radius: 4px;
-      border: 1px solid #ccc;
-    }
-
-    #formProduto {
-      max-width: 480px;
-      background-color: var(--cor-secundaria);
-      padding: 20px;
-      border-radius: 10px;
+    .embalagem-item {
+      margin-bottom: 10px;
     }
 
     #btnAddEmbalagem {
-      margin-top: 10px;
+      margin-top: 5px;
     }
   </style>
 </head>
-<body class="container py-4">
-  <h1 class="mb-4">Produtos</h1>
+<body>
 
-  <form id="formProduto" class="row g-3">
-    <input type="hidden" id="produtoId">
-    <div class="col-md-12">
-      <label for="nome" class="form-label">Nome do Produto</label>
-      <input type="text" class="form-control" id="nome" required>
-    </div>
-    <div class="col-md-12">
-      <label for="categoria" class="form-label">Categoria</label>
-      <input type="text" class="form-control" id="categoria">
-    </div>
-    <div class="col-md-6">
-      <label for="valorVenda" class="form-label">Valor de Venda</label>
-      <input type="number" class="form-control" id="valorVenda" step="0.01">
-    </div>
-    <div class="col-md-6">
-      <label for="custo" class="form-label">Custo</label>
-      <input type="number" class="form-control" id="custo" step="0.01">
-    </div>
-    <div class="col-md-6">
-      <label for="quantidadePorCaixa" class="form-label">Qtd por Caixa</label>
-      <input type="number" class="form-control" id="quantidadePorCaixa">
-    </div>
-    <div class="col-md-6">
-      <label for="quantidade" class="form-label">Quantidade Total</label>
-      <input type="number" class="form-control" id="quantidade">
-    </div>
+  <div class="form-wrapper">
+    <h1>Produtos</h1>
+    <form id="formProduto" class="row g-2">
+      <input type="hidden" id="produtoId">
+      <div class="col-12">
+        <label class="form-label">Nome do Produto</label>
+        <input type="text" class="form-control" id="nome" required>
+      </div>
+      <div class="col-12">
+        <label class="form-label">Categoria</label>
+        <input type="text" class="form-control" id="categoria">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Valor de Venda</label>
+        <input type="number" class="form-control" id="valorVenda" step="0.01">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Custo</label>
+        <input type="number" class="form-control" id="custo" step="0.01">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Qtd por Caixa</label>
+        <input type="number" class="form-control" id="quantidadePorCaixa">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Quantidade Total</label>
+        <input type="number" class="form-control" id="quantidade">
+      </div>
 
-    <div class="col-12">
-      <label class="form-label">Embalagens</label>
-      <div id="embalagemContainer"></div>
-      <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnAddEmbalagem">+ Adicionar Embalagem</button>
-    </div>
+      <div class="col-12">
+        <label class="form-label">Embalagens</label>
+        <div id="embalagemContainer"></div>
+        <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddEmbalagem">+ Adicionar Embalagem</button>
+      </div>
 
-    <div class="col-12">
-      <button type="submit" class="btn btn-primary">Salvar Produto</button>
-      <button type="reset" class="btn btn-secondary">Limpar</button>
-      <button type="button" class="btn btn-outline-success" id="btnImportar">Importar Dados</button>
-    </div>
-  </form>
+      <div class="col-12 d-flex gap-2 mt-2">
+        <button type="submit" class="btn btn-primary">Salvar Produto</button>
+        <button type="reset" class="btn btn-secondary">Limpar</button>
+        <button type="button" class="btn btn-outline-success" id="btnImportar">Importar Dados</button>
+      </div>
+    </form>
+  </div>
 
-  <hr class="my-4">
-
-  <h2 class="mb-3">Lista de Produtos</h2>
+  <h2 class="mt-4">Lista de Produtos</h2>
   <table class="table table-bordered table-striped" id="tabelaProdutos">
-    <thead class="table-dark">
+    <thead>
       <tr>
         <th>Nome</th>
         <th>Valor</th>
         <th>Custo</th>
         <th>Embalagens</th>
-        <th>Ações</th>
+        <th style="width: 100px;">Ações</th>
       </tr>
     </thead>
     <tbody></tbody>
