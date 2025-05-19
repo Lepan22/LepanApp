@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cadastro de Equipe</title>
+  <title>Equipe</title>
 
-  <!-- Firebase v8 (compatível com firebase.database) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -15,14 +14,11 @@
     :root {
       --cor-primaria: #ff7f00;
       --cor-secundaria: #f9f9f9;
-      --cor-texto: #333;
     }
 
     body {
       margin: 0;
       font-family: "Segoe UI", sans-serif;
-      background-color: #fff;
-      color: var(--cor-texto);
     }
 
     .layout {
@@ -35,23 +31,6 @@
       background-color: var(--cor-primaria);
       color: white;
       padding: 20px 10px;
-    }
-
-    .sidebar h2 {
-      font-size: 1.2rem;
-      margin-bottom: 1rem;
-    }
-
-    .sidebar button {
-      display: block;
-      width: 100%;
-      margin-bottom: 0.5rem;
-      background: white;
-      color: var(--cor-primaria);
-      border: none;
-      padding: 8px;
-      border-radius: 6px;
-      font-weight: 500;
     }
 
     .main-content {
@@ -69,11 +48,13 @@
     .table th {
       background-color: var(--cor-primaria);
       color: white;
+      font-size: 0.85rem;
     }
 
     .table td {
+      font-size: 0.85rem;
+      padding: 4px 6px;
       vertical-align: middle;
-      font-size: 0.9rem;
     }
 
     .dias-checkbox {
@@ -81,22 +62,11 @@
       flex-wrap: wrap;
       gap: 10px;
     }
-
-    .dias-checkbox label {
-      margin-right: 10px;
-    }
   </style>
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar">
-      <h2>LepanApp</h2>
-      <button onclick="location.href='produto.html'">Produtos</button>
-      <button onclick="location.href='equipe.html'">Equipe</button>
-      <button>Clientes</button>
-      <button>Eventos</button>
-      <button>Logística</button>
-    </aside>
+    <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
       <h1>Equipe</h1>
@@ -155,8 +125,7 @@
           <tr>
             <th>Nome</th>
             <th>Apelido</th>
-            <th>Classificação</th>
-            <th>Telefone</th>
+            <th>Valor</th>
             <th style="width: 100px;">Ações</th>
           </tr>
         </thead>
@@ -165,6 +134,7 @@
     </main>
   </div>
 
+  <script src="incluir-menu.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -215,8 +185,7 @@
           const row = `<tr>
             <td>${p.nomeCompleto || ''}</td>
             <td>${p.apelido || ''}</td>
-            <td>${p.classificacao || ''}</td>
-            <td>${p.telefone || ''}</td>
+            <td>R$ ${parseFloat(p.valorDiaria || 0).toFixed(2)}</td>
             <td>
               <button class="btn btn-sm btn-warning" onclick="editarEquipe('${id}')">Editar</button>
               <button class="btn btn-sm btn-danger" onclick="excluirEquipe('${id}')">Excluir</button>
