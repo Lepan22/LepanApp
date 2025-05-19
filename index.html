@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cadastro de Produto</title>
+  <script type="module" src="js/produtos.js" defer></script>
+</head>
+<body>
+  <h1>Cadastro de Produto</h1>
+
+  <form id="produtoForm">
+    <input type="text" id="nome" placeholder="Nome do Produto" required><br>
+    <input type="text" id="categoria" placeholder="Categoria"><br>
+    <input type="text" id="tipo" placeholder="Tipo"><br>
+
+    <h3>Embalagens</h3>
+    <div id="embalagensContainer">
+      <div class="embalagem">
+        <input type="text" placeholder="Tipo de Embalagem" class="tipoEmbalagem">
+        <input type="number" placeholder="Quantidade" class="quantidadePorEmbalagem">
+        <input type="number" placeholder="Valor Venda" class="valorVenda">
+        <input type="number" placeholder="Custo" class="custo">
+      </div>
+    </div>
+    <button type="button" onclick="addEmbalagem()">+ Embalagem</button><br><br>
+    <button type="submit">Salvar Produto</button>
+  </form>
+
+</body>
+</html>
