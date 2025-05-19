@@ -13,7 +13,7 @@ const btnImportar = document.getElementById('btnImportar');
 const btnAddEmbalagem = document.getElementById('btnAddEmbalagem');
 const embalagemContainer = document.getElementById('embalagemContainer');
 
-// input para importação
+// Cria input oculto para upload de planilha
 const inputFile = document.createElement('input');
 inputFile.type = 'file';
 inputFile.accept = '.xlsx, .xls';
@@ -58,7 +58,6 @@ form.addEventListener('submit', (e) => {
     valorVenda: parseFloat(document.getElementById('valorVenda').value),
     custo: parseFloat(document.getElementById('custo').value),
     quantidadePorCaixa: parseInt(document.getElementById('quantidadePorCaixa').value),
-    tipo: document.getElementById('tipo').value,
     quantidade: parseInt(document.getElementById('quantidade').value),
     embalagens
   };
@@ -108,7 +107,6 @@ window.editarProduto = (id) => {
     document.getElementById('valorVenda').value = p.valorVenda;
     document.getElementById('custo').value = p.custo;
     document.getElementById('quantidadePorCaixa').value = p.quantidadePorCaixa;
-    document.getElementById('tipo').value = p.tipo;
     document.getElementById('quantidade').value = p.quantidade;
 
     embalagemContainer.innerHTML = '';
@@ -165,9 +163,8 @@ inputFile.addEventListener('change', async (e) => {
         valorVenda: parseFloat(row.ValorVenda || 0),
         custo: parseFloat(row.Custo || 0),
         quantidadePorCaixa: parseInt(row.QtdCaixa || 0),
-        tipo: row.Tipo || '',
         quantidade: parseInt(row.Quantidade || 0),
-        embalagens: [] // você pode adaptar a importação futura aqui
+        embalagens: [] // adaptar no futuro se quiser importar embalagens também
       };
       set(ref(db, 'produtos/' + id), produto);
     });
