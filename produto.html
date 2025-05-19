@@ -15,7 +15,6 @@
     :root {
       --cor-primaria: #ff7f00;
       --cor-secundaria: #f9f9f9;
-      --cor-texto: #333;
     }
 
     body {
@@ -50,11 +49,12 @@
     .table th {
       background-color: var(--cor-primaria);
       color: white;
+      font-size: 0.85rem;
     }
 
     .table td {
       font-size: 0.85rem;
-      padding: 6px;
+      padding: 4px 6px;
       vertical-align: middle;
     }
   </style>
@@ -116,6 +116,173 @@
   </div>
 
   <script src="incluir-menu.js"></script>
-  <!-- O restante do JS é igual ao anterior (firebase.database, salvar, editar, importar etc.) -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.firebasestorage.app",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const form = document.getElementById('formProduto');
+    const tabela = document.querySelector('#tabelaProdutos tbody');
+    const btnImportar = document.getElementById('btnImportar');
+    const btnAddEmbalagem = document.getElementById('btnAddEmbalagem');
+    const embalagemContainer = document.getElementById('embalagemContainer');
+
+    const inputFile = document.createElement('input');
+    inputFile.type = 'file';
+    inputFile.accept = '.xlsx, .xls';
+    inputFile.style.display = 'none';
+    document.body.appendChild(inputFile);
+
+    btnAddEmbalagem.addEventListener('click', () => {
+      const group = document.createElement('div');
+      group.className = 'row g-2 align-items-end mb-2 embalagem-item';
+      group.innerHTML = `
+        <div class="col">
+          <label class="form-label">Tipo</label>
+          <input type="text" class="form-control embalagem-tipo" placeholder="Ex: Saco">
+        </div>
+        <div class="col">
+          <label class="form-label">Quantidade</label>
+          <input type="number" class="form-control embalagem-qtd" placeholder="Ex: 35">
+        </div>
+        <div class="col-auto">
+          <button type="button" class="btn btn-danger btn-remove-embalagem">×</button>
+        </div>
+      `;
+      group.querySelector('.btn-remove-embalagem').addEventListener('click', () => group.remove());
+      embalagemContainer.appendChild(group);
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('produtoId').value || db.ref('produtos').push().key;
+      const embalagens = Array.from(document.querySelectorAll('.embalagem-item')).map(item => ({
+        tipo: item.querySelector('.embalagem-tipo').value,
+        quantidade: parseInt(item.querySelector('.embalagem-qtd').value)
+      }));
+      const produto = {
+        nome: document.getElementById('nome').value,
+        categoria: document.getElementById('categoria').value,
+        valorVenda: parseFloat(document.getElementById('valorVenda').value),
+        custo: parseFloat(document.getElementById('custo').value),
+        quantidadePorCaixa: parseInt(document.getElementById('quantidadePorCaixa').value),
+        embalagens
+      };
+      db.ref('produtos/' + id).set(produto).then(() => {
+        form.reset();
+        embalagemContainer.innerHTML = '';
+      });
+    });
+
+    function carregarProdutos() {
+      db.ref('produtos').on('value', (snapshot) => {
+        tabela.innerHTML = '';
+        snapshot.forEach((child) => {
+          const id = child.key;
+          const p = child.val();
+          const row = `<tr>
+            <td>${p.nome}</td>
+            <td>R$ ${p.valorVenda?.toFixed(2)}</td>
+            <td>R$ ${p.custo?.toFixed(2)}</td>
+            <td>
+              <button class="btn btn-sm btn-warning" onclick="editarProduto('${id}')">Editar</button>
+              <button class="btn btn-sm btn-danger" onclick="excluirProduto('${id}')">Excluir</button>
+            </td>
+          </tr>`;
+          tabela.insertAdjacentHTML('beforeend', row);
+        });
+      });
+    }
+
+    window.editarProduto = (id) => {
+      db.ref('produtos/' + id).once('value').then(snapshot => {
+        const p = snapshot.val();
+        document.getElementById('produtoId').value = id;
+        document.getElementById('nome').value = p.nome;
+        document.getElementById('categoria').value = p.categoria;
+        document.getElementById('valorVenda').value = p.valorVenda;
+        document.getElementById('custo').value = p.custo;
+        document.getElementById('quantidadePorCaixa').value = p.quantidadePorCaixa;
+        embalagemContainer.innerHTML = '';
+        (p.embalagens || []).forEach(e => {
+          const group = document.createElement('div');
+          group.className = 'row g-2 align-items-end mb-2 embalagem-item';
+          group.innerHTML = `
+            <div class="col">
+              <label class="form-label">Tipo</label>
+              <input type="text" class="form-control embalagem-tipo" value="${e.tipo}">
+            </div>
+            <div class="col">
+              <label class="form-label">Quantidade</label>
+              <input type="number" class="form-control embalagem-qtd" value="${e.quantidade}">
+            </div>
+            <div class="col-auto">
+              <button type="button" class="btn btn-danger btn-remove-embalagem">×</button>
+            </div>
+          `;
+          group.querySelector('.btn-remove-embalagem').addEventListener('click', () => group.remove());
+          embalagemContainer.appendChild(group);
+        });
+      });
+    };
+
+    window.excluirProduto = (id) => {
+      if (confirm('Deseja excluir este produto?')) {
+        db.ref('produtos/' + id).remove();
+      }
+    };
+
+    btnImportar.addEventListener('click', () => inputFile.click());
+
+    inputFile.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+
+        db.ref('produtos').once('value', (snapshot) => {
+          const existentes = {};
+          snapshot.forEach((child) => {
+            const prod = child.val();
+            if (prod.nome) existentes[prod.nome.toLowerCase()] = child.key;
+          });
+
+          rows.forEach(row => {
+            const nome = row.Nome?.trim();
+            if (!nome) return;
+
+            const id = existentes[nome.toLowerCase()] || db.ref('produtos').push().key;
+            const produto = {
+              nome,
+              categoria: row.Categoria || '',
+              valorVenda: parseFloat(row.ValorVenda || 0),
+              custo: parseFloat(row.Custo || 0),
+              quantidadePorCaixa: parseInt(row.QtdCaixa || 0),
+              embalagens: []
+            };
+            db.ref('produtos/' + id).set(produto);
+          });
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    carregarProdutos();
+  </script>
 </body>
 </html>
