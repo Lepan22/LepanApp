@@ -1,181 +1,80 @@
-// assets/produto.js
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro de Produtos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script type="module" src="assets/produto.js" defer></script>
+  <style>
+    #formProduto {
+      max-width: 500px;
+    }
+  </style>
+</head>
+<body class="container py-4">
+  <h1 class="mb-4">Produtos</h1>
 
-import { db } from "./firebase-config.js";
-import {
-  ref,
-  push,
-  set,
-  update,
-  remove,
-  onValue
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-
-const form = document.getElementById('formProduto');
-const tabela = document.querySelector('#tabelaProdutos tbody');
-const btnImportar = document.getElementById('btnImportar');
-const btnAddEmbalagem = document.getElementById('btnAddEmbalagem');
-const embalagemContainer = document.getElementById('embalagemContainer');
-
-// Cria input file oculto para upload de planilha
-const inputFile = document.createElement('input');
-inputFile.type = 'file';
-inputFile.accept = '.xlsx, .xls';
-inputFile.style.display = 'none';
-document.body.appendChild(inputFile);
-
-btnAddEmbalagem.addEventListener('click', () => {
-  const group = document.createElement('div');
-  group.className = 'row g-2 align-items-end mb-2 embalagem-item';
-
-  group.innerHTML = `
-    <div class="col">
-      <label class="form-label">Tipo</label>
-      <input type="text" class="form-control embalagem-tipo" placeholder="Ex: Saco">
+  <form id="formProduto" class="row g-3">
+    <input type="hidden" id="produtoId">
+    <div class="col-12">
+      <label for="nome" class="form-label">Nome do Produto</label>
+      <input type="text" class="form-control" id="nome" required>
     </div>
-    <div class="col">
-      <label class="form-label">Quantidade</label>
-      <input type="number" class="form-control embalagem-qtd" placeholder="Ex: 35">
+    <div class="col-12">
+      <label for="categoria" class="form-label">Categoria</label>
+      <input type="text" class="form-control" id="categoria">
     </div>
-    <div class="col-auto">
-      <button type="button" class="btn btn-danger btn-remove-embalagem">×</button>
+    <div class="col-md-6">
+      <label for="valorVenda" class="form-label">Valor de Venda</label>
+      <input type="number" class="form-control" id="valorVenda" step="0.01">
     </div>
-  `;
+    <div class="col-md-6">
+      <label for="custo" class="form-label">Custo</label>
+      <input type="number" class="form-control" id="custo" step="0.01">
+    </div>
+    <div class="col-md-6">
+      <label for="quantidadePorCaixa" class="form-label">Qtd por Caixa</label>
+      <input type="number" class="form-control" id="quantidadePorCaixa">
+    </div>
+    <div class="col-md-6">
+      <label for="tipo" class="form-label">Tipo</label>
+      <input type="text" class="form-control" id="tipo">
+    </div>
+    <div class="col-md-6">
+      <label for="quantidade" class="form-label">Quantidade</label>
+      <input type="number" class="form-control" id="quantidade">
+    </div>
 
-  group.querySelector('.btn-remove-embalagem').addEventListener('click', () => group.remove());
-  embalagemContainer.appendChild(group);
-});
+    <div class="col-12">
+      <label class="form-label">Embalagens</label>
+      <div id="embalagemContainer"></div>
+      <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="btnAddEmbalagem">+ Adicionar Embalagem</button>
+    </div>
 
-form.addEventListener('submit', (e) => {
-  e.preventDefault();
+    <div class="col-12">
+      <button type="submit" class="btn btn-primary">Salvar Produto</button>
+      <button type="reset" class="btn btn-secondary">Limpar</button>
+      <button type="button" class="btn btn-outline-success" id="btnImportar">Importar Dados</button>
+    </div>
+  </form>
 
-  const id = document.getElementById('produtoId').value || push(ref(db, 'produtos')).key;
+  <hr class="my-4">
 
-  const embalagens = Array.from(document.querySelectorAll('.embalagem-item')).map(item => {
-    return {
-      tipo: item.querySelector('.embalagem-tipo').value,
-      quantidade: parseInt(item.querySelector('.embalagem-qtd').value)
-    };
-  });
-
-  const produto = {
-    nome: document.getElementById('nome').value,
-    categoria: document.getElementById('categoria').value,
-    valorVenda: parseFloat(document.getElementById('valorVenda').value),
-    custo: parseFloat(document.getElementById('custo').value),
-    quantidadePorCaixa: parseInt(document.getElementById('quantidadePorCaixa').value),
-    tipo: document.getElementById('tipo').value,
-    quantidade: parseInt(document.getElementById('quantidade').value),
-    embalagens
-  };
-
-  set(ref(db, 'produtos/' + id), produto)
-    .then(() => {
-      form.reset();
-      embalagemContainer.innerHTML = '';
-    })
-    .catch((error) => {
-      alert('Erro ao salvar produto: ' + error.message);
-    });
-});
-
-function carregarProdutos() {
-  const produtosRef = ref(db, 'produtos');
-  onValue(produtosRef, (snapshot) => {
-    tabela.innerHTML = '';
-    snapshot.forEach((child) => {
-      const id = child.key;
-      const p = child.val();
-
-      const embalagensStr = (p.embalagens || []).map(e => `${e.tipo} (${e.quantidade})`).join(', ');
-
-      const row = `<tr>
-        <td>${p.nome}</td>
-        <td>R$ ${p.valorVenda?.toFixed(2)}</td>
-        <td>R$ ${p.custo?.toFixed(2)}</td>
-        <td>${embalagensStr}</td>
-        <td>
-          <button class="btn btn-sm btn-warning" onclick="editarProduto('${id}')">Editar</button>
-          <button class="btn btn-sm btn-danger" onclick="excluirProduto('${id}')">Excluir</button>
-        </td>
-      </tr>`;
-      tabela.insertAdjacentHTML('beforeend', row);
-    });
-  });
-}
-
-window.editarProduto = (id) => {
-  const produtoRef = ref(db, 'produtos/' + id);
-  onValue(produtoRef, (snapshot) => {
-    const p = snapshot.val();
-    document.getElementById('produtoId').value = id;
-    document.getElementById('nome').value = p.nome;
-    document.getElementById('categoria').value = p.categoria;
-    document.getElementById('valorVenda').value = p.valorVenda;
-    document.getElementById('custo').value = p.custo;
-    document.getElementById('quantidadePorCaixa').value = p.quantidadePorCaixa;
-    document.getElementById('tipo').value = p.tipo;
-    document.getElementById('quantidade').value = p.quantidade;
-
-    embalagemContainer.innerHTML = '';
-    (p.embalagens || []).forEach(e => {
-      const group = document.createElement('div');
-      group.className = 'row g-2 align-items-end mb-2 embalagem-item';
-      group.innerHTML = `
-        <div class="col">
-          <label class="form-label">Tipo</label>
-          <input type="text" class="form-control embalagem-tipo" value="${e.tipo}">
-        </div>
-        <div class="col">
-          <label class="form-label">Quantidade</label>
-          <input type="number" class="form-control embalagem-qtd" value="${e.quantidade}">
-        </div>
-        <div class="col-auto">
-          <button type="button" class="btn btn-danger btn-remove-embalagem">×</button>
-        </div>
-      `;
-      group.querySelector('.btn-remove-embalagem').addEventListener('click', () => group.remove());
-      embalagemContainer.appendChild(group);
-    });
-  }, { onlyOnce: true });
-};
-
-window.excluirProduto = (id) => {
-  if (confirm('Deseja realmente excluir este produto?')) {
-    remove(ref(db, 'produtos/' + id));
-  }
-};
-
-carregarProdutos();
-
-btnImportar.addEventListener('click', () => {
-  inputFile.click();
-});
-
-inputFile.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = function (e) {
-    const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
-
-    rows.forEach((row) => {
-      const id = push(ref(db, 'produtos')).key;
-      const produto = {
-        nome: row.Nome || '',
-        categoria: row.Categoria || '',
-        valorVenda: parseFloat(row.ValorVenda || 0),
-        custo: parseFloat(row.Custo || 0),
-        quantidadePorCaixa: parseInt(row.QtdCaixa || 0),
-        tipo: row.Tipo || '',
-        quantidade: parseInt(row.Quantidade || 0),
-        embalagens: [] // Importação de embalagens custom pode ser implementada depois
-      };
-      set(ref(db, 'produtos/' + id), produto);
-    });
-  };
-  reader.readAsArrayBuffer(file);
-});
+  <h2 class="mb-3">Lista de Produtos</h2>
+  <table class="table table-bordered table-striped" id="tabelaProdutos">
+    <thead class="table-dark">
+      <tr>
+        <th>Nome</th>
+        <th>Valor</th>
+        <th>Custo</th>
+        <th>Embalagens</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</body>
+</html>
