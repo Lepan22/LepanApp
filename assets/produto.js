@@ -13,18 +13,15 @@ const btnImportar = document.getElementById('btnImportar');
 const btnAddEmbalagem = document.getElementById('btnAddEmbalagem');
 const embalagemContainer = document.getElementById('embalagemContainer');
 
-// input oculto para upload de planilha
 const inputFile = document.createElement('input');
 inputFile.type = 'file';
 inputFile.accept = '.xlsx, .xls';
 inputFile.style.display = 'none';
 document.body.appendChild(inputFile);
 
-// adiciona campo de embalagem
 btnAddEmbalagem.addEventListener('click', () => {
   const group = document.createElement('div');
   group.className = 'row g-2 align-items-end mb-2 embalagem-item';
-
   group.innerHTML = `
     <div class="col">
       <label class="form-label">Tipo</label>
@@ -38,7 +35,6 @@ btnAddEmbalagem.addEventListener('click', () => {
       <button type="button" class="btn btn-danger btn-remove-embalagem">×</button>
     </div>
   `;
-
   group.querySelector('.btn-remove-embalagem').addEventListener('click', () => group.remove());
   embalagemContainer.appendChild(group);
 });
@@ -80,9 +76,7 @@ function carregarProdutos() {
     snapshot.forEach((child) => {
       const id = child.key;
       const p = child.val();
-
       const embalagensStr = (p.embalagens || []).map(e => `${e.tipo} (${e.quantidade})`).join(', ');
-
       const row = `<tr>
         <td>${p.nome}</td>
         <td>R$ ${p.valorVenda?.toFixed(2)}</td>
@@ -109,7 +103,6 @@ window.editarProduto = (id) => {
     document.getElementById('custo').value = p.custo;
     document.getElementById('quantidadePorCaixa').value = p.quantidadePorCaixa;
     document.getElementById('quantidade').value = p.quantidade;
-
     embalagemContainer.innerHTML = '';
     (p.embalagens || []).forEach(e => {
       const group = document.createElement('div');
