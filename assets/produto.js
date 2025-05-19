@@ -13,13 +13,14 @@ const btnImportar = document.getElementById('btnImportar');
 const btnAddEmbalagem = document.getElementById('btnAddEmbalagem');
 const embalagemContainer = document.getElementById('embalagemContainer');
 
-// Cria input oculto para upload de planilha
+// input oculto para upload de planilha
 const inputFile = document.createElement('input');
 inputFile.type = 'file';
 inputFile.accept = '.xlsx, .xls';
 inputFile.style.display = 'none';
 document.body.appendChild(inputFile);
 
+// adiciona campo de embalagem
 btnAddEmbalagem.addEventListener('click', () => {
   const group = document.createElement('div');
   group.className = 'row g-2 align-items-end mb-2 embalagem-item';
@@ -149,22 +150,37 @@ inputFile.addEventListener('change', async (e) => {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = function (e) {
+  reader.onload = async function (e) {
     const data = new Uint8Array(e.target.result);
     const workbook = XLSX.read(data, { type: 'array' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet);
 
+    const snapshot = await new Promise(resolve => {
+      onValue(ref(db, 'produtos'), resolve, { onlyOnce: true });
+    });
+
+    const produtosExistentes = {};
+    snapshot.forEach(child => {
+      const prod = child.val();
+      if (prod?.nome) {
+        produtosExistentes[prod.nome.toLowerCase()] = child.key;
+      }
+    });
+
     rows.forEach((row) => {
-      const id = push(ref(db, 'produtos')).key;
+      const nome = row.Nome?.trim();
+      if (!nome) return;
+
+      const id = produtosExistentes[nome.toLowerCase()] || push(ref(db, 'produtos')).key;
       const produto = {
-        nome: row.Nome || '',
+        nome,
         categoria: row.Categoria || '',
         valorVenda: parseFloat(row.ValorVenda || 0),
         custo: parseFloat(row.Custo || 0),
         quantidadePorCaixa: parseInt(row.QtdCaixa || 0),
         quantidade: parseInt(row.Quantidade || 0),
-        embalagens: [] // adaptar no futuro se quiser importar embalagens também
+        embalagens: []
       };
       set(ref(db, 'produtos/' + id), produto);
     });
