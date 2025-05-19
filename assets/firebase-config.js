@@ -14,6 +14,13 @@ const form = document.getElementById('formProduto');
 const tabela = document.querySelector('#tabelaProdutos tbody');
 const btnImportar = document.getElementById('btnImportar');
 
+// Cria input file oculto para upload de planilha
+const inputFile = document.createElement('input');
+inputFile.type = 'file';
+inputFile.accept = '.xlsx, .xls';
+inputFile.style.display = 'none';
+document.body.appendChild(inputFile);
+
 form.addEventListener('submit', (e) => {
   e.preventDefault();
 
@@ -86,5 +93,35 @@ window.excluirProduto = (id) => {
 carregarProdutos();
 
 btnImportar.addEventListener('click', () => {
-  alert('Importação de dados ainda não implementada. Planeje usar planilhas .xlsx no futuro.');
+  inputFile.click();
+});
+
+inputFile.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    rows.forEach((row) => {
+      const id = push(ref(db, 'produtos')).key;
+      const produto = {
+        nome: row.Nome || '',
+        categoria: row.Categoria || '',
+        valorVenda: parseFloat(row.ValorVenda || 0),
+        custo: parseFloat(row.Custo || 0),
+        quantidadePorCaixa: parseInt(row.QtdCaixa || 0),
+        tipoEmbalagem1: row.Tipo1 || '',
+        tipoEmbalagem2: row.Tipo2 || '',
+        tipo: row.Tipo || '',
+        quantidade: parseInt(row.Quantidade || 0)
+      };
+      set(ref(db, 'produtos/' + id), produto);
+    });
+  };
+  reader.readAsArrayBuffer(file);
 });
