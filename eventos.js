@@ -112,7 +112,7 @@ function renderizarProdutos() {
         <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, -1)">🔼</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, 1)">🔽</button>
         <button class="btn btn-sm btn-outline-danger" onclick="removerProduto(${index})">🗑️</button>
-      </td>
+      <button class=\"btn btn-sm btn-outline-danger\" onclick=\"removerProduto(\${index})\">🗑️</button></td>
     `;
 
     
