@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Equipe</title>
+  <title>Logística</title>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -45,6 +45,14 @@
       margin-bottom: 20px;
     }
 
+    .frete-item {
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 6px;
+      background: #fff;
+    }
+
     .table th {
       background-color: var(--cor-primaria);
       color: white;
@@ -56,12 +64,6 @@
       padding: 4px 6px;
       vertical-align: middle;
     }
-
-    .dias-checkbox {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
   </style>
 </head>
 <body>
@@ -69,67 +71,59 @@
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <h1>Equipe</h1>
+      <h1>Logística</h1>
 
-      <form id="formEquipe" class="row g-2 form-area">
-        <input type="hidden" id="equipeId" />
+      <form id="formLogistica" class="row g-2 form-area">
+        <input type="hidden" id="logisticaId" />
+
         <div class="col-md-4">
-          <label class="form-label">Nome completo</label>
-          <input type="text" class="form-control" id="nomeCompleto" required />
+          <label class="form-label">Nome</label>
+          <input type="text" class="form-control" id="nome" required />
         </div>
-        <div class="col-md-2">
-          <label class="form-label">Apelido</label>
-          <input type="text" class="form-control" id="apelido" />
+        <div class="col-md-4">
+          <label class="form-label">Tipo de Serviço</label>
+          <input type="text" class="form-control" id="tipo" />
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label class="form-label">RG/CPF</label>
           <input type="text" class="form-control" id="documento" />
         </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label class="form-label">Telefone</label>
           <input type="text" class="form-control" id="telefone" />
         </div>
-        <div class="col-md-2">
-          <label class="form-label">Valor da diária</label>
-          <input type="number" class="form-control" id="valorDiaria" step="0.01" />
-        </div>
-        <div class="col-md-3">
+        <div class="col-md-4">
           <label class="form-label">Classificação</label>
           <input type="text" class="form-control" id="classificacao" />
         </div>
-        <div class="col-md-7">
-          <label class="form-label">Disponibilidade (dias da semana)</label>
-          <div class="dias-checkbox">
-            <label><input type="checkbox" value="Seg" /> Seg</label>
-            <label><input type="checkbox" value="Ter" /> Ter</label>
-            <label><input type="checkbox" value="Qua" /> Qua</label>
-            <label><input type="checkbox" value="Qui" /> Qui</label>
-            <label><input type="checkbox" value="Sex" /> Sex</label>
-            <label><input type="checkbox" value="Sáb" /> Sáb</label>
-            <label><input type="checkbox" value="Dom" /> Dom</label>
-          </div>
+
+        <div class="col-12">
+          <label class="form-label">Fretes</label>
+          <div id="fretesContainer"></div>
+          <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="btnAddFrete">+ Adicionar Frete</button>
         </div>
+
         <div class="col-12">
           <label class="form-label">Observações</label>
           <textarea class="form-control" id="observacoes" rows="2"></textarea>
         </div>
+
         <div class="col-12 d-flex gap-2 mt-2">
           <button type="submit" class="btn btn-primary">Salvar</button>
           <button type="reset" class="btn btn-secondary">Limpar</button>
         </div>
       </form>
 
-      <h2 class="mb-2">Lista de Equipe</h2>
+      <h2 class="mb-2">Prestadores Cadastrados</h2>
       <table class="table table-bordered table-striped">
         <thead>
           <tr>
             <th>Nome</th>
-            <th>Apelido</th>
-            <th>Valor</th>
+            <th>RG/CPF</th>
             <th style="width: 100px;">Ações</th>
           </tr>
         </thead>
-        <tbody id="tabelaEquipe"></tbody>
+        <tbody id="tabelaLogistica"></tbody>
       </table>
     </main>
   </div>
@@ -143,52 +137,98 @@
       projectId: "lepanapp",
       storageBucket: "lepanapp.firebasestorage.app",
       messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d",
-      measurementId: "G-VTNGJR7YRL"
+      appId: "1:542989944344:web:576e28199960fd5440a56d"
     };
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const form = document.getElementById('formEquipe');
-    const tabela = document.getElementById('tabelaEquipe');
+    let listaEventos = [];
+
+    function carregarEventosClientes() {
+      db.ref("clientes").once("value").then(snapshot => {
+        listaEventos = [];
+        snapshot.forEach(child => {
+          const c = child.val();
+          if (c.status === "Fechado" && c.clienteAtivo?.nomeEvento) {
+            listaEventos.push(c.clienteAtivo.nomeEvento);
+          }
+        });
+      });
+    }
+
+    const form = document.getElementById('formLogistica');
+    const tabela = document.getElementById('tabelaLogistica');
+    const fretesContainer = document.getElementById('fretesContainer');
+    const btnAddFrete = document.getElementById('btnAddFrete');
+
+    btnAddFrete.addEventListener('click', () => adicionarFrete());
+
+    function adicionarFrete(valor = "", eventoSelecionado = "") {
+      const freteDiv = document.createElement('div');
+      freteDiv.className = 'row g-2 frete-item';
+
+      const options = listaEventos.map(nome => `<option value="${nome}" ${nome === eventoSelecionado ? "selected" : ""}>${nome}</option>`).join("");
+
+      freteDiv.innerHTML = `
+        <div class="col-md-6">
+          <label class="form-label">Nome do Evento</label>
+          <select class="form-select frete-evento">
+            <option value="">Selecione</option>
+            ${options}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Valor</label>
+          <input type="number" class="form-control frete-valor" step="0.01" value="${valor}">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="button" class="btn btn-sm btn-danger btn-remove-frete w-100">Remover</button>
+        </div>
+      `;
+
+      freteDiv.querySelector('.btn-remove-frete').addEventListener('click', () => freteDiv.remove());
+      fretesContainer.appendChild(freteDiv);
+    }
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const id = document.getElementById('equipeId').value || db.ref('equipe').push().key;
+      const id = document.getElementById('logisticaId').value || db.ref('logistica').push().key;
 
-      const diasSelecionados = Array.from(document.querySelectorAll('.dias-checkbox input:checked')).map(input => input.value);
+      const fretes = Array.from(document.querySelectorAll('.frete-item')).map(item => ({
+        evento: item.querySelector('.frete-evento').value,
+        valor: parseFloat(item.querySelector('.frete-valor').value)
+      }));
 
-      const membro = {
-        nomeCompleto: document.getElementById('nomeCompleto').value,
-        apelido: document.getElementById('apelido').value,
+      const prestador = {
+        nome: document.getElementById('nome').value,
+        tipo: document.getElementById('tipo').value,
         documento: document.getElementById('documento').value,
         telefone: document.getElementById('telefone').value,
-        valorDiaria: parseFloat(document.getElementById('valorDiaria').value),
         classificacao: document.getElementById('classificacao').value,
-        disponibilidade: diasSelecionados,
-        observacoes: document.getElementById('observacoes').value
+        observacoes: document.getElementById('observacoes').value,
+        fretes
       };
 
-      db.ref('equipe/' + id).set(membro).then(() => {
+      db.ref('logistica/' + id).set(prestador).then(() => {
         form.reset();
-        carregarEquipe();
+        fretesContainer.innerHTML = '';
+        carregarLogistica();
       });
     });
 
-    function carregarEquipe() {
-      db.ref('equipe').on('value', (snapshot) => {
+    function carregarLogistica() {
+      db.ref('logistica').on('value', (snapshot) => {
         tabela.innerHTML = '';
         snapshot.forEach((child) => {
           const id = child.key;
           const p = child.val();
           const row = `<tr>
-            <td>${p.nomeCompleto || ''}</td>
-            <td>${p.apelido || ''}</td>
-            <td>R$ ${parseFloat(p.valorDiaria || 0).toFixed(2)}</td>
+            <td>${p.nome}</td>
+            <td>${p.documento}</td>
             <td>
-              <button class="btn btn-sm btn-warning" onclick="editarEquipe('${id}')">Editar</button>
-              <button class="btn btn-sm btn-danger" onclick="excluirEquipe('${id}')">Excluir</button>
+              <button class="btn btn-sm btn-warning" onclick="editarLogistica('${id}')">Editar</button>
+              <button class="btn btn-sm btn-danger" onclick="excluirLogistica('${id}')">Excluir</button>
             </td>
           </tr>`;
           tabela.insertAdjacentHTML('beforeend', row);
@@ -196,31 +236,30 @@
       });
     }
 
-    window.editarEquipe = (id) => {
-      db.ref('equipe/' + id).once('value').then(snapshot => {
+    window.editarLogistica = (id) => {
+      db.ref('logistica/' + id).once('value').then(snapshot => {
         const p = snapshot.val();
-        document.getElementById('equipeId').value = id;
-        document.getElementById('nomeCompleto').value = p.nomeCompleto || '';
-        document.getElementById('apelido').value = p.apelido || '';
-        document.getElementById('documento').value = p.documento || '';
-        document.getElementById('telefone').value = p.telefone || '';
-        document.getElementById('valorDiaria').value = p.valorDiaria || '';
-        document.getElementById('classificacao').value = p.classificacao || '';
-        document.getElementById('observacoes').value = p.observacoes || '';
+        document.getElementById('logisticaId').value = id;
+        document.getElementById('nome').value = p.nome;
+        document.getElementById('tipo').value = p.tipo;
+        document.getElementById('documento').value = p.documento;
+        document.getElementById('telefone').value = p.telefone;
+        document.getElementById('classificacao').value = p.classificacao;
+        document.getElementById('observacoes').value = p.observacoes;
 
-        document.querySelectorAll('.dias-checkbox input').forEach(input => {
-          input.checked = (p.disponibilidade || []).includes(input.value);
-        });
+        fretesContainer.innerHTML = '';
+        (p.fretes || []).forEach(f => adicionarFrete(f.valor, f.evento));
       });
     };
 
-    window.excluirEquipe = (id) => {
-      if (confirm('Deseja excluir este membro da equipe?')) {
-        db.ref('equipe/' + id).remove();
+    window.excluirLogistica = (id) => {
+      if (confirm('Deseja excluir este prestador?')) {
+        db.ref('logistica/' + id).remove();
       }
     };
 
-    carregarEquipe();
+    carregarEventosClientes();
+    carregarLogistica();
   </script>
 </body>
 </html>
