@@ -77,8 +77,10 @@
 
         <div class="mt-4">
           <h5>Produtos Enviados</h5>
-          <div id="produtosContainer"></div>
-          <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="adicionarProduto()">+ Adicionar Produto</button>
+          <div class="d-flex justify-content-between align-items-center mb-2">
+  <button type="button" class="btn btn-sm btn-outline-primary" onclick="adicionarProduto()">+ Adicionar Produto</button>
+</div>
+<div id="produtosContainer"></div>
         </div>
 
         <div class="mt-4">
@@ -108,6 +110,7 @@
             <label class="form-label">Status</label>
             <select class="form-select" id="status">
               <option>Aberto</option>
+              <option>Finalizado</option>
               <option>Fechado</option>
             </select>
           </div>
@@ -120,28 +123,31 @@
 
         <div class="mt-3 d-flex gap-2">
           <button type="submit" class="btn btn-primary">Salvar Evento</button>
-          <button type="button" class="btn btn-outline-secondary" onclick="duplicarEvento()">Duplicar Evento</button>
+          
         </div>
       </form>
 
-      <h4>Lista de Produtos</h4>
+      <div class="row g-3" id="totaisEvento">
+        <div class="col-md-3"><strong>Qtd Vendida:</strong> <span id="totalVendida">0</span></div>
+<h4>Lista de Produtos</h4>
       <table class="table table-bordered">
         <thead>
           <tr>
             <th>Produto</th>
-            <th>Qtd</th>
+            <th>Enviada</th>
+            <th>Congelado</th>
+            <th>Assado</th>
+            <th>Perda</th>
+            <th>Vendida</th>
+            <th>Valor Perda</th>
             <th>Valor Venda</th>
-            <th>Custo</th>
-            <th>Potencial</th>
-            
             <th></th>
           </tr>
         </thead>
         <tbody id="tabelaProdutos"></tbody>
       </table>
       <h4 class="mt-4">Totais do Evento</h4>
-      <div class="row g-3" id="totaisEvento">
-        <div class="col-md-3"><strong>Qtd Vendida:</strong> <span id="totalVendida">0</span></div>
+      
         <div class="col-md-3"><strong>Venda Sistema:</strong> R$ <span id="vendaSistema">0,00</span></div>
         <div class="col-md-3"><strong>Diferença PDV - Sistema:</strong> R$ <span id="diferencaVenda">0,00</span></div>
         <div class="col-md-3"><strong>Custo da Perda:</strong> R$ <span id="custoPerda">0,00</span></div>
