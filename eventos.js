@@ -18,17 +18,23 @@ let equipeAlocada = [];
 let logisticaAlocada = [];
 
 // Carregar dados iniciais
-function carregarProdutos() {
-  db.ref('produtos').once('value').then(snapshot => {
-    produtosCadastrados = [];
-    snapshot.forEach(child => {
-      const p = child.val();
-      produtosCadastrados.push({
-        id: child.key,
-        nome: p.nome,
-        valorVenda: parseFloat(p.valorVenda || 0),
-        custo: parseFloat(p.custo || 0)
-      });
+
+async function carregarProdutos() {
+  const snapshot = await db.ref('produtos').once('value');
+  produtosCadastrados = [];
+  snapshot.forEach(child => {
+    const p = child.val();
+    produtosCadastrados.push({
+      id: child.key,
+      nome: p.nome,
+      valorVenda: parseFloat(p.valorVenda || 0),
+      custo: parseFloat(p.custo || 0)
+    });
+  });
+  renderizarProdutos();
+  calcularTotais();
+}
+);
     });
   });
 }
@@ -95,25 +101,27 @@ function renderizarProdutos() {
     const valorPerda = item.perda * custo;
     const totalVenda = vendida * valorVenda;
 
-    row.innerHTML = `
-      <td>
-        <select class="form-select form-select-sm produto-nome">
-          ${produtosCadastrados.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}
-        </select>
-      </td>
-      <td><input type="number" class="form-control form-control-sm produto-qtd" value="${item.quantidade}"></td>
-      <td><input type="number" class="form-control form-control-sm produto-congelado" value="${item.congelado}"></td>
-      <td><input type="number" class="form-control form-control-sm produto-assado" value="${item.assado}"></td>
-      <td><input type="number" class="form-control form-control-sm produto-perda" value="${item.perda}"></td>
-      <td><input type="text" class="form-control form-control-sm" disabled value="${vendida}"></td>
-      <td><input type="text" class="form-control form-control-sm" disabled value="R$ ${valorPerda.toFixed(2)}"></td>
-      <td><input type="text" class="form-control form-control-sm" disabled value="R$ ${totalVenda.toFixed(2)}"></td>
-      <td class="d-flex gap-1">
-        <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, -1)">🔼</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, 1)">🔽</button>
-        <button class="btn btn-sm btn-outline-danger" onclick="removerProduto(${index})">🗑️</button>
-      <button class=\"btn btn-sm btn-outline-danger\" onclick=\"removerProduto(\${index})\">🗑️</button></td>
-    `;
+    
+row.innerHTML = `
+  <td>
+    <select class="form-select form-select-sm produto-nome">
+      ${produtosCadastrados.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}
+    </select>
+  </td>
+  <td><input type="number" class="form-control form-control-sm produto-qtd" value="${item.quantidade}"></td>
+  <td><input type="number" class="form-control form-control-sm produto-congelado" value="${item.congelado}"></td>
+  <td><input type="number" class="form-control form-control-sm produto-assado" value="${item.assado}"></td>
+  <td><input type="number" class="form-control form-control-sm produto-perda" value="${item.perda}"></td>
+  <td><input type="text" class="form-control form-control-sm" disabled value="\${Math.max(0, item.quantidade - item.congelado - item.assado - item.perda)}"></td>
+  <td><input type="text" class="form-control form-control-sm" disabled value="R$ \${(item.perda * (produto.custo || 0)).toFixed(2)}"></td>
+  <td><input type="text" class="form-control form-control-sm" disabled value="R$ \${(Math.max(0, item.quantidade - item.congelado - item.assado - item.perda) * (produto.valorVenda || 0)).toFixed(2)}"></td>
+  <td class="d-flex gap-1">
+    <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, -1)">🔼</button>
+    <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, 1)">🔽</button>
+    <button class="btn btn-sm btn-outline-danger" onclick="removerProduto(${index})">🗑️</button>
+  </td>
+`;
+
 
     
 
@@ -237,7 +245,7 @@ document.getElementById('formEvento').addEventListener('submit', function(e) {
 });
 
 // Inicializar tudo
-carregarProdutos();
+await carregarProdutos();
 carregarResponsaveis();
 carregarClientes();
 carregarEquipeDisponivel();
@@ -303,7 +311,7 @@ window.removerEquipe = removerEquipe;
 window.removerLogistica = removerLogistica;
 
 document.addEventListener("DOMContentLoaded", () => {
-  carregarProdutos();
+  await carregarProdutos();
   carregarResponsaveis();
   carregarClientes();
   carregarEquipeDisponivel();
