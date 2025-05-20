@@ -1,166 +1,33 @@
-<!-- Firebase SDK v8 para compatibilidade -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script src="incluir-menu.js"></script>
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-    authDomain: "lepanapp.firebaseapp.com",
-    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-    projectId: "lepanapp",
-    storageBucket: "lepanapp.firebasestorage.app",
-    messagingSenderId: "542989944344",
-    appId: "1:542989944344:web:576e28199960fd5440a56d"
-  };
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cadastro de Clientes</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: #ff7f00; color: white; padding: 20px 10px; }
+    .main-content { flex-grow: 1; padding: 20px; }
+    .form-area { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .section-title { margin-top: 20px; font-weight: bold; }
+    .contato-item { margin-bottom: 12px; background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+    .table th { background: #ff7f00; color: white; }
+    .table td { font-size: 0.85rem; padding: 4px 6px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+    <main class="main-content">
+      <h1>Cadastro de Clientes</h1>
+      <p>Arquivo carregado corretamente. Substitua este conteúdo pelo formulário e script finalizados.</p>
+    </main>
+  </div>
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  const form = document.getElementById("formCliente");
-  const tabela = document.getElementById("tabelaClientes");
-  const contatosContainer = document.getElementById("contatosContainer");
-  const btnAddContato = document.getElementById("btnAddContato");
-
-  function toggleAtivoSection() {
-    const status = document.getElementById("status").value;
-    document.querySelectorAll(".section-title, #eventoNome, #frequencia, #dataPrimeiroEvento, #statusAtivo, #observacoesEvento")
-      .forEach(el => {
-        const wrapper = el.closest(".col-md-4") || el.closest(".col-md-6") || el.closest(".col-12");
-        if (wrapper) wrapper.style.display = (status === "Fechado") ? "block" : "none";
-      });
-  }
-
-  document.getElementById("status").addEventListener("change", toggleAtivoSection);
-
-  btnAddContato.addEventListener("click", () => {
-    const div = document.createElement("div");
-    div.className = "row g-2 contato-item";
-    div.innerHTML = `
-      <div class="col-md-3">
-        <input type="text" class="form-control contato-nome" placeholder="Nome">
-      </div>
-      <div class="col-md-3">
-        <input type="text" class="form-control contato-telefone" placeholder="Telefone">
-      </div>
-      <div class="col-md-3">
-        <input type="email" class="form-control contato-email" placeholder="Email">
-      </div>
-      <div class="col-md-2">
-        <input type="text" class="form-control contato-cargo" placeholder="Cargo">
-      </div>
-      <div class="col-md-1">
-        <button type="button" class="btn btn-danger btn-sm w-100">×</button>
-      </div>
-    `;
-    div.querySelector("button").addEventListener("click", () => div.remove());
-    contatosContainer.appendChild(div);
-  });
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const id = document.getElementById("clienteId").value || db.ref("clientes").push().key;
-
-    const contatos = Array.from(contatosContainer.children).map(div => ({
-      nome: div.querySelector(".contato-nome").value,
-      telefone: div.querySelector(".contato-telefone").value,
-      email: div.querySelector(".contato-email").value,
-      cargo: div.querySelector(".contato-cargo").value
-    }));
-
-    const dias = Array.from(document.querySelectorAll(".dia-evento:checked")).map(cb => cb.value);
-
-    const cliente = {
-      nome: document.getElementById("nome").value,
-      dataCadastro: document.getElementById("dataCadastro").value,
-      tipoCliente: document.getElementById("tipoCliente").value,
-      indicadoPor: document.getElementById("indicadoPor").value,
-      perfilEconomico: document.getElementById("perfilEconomico").value,
-      tamanho: parseInt(document.getElementById("tamanho").value || 0),
-      endereco: document.getElementById("endereco").value,
-      regiao: document.getElementById("regiao").value,
-      dataUltimoContato: document.getElementById("dataUltimoContato").value,
-      status: document.getElementById("status").value,
-      observacoes: document.getElementById("observacoes").value,
-      contatos,
-      eventoNome: document.getElementById("eventoNome").value,
-      frequencia: document.getElementById("frequencia").value,
-      dataPrimeiroEvento: document.getElementById("dataPrimeiroEvento").value,
-      diasEvento: dias,
-      statusAtivo: document.getElementById("statusAtivo").value,
-      observacoesEvento: document.getElementById("observacoesEvento").value
-    };
-
-    db.ref("clientes/" + id).set(cliente).then(() => {
-      form.reset();
-      contatosContainer.innerHTML = "";
-      carregarClientes();
-    });
-  });
-
-  function carregarClientes() {
-    db.ref("clientes").on("value", (snapshot) => {
-      tabela.innerHTML = "";
-      snapshot.forEach((child) => {
-        const id = child.key;
-        const c = child.val();
-        const row = `<tr>
-          <td>${c.nome}</td>
-          <td>${c.status}</td>
-          <td>
-            <button class="btn btn-sm btn-warning" onclick="editarCliente('${id}')">Editar</button>
-            <button class="btn btn-sm btn-danger" onclick="excluirCliente('${id}')">Excluir</button>
-          </td>
-        </tr>`;
-        tabela.insertAdjacentHTML("beforeend", row);
-      });
-    });
-  }
-
-  window.editarCliente = (id) => {
-    db.ref("clientes/" + id).once("value").then(snapshot => {
-      const c = snapshot.val();
-      document.getElementById("clienteId").value = id;
-      document.getElementById("nome").value = c.nome;
-      document.getElementById("dataCadastro").value = c.dataCadastro;
-      document.getElementById("tipoCliente").value = c.tipoCliente;
-      document.getElementById("indicadoPor").value = c.indicadoPor;
-      document.getElementById("perfilEconomico").value = c.perfilEconomico;
-      document.getElementById("tamanho").value = c.tamanho;
-      document.getElementById("endereco").value = c.endereco;
-      document.getElementById("regiao").value = c.regiao;
-      document.getElementById("dataUltimoContato").value = c.dataUltimoContato;
-      document.getElementById("status").value = c.status;
-      document.getElementById("observacoes").value = c.observacoes;
-      document.getElementById("eventoNome").value = c.eventoNome;
-      document.getElementById("frequencia").value = c.frequencia;
-      document.getElementById("dataPrimeiroEvento").value = c.dataPrimeiroEvento;
-      document.getElementById("statusAtivo").value = c.statusAtivo;
-      document.getElementById("observacoesEvento").value = c.observacoesEvento;
-
-      document.querySelectorAll(".dia-evento").forEach(cb => {
-        cb.checked = (c.diasEvento || []).includes(cb.value);
-      });
-
-      contatosContainer.innerHTML = "";
-      (c.contatos || []).forEach(ct => {
-        btnAddContato.click();
-        const last = contatosContainer.lastElementChild;
-        last.querySelector(".contato-nome").value = ct.nome;
-        last.querySelector(".contato-telefone").value = ct.telefone;
-        last.querySelector(".contato-email").value = ct.email;
-        last.querySelector(".contato-cargo").value = ct.cargo;
-      });
-
-      toggleAtivoSection();
-    });
-  };
-
-  window.excluirCliente = (id) => {
-    if (confirm("Deseja excluir este cliente?")) {
-      db.ref("clientes/" + id).remove();
-    }
-  };
-
-  carregarClientes();
-  toggleAtivoSection();
-</script>
+  <script src="incluir-menu.js"></script>
+</body>
+</html>
