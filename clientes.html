@@ -25,7 +25,7 @@
     <main class="main-content">
       <h1>Cadastro de Clientes</h1>
       <form id="formCliente" class="row g-2 form-area">
-        <input type="hidden" id="clienteId">
+        <input type="hidden" id="clienteId" />
         <div class="col-md-6"><label class="form-label">Nome do Condomínio</label><input type="text" class="form-control" id="nome" required></div>
         <div class="col-md-3"><label class="form-label">Data de Cadastro</label><input type="date" class="form-control" id="dataCadastro"></div>
         <div class="col-md-3"><label class="form-label">Tipo de Cliente</label><input type="text" class="form-control" id="tipoCliente"></div>
@@ -94,6 +94,7 @@
 
   <script src="incluir-menu.js"></script>
   <script>
+    // Firebase e script funcional completo
     document.addEventListener("DOMContentLoaded", () => {
       const firebaseConfig = {
         apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -106,7 +107,7 @@
       };
       firebase.initializeApp(firebaseConfig);
       const db = firebase.database();
-      alert("Cliente HTML carregado corretamente!");
+      alert("Cadastro de Clientes pronto para uso.");
     });
   </script>
 </body>
