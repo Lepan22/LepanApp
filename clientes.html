@@ -24,10 +24,27 @@
     <aside class="sidebar" id="menuLateral"></aside>
     <main class="main-content">
       <h1>Cadastro de Clientes</h1>
-      <p>Arquivo carregado corretamente. Substitua este conteúdo pelo formulário e script finalizados.</p>
+      <div id="formAreaPlaceholder">[Formulário será carregado aqui]</div>
     </main>
   </div>
 
   <script src="incluir-menu.js"></script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const firebaseConfig = {
+        apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+        authDomain: "lepanapp.firebaseapp.com",
+        databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+        projectId: "lepanapp",
+        storageBucket: "lepanapp.firebasestorage.app",
+        messagingSenderId: "542989944344",
+        appId: "1:542989944344:web:576e28199960fd5440a56d"
+      };
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.database();
+
+      document.getElementById("formAreaPlaceholder").innerHTML = "<p><b>Cliente carregado com sucesso.</b> O formulário completo será embutido nesta área.</p>";
+    });
+  </script>
 </body>
 </html>
