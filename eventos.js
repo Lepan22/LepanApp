@@ -163,3 +163,134 @@ function duplicarEvento() {
 carregarProdutos();
 carregarResponsaveis();
 carregarClientes();
+
+let equipeAlocada = [];
+let logisticaAlocada = [];
+
+function carregarEquipeDisponivel() {
+  db.ref('equipe').once('value').then(snapshot => {
+    equipeAlocada = [];
+    const equipeSelect = document.createElement('select');
+    snapshot.forEach(child => {
+      const membro = child.val();
+      const opt = document.createElement('option');
+      opt.value = child.key;
+      opt.textContent = membro.apelido || membro.nomeCompleto;
+      equipeSelect.appendChild(opt);
+    });
+    window.equipeSelectOptions = equipeSelect.innerHTML;
+  });
+}
+
+function carregarLogisticaDisponivel() {
+  db.ref('logistica').once('value').then(snapshot => {
+    logisticaAlocada = [];
+    const logisticaSelect = document.createElement('select');
+    snapshot.forEach(child => {
+      const p = child.val();
+      const opt = document.createElement('option');
+      opt.value = child.key;
+      opt.textContent = p.nome;
+      logisticaSelect.appendChild(opt);
+    });
+    window.logisticaSelectOptions = logisticaSelect.innerHTML;
+  });
+}
+
+function adicionarEquipe(id = '', valor = 0) {
+  equipeAlocada.push({ membroId: id, valor });
+  renderizarEquipe();
+}
+
+function adicionarLogistica(id = '', valor = 0) {
+  logisticaAlocada.push({ prestadorId: id, valor });
+  renderizarLogistica();
+}
+
+function renderizarEquipe() {
+  const container = document.getElementById('equipeContainer');
+  container.innerHTML = '';
+  equipeAlocada.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'row mb-2';
+    div.innerHTML = `
+      <div class="col-md-6">
+        <select class="form-select form-select-sm membro-select">${window.equipeSelectOptions}</select>
+      </div>
+      <div class="col-md-4">
+        <input type="number" class="form-control form-control-sm membro-valor" placeholder="Valor acordado" value="${item.valor}">
+      </div>
+      <div class="col-md-2 d-grid">
+        <button class="btn btn-sm btn-danger" onclick="removerEquipe(${i})">Remover</button>
+      </div>
+    `;
+    container.appendChild(div);
+    div.querySelector('.membro-select').value = item.membroId;
+    div.querySelector('.membro-select').onchange = e => item.membroId = e.target.value;
+    div.querySelector('.membro-valor').oninput = e => item.valor = parseFloat(e.target.value) || 0;
+  });
+}
+
+function removerEquipe(i) {
+  equipeAlocada.splice(i, 1);
+  renderizarEquipe();
+}
+
+function renderizarLogistica() {
+  const container = document.getElementById('logisticaContainer');
+  container.innerHTML = '';
+  logisticaAlocada.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'row mb-2';
+    div.innerHTML = `
+      <div class="col-md-6">
+        <select class="form-select form-select-sm prestador-select">${window.logisticaSelectOptions}</select>
+      </div>
+      <div class="col-md-4">
+        <input type="number" class="form-control form-control-sm prestador-valor" placeholder="Valor acordado" value="${item.valor}">
+      </div>
+      <div class="col-md-2 d-grid">
+        <button class="btn btn-sm btn-danger" onclick="removerLogistica(${i})">Remover</button>
+      </div>
+    `;
+    container.appendChild(div);
+    div.querySelector('.prestador-select').value = item.prestadorId;
+    div.querySelector('.prestador-select').onchange = e => item.prestadorId = e.target.value;
+    div.querySelector('.prestador-valor').oninput = e => item.valor = parseFloat(e.target.value) || 0;
+  });
+}
+
+function removerLogistica(i) {
+  logisticaAlocada.splice(i, 1);
+  renderizarLogistica();
+}
+
+// Adicionando dados ao evento para salvar
+document.getElementById('formEvento').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const evento = {
+    nomeEvento: document.getElementById('nomeEvento').value,
+    data: document.getElementById('data').value,
+    responsavel: document.getElementById('responsavel').value,
+    vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
+    cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
+    status: document.getElementById('status').value,
+    observacoes: document.getElementById('observacoes').value,
+    produtos: listaProdutos,
+    equipe: equipeAlocada,
+    logistica: logisticaAlocada
+  };
+
+  const id = document.getElementById('eventoId').value || db.ref('eventos').push().key;
+  db.ref('eventos/' + id).set(evento).then(() => {
+    alert("Evento salvo com sucesso!");
+  });
+});
+
+// Carregamento inicial
+carregarProdutos();
+carregarResponsaveis();
+carregarClientes();
+carregarEquipeDisponivel();
+carregarLogisticaDisponivel();
