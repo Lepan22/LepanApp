@@ -87,31 +87,20 @@ function renderizarProdutos() {
     const potencial = (item.quantidade || 0) * valorVenda;
 
     const row = document.createElement('tr');
-    
-    const row = document.createElement('tr');
-    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
-    const valorVenda = produto.valorVenda || 0;
-    const custo = produto.custo || 0;
-    const valorPerda = item.perda * custo;
-    const totalVenda = vendida * valorVenda;
-
     row.innerHTML = `
       <td>
         <select class="form-select form-select-sm produto-nome">${produtosCadastrados.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
       </td>
       <td><input type="number" class="form-control form-control-sm produto-qtd" value="${item.quantidade}"></td>
-      <td><input type="number" class="form-control form-control-sm produto-congelado" value="${item.congelado}"></td>
-      <td><input type="number" class="form-control form-control-sm produto-assado" value="${item.assado}"></td>
-      <td><input type="number" class="form-control form-control-sm produto-perda" value="${item.perda}"></td>
-      <td><input type="text" class="form-control form-control-sm" disabled value="${vendida}"></td>
-      <td><input type="text" class="form-control form-control-sm" disabled value="R$ ${valorPerda.toFixed(2)}"></td>
-      <td><input type="text" class="form-control form-control-sm" disabled value="R$ ${totalVenda.toFixed(2)}"></td>
+      <td>R$ ${valorVenda.toFixed(2)}</td>
+      <td>R$ ${custo.toFixed(2)}</td>
+      <td>R$ ${potencial.toFixed(2)}</td>
+      
       <td class="d-flex gap-1">
         <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, -1)">🔼</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, 1)">🔽</button>
       </td>
     `;
-
     const linha2 = document.createElement('tr');
     
         linha2.innerHTML = `
@@ -131,10 +120,10 @@ function renderizarProdutos() {
     tabela.appendChild(linha2);
 
     row.querySelector('.produto-nome').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
-    row.querySelector('.produto-qtd').oninput = e => { item.quantidade = parseInt(e.target.value) || 0; calcularTotais(); };
-        linha2.querySelector('.produto-congelado').oninput = e => { item.congelado = parseInt(e.target.value) || 0; calcularTotais(); };
-    linha2.querySelector('.produto-assado').oninput = e => { item.assado = parseInt(e.target.value) || 0; calcularTotais(); };
-    linha2.querySelector('.produto-perda').oninput = e => { item.perda = parseInt(e.target.value) || 0; calcularTotais(); };
+    row.querySelector('.produto-qtd').oninput = e => item.quantidade = parseInt(e.target.value) || 0;
+        linha2.querySelector('.produto-congelado').oninput = e => item.congelado = parseInt(e.target.value) || 0;
+    linha2.querySelector('.produto-assado').oninput = e => item.assado = parseInt(e.target.value) || 0;
+    linha2.querySelector('.produto-perda').oninput = e => item.perda = parseInt(e.target.value) || 0;
     linha2.querySelector('.produto-obs').oninput = e => item.observacao = e.target.value;
   });
 }
@@ -315,40 +304,10 @@ window.adicionarLogistica = adicionarLogistica;
 window.removerEquipe = removerEquipe;
 window.removerLogistica = removerLogistica;
 
-
-  carregarResponsaveis();
-  carregarClientes();
-  carregarEquipeDisponivel();
-  carregarLogisticaDisponivel();
-});
-
-
-
-window.adicionarProduto = adicionarProduto;
-window.adicionarEquipe = adicionarEquipe;
-window.adicionarLogistica = adicionarLogistica;
-window.removerEquipe = removerEquipe;
-window.removerLogistica = removerLogistica;
-
-
-
-
-// Inicialização segura ao carregar tudo da página
-window.onload = function () {
+document.addEventListener("DOMContentLoaded", () => {
   carregarProdutos();
   carregarResponsaveis();
   carregarClientes();
   carregarEquipeDisponivel();
   carregarLogisticaDisponivel();
-  renderizarProdutos();
-  renderizarEquipe();
-  renderizarLogistica();
-  calcularTotais();
-};
-
-// Garantir funções no escopo global
-window.adicionarProduto = adicionarProduto;
-window.adicionarEquipe = adicionarEquipe;
-window.adicionarLogistica = adicionarLogistica;
-window.removerEquipe = removerEquipe;
-window.removerLogistica = removerLogistica;
+});
