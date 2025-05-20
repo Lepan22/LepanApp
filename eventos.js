@@ -74,7 +74,7 @@ function adicionarProduto(prod = {}) {
     perda: prod.perda || 0,
     observacao: prod.observacao || ''
   });
-  renderizarProdutos();
+  renderizarProdutos(); calcularTotais();
 }
 
 function renderizarProdutos() {
@@ -116,7 +116,7 @@ function renderizarProdutos() {
     tabela.appendChild(row);
     tabela.appendChild(linha2);
 
-    row.querySelector('.produto-nome').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); };
+    row.querySelector('.produto-nome').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
     row.querySelector('.produto-qtd').oninput = e => item.quantidade = parseInt(e.target.value) || 0;
     row.querySelector('.produto-estimativa').oninput = e => item.estimativa = parseFloat(e.target.value) || 0;
     linha2.querySelector('.produto-congelado').oninput = e => item.congelado = parseInt(e.target.value) || 0;
@@ -130,7 +130,7 @@ function moverProduto(index, direcao) {
   const novoIndex = index + direcao;
   if (novoIndex >= 0 && novoIndex < listaProdutos.length) {
     [listaProdutos[index], listaProdutos[novoIndex]] = [listaProdutos[novoIndex], listaProdutos[index]];
-    renderizarProdutos();
+    renderizarProdutos(); calcularTotais();
   }
 }
 
@@ -242,3 +242,54 @@ carregarResponsaveis();
 carregarClientes();
 carregarEquipeDisponivel();
 carregarLogisticaDisponivel();
+
+
+
+function calcularTotais() {
+  let totalVendida = 0;
+  let vendaSistema = 0;
+  let custoPerda = 0;
+  let valorAssados = 0;
+  let cmv = 0;
+
+  listaProdutos.forEach(item => {
+    const produto = produtosCadastrados.find(p => p.id === item.produtoId) || {};
+    const qtd = item.quantidade || 0;
+    const congelado = item.congelado || 0;
+    const assado = item.assado || 0;
+    const perda = item.perda || 0;
+    const valorVenda = produto.valorVenda || 0;
+    const custo = produto.custo || 0;
+
+    const vendida = Math.max(0, qtd - congelado - assado - perda);
+    totalVendida += vendida;
+    vendaSistema += vendida * valorVenda;
+    custoPerda += perda * custo;
+    valorAssados += assado * custo;
+    cmv += vendida * custo;
+  });
+
+  const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
+  const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
+  const vendaPDV = parseFloat(document.getElementById("vendaPDV").value) || 0;
+  const estimativa = parseFloat(document.getElementById("estimativaVenda").value) || 0;
+  const cmvReal = parseFloat(document.getElementById("cmvReal").value) || cmv;
+  const lucro = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
+  const diferenca = vendaPDV - vendaSistema;
+
+  document.getElementById("totalVendida").innerText = totalVendida;
+  document.getElementById("vendaSistema").innerText = vendaSistema.toFixed(2);
+  document.getElementById("custoPerda").innerText = custoPerda.toFixed(2);
+  document.getElementById("valorAssados").innerText = valorAssados.toFixed(2);
+  document.getElementById("cmvCalculado").innerText = cmv.toFixed(2);
+  document.getElementById("custoEquipe").innerText = custoEquipe.toFixed(2);
+  document.getElementById("custoLogistica").innerText = custoLogistica.toFixed(2);
+  document.getElementById("lucroFinal").innerText = lucro.toFixed(2);
+  document.getElementById("diferencaVenda").innerText = diferenca.toFixed(2);
+}
+
+
+
+['vendaPDV', 'cmvReal', 'estimativaVenda'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calcularTotais);
+});
