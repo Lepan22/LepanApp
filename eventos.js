@@ -1,4 +1,5 @@
-// Firebase Config
+
+// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
   authDomain: "lepanapp.firebaseapp.com",
@@ -8,7 +9,6 @@ const firebaseConfig = {
   messagingSenderId: "542989944344",
   appId: "1:542989944344:web:576e28199960fd5440a56d"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -16,8 +16,6 @@ let produtosCadastrados = [];
 let listaProdutos = [];
 let equipeAlocada = [];
 let logisticaAlocada = [];
-
-// Carregar dados iniciais
 
 async function carregarProdutos() {
   const snapshot = await db.ref('produtos').once('value');
@@ -31,60 +29,45 @@ async function carregarProdutos() {
       custo: parseFloat(p.custo || 0)
     });
   });
-  renderizarProdutos();
-  calcularTotais();
 }
-);
-    });
-  });
-}
-
-function carregarResponsaveis() {
-  const selectResponsavel = document.getElementById('responsavel');
-  db.ref('equipe').once('value').then(snapshot => {
-    selectResponsavel.innerHTML = '<option value="">Selecione</option>';
-    snapshot.forEach(child => {
-      const membro = child.val();
-      const opt = document.createElement('option');
-      opt.value = membro.apelido;
-      opt.textContent = membro.apelido;
-      selectResponsavel.appendChild(opt);
-    });
-  });
-}
-
 
 async function carregarClientes() {
-  const selectEvento = document.getElementById('nomeEvento');
+  const select = document.getElementById('nomeEvento');
   const snapshot = await db.ref('clientes').once('value');
-  selectEvento.innerHTML = '<option value="">Selecione</option>';
+  select.innerHTML = '<option value="">Selecione</option>';
   snapshot.forEach(child => {
     const cliente = child.val();
     if (cliente.status === 'Fechado' && cliente.clienteAtivo?.nomeEvento) {
       const opt = document.createElement('option');
       opt.value = cliente.clienteAtivo.nomeEvento;
       opt.textContent = cliente.clienteAtivo.nomeEvento;
-      selectEvento.appendChild(opt);
+      select.appendChild(opt);
     }
   });
 }
 
-    });
+async function carregarResponsaveis() {
+  const select = document.getElementById('responsavel');
+  const snapshot = await db.ref('equipe').once('value');
+  select.innerHTML = '<option value="">Selecione</option>';
+  snapshot.forEach(child => {
+    const membro = child.val();
+    const opt = document.createElement('option');
+    opt.value = membro.apelido;
+    opt.textContent = membro.apelido;
+    select.appendChild(opt);
   });
 }
 
-// Produto
-function adicionarProduto(prod = {}) {
-  listaProdutos.push({
-    produtoId: prod.produtoId || '',
-    quantidade: prod.quantidade || 0,
-    estimativa: prod.estimativa || 0,
-    congelado: prod.congelado || 0,
-    assado: prod.assado || 0,
-    perda: prod.perda || 0,
-    observacao: prod.observacao || ''
-  });
-  renderizarProdutos(); calcularTotais();
+function adicionarProduto() {
+  listaProdutos.push({ produtoId: '', quantidade: 0, congelado: 0, assado: 0, perda: 0 });
+  renderizarProdutos();
+}
+
+function removerProduto(index) {
+  listaProdutos.splice(index, 1);
+  renderizarProdutos();
+  calcularTotais();
 }
 
 function renderizarProdutos() {
@@ -92,194 +75,57 @@ function renderizarProdutos() {
   tabela.innerHTML = '';
   listaProdutos.forEach((item, index) => {
     const produto = produtosCadastrados.find(p => p.id === item.produtoId) || {};
-    const valorVenda = produto.valorVenda || 0;
-    const custo = produto.custo || 0;
-    const potencial = (item.quantidade || 0) * valorVenda;
-
-    const row = document.createElement('tr');
-    
-    const row = document.createElement('tr');
     const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
-    const valorVenda = produto.valorVenda || 0;
-    const custo = produto.custo || 0;
-    const valorPerda = item.perda * custo;
-    const totalVenda = vendida * valorVenda;
+    const valorPerda = item.perda * (produto.custo || 0);
+    const totalVenda = vendida * (produto.valorVenda || 0);
 
-    
-row.innerHTML = `
-  <td>
-    <select class="form-select form-select-sm produto-nome">
-      ${produtosCadastrados.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}
-    </select>
-  </td>
-  <td><input type="number" class="form-control form-control-sm produto-qtd" value="${item.quantidade}"></td>
-  <td><input type="number" class="form-control form-control-sm produto-congelado" value="${item.congelado}"></td>
-  <td><input type="number" class="form-control form-control-sm produto-assado" value="${item.assado}"></td>
-  <td><input type="number" class="form-control form-control-sm produto-perda" value="${item.perda}"></td>
-  <td><input type="text" class="form-control form-control-sm" disabled value="\${Math.max(0, item.quantidade - item.congelado - item.assado - item.perda)}"></td>
-  <td><input type="text" class="form-control form-control-sm" disabled value="R$ \${(item.perda * (produto.custo || 0)).toFixed(2)}"></td>
-  <td><input type="text" class="form-control form-control-sm" disabled value="R$ \${(Math.max(0, item.quantidade - item.congelado - item.assado - item.perda) * (produto.valorVenda || 0)).toFixed(2)}"></td>
-  <td class="d-flex gap-1">
-    <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, -1)">🔼</button>
-    <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, 1)">🔽</button>
-    <button class="btn btn-sm btn-outline-danger" onclick="removerProduto(${index})">🗑️</button>
-  </td>
-`;
+    const row = document.createElement('tr');
+    row.innerHTML = \`
+      <td>
+        <select class="form-select form-select-sm produto-nome">
+          \${produtosCadastrados.map(p => \`<option value="\${p.id}" \${p.id === item.produtoId ? 'selected' : ''}>\${p.nome}</option>\`).join('')}
+        </select>
+      </td>
+      <td><input type="number" class="form-control form-control-sm produto-qtd" value="\${item.quantidade}"></td>
+      <td><input type="number" class="form-control form-control-sm produto-congelado" value="\${item.congelado}"></td>
+      <td><input type="number" class="form-control form-control-sm produto-assado" value="\${item.assado}"></td>
+      <td><input type="number" class="form-control form-control-sm produto-perda" value="\${item.perda}"></td>
+      <td><input type="text" class="form-control form-control-sm" disabled value="\${vendida}"></td>
+      <td><input type="text" class="form-control form-control-sm" disabled value="R$ \${valorPerda.toFixed(2)}"></td>
+      <td><input type="text" class="form-control form-control-sm" disabled value="R$ \${totalVenda.toFixed(2)}"></td>
+      <td>
+        <button class="btn btn-sm btn-outline-danger" onclick="removerProduto(\${index})">🗑️</button>
+      </td>
+    \`;
+    tabela.appendChild(row);
 
-
-    
-
-    row.querySelector('.produto-nome').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
-    row.querySelector('.produto-qtd').oninput = e => { item.quantidade = parseInt(e.target.value) || 0; calcularTotais(); }; calcularTotais(); };
-        linha2.querySelector('.produto-congelado').oninput = e => { item.congelado = parseInt(e.target.value) || 0; calcularTotais(); };
-    linha2.querySelector('.produto-assado').oninput = e => { item.assado = parseInt(e.target.value) || 0; calcularTotais(); };
-    linha2.querySelector('.produto-perda').oninput = e => { item.perda = parseInt(e.target.value) || 0; calcularTotais(); };
-    linha2.querySelector('.produto-obs').oninput = e => item.observacao = e.target.value;
+    row.querySelector('.produto-nome').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); };
+    row.querySelector('.produto-qtd').oninput = e => { item.quantidade = parseInt(e.target.value) || 0; calcularTotais(); };
+    row.querySelector('.produto-congelado').oninput = e => { item.congelado = parseInt(e.target.value) || 0; calcularTotais(); };
+    row.querySelector('.produto-assado').oninput = e => { item.assado = parseInt(e.target.value) || 0; calcularTotais(); };
+    row.querySelector('.produto-perda').oninput = e => { item.perda = parseInt(e.target.value) || 0; calcularTotais(); };
   });
+  calcularTotais();
 }
-
-function moverProduto(index, direcao) {
-  const novoIndex = index + direcao;
-  if (novoIndex >= 0 && novoIndex < listaProdutos.length) {
-    [listaProdutos[index], listaProdutos[novoIndex]] = [listaProdutos[novoIndex], listaProdutos[index]];
-    renderizarProdutos(); calcularTotais();
-  }
-}
-
-// Equipe e Logística
-function carregarEquipeDisponivel() {
-  db.ref('equipe').once('value').then(snapshot => {
-    const s = document.createElement('select');
-    snapshot.forEach(child => {
-      const p = child.val();
-      const opt = document.createElement('option');
-      opt.value = child.key;
-      opt.textContent = p.apelido || p.nomeCompleto;
-      s.appendChild(opt);
-    });
-    window.equipeOptions = s.innerHTML;
-  });
-}
-function carregarLogisticaDisponivel() {
-  db.ref('logistica').once('value').then(snapshot => {
-    const s = document.createElement('select');
-    snapshot.forEach(child => {
-      const p = child.val();
-      const opt = document.createElement('option');
-      opt.value = child.key;
-      opt.textContent = p.nome;
-      s.appendChild(opt);
-    });
-    window.logisticaOptions = s.innerHTML;
-  });
-}
-function adicionarEquipe() {
-  equipeAlocada.push({ membroId: '', valor: 0 });
-  renderizarEquipe();
-}
-function adicionarLogistica() {
-  logisticaAlocada.push({ prestadorId: '', valor: 0 });
-  renderizarLogistica();
-}
-function renderizarEquipe() {
-  const container = document.getElementById('equipeContainer');
-  container.innerHTML = '';
-  equipeAlocada.forEach((item, i) => {
-    const div = document.createElement('div');
-    div.className = 'row mb-2';
-    div.innerHTML = `
-      <div class="col-md-6"><select class="form-select form-select-sm">${window.equipeOptions}</select></div>
-      <div class="col-md-4"><input type="number" class="form-control form-control-sm" value="${item.valor}"></div>
-      <div class="col-md-2 d-grid"><button class="btn btn-sm btn-danger" onclick="removerEquipe(${i})">Remover</button></div>
-    `;
-    div.querySelector('select').value = item.membroId;
-    div.querySelector('select').onchange = e => item.membroId = e.target.value;
-    div.querySelector('input').oninput = e => item.valor = parseFloat(e.target.value) || 0;
-    container.appendChild(div);
-  });
-}
-function renderizarLogistica() {
-  const container = document.getElementById('logisticaContainer');
-  container.innerHTML = '';
-  logisticaAlocada.forEach((item, i) => {
-    const div = document.createElement('div');
-    div.className = 'row mb-2';
-    div.innerHTML = `
-      <div class="col-md-6"><select class="form-select form-select-sm">${window.logisticaOptions}</select></div>
-      <div class="col-md-4"><input type="number" class="form-control form-control-sm" value="${item.valor}"></div>
-      <div class="col-md-2 d-grid"><button class="btn btn-sm btn-danger" onclick="removerLogistica(${i})">Remover</button></div>
-    `;
-    div.querySelector('select').value = item.prestadorId;
-    div.querySelector('select').onchange = e => item.prestadorId = e.target.value;
-    div.querySelector('input').oninput = e => item.valor = parseFloat(e.target.value) || 0;
-    container.appendChild(div);
-  });
-}
-function removerEquipe(i) { equipeAlocada.splice(i, 1); renderizarEquipe(); }
-function removerLogistica(i) { logisticaAlocada.splice(i, 1); renderizarLogistica(); }
-
-// Salvar evento
-let salvando = false;
-document.getElementById('formEvento').addEventListener('submit', function(e) {
-  e.preventDefault();
-  if (salvando) return;
-  salvando = true;
-
-  const evento = {
-    nomeEvento: document.getElementById('nomeEvento').value,
-    data: document.getElementById('data').value,
-    responsavel: document.getElementById('responsavel').value,
-    vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
-    cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
-    status: document.getElementById('status').value,
-    observacoes: document.getElementById('observacoes').value,
-    produtos: listaProdutos,
-    equipe: equipeAlocada,
-    logistica: logisticaAlocada
-  };
-
-  const id = document.getElementById('eventoId').value || db.ref('eventos').push().key;
-  db.ref('eventos/' + id).set(evento).then(() => {
-    alert("Evento salvo com sucesso!");
-    salvando = false;
-  }).catch(err => {
-    console.error("Erro ao salvar:", err);
-    salvando = false;
-  });
-});
-
-// Inicializar tudo
-await carregarProdutos();
-carregarResponsaveis();
-await carregarClientes();
-carregarEquipeDisponivel();
-carregarLogisticaDisponivel();
-
-
 
 function calcularTotais() {
-  let totalVendida = 0;
-  let vendaSistema = 0;
-  let custoPerda = 0;
-  let valorAssados = 0;
-  let cmv = 0;
+  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmv = 0;
 
   listaProdutos.forEach(item => {
     const produto = produtosCadastrados.find(p => p.id === item.produtoId) || {};
-    const qtd = item.quantidade || 0;
-    const congelado = item.congelado || 0;
-    const assado = item.assado || 0;
-    const perda = item.perda || 0;
-    const valorVenda = produto.valorVenda || 0;
-    const custo = produto.custo || 0;
-
-    const vendida = Math.max(0, qtd - congelado - assado - perda);
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
     totalVendida += vendida;
-    vendaSistema += vendida * valorVenda;
-    custoPerda += perda * custo;
-    valorAssados += assado * custo;
-    cmv += vendida * custo;
+    vendaSistema += vendida * (produto.valorVenda || 0);
+    custoPerda += item.perda * (produto.custo || 0);
+    valorAssados += item.assado * (produto.custo || 0);
+    cmv += vendida * (produto.custo || 0);
   });
+
+  document.getElementById('totalVendida').innerText = totalVendida;
+  document.getElementById('vendaSistema').innerText = vendaSistema.toFixed(2);
+  document.getElementById('custoPerda').innerText = custoPerda.toFixed(2);
+  document.getElementById('valorAssados').innerText = valorAssados.toFixed(2);
+  document.getElementById('cmvCalculado').innerText = cmv.toFixed(2);
 
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
   const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
@@ -289,41 +135,32 @@ function calcularTotais() {
   const lucro = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
   const diferenca = vendaPDV - vendaSistema;
 
-  document.getElementById("totalVendida").innerText = totalVendida;
-  document.getElementById("vendaSistema").innerText = vendaSistema.toFixed(2);
-  document.getElementById("custoPerda").innerText = custoPerda.toFixed(2);
-  document.getElementById("valorAssados").innerText = valorAssados.toFixed(2);
-  document.getElementById("cmvCalculado").innerText = cmv.toFixed(2);
-  document.getElementById("custoEquipe").innerText = custoEquipe.toFixed(2);
-  document.getElementById("custoLogistica").innerText = custoLogistica.toFixed(2);
-  document.getElementById("lucroFinal").innerText = lucro.toFixed(2);
-  document.getElementById("diferencaVenda").innerText = diferenca.toFixed(2);
+  document.getElementById('custoEquipe').innerText = custoEquipe.toFixed(2);
+  document.getElementById('custoLogistica').innerText = custoLogistica.toFixed(2);
+  document.getElementById('lucroFinal').innerText = lucro.toFixed(2);
+  document.getElementById('diferencaVenda').innerText = diferenca.toFixed(2);
 }
 
-
-
-['vendaPDV', 'cmvReal', 'estimativaVenda'].forEach(id => {
-  document.getElementById(id).addEventListener('input', calcularTotais);
+document.getElementById('formEvento').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const evento = {
+    nomeEvento: document.getElementById('nomeEvento').value,
+    data: document.getElementById('data').value,
+    responsavel: document.getElementById('responsavel').value,
+    estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
+    vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
+    cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
+    status: document.getElementById('status').value,
+    produtos: listaProdutos,
+    equipe: equipeAlocada,
+    logistica: logisticaAlocada
+  };
+  const id = db.ref('eventos').push().key;
+  db.ref('eventos/' + id).set(evento).then(() => alert('Evento salvo com sucesso!'));
 });
 
-
-
-window.adicionarProduto = adicionarProduto;
-window.adicionarEquipe = adicionarEquipe;
-window.adicionarLogistica = adicionarLogistica;
-window.removerEquipe = removerEquipe;
-window.removerLogistica = removerLogistica;
-
-document.addEventListener("DOMContentLoaded", () => {
+window.onload = async function() {
   await carregarProdutos();
-  carregarResponsaveis();
   await carregarClientes();
-  carregarEquipeDisponivel();
-  carregarLogisticaDisponivel();
-});
-
-function removerProduto(index) {
-  listaProdutos.splice(index, 1);
-  renderizarProdutos();
-  calcularTotais();
-}
+  await carregarResponsaveis();
+};
