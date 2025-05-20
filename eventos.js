@@ -136,24 +136,7 @@ function moverProduto(index, direcao) {
   }
 }
 
-document.getElementById('formEvento').addEventListener('submit', function(e) {
-  e.preventDefault();
 
-  const evento = {
-    nomeEvento: document.getElementById('nomeEvento').value,
-    data: document.getElementById('data').value,
-    responsavel: document.getElementById('responsavel').value,
-    vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
-    cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
-    status: document.getElementById('status').value,
-    observacoes: document.getElementById('observacoes').value,
-    produtos: listaProdutos
-  };
-
-  const id = document.getElementById('eventoId').value || db.ref('eventos').push().key;
-  db.ref('eventos/' + id).set(evento).then(() => {
-    alert("Evento salvo com sucesso!");
-  });
 });
 
 function duplicarEvento() {
@@ -266,8 +249,22 @@ function removerLogistica(i) {
 }
 
 // Adicionando dados ao evento para salvar
+
+});
+
+// Carregamento inicial
+carregarProdutos();
+carregarResponsaveis();
+carregarClientes();
+carregarEquipeDisponivel();
+carregarLogisticaDisponivel();
+
+
+let salvando = false;
 document.getElementById('formEvento').addEventListener('submit', function(e) {
   e.preventDefault();
+  if (salvando) return;
+  salvando = true;
 
   const evento = {
     nomeEvento: document.getElementById('nomeEvento').value,
@@ -285,12 +282,9 @@ document.getElementById('formEvento').addEventListener('submit', function(e) {
   const id = document.getElementById('eventoId').value || db.ref('eventos').push().key;
   db.ref('eventos/' + id).set(evento).then(() => {
     alert("Evento salvo com sucesso!");
+    salvando = false;
+  }).catch(err => {
+    console.error("Erro ao salvar:", err);
+    salvando = false;
   });
 });
-
-// Carregamento inicial
-carregarProdutos();
-carregarResponsaveis();
-carregarClientes();
-carregarEquipeDisponivel();
-carregarLogisticaDisponivel();
