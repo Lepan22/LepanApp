@@ -116,9 +116,9 @@ function renderizarProdutos() {
 
     row.querySelector('.produto-nome').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
     row.querySelector('.produto-qtd').oninput = e => { item.quantidade = parseInt(e.target.value) || 0; calcularTotais(); }; calcularTotais(); };
-        linha2.querySelector('.produto-congelado').oninput = e => { item.congelado = parseInt(e.target.value) || 0; calcularTotais(); };
-    linha2.querySelector('.produto-assado').oninput = e => { item.assado = parseInt(e.target.value) || 0; calcularTotais(); };
-    linha2.querySelector('.produto-perda').oninput = e => { item.perda = parseInt(e.target.value) || 0; calcularTotais(); };
+        row.querySelector('.produto-congelado').oninput = e => { item.congelado = parseInt(e.target.value) || 0; calcularTotais(); }; calcularTotais(); };
+    row.querySelector('.produto-assado').oninput = e => { item.assado = parseInt(e.target.value) || 0; calcularTotais(); }; calcularTotais(); };
+    row.querySelector('.produto-perda').oninput = e => { item.perda = parseInt(e.target.value) || 0; calcularTotais(); }; calcularTotais(); };
     linha2.querySelector('.produto-obs').oninput = e => item.observacao = e.target.value;
   });
 }
