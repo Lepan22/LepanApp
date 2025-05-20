@@ -53,18 +53,22 @@ function carregarResponsaveis() {
   });
 }
 
-function carregarClientes() {
+
+async function carregarClientes() {
   const selectEvento = document.getElementById('nomeEvento');
-  db.ref('clientes').once('value').then(snapshot => {
-    selectEvento.innerHTML = '<option value="">Selecione</option>';
-    snapshot.forEach(child => {
-      const cliente = child.val();
-      if (cliente.status === 'Fechado' && cliente.clienteAtivo?.nomeEvento) {
-        const opt = document.createElement('option');
-        opt.value = cliente.clienteAtivo.nomeEvento;
-        opt.textContent = cliente.clienteAtivo.nomeEvento;
-        selectEvento.appendChild(opt);
-      }
+  const snapshot = await db.ref('clientes').once('value');
+  selectEvento.innerHTML = '<option value="">Selecione</option>';
+  snapshot.forEach(child => {
+    const cliente = child.val();
+    if (cliente.status === 'Fechado' && cliente.clienteAtivo?.nomeEvento) {
+      const opt = document.createElement('option');
+      opt.value = cliente.clienteAtivo.nomeEvento;
+      opt.textContent = cliente.clienteAtivo.nomeEvento;
+      selectEvento.appendChild(opt);
+    }
+  });
+}
+
     });
   });
 }
@@ -247,7 +251,7 @@ document.getElementById('formEvento').addEventListener('submit', function(e) {
 // Inicializar tudo
 await carregarProdutos();
 carregarResponsaveis();
-carregarClientes();
+await carregarClientes();
 carregarEquipeDisponivel();
 carregarLogisticaDisponivel();
 
@@ -313,7 +317,7 @@ window.removerLogistica = removerLogistica;
 document.addEventListener("DOMContentLoaded", () => {
   await carregarProdutos();
   carregarResponsaveis();
-  carregarClientes();
+  await carregarClientes();
   carregarEquipeDisponivel();
   carregarLogisticaDisponivel();
 });
