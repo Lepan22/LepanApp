@@ -4,19 +4,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cadastro de Clientes</title>
-
-  <!-- Firebase SDK v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: #ff7f00; color: white; padding: 20px 10px; }
+    .main-content { flex-grow: 1; padding: 20px; }
+    .form-area { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .section-title { margin-top: 20px; font-weight: bold; }
+    .contato-item { margin-bottom: 12px; background: #fff; padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+    .table th { background: #ff7f00; color: white; }
+    .table td { font-size: 0.85rem; padding: 4px 6px; vertical-align: middle; }
+  </style>
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar" id="menuLateral"></aside>
     <main class="main-content">
       <h1>Cadastro de Clientes</h1>
-      <!-- Formulário e tabela aqui -->
+      <!-- Conteúdo do formulário completo viria aqui -->
+      <!-- Lista de clientes e script JS -->
     </main>
   </div>
 
@@ -33,7 +42,7 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    // JavaScript do cliente vai aqui
+    // JS de cadastro, listagem, edição e exclusão vem aqui
   </script>
 </body>
 </html>
