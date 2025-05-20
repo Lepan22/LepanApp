@@ -87,20 +87,31 @@ function renderizarProdutos() {
     const potencial = (item.quantidade || 0) * valorVenda;
 
     const row = document.createElement('tr');
+    
+    const row = document.createElement('tr');
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
+    const valorVenda = produto.valorVenda || 0;
+    const custo = produto.custo || 0;
+    const valorPerda = item.perda * custo;
+    const totalVenda = vendida * valorVenda;
+
     row.innerHTML = `
       <td>
         <select class="form-select form-select-sm produto-nome">${produtosCadastrados.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
       </td>
       <td><input type="number" class="form-control form-control-sm produto-qtd" value="${item.quantidade}"></td>
-      <td>R$ ${valorVenda.toFixed(2)}</td>
-      <td>R$ ${custo.toFixed(2)}</td>
-      <td>R$ ${potencial.toFixed(2)}</td>
-      
+      <td><input type="number" class="form-control form-control-sm produto-congelado" value="${item.congelado}"></td>
+      <td><input type="number" class="form-control form-control-sm produto-assado" value="${item.assado}"></td>
+      <td><input type="number" class="form-control form-control-sm produto-perda" value="${item.perda}"></td>
+      <td><input type="text" class="form-control form-control-sm" disabled value="${vendida}"></td>
+      <td><input type="text" class="form-control form-control-sm" disabled value="R$ ${valorPerda.toFixed(2)}"></td>
+      <td><input type="text" class="form-control form-control-sm" disabled value="R$ ${totalVenda.toFixed(2)}"></td>
       <td class="d-flex gap-1">
         <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, -1)">🔼</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, 1)">🔽</button>
       </td>
     `;
+
     const linha2 = document.createElement('tr');
     
         linha2.innerHTML = `
