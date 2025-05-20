@@ -95,6 +95,8 @@
 
         <div class="mt-4 row">
           <div class="col-md-4">
+            <label class="form-label">Estimativa de Venda</label>
+            <input type="number" class="form-control mb-2" id="estimativaVenda" step="0.01" />
             <label class="form-label">Valor Real de Venda (PDV)</label>
             <input type="number" class="form-control" id="vendaPDV" step="0.01" />
           </div>
@@ -137,6 +139,19 @@
         </thead>
         <tbody id="tabelaProdutos"></tbody>
       </table>
+      <h4 class="mt-4">Totais do Evento</h4>
+      <div class="row g-3" id="totaisEvento">
+        <div class="col-md-3"><strong>Qtd Vendida:</strong> <span id="totalVendida">0</span></div>
+        <div class="col-md-3"><strong>Venda Sistema:</strong> R$ <span id="vendaSistema">0,00</span></div>
+        <div class="col-md-3"><strong>Diferença PDV - Sistema:</strong> R$ <span id="diferencaVenda">0,00</span></div>
+        <div class="col-md-3"><strong>Custo da Perda:</strong> R$ <span id="custoPerda">0,00</span></div>
+        <div class="col-md-3"><strong>Valor dos Assados:</strong> R$ <span id="valorAssados">0,00</span></div>
+        <div class="col-md-3"><strong>CMV:</strong> R$ <span id="cmvCalculado">0,00</span></div>
+        <div class="col-md-3"><strong>Custo Logística:</strong> R$ <span id="custoLogistica">0,00</span></div>
+        <div class="col-md-3"><strong>Custo Equipe:</strong> R$ <span id="custoEquipe">0,00</span></div>
+        <div class="col-md-3"><strong>Lucro Final:</strong> R$ <span id="lucroFinal">0,00</span></div>
+      </div>
+    
     </main>
   </div>
 
