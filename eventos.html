@@ -59,10 +59,6 @@
       <h1>Cadastro de Evento</h1>
 
       <form id="formEvento" class="form-area">
-<h4 class="mt-4">Totais do Evento</h4>
-      <div class="row g-3" id="totaisEvento">
-        <div class="col-md-3"><strong>Qtd Vendida:</strong> <span id="totalVendida">0</span></div>
-
         <input type="hidden" id="eventoId" />
         <div class="row">
           <div class="col-md-4">
@@ -81,10 +77,8 @@
 
         <div class="mt-4">
           <h5>Produtos Enviados</h5>
-          <div class="d-flex justify-content-between align-items-center mb-2">
-  <button type="button" class="btn btn-sm btn-outline-primary" onclick="adicionarProduto()">+ Adicionar Produto</button>
-</div>
-<div id="produtosContainer"></div>
+          <div id="produtosContainer"></div>
+          <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="adicionarProduto()">+ Adicionar Produto</button>
         </div>
 
         <div class="mt-4">
@@ -148,7 +142,9 @@
         </thead>
         <tbody id="tabelaProdutos"></tbody>
       </table>
-      
+      <h4 class="mt-4">Totais do Evento</h4>
+      <div class="row g-3" id="totaisEvento">
+        <div class="col-md-3"><strong>Qtd Vendida:</strong> <span id="totalVendida">0</span></div>
         <div class="col-md-3"><strong>Venda Sistema:</strong> R$ <span id="vendaSistema">0,00</span></div>
         <div class="col-md-3"><strong>Diferença PDV - Sistema:</strong> R$ <span id="diferencaVenda">0,00</span></div>
         <div class="col-md-3"><strong>Custo da Perda:</strong> R$ <span id="custoPerda">0,00</span></div>
