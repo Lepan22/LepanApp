@@ -315,10 +315,29 @@ window.adicionarLogistica = adicionarLogistica;
 window.removerEquipe = removerEquipe;
 window.removerLogistica = removerLogistica;
 
-document.addEventListener("DOMContentLoaded", () => {
-  carregarProdutos();
+
   carregarResponsaveis();
   carregarClientes();
   carregarEquipeDisponivel();
   carregarLogisticaDisponivel();
 });
+
+
+
+window.adicionarProduto = adicionarProduto;
+window.adicionarEquipe = adicionarEquipe;
+window.adicionarLogistica = adicionarLogistica;
+window.removerEquipe = removerEquipe;
+window.removerLogistica = removerLogistica;
+
+window.onload = function () {
+  carregarProdutos();
+  carregarResponsaveis();
+  carregarClientes();
+  carregarEquipeDisponivel();
+  carregarLogisticaDisponivel();
+  renderizarProdutos();
+  renderizarEquipe();
+  renderizarLogistica();
+  calcularTotais();
+};
