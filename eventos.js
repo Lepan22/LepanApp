@@ -87,40 +87,35 @@ function renderizarProdutos() {
     const potencial = (item.quantidade || 0) * valorVenda;
 
     const row = document.createElement('tr');
+    
+    const row = document.createElement('tr');
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
+    const valorVenda = produto.valorVenda || 0;
+    const custo = produto.custo || 0;
+    const valorPerda = item.perda * custo;
+    const totalVenda = vendida * valorVenda;
+
     row.innerHTML = `
       <td>
         <select class="form-select form-select-sm produto-nome">${produtosCadastrados.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}</select>
       </td>
       <td><input type="number" class="form-control form-control-sm produto-qtd" value="${item.quantidade}"></td>
-      <td>R$ ${valorVenda.toFixed(2)}</td>
-      <td>R$ ${custo.toFixed(2)}</td>
-      <td>R$ ${potencial.toFixed(2)}</td>
-      
+      <td><input type="number" class="form-control form-control-sm produto-congelado" value="${item.congelado}"></td>
+      <td><input type="number" class="form-control form-control-sm produto-assado" value="${item.assado}"></td>
+      <td><input type="number" class="form-control form-control-sm produto-perda" value="${item.perda}"></td>
+      <td><input type="text" class="form-control form-control-sm" disabled value="${vendida}"></td>
+      <td><input type="text" class="form-control form-control-sm" disabled value="R$ ${valorPerda.toFixed(2)}"></td>
+      <td><input type="text" class="form-control form-control-sm" disabled value="R$ ${totalVenda.toFixed(2)}"></td>
       <td class="d-flex gap-1">
         <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, -1)">🔼</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="moverProduto(${index}, 1)">🔽</button>
       </td>
     `;
-    const linha2 = document.createElement('tr');
-    
-        linha2.innerHTML = `
-          <td colspan="7">
-            <div class="row g-1">
-              <div class="col"><label class="form-label form-label-sm">Congelado</label><input type="number" class="form-control form-control-sm produto-congelado" value="${item.congelado}"></div>
-              <div class="col"><label class="form-label form-label-sm">Assado</label><input type="number" class="form-control form-control-sm produto-assado" value="${item.assado}"></div>
-              <div class="col"><label class="form-label form-label-sm">Perda</label><input type="number" class="form-control form-control-sm produto-perda" value="${item.perda}"></div>
-              <div class="col"><label class="form-label form-label-sm">Observação</label><input type="text" class="form-control form-control-sm produto-obs" value="${item.observacao}"></div>
-              <div class="col"><label class="form-label form-label-sm">Vendidos</label><input type="text" class="form-control form-control-sm" disabled value="${Math.max(0, item.quantidade - item.congelado - item.assado - item.perda)}"></div>
-            </div>
-          </td>
-        `;
-        
 
-    tabela.appendChild(row);
-    tabela.appendChild(linha2);
+    
 
     row.querySelector('.produto-nome').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
-    row.querySelector('.produto-qtd').oninput = e => { item.quantidade = parseInt(e.target.value) || 0; calcularTotais(); };
+    row.querySelector('.produto-qtd').oninput = e => { item.quantidade = parseInt(e.target.value) || 0; calcularTotais(); }; calcularTotais(); };
         linha2.querySelector('.produto-congelado').oninput = e => { item.congelado = parseInt(e.target.value) || 0; calcularTotais(); };
     linha2.querySelector('.produto-assado').oninput = e => { item.assado = parseInt(e.target.value) || 0; calcularTotais(); };
     linha2.querySelector('.produto-perda').oninput = e => { item.perda = parseInt(e.target.value) || 0; calcularTotais(); };
