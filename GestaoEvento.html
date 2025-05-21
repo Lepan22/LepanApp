@@ -3,95 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestão de Evento</title>
+  <title>Gestão de Evento - Básico</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
 </head>
 <body>
   <div class="container py-4">
-    <h1>Gestão de Evento</h1>
+    <h1>Gestão de Evento - Básico</h1>
     <form id="formGestaoEvento">
-
-      <div class="row g-3">
-        <div class="col-md-4">
-          <label class="form-label">Nome do Evento</label>
-          <select id="nomeEvento" class="form-select"></select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Data</label>
-          <input type="date" id="data" class="form-control" />
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Responsável</label>
-          <select id="responsavel" class="form-select"></select>
-        </div>
+      <div class="mb-3">
+        <label class="form-label">Nome do Evento</label>
+        <select id="nomeEvento" class="form-select"></select>
       </div>
-
-      <div class="row g-3 mt-3">
-        <div class="col-md-3">
-          <label class="form-label">Estimativa de Venda</label>
-          <input type="number" id="estimativaVenda" class="form-control" step="0.01" />
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Valor Real de Venda (PDV)</label>
-          <input type="number" id="vendaPDV" class="form-control" step="0.01" />
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">CMV Real</label>
-          <input type="number" id="cmvReal" class="form-control" step="0.01" />
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Status</label>
-          <select id="status" class="form-select">
-            <option>Aberto</option>
-            <option>Finalizado</option>
-            <option>Fechado</option>
-          </select>
-        </div>
-      </div>
-
-      <h4 class="mt-4">📊 Totais do Evento</h4>
-      <div class="row row-cols-1 row-cols-md-3 g-3 mb-4" id="totaisEvento">
-        <div class="col"><div class="border p-2"><strong>Qtd Vendida:</strong> <span id="totalVendida">0</span></div></div>
-        <div class="col"><div class="border p-2"><strong>Venda Sistema:</strong> R$ <span id="vendaSistema">0,00</span></div></div>
-        <div class="col"><div class="border p-2"><strong>Diferença PDV - Sistema:</strong> R$ <span id="diferencaVenda">0,00</span></div></div>
-        <div class="col"><div class="border p-2"><strong>Custo da Perda:</strong> R$ <span id="custoPerda">0,00</span></div></div>
-        <div class="col"><div class="border p-2"><strong>Valor dos Assados:</strong> R$ <span id="valorAssados">0,00</span></div></div>
-        <div class="col"><div class="border p-2"><strong>CMV:</strong> R$ <span id="cmvCalculado">0,00</span></div></div>
-        <div class="col"><div class="border p-2"><strong>Custo Logística:</strong> R$ <span id="custoLogistica">0,00</span></div></div>
-        <div class="col"><div class="border p-2"><strong>Custo Equipe:</strong> R$ <span id="custoEquipe">0,00</span></div></div>
-        <div class="col"><div class="border p-2"><strong>Lucro Final:</strong> R$ <span id="lucroFinal">0,00</span></div></div>
-      </div>
-
-      <h4 class="mt-4">👥 Equipe</h4>
-      <div id="equipeContainer"></div>
-      <button type="button" class="btn btn-sm btn-outline-primary my-2">+ Adicionar Equipe</button>
-
-      <h4 class="mt-4">🚚 Logística</h4>
-      <div id="logisticaContainer"></div>
-      <button type="button" class="btn btn-sm btn-outline-primary my-2">+ Adicionar Logística</button>
-
-      <h4 class="mt-4">📦 Produtos</h4>
-      <button type="button" class="btn btn-sm btn-outline-primary my-2">+ Adicionar Produto</button>
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>Produto</th>
-            <th>Enviada</th>
-            <th>Congelado</th>
-            <th>Assado</th>
-            <th>Perda</th>
-            <th>Vendida</th>
-            <th>Valor Perda</th>
-            <th>Valor Venda</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaProdutos"></tbody>
-      </table>
-
-      <button type="submit" class="btn btn-success mt-3">Salvar Evento</button>
     </form>
   </div>
-<script src="GestaoEvento.js"></script>
 </body>
 </html>
