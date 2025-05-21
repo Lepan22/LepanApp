@@ -55,7 +55,7 @@ function renderizarProdutos() {
 
   listaProdutos.forEach((item, index) => {
     const produto = produtosDisponiveis.find(p => p.id === item.produtoId);
-    const nomeProduto = produto ? produto.nome : item.produtoId;
+    const nomeProduto = produto ? produto.nome : 'Produto não encontrado';
 
     const div = document.createElement('div');
     div.className = 'card p-2 mb-2';
