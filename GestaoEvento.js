@@ -1,4 +1,3 @@
-
 const firebaseConfig = {
   apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
   authDomain: "lepanapp.firebaseapp.com",
