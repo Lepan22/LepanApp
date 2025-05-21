@@ -149,10 +149,13 @@ function renderizarProdutos() {
     tabela.appendChild(row);
     const inputs = row.querySelectorAll('input');
     row.querySelector('select').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
-    inputs[0].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
-    inputs[1].oninput = e => { item.congelado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
-    inputs[2].oninput = e => { item.assado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
-    inputs[3].oninput = e => { item.perda = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+
+    // ✅ Alterado para onchange:
+    inputs[0].onchange = e => { item.quantidade = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+    inputs[1].onchange = e => { item.congelado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+    inputs[2].onchange = e => { item.assado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+    inputs[3].onchange = e => { item.perda = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+
     row.querySelector('button').onclick = () => { listaProdutos.splice(index, 1); renderizarProdutos(); calcularTotais(); };
   });
 }
