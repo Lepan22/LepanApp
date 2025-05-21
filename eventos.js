@@ -37,16 +37,16 @@ function aplicarFiltros() {
 
   eventos.filter(e => {
     if (status !== 'Todos' && e.status !== status) return false;
-    if (nome && !e.nomeEvento.toLowerCase().includes(nome)) return false;
-    if (dataInicio && e.data < dataInicio) return false;
-    if (dataFim && e.data > dataFim) return false;
+    if (nome && !(e.nomeEvento || '').toLowerCase().includes(nome)) return false;
+    if (dataInicio && (!e.data || e.data < dataInicio)) return false;
+    if (dataFim && (!e.data || e.data > dataFim)) return false;
     return true;
   }).forEach(e => {
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>${e.nomeEvento}</td>
-      <td>${e.data}</td>
-      <td>${e.status}</td>
+      <td>${e.nomeEvento || '-'}</td>
+      <td>${e.data || '-'}</td>
+      <td>${e.status || '-'}</td>
       <td>R$ ${(e.vendaPDV || 0).toFixed(2)}</td>
       <td>R$ ${(e.estimativaVenda || 0).toFixed(2)}</td>
       <td>
@@ -70,8 +70,8 @@ function calcularKPIs() {
 
   eventos.forEach(e => {
     const dataEvento = new Date(e.data);
-    if (dataEvento >= semanaInicio) kpiSemana++;
-    if (dataEvento >= mesInicio) {
+    if (e.data && dataEvento >= semanaInicio) kpiSemana++;
+    if (e.data && dataEvento >= mesInicio) {
       kpiMes++;
       kpiVendasMes += parseFloat(e.vendaPDV || 0);
     }
@@ -89,7 +89,7 @@ function duplicarEvento(id) {
   if (!evento) return;
 
   const novoEvento = { ...evento };
-  novoEvento.produtos = evento.produtos.map(p => ({
+  novoEvento.produtos = (evento.produtos || []).map(p => ({
     produtoId: p.produtoId,
     quantidade: p.quantidade,
     congelado: 0,
