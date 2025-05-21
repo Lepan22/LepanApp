@@ -11,6 +11,14 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+let equipeDisponivel = [];
+let logisticaDisponivel = [];
+let produtosDisponiveis = [];
+
+let equipeAlocada = [];
+let logisticaAlocada = [];
+let listaProdutos = [];
+
 function carregarClientes() {
   const selectEvento = document.getElementById('nomeEvento');
   db.ref('clientes').once('value').then(snapshot => {
@@ -41,32 +49,28 @@ function carregarResponsaveis() {
   });
 }
 
-let equipeDisponivel = [];
-let logisticaDisponivel = [];
-let produtosDisponiveis = [];
-
-let equipeAlocada = [];
-let logisticaAlocada = [];
-let listaProdutos = [];
-
-function carregarEquipeDisponivel() {
-  db.ref('equipe').once('value').then(snapshot => {
-    equipeDisponivel = [];
-    snapshot.forEach(child => {
-      const membro = child.val();
-      equipeDisponivel.push({ id: child.key, nome: membro.apelido || membro.nomeCompleto });
-    });
+async function carregarEquipeDisponivel() {
+  const btn = document.getElementById('btnEquipe');
+  btn.disabled = true;
+  equipeDisponivel = [];
+  const snapshot = await db.ref('equipe').once('value');
+  snapshot.forEach(child => {
+    const membro = child.val();
+    equipeDisponivel.push({ id: child.key, nome: membro.apelido || membro.nomeCompleto });
   });
+  btn.disabled = false;
 }
 
-function carregarLogisticaDisponivel() {
-  db.ref('logistica').once('value').then(snapshot => {
-    logisticaDisponivel = [];
-    snapshot.forEach(child => {
-      const prestador = child.val();
-      logisticaDisponivel.push({ id: child.key, nome: prestador.nome });
-    });
+async function carregarLogisticaDisponivel() {
+  const btn = document.getElementById('btnLogistica');
+  btn.disabled = true;
+  logisticaDisponivel = [];
+  const snapshot = await db.ref('logistica').once('value');
+  snapshot.forEach(child => {
+    const prestador = child.val();
+    logisticaDisponivel.push({ id: child.key, nome: prestador.nome });
   });
+  btn.disabled = false;
 }
 
 function carregarProdutosDisponiveis() {
