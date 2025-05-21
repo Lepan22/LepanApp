@@ -106,8 +106,8 @@ function renderizarEquipe() {
     `;
     container.appendChild(div);
 
-    div.querySelector('select').onchange = e => { item.membroId = e.target.value; };
-    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; };
+    div.querySelector('select').onchange = e => { item.membroId = e.target.value; calcularTotais(); };
+    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
   });
 }
 
@@ -134,8 +134,8 @@ function renderizarLogistica() {
     `;
     container.appendChild(div);
 
-    div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; };
-    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; };
+    div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; calcularTotais(); };
+    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
   });
 }
 
@@ -172,13 +172,45 @@ function renderizarProdutos() {
     tabela.appendChild(row);
 
     const inputs = row.querySelectorAll('input');
-    row.querySelector('select').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); };
-    inputs[0].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; renderizarProdutos(); };
-    inputs[1].oninput = e => { item.congelado = parseInt(e.target.value) || 0; renderizarProdutos(); };
-    inputs[2].oninput = e => { item.assado = parseInt(e.target.value) || 0; renderizarProdutos(); };
-    inputs[3].oninput = e => { item.perda = parseInt(e.target.value) || 0; renderizarProdutos(); };
-    row.querySelector('button').onclick = () => { listaProdutos.splice(index, 1); renderizarProdutos(); };
+    row.querySelector('select').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
+    inputs[0].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+    inputs[1].oninput = e => { item.congelado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+    inputs[2].oninput = e => { item.assado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+    inputs[3].oninput = e => { item.perda = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+    row.querySelector('button').onclick = () => { listaProdutos.splice(index, 1); renderizarProdutos(); calcularTotais(); };
   });
+}
+
+function calcularTotais() {
+  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmv = 0;
+
+  listaProdutos.forEach(item => {
+    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
+    totalVendida += vendida;
+    vendaSistema += vendida * produto.valorVenda;
+    custoPerda += item.perda * produto.custo;
+    valorAssados += item.assado * produto.custo;
+    cmv += vendida * produto.custo;
+  });
+
+  document.getElementById('totalVendida').innerText = totalVendida;
+  document.getElementById('vendaSistema').innerText = vendaSistema.toFixed(2);
+  document.getElementById('custoPerda').innerText = custoPerda.toFixed(2);
+  document.getElementById('valorAssados').innerText = valorAssados.toFixed(2);
+  document.getElementById('cmvCalculado').innerText = cmv.toFixed(2);
+
+  const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
+  const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
+  const vendaPDV = parseFloat(document.getElementById("vendaPDV").value) || 0;
+  const cmvReal = parseFloat(document.getElementById("cmvReal").value) || cmv;
+  const lucro = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
+  const diferenca = vendaPDV - vendaSistema;
+
+  document.getElementById('custoEquipe').innerText = custoEquipe.toFixed(2);
+  document.getElementById('custoLogistica').innerText = custoLogistica.toFixed(2);
+  document.getElementById('lucroFinal').innerText = lucro.toFixed(2);
+  document.getElementById('diferencaVenda').innerText = diferenca.toFixed(2);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
