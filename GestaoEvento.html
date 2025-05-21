@@ -10,51 +10,15 @@
       --cor-primaria: #ff7f00;
       --cor-secundaria: #f9f9f9;
     }
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .layout {
-      display: flex;
-      min-height: 100vh;
-    }
-    .sidebar {
-      width: 220px;
-      background-color: var(--cor-primaria);
-      color: white;
-      padding: 20px 10px;
-    }
-    .sidebar a {
-      display: block;
-      color: white;
-      margin-bottom: 10px;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    .main-content {
-      flex-grow: 1;
-      padding: 20px;
-    }
-    .form-area {
-      background: var(--cor-secundaria);
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    .section-title {
-      margin-top: 20px;
-      font-weight: bold;
-      font-size: 1.1rem;
-    }
-    .table th {
-      background-color: var(--cor-primaria);
-      color: white;
-    }
-    .table td {
-      font-size: 0.85rem;
-      padding: 4px 6px;
-      vertical-align: middle;
-    }
+    body { margin: 0; font-family: 'Segoe UI', sans-serif; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background-color: var(--cor-primaria); color: white; padding: 20px 10px; }
+    .sidebar a { display: block; color: white; margin-bottom: 10px; text-decoration: none; font-weight: bold; }
+    .main-content { flex-grow: 1; padding: 20px; }
+    .form-area { background: var(--cor-secundaria); padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .section-title { margin-top: 20px; font-weight: bold; font-size: 1.1rem; }
+    .table th { background-color: var(--cor-primaria); color: white; }
+    .table td { font-size: 0.85rem; padding: 4px 6px; vertical-align: middle; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -75,45 +39,19 @@
     <h1>Gestão de Evento</h1>
 
     <form id="formGestaoEvento" class="form-area">
-
-      <div class="mb-3">
-        <label class="form-label">Nome do Evento (Cliente)</label>
-        <select id="nomeEvento" class="form-select" required></select>
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label">Data</label>
-        <input type="date" id="data" class="form-control" required>
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label">Responsável</label>
-        <select id="responsavel" class="form-select" required></select>
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label">Status</label>
+      <div class="mb-3"><label>Nome do Evento</label><select id="nomeEvento" class="form-select" required></select></div>
+      <div class="mb-3"><label>Data</label><input type="date" id="data" class="form-control" required></div>
+      <div class="mb-3"><label>Responsável</label><select id="responsavel" class="form-select" required></select></div>
+      <div class="mb-3"><label>Status</label>
         <select id="status" class="form-select" required>
           <option value="Aberto">Aberto</option>
           <option value="Finalizado">Finalizado</option>
           <option value="Fechado">Fechado</option>
         </select>
       </div>
-
-      <div class="mb-3">
-        <label class="form-label">Valor Real de Venda (PDV)</label>
-        <input type="number" id="vendaPDV" class="form-control" step="0.01" oninput="calcularTotais()">
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label">CMV Real</label>
-        <input type="number" id="cmvReal" class="form-control" step="0.01" oninput="calcularTotais()">
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label">Estimativa de Venda</label>
-        <input type="number" id="estimativaVenda" class="form-control" step="0.01" oninput="calcularTotais()">
-      </div>
+      <div class="mb-3"><label>Valor Real de Venda (PDV)</label><input type="number" id="vendaPDV" class="form-control" step="0.01" onchange="calcularTotais()"></div>
+      <div class="mb-3"><label>CMV Real</label><input type="number" id="cmvReal" class="form-control" step="0.01" onchange="calcularTotais()"></div>
+      <div class="mb-3"><label>Estimativa de Venda</label><input type="number" id="estimativaVenda" class="form-control" step="0.01" onchange="calcularTotais()"></div>
 
       <h4 class="section-title">Totais do Evento</h4>
       <ul>
@@ -138,26 +76,18 @@
       <button type="button" id="btnLogistica" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarLogistica()" disabled>+ Adicionar Logística</button>
 
       <h4 class="section-title">📦 Produtos</h4>
-      <button type="button" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarProduto()">+ Adicionar Produto</button>
+      <button type="button" class="btn btn-sm btn-outline-primary my-2" id="btnProduto" onclick="adicionarProduto()" disabled>+ Adicionar Produto</button>
       <table class="table table-bordered">
         <thead>
           <tr>
-            <th>Produto</th>
-            <th>Qtd Enviada</th>
-            <th>Congelado</th>
-            <th>Assado</th>
-            <th>Perda</th>
-            <th>Qtd Vendida</th>
-            <th>Valor Venda</th>
-            <th>Valor Perda</th>
-            <th>Ações</th>
+            <th>Produto</th><th>Qtd Enviada</th><th>Congelado</th><th>Assado</th><th>Perda</th>
+            <th>Qtd Vendida</th><th>Valor Venda</th><th>Valor Perda</th><th>Ações</th>
           </tr>
         </thead>
         <tbody id="tabelaProdutos"></tbody>
       </table>
 
       <button type="submit" class="btn btn-success mt-3">Salvar Evento</button>
-
     </form>
   </div>
 </div>
