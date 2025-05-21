@@ -13,6 +13,17 @@ const db = firebase.database();
 
 let eventoId = null;
 let listaProdutos = [];
+let produtosDisponiveis = [];
+
+function carregarProdutosDisponiveis() {
+  return db.ref('produtos').once('value').then(snapshot => {
+    produtosDisponiveis = [];
+    snapshot.forEach(child => {
+      const produto = child.val();
+      produtosDisponiveis.push({ id: child.key, nome: produto.nome });
+    });
+  });
+}
 
 function carregarEvento() {
   const params = new URLSearchParams(window.location.search);
@@ -43,10 +54,13 @@ function renderizarProdutos() {
   container.innerHTML = '';
 
   listaProdutos.forEach((item, index) => {
+    const produto = produtosDisponiveis.find(p => p.id === item.produtoId);
+    const nomeProduto = produto ? produto.nome : item.produtoId;
+
     const div = document.createElement('div');
     div.className = 'card p-2 mb-2';
     div.innerHTML = `
-      <strong>${item.produtoId}</strong>
+      <strong>${nomeProduto}</strong>
       <div>Quantidade Enviada: <input type="number" class="form-control" value="${item.quantidade}" disabled></div>
       <div>Congelado: <input type="number" class="form-control congelado" value="${item.congelado || 0}" data-index="${index}"></div>
       <div>Assado: <input type="number" class="form-control assado" value="${item.assado || 0}" data-index="${index}"></div>
@@ -85,4 +99,8 @@ function finalizarEvento() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', carregarEvento);
+document.addEventListener('DOMContentLoaded', () => {
+  carregarProdutosDisponiveis().then(() => {
+    carregarEvento();
+  });
+});
