@@ -26,20 +26,6 @@ async function carregarClientes() {
   });
 }
 
-async function carregarResponsaveis() {
-  const select = document.getElementById('responsavel');
-  const snapshot = await db.ref('equipe').once('value');
-  select.innerHTML = '<option value="">Selecione</option>';
-  snapshot.forEach(child => {
-    const membro = child.val();
-    const opt = document.createElement('option');
-    opt.value = membro.apelido;
-    opt.textContent = membro.apelido;
-    select.appendChild(opt);
-  });
-}
-
 window.onload = async function() {
   await carregarClientes();
-  await carregarResponsaveis();
 };
