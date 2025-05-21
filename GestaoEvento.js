@@ -140,7 +140,7 @@ function renderizarLogistica() {
 }
 
 function adicionarProduto() {
-  listaProdutos.push({ produtoId: '', quantidade: 0 });
+  listaProdutos.push({ produtoId: '', quantidade: 0, congelado: 0, assado: 0, perda: 0 });
   renderizarProdutos();
 }
 
@@ -155,17 +155,20 @@ function renderizarProdutos() {
           ${produtosDisponiveis.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}
         </select>
       </td>
-      <td>
-        <input type="number" class="form-control form-control-sm" value="${item.quantidade}">
-      </td>
-      <td>
-        <button class="btn btn-sm btn-outline-danger">🗑️</button>
-      </td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.quantidade}"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.congelado}"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.assado}"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.perda}"></td>
+      <td><button class="btn btn-sm btn-outline-danger">🗑️</button></td>
     `;
     tabela.appendChild(row);
 
+    const inputs = row.querySelectorAll('input');
     row.querySelector('select').onchange = e => { item.produtoId = e.target.value; };
-    row.querySelector('input').oninput = e => { item.quantidade = parseInt(e.target.value) || 0; };
+    inputs[0].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; };
+    inputs[1].oninput = e => { item.congelado = parseInt(e.target.value) || 0; };
+    inputs[2].oninput = e => { item.assado = parseInt(e.target.value) || 0; };
+    inputs[3].oninput = e => { item.perda = parseInt(e.target.value) || 0; };
     row.querySelector('button').onclick = () => { listaProdutos.splice(index, 1); renderizarProdutos(); };
   });
 }
@@ -177,3 +180,4 @@ document.addEventListener("DOMContentLoaded", () => {
   carregarLogisticaDisponivel();
   carregarProdutosDisponiveis();
 });
+
