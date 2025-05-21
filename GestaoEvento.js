@@ -41,8 +41,30 @@ function carregarResponsaveis() {
   });
 }
 
+let equipeDisponivel = [];
+let logisticaDisponivel = [];
 let equipeAlocada = [];
 let logisticaAlocada = [];
+
+function carregarEquipeDisponivel() {
+  db.ref('equipe').once('value').then(snapshot => {
+    equipeDisponivel = [];
+    snapshot.forEach(child => {
+      const membro = child.val();
+      equipeDisponivel.push({ id: child.key, nome: membro.apelido || membro.nomeCompleto });
+    });
+  });
+}
+
+function carregarLogisticaDisponivel() {
+  db.ref('logistica').once('value').then(snapshot => {
+    logisticaDisponivel = [];
+    snapshot.forEach(child => {
+      const prestador = child.val();
+      logisticaDisponivel.push({ id: child.key, nome: prestador.nome });
+    });
+  });
+}
 
 function adicionarEquipe() {
   equipeAlocada.push({ membroId: '', valor: 0 });
@@ -56,10 +78,19 @@ function renderizarEquipe() {
     const div = document.createElement('div');
     div.className = 'row mb-2';
     div.innerHTML = `
-      <div class="col"><input type="text" class="form-control form-control-sm" placeholder="Membro" value="${item.membroId}" onchange="equipeAlocada[${i}].membroId = this.value"></div>
-      <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}" onchange="equipeAlocada[${i}].valor = parseFloat(this.value) || 0"></div>
+      <div class="col">
+        <select class="form-select form-select-sm">
+          ${equipeDisponivel.map(m => `<option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>`).join('')}
+        </select>
+      </div>
+      <div class="col">
+        <input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}">
+      </div>
     `;
     container.appendChild(div);
+
+    div.querySelector('select').onchange = e => { item.membroId = e.target.value; };
+    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; };
   });
 }
 
@@ -75,14 +106,25 @@ function renderizarLogistica() {
     const div = document.createElement('div');
     div.className = 'row mb-2';
     div.innerHTML = `
-      <div class="col"><input type="text" class="form-control form-control-sm" placeholder="Prestador" value="${item.prestadorId}" onchange="logisticaAlocada[${i}].prestadorId = this.value"></div>
-      <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}" onchange="logisticaAlocada[${i}].valor = parseFloat(this.value) || 0"></div>
+      <div class="col">
+        <select class="form-select form-select-sm">
+          ${logisticaDisponivel.map(l => `<option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>`).join('')}
+        </select>
+      </div>
+      <div class="col">
+        <input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}">
+      </div>
     `;
     container.appendChild(div);
+
+    div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; };
+    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; };
   });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   carregarClientes();
   carregarResponsaveis();
+  carregarEquipeDisponivel();
+  carregarLogisticaDisponivel();
 });
