@@ -11,197 +11,32 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let equipeAlocada = [];
-let logisticaAlocada = [];
-let listaProdutos = [];
-let equipeDisponivel = [];
-let logisticaDisponivel = [];
-let produtosDisponiveis = [];
+function carregarEventos() {
+  db.ref('eventos').once('value').then(snapshot => {
+    const tabela = document.getElementById('tabelaEventos');
+    tabela.innerHTML = '';
 
-function carregarClientes() {
-  const selectEvento = document.getElementById('nomeEvento');
-  db.ref('clientes').once('value').then(snapshot => {
-    selectEvento.innerHTML = '<option value="">Selecione</option>';
     snapshot.forEach(child => {
-      const cliente = child.val();
-      if (cliente.status === 'Fechado' && cliente.clienteAtivo?.nomeEvento) {
-        const opt = document.createElement('option');
-        opt.value = cliente.clienteAtivo.nomeEvento;
-        opt.textContent = cliente.clienteAtivo.nomeEvento;
-        selectEvento.appendChild(opt);
-      }
+      const evento = child.val();
+      const id = child.key;
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${evento.nomeEvento || '-'}</td>
+        <td>${evento.data || '-'}</td>
+        <td>${evento.status || '-'}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${id}')">Editar</button>
+        </td>
+      `;
+
+      tabela.appendChild(row);
     });
   });
 }
 
-function carregarResponsaveis() {
-  const select = document.getElementById('responsavel');
-  db.ref('equipe').once('value').then(snapshot => {
-    select.innerHTML = '<option value="">Selecione</option>';
-    snapshot.forEach(child => {
-      const membro = child.val();
-      const opt = document.createElement('option');
-      opt.value = membro.apelido;
-      opt.textContent = membro.apelido;
-      select.appendChild(opt);
-    });
-  });
+function editarEvento(id) {
+  window.location.href = `GestaoEvento.html?id=${id}`;
 }
 
-async function carregarEquipeDisponivel() {
-  const btn = document.getElementById('btnEquipe');
-  btn.disabled = true;
-  equipeDisponivel = [];
-  const snapshot = await db.ref('equipe').once('value');
-  snapshot.forEach(child => {
-    const membro = child.val();
-    equipeDisponivel.push({ id: child.key, nome: membro.apelido || membro.nomeCompleto });
-  });
-  btn.disabled = false;
-}
-
-async function carregarLogisticaDisponivel() {
-  const btn = document.getElementById('btnLogistica');
-  btn.disabled = true;
-  logisticaDisponivel = [];
-  const snapshot = await db.ref('logistica').once('value');
-  snapshot.forEach(child => {
-    const prestador = child.val();
-    logisticaDisponivel.push({ id: child.key, nome: prestador.nome });
-  });
-  btn.disabled = false;
-}
-
-function carregarProdutosDisponiveis() {
-  db.ref('produtos').once('value').then(snapshot => {
-    produtosDisponiveis = [];
-    snapshot.forEach(child => {
-      const produto = child.val();
-      produtosDisponiveis.push({ id: child.key, nome: produto.nome, valorVenda: produto.valorVenda || 0, custo: produto.custo || 0 });
-    });
-  });
-}
-
-function adicionarEquipe() {
-  equipeAlocada.push({ membroId: '', valor: 0 });
-  renderizarEquipe();
-}
-
-function renderizarEquipe() {
-  const container = document.getElementById('equipeContainer');
-  container.innerHTML = '';
-  equipeAlocada.forEach((item, i) => {
-    const div = document.createElement('div');
-    div.className = 'row mb-2';
-    div.innerHTML = `
-      <div class="col"><select class="form-select form-select-sm">${equipeDisponivel.map(m => `<option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>`).join('')}</select></div>
-      <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
-    `;
-    container.appendChild(div);
-    div.querySelector('select').onchange = e => { item.membroId = e.target.value; calcularTotais(); };
-    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
-  });
-}
-
-function adicionarLogistica() {
-  logisticaAlocada.push({ prestadorId: '', valor: 0 });
-  renderizarLogistica();
-}
-
-function renderizarLogistica() {
-  const container = document.getElementById('logisticaContainer');
-  container.innerHTML = '';
-  logisticaAlocada.forEach((item, i) => {
-    const div = document.createElement('div');
-    div.className = 'row mb-2';
-    div.innerHTML = `
-      <div class="col"><select class="form-select form-select-sm">${logisticaDisponivel.map(l => `<option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>`).join('')}</select></div>
-      <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
-    `;
-    container.appendChild(div);
-    div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; calcularTotais(); };
-    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
-  });
-}
-
-function adicionarProduto() {
-  listaProdutos.push({ produtoId: '', quantidade: 0, congelado: 0, assado: 0, perda: 0 });
-  renderizarProdutos();
-}
-
-function renderizarProdutos() {
-  const tabela = document.getElementById('tabelaProdutos');
-  tabela.innerHTML = '';
-  listaProdutos.forEach((item, index) => {
-    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
-    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
-    const valorVenda = vendida * produto.valorVenda;
-    const valorPerda = item.perda * produto.custo;
-
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td><select class="form-select form-select-sm">${produtosDisponiveis.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></td>
-      <td><input type="number" class="form-control form-control-sm" value="${item.quantidade}"></td>
-      <td><input type="number" class="form-control form-control-sm" value="${item.congelado}"></td>
-      <td><input type="number" class="form-control form-control-sm" value="${item.assado}"></td>
-      <td><input type="number" class="form-control form-control-sm" value="${item.perda}"></td>
-      <td><input type="text" class="form-control form-control-sm" value="${vendida}" disabled></td>
-      <td><input type="text" class="form-control form-control-sm" value="R$ ${valorVenda.toFixed(2)}" disabled></td>
-      <td><input type="text" class="form-control form-control-sm" value="R$ ${valorPerda.toFixed(2)}" disabled></td>
-      <td><button class="btn btn-sm btn-outline-danger">🗑️</button></td>
-    `;
-    tabela.appendChild(row);
-    const inputs = row.querySelectorAll('input');
-    row.querySelector('select').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
-    inputs[0].onchange = e => { item.quantidade = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
-    inputs[1].onchange = e => { item.congelado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
-    inputs[2].onchange = e => { item.assado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
-    inputs[3].onchange = e => { item.perda = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
-    row.querySelector('button').onclick = () => { listaProdutos.splice(index, 1); renderizarProdutos(); calcularTotais(); };
-  });
-}
-
-function calcularTotais() {
-  const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
-  const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
-
-  document.getElementById('custoEquipe').innerText = custoEquipe.toFixed(2);
-  document.getElementById('custoLogistica').innerText = custoLogistica.toFixed(2);
-}
-
-function carregarEventoExistente() {
-  const params = new URLSearchParams(window.location.search);
-  const id = params.get('id');
-  if (!id) return;
-
-  db.ref('eventos/' + id).once('value').then(snapshot => {
-    const evento = snapshot.val();
-    if (!evento) return;
-
-    document.getElementById('nomeEvento').value = evento.nomeEvento || '';
-    document.getElementById('data').value = evento.data || '';
-    document.getElementById('responsavel').value = evento.responsavel || '';
-    document.getElementById('status').value = evento.status || '';
-    document.getElementById('vendaPDV').value = evento.vendaPDV || '';
-    document.getElementById('cmvReal').value = evento.cmvReal || '';
-    document.getElementById('estimativaVenda').value = evento.estimativaVenda || '';
-
-    equipeAlocada = evento.equipe || [];
-    logisticaAlocada = evento.logistica || [];
-    listaProdutos = evento.produtos || [];
-
-    renderizarEquipe();
-    renderizarLogistica();
-    renderizarProdutos();
-    calcularTotais();
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  carregarClientes();
-  carregarResponsaveis();
-  carregarEquipeDisponivel();
-  carregarLogisticaDisponivel();
-  carregarProdutosDisponiveis();
-  carregarEventoExistente();
-});
+document.addEventListener('DOMContentLoaded', carregarEventos);
