@@ -5,13 +5,76 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Gestão de Evento</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <style>
+    :root {
+      --cor-primaria: #ff7f00;
+      --cor-secundaria: #f9f9f9;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 220px;
+      background-color: var(--cor-primaria);
+      color: white;
+      padding: 20px 10px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      margin-bottom: 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .main-content {
+      flex-grow: 1;
+      padding: 20px;
+    }
+    .form-area {
+      background: var(--cor-secundaria);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    .section-title {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+    .table th {
+      background-color: var(--cor-primaria);
+      color: white;
+    }
+    .table td {
+      font-size: 0.85rem;
+      padding: 4px 6px;
+      vertical-align: middle;
+    }
+  </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
-  <div class="container py-4">
+
+<div class="layout">
+  <div class="sidebar">
+    <h4>LePanApp</h4>
+    <a href="produtos.html">Produtos</a>
+    <a href="equipe.html">Equipe</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="eventos.html">Eventos</a>
+    <a href="logistica.html">Logística</a>
+  </div>
+
+  <div class="main-content">
     <h1>Gestão de Evento</h1>
-    <form id="formGestaoEvento">
+
+    <form id="formGestaoEvento" class="form-area">
 
       <div class="mb-3">
         <label class="form-label">Nome do Evento (Cliente)</label>
@@ -52,7 +115,7 @@
         <input type="number" id="estimativaVenda" class="form-control" step="0.01" oninput="calcularTotais()">
       </div>
 
-      <h4 class="mt-4">Totais do Evento</h4>
+      <h4 class="section-title">Totais do Evento</h4>
       <ul>
         <li>Potencial de Venda: R$ <span id="potencialVenda">0.00</span></li>
         <li>Total Quantidade Vendida: <span id="totalVendida">0</span></li>
@@ -66,15 +129,15 @@
         <li>Diferença PDV - Sistema: R$ <span id="diferencaVenda">0.00</span></li>
       </ul>
 
-      <h4 class="mt-4">👥 Equipe</h4>
+      <h4 class="section-title">👥 Equipe</h4>
       <div id="equipeContainer"></div>
       <button type="button" id="btnEquipe" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarEquipe()" disabled>+ Adicionar Equipe</button>
 
-      <h4 class="mt-4">🚚 Logística</h4>
+      <h4 class="section-title">🚚 Logística</h4>
       <div id="logisticaContainer"></div>
       <button type="button" id="btnLogistica" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarLogistica()" disabled>+ Adicionar Logística</button>
 
-      <h4 class="mt-4">📦 Produtos</h4>
+      <h4 class="section-title">📦 Produtos</h4>
       <button type="button" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarProduto()">+ Adicionar Produto</button>
       <table class="table table-bordered">
         <thead>
@@ -97,6 +160,8 @@
 
     </form>
   </div>
-  <script src="GestaoEvento.js"></script>
+</div>
+
+<script src="GestaoEvento.js"></script>
 </body>
 </html>
