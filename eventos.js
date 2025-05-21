@@ -1,139 +1,145 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eventos</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-  <style>
-    :root {
-      --cor-primaria: #ff7f00;
-      --cor-secundaria: #f9f9f9;
-    }
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .layout {
-      display: flex;
-      min-height: 100vh;
-    }
-    .sidebar {
-      width: 220px;
-      background-color: var(--cor-primaria);
-      color: white;
-      padding: 20px 10px;
-    }
-    .sidebar a {
-      display: block;
-      color: white;
-      margin-bottom: 10px;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    .main-content {
-      flex-grow: 1;
-      padding: 20px;
-    }
-    .kpi-box {
-      background: var(--cor-secundaria);
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      font-size: 0.85rem;
-    }
-    .table th {
-      background-color: var(--cor-primaria);
-      color: white;
-      font-size: 0.75rem;
-      padding: 4px;
-    }
-    .table td {
-      font-size: 0.75rem;
-      padding: 2px 4px;
-      vertical-align: middle;
-    }
-  </style>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-</head>
-<body>
+const firebaseConfig = {
+  apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+  authDomain: "lepanapp.firebaseapp.com",
+  databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+  projectId: "lepanapp",
+  storageBucket: "lepanapp.firebasestorage.app",
+  messagingSenderId: "542989944344",
+  appId: "1:542989944344:web:576e28199960fd5440a56d"
+};
 
-<div class="layout">
-  <div class="sidebar">
-    <h4>LePanApp</h4>
-    <a href="produtos.html">Produtos</a>
-    <a href="equipe.html">Equipe</a>
-    <a href="clientes.html">Clientes</a>
-    <a href="eventos.html">Eventos</a>
-    <a href="logistica.html">Logística</a>
-  </div>
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-  <div class="main-content">
-    <h1>Eventos</h1>
+let eventos = [];
 
-    <a href="GestaoEvento.html" class="btn btn-sm btn-primary mb-3">+ Criar Evento</a>
+function carregarEventos() {
+  db.ref('eventos').once('value').then(snapshot => {
+    eventos = [];
+    snapshot.forEach(child => {
+      const evento = child.val();
+      evento.id = child.key;
+      eventos.push(evento);
+    });
+    aplicarFiltros();
+    calcularKPIs();
+  });
+}
 
-    <div class="row mb-3">
-      <div class="col kpi-box">
-        Evento na Semana: <strong><span id="kpiSemana">0</span></strong>
-      </div>
-      <div class="col kpi-box">
-        Eventos no Mês: <strong><span id="kpiMes">0</span></strong>
-      </div>
-      <div class="col kpi-box">
-        Estimativa Total de Vendas: <strong>R$ <span id="kpiEstimativa">0.00</span></strong>
-      </div>
-      <div class="col kpi-box">
-        Vendas no Mês: <strong>R$ <span id="kpiVendasMes">0.00</span></strong>
-      </div>
-    </div>
+function aplicarFiltros() {
+  const status = document.getElementById('filtroStatus').value;
+  const nome = document.getElementById('filtroNome').value.toLowerCase();
+  const dataInicio = document.getElementById('filtroDataInicio').value;
+  const dataFim = document.getElementById('filtroDataFim').value;
 
-    <h4>Filtros</h4>
-    <form id="filtrosForm" class="row g-2 mb-3">
-      <div class="col-md-3">
-        <label class="form-label">Status</label>
-        <select id="filtroStatus" class="form-select form-select-sm">
-          <option value="Todos" selected>Todos</option>
-          <option value="Aberto">Aberto</option>
-          <option value="Finalizado">Finalizado</option>
-          <option value="Fechado">Fechado</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Nome do Evento</label>
-        <input type="text" id="filtroNome" class="form-control form-control-sm">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Data Início</label>
-        <input type="date" id="filtroDataInicio" class="form-control form-control-sm">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Data Fim</label>
-        <input type="date" id="filtroDataFim" class="form-control form-control-sm">
-      </div>
-      <div class="col-12">
-        <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Aplicar Filtros</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="limparFiltros()">Limpar Filtros</button>
-      </div>
-    </form>
+  const tabela = document.getElementById('tabelaEventos');
+  tabela.innerHTML = '';
 
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Nome do Evento</th>
-          <th>Data</th>
-          <th>Status</th>
-          <th>Média Venda</th>
-          <th>Estimativa Venda</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="tabelaEventos"></tbody>
-    </table>
-  </div>
-</div>
+  eventos.filter(e => {
+    if (status !== 'Todos' && e.status !== status) return false;
+    if (nome && !(e.nomeEvento || '').toLowerCase().includes(nome)) return false;
+    if (dataInicio && (!e.data || e.data < dataInicio)) return false;
+    if (dataFim && (!e.data || e.data > dataFim)) return false;
+    return true;
+  }).forEach(e => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td>${e.nomeEvento || '-'}</td>
+      <td>${e.data || '-'}</td>
+      <td>${e.status || '-'}</td>
+      <td>R$ ${(e.vendaPDV || 0).toFixed(2)}</td>
+      <td>R$ ${(e.estimativaVenda || 0).toFixed(2)}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${e.id}')">Editar</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${e.id}')">Duplicar</button>
+        <button class="btn btn-sm btn-outline-success" onclick="enviarLink('${e.id}')">Enviar Link</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="excluirEvento('${e.id}')">Excluir</button>
+      </td>
+    `;
+    tabela.appendChild(row);
+  });
+}
 
-<script src="eventos.js"></script>
-</body>
-</html>
+function calcularKPIs() {
+  const hoje = new Date();
+  const semanaInicio = new Date(hoje);
+  semanaInicio.setDate(hoje.getDate() - hoje.getDay());
+
+  const mesInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+
+  let kpiSemana = 0, kpiMes = 0, kpiEstimativa = 0, kpiVendasMes = 0;
+
+  eventos.forEach(e => {
+    const dataEvento = e.data ? new Date(e.data) : null;
+    if (dataEvento && dataEvento >= semanaInicio) kpiSemana++;
+    if (dataEvento && dataEvento >= mesInicio) {
+      kpiMes++;
+      kpiVendasMes += parseFloat(e.vendaPDV || 0);
+    }
+    kpiEstimativa += parseFloat(e.estimativaVenda || 0);
+  });
+
+  document.getElementById('kpiSemana').innerText = kpiSemana;
+  document.getElementById('kpiMes').innerText = kpiMes;
+  document.getElementById('kpiEstimativa').innerText = kpiEstimativa.toFixed(2);
+  document.getElementById('kpiVendasMes').innerText = kpiVendasMes.toFixed(2);
+}
+
+function duplicarEvento(id) {
+  const evento = eventos.find(e => e.id === id);
+  if (!evento) return;
+
+  const novoEvento = { ...evento };
+  novoEvento.produtos = (evento.produtos || []).map(p => ({
+    produtoId: p.produtoId,
+    quantidade: p.quantidade,
+    congelado: 0,
+    assado: 0,
+    perda: 0
+  }));
+
+  delete novoEvento.id;
+
+  const novoId = db.ref('eventos').push().key;
+  db.ref('eventos/' + novoId).set(novoEvento).then(() => {
+    alert('Evento duplicado com sucesso!');
+    carregarEventos();
+  });
+}
+
+function enviarLink(id) {
+  const url = `${window.location.origin}/GestaoEvento.html?id=${id}`;
+  navigator.clipboard.writeText(url).then(() => {
+    alert('Link copiado para a área de transferência!');
+  });
+}
+
+function excluirEvento(id) {
+  if (confirm('Tem certeza que deseja excluir este evento?')) {
+    db.ref('eventos/' + id).remove().then(() => {
+      alert('Evento excluído com sucesso!');
+      carregarEventos();
+    });
+  }
+}
+
+function editarEvento(id) {
+  window.location.href = `GestaoEvento.html?id=${id}`;
+}
+
+function limparFiltros() {
+  document.getElementById('filtroStatus').value = 'Todos';
+  document.getElementById('filtroNome').value = '';
+  document.getElementById('filtroDataInicio').value = '';
+  document.getElementById('filtroDataFim').value = '';
+  aplicarFiltros();
+}
+
+document.getElementById('filtrosForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  aplicarFiltros();
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  carregarEventos();
+});
