@@ -12,10 +12,29 @@
   <div class="container py-4">
     <h1>Gestão de Evento</h1>
     <form id="formGestaoEvento">
+
       <div class="mb-3">
         <label class="form-label">Nome do Evento (Cliente)</label>
         <select id="nomeEvento" class="form-select" required></select>
       </div>
+
+      <div class="mb-3">
+        <label class="form-label">Data</label>
+        <input type="date" id="data" class="form-control" required>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Responsável</label>
+        <select id="responsavel" class="form-select" required></select>
+      </div>
+
+      <h4 class="mt-4">👥 Equipe</h4>
+      <div id="equipeContainer"></div>
+      <button type="button" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarEquipe()">+ Adicionar Equipe</button>
+
+      <h4 class="mt-4">🚚 Logística</h4>
+      <div id="logisticaContainer"></div>
+      <button type="button" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarLogistica()">+ Adicionar Logística</button>
     </form>
   </div>
   <script src="GestaoEvento.js"></script>
