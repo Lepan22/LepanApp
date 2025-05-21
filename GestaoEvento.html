@@ -35,6 +35,20 @@
       <h4 class="mt-4">🚚 Logística</h4>
       <div id="logisticaContainer"></div>
       <button type="button" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarLogistica()">+ Adicionar Logística</button>
+
+      <h4 class="mt-4">📦 Produtos</h4>
+      <button type="button" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarProduto()">+ Adicionar Produto</button>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>Quantidade Enviada</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaProdutos"></tbody>
+      </table>
+
     </form>
   </div>
   <script src="GestaoEvento.js"></script>
