@@ -213,6 +213,27 @@ function calcularTotais() {
   document.getElementById('diferencaVenda').innerText = diferenca.toFixed(2);
 }
 
+document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const evento = {
+    nomeEvento: document.getElementById('nomeEvento').value,
+    data: document.getElementById('data').value,
+    responsavel: document.getElementById('responsavel').value,
+    status: document.getElementById('status').value,
+    vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
+    cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
+    produtos: listaProdutos,
+    equipe: equipeAlocada,
+    logistica: logisticaAlocada
+  };
+
+  const id = db.ref('eventos').push().key;
+  db.ref('eventos/' + id).set(evento).then(() => {
+    alert('Evento salvo com sucesso!');
+  });
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   carregarClientes();
   carregarResponsaveis();
