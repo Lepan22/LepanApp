@@ -3,7 +3,7 @@ const firebaseConfig = {
   authDomain: "lepanapp.firebaseapp.com",
   databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
   projectId: "lepanapp",
-  storageBucket: "lepanapp.firebasestorage.app",
+  storageBucket: "lepanapp.appspot.com",
   messagingSenderId: "542989944344",
   appId: "1:542989944344:web:576e28199960fd5440a56d"
 };
@@ -11,9 +11,12 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let equipeDisponivel = [], logisticaDisponivel = [], produtosDisponiveis = [];
-let equipeAlocada = [], logisticaAlocada = [], listaProdutos = [];
-let eventoId = null;
+let equipeAlocada = [];
+let logisticaAlocada = [];
+let listaProdutos = [];
+let equipeDisponivel = [];
+let logisticaDisponivel = [];
+let produtosDisponiveis = [];
 
 function carregarClientes() {
   const selectEvento = document.getElementById('nomeEvento');
@@ -159,69 +162,19 @@ function renderizarProdutos() {
 }
 
 function calcularTotais() {
-  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmv = 0, potencialVenda = 0;
-
-  listaProdutos.forEach(item => {
-    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
-    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
-    totalVendida += vendida;
-    vendaSistema += vendida * produto.valorVenda;
-    custoPerda += item.perda * produto.custo;
-    valorAssados += item.assado * produto.custo;
-    cmv += vendida * produto.custo;
-    potencialVenda += item.quantidade * produto.valorVenda;
-  });
-
-  document.getElementById('totalVendida').innerText = totalVendida;
-  document.getElementById('vendaSistema').innerText = vendaSistema.toFixed(2);
-  document.getElementById('custoPerda').innerText = custoPerda.toFixed(2);
-  document.getElementById('valorAssados').innerText = valorAssados.toFixed(2);
-  document.getElementById('cmvCalculado').innerText = cmv.toFixed(2);
-  document.getElementById('potencialVenda').innerText = potencialVenda.toFixed(2);
-
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
   const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
-  const vendaPDV = parseFloat(document.getElementById("vendaPDV").value) || 0;
-  const cmvReal = parseFloat(document.getElementById("cmvReal").value) || cmv;
-  const lucro = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
-  const diferenca = vendaPDV - vendaSistema;
 
   document.getElementById('custoEquipe').innerText = custoEquipe.toFixed(2);
   document.getElementById('custoLogistica').innerText = custoLogistica.toFixed(2);
-  document.getElementById('lucroFinal').innerText = lucro.toFixed(2);
-  document.getElementById('diferencaVenda').innerText = diferenca.toFixed(2);
 }
-
-document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
-  e.preventDefault();
-
-  const estimativaVenda = parseFloat(document.getElementById('estimativaVenda').value) || 0;
-  const evento = {
-    nomeEvento: document.getElementById('nomeEvento').value,
-    data: document.getElementById('data').value,
-    responsavel: document.getElementById('responsavel').value,
-    status: document.getElementById('status').value,
-    vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
-    cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
-    estimativaVenda: estimativaVenda,
-    produtos: listaProdutos,
-    equipe: equipeAlocada,
-    logistica: logisticaAlocada
-  };
-
-  const id = eventoId || db.ref('eventos').push().key;
-  db.ref('eventos/' + id).set(evento).then(() => {
-    alert('Evento salvo com sucesso!');
-    window.location.href = "eventos.html";
-  });
-});
 
 function carregarEventoExistente() {
   const params = new URLSearchParams(window.location.search);
-  eventoId = params.get('id');
-  if (!eventoId) return;
+  const id = params.get('id');
+  if (!id) return;
 
-  db.ref('eventos/' + eventoId).once('value').then(snapshot => {
+  db.ref('eventos/' + id).once('value').then(snapshot => {
     const evento = snapshot.val();
     if (!evento) return;
 
