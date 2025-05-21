@@ -70,9 +70,9 @@ function calcularKPIs() {
   let kpiSemana = 0, kpiMes = 0, kpiEstimativa = 0, kpiVendasMes = 0;
 
   eventos.forEach(e => {
-    const dataEvento = e.data ? new Date(e.data) : null;
-    if (dataEvento && dataEvento >= semanaInicio) kpiSemana++;
-    if (dataEvento && dataEvento >= mesInicio) {
+    const dataEvento = new Date(e.data);
+    if (e.data && dataEvento >= semanaInicio) kpiSemana++;
+    if (e.data && dataEvento >= mesInicio) {
       kpiMes++;
       kpiVendasMes += parseFloat(e.vendaPDV || 0);
     }
