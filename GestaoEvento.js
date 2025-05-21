@@ -78,7 +78,7 @@ function carregarProdutosDisponiveis() {
     produtosDisponiveis = [];
     snapshot.forEach(child => {
       const produto = child.val();
-      produtosDisponiveis.push({ id: child.key, nome: produto.nome });
+      produtosDisponiveis.push({ id: child.key, nome: produto.nome, valorVenda: produto.valorVenda || 0, custo: produto.custo || 0 });
     });
   });
 }
@@ -148,6 +148,11 @@ function renderizarProdutos() {
   const tabela = document.getElementById('tabelaProdutos');
   tabela.innerHTML = '';
   listaProdutos.forEach((item, index) => {
+    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
+    const valorVenda = vendida * produto.valorVenda;
+    const valorPerda = item.perda * produto.custo;
+
     const row = document.createElement('tr');
     row.innerHTML = `
       <td>
@@ -159,16 +164,19 @@ function renderizarProdutos() {
       <td><input type="number" class="form-control form-control-sm" value="${item.congelado}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.assado}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.perda}"></td>
+      <td><input type="text" class="form-control form-control-sm" value="${vendida}" disabled></td>
+      <td><input type="text" class="form-control form-control-sm" value="R$ ${valorVenda.toFixed(2)}" disabled></td>
+      <td><input type="text" class="form-control form-control-sm" value="R$ ${valorPerda.toFixed(2)}" disabled></td>
       <td><button class="btn btn-sm btn-outline-danger">🗑️</button></td>
     `;
     tabela.appendChild(row);
 
     const inputs = row.querySelectorAll('input');
-    row.querySelector('select').onchange = e => { item.produtoId = e.target.value; };
-    inputs[0].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; };
-    inputs[1].oninput = e => { item.congelado = parseInt(e.target.value) || 0; };
-    inputs[2].oninput = e => { item.assado = parseInt(e.target.value) || 0; };
-    inputs[3].oninput = e => { item.perda = parseInt(e.target.value) || 0; };
+    row.querySelector('select').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); };
+    inputs[0].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; renderizarProdutos(); };
+    inputs[1].oninput = e => { item.congelado = parseInt(e.target.value) || 0; renderizarProdutos(); };
+    inputs[2].oninput = e => { item.assado = parseInt(e.target.value) || 0; renderizarProdutos(); };
+    inputs[3].oninput = e => { item.perda = parseInt(e.target.value) || 0; renderizarProdutos(); };
     row.querySelector('button').onclick = () => { listaProdutos.splice(index, 1); renderizarProdutos(); };
   });
 }
@@ -180,4 +188,3 @@ document.addEventListener("DOMContentLoaded", () => {
   carregarLogisticaDisponivel();
   carregarProdutosDisponiveis();
 });
-
