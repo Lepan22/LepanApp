@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Eventos</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
     :root {
       --cor-primaria: #ff7f00;
@@ -26,163 +24,115 @@
       color: white;
       padding: 20px 10px;
     }
+    .sidebar a {
+      display: block;
+      color: white;
+      margin-bottom: 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
     .main-content {
       flex-grow: 1;
       padding: 20px;
     }
-    .form-area {
+    .kpi-box {
       background: var(--cor-secundaria);
-      padding: 15px;
+      padding: 10px;
       border-radius: 8px;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
     }
     .table th {
       background-color: var(--cor-primaria);
       color: white;
+      font-size: 0.75rem;
+      padding: 4px;
     }
     .table td {
-      font-size: 0.85rem;
-    }
-    .produto-item {
-      background: #fff;
-      padding: 10px;
-      margin-bottom: 10px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
+      font-size: 0.75rem;
+      padding: 2px 4px;
+      vertical-align: middle;
     }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
-    <main class="main-content">
-      <h1>Cadastro de Evento</h1>
 
-      <form id="formEvento" class="form-area">
+<div class="layout">
+  <div class="sidebar">
+    <h4>LePanApp</h4>
+    <a href="produtos.html">Produtos</a>
+    <a href="equipe.html">Equipe</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="eventos.html">Eventos</a>
+    <a href="logistica.html">Logística</a>
+  </div>
 
+  <div class="main-content">
+    <h1>Eventos</h1>
 
-        <input type="hidden" id="eventoId" />
-        <div class="row">
-          <div class="col-md-4">
-            <label class="form-label">Nome do Evento (Cliente)</label>
-            <select id="nomeEvento" class="form-select" required></select>
-          </div>
-<div class="row mt-2">
-  <div class="col-md-3">
-    <label class="form-label">Estimativa de Venda</label>
-    <input type="number" class="form-control" id="estimativaVenda" step="0.01" />
-  </div>
-  <div class="col-md-3">
-    <label class="form-label">Valor Real de Venda (PDV)</label>
-    <input type="number" class="form-control" id="vendaPDV" step="0.01" />
-  </div>
-  <div class="col-md-3">
-    <label class="form-label">CMV Real</label>
-    <input type="number" class="form-control" id="cmvReal" step="0.01" />
-  </div>
-  <div class="col-md-3">
-    <label class="form-label">Status</label>
-    <select class="form-select" id="status">
-      <option>Aberto</option>
-      <option>Finalizado</option>
-      <option>Fechado</option>
-    </select>
+    <a href="GestaoEvento.html" class="btn btn-sm btn-primary mb-3">+ Criar Evento</a>
+
+    <div class="row mb-3">
+      <div class="col kpi-box">
+        Evento na Semana: <strong><span id="kpiSemana">0</span></strong>
+      </div>
+      <div class="col kpi-box">
+        Eventos no Mês: <strong><span id="kpiMes">0</span></strong>
+      </div>
+      <div class="col kpi-box">
+        Estimativa Total de Vendas: <strong>R$ <span id="kpiEstimativa">0.00</span></strong>
+      </div>
+      <div class="col kpi-box">
+        Vendas no Mês: <strong>R$ <span id="kpiVendasMes">0.00</span></strong>
+      </div>
+    </div>
+
+    <h4>Filtros</h4>
+    <form id="filtrosForm" class="row g-2 mb-3">
+      <div class="col-md-3">
+        <label class="form-label">Status</label>
+        <select id="filtroStatus" class="form-select form-select-sm">
+          <option value="Todos">Todos</option>
+          <option value="Aberto" selected>Aberto</option>
+          <option value="Finalizado">Finalizado</option>
+          <option value="Fechado">Fechado</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Nome do Evento</label>
+        <input type="text" id="filtroNome" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Data Início</label>
+        <input type="date" id="filtroDataInicio" class="form-control form-control-sm">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Data Fim</label>
+        <input type="date" id="filtroDataFim" class="form-control form-control-sm">
+      </div>
+      <div class="col-12">
+        <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Aplicar Filtros</button>
+      </div>
+    </form>
+
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Nome do Evento</th>
+          <th>Data</th>
+          <th>Status</th>
+          <th>Média Venda</th>
+          <th>Estimativa Venda</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaEventos"></tbody>
+    </table>
   </div>
 </div>
-<h4 class="mt-4">📊 Totais do Evento</h4>
-<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 mb-4" id="totaisEvento">
-  <div class="col"><div class="border rounded p-2 bg-light"><strong>Qtd Vendida:</strong> <span id="totalVendida">0</span></div></div>
-  <div class="col"><div class="border rounded p-2 bg-light"><strong>Venda Sistema:</strong> R$ <span id="vendaSistema">0,00</span></div></div>
-  <div class="col"><div class="border rounded p-2 bg-light"><strong>Diferença PDV - Sistema:</strong> R$ <span id="diferencaVenda">0,00</span></div></div>
-  <div class="col"><div class="border rounded p-2 bg-light"><strong>Custo da Perda:</strong> R$ <span id="custoPerda">0,00</span></div></div>
-  <div class="col"><div class="border rounded p-2 bg-light"><strong>Valor dos Assados:</strong> R$ <span id="valorAssados">0,00</span></div></div>
-  <div class="col"><div class="border rounded p-2 bg-light"><strong>CMV:</strong> R$ <span id="cmvCalculado">0,00</span></div></div>
-  <div class="col"><div class="border rounded p-2 bg-light"><strong>Custo Logística:</strong> R$ <span id="custoLogistica">0,00</span></div></div>
-  <div class="col"><div class="border rounded p-2 bg-light"><strong>Custo Equipe:</strong> R$ <span id="custoEquipe">0,00</span></div></div>
-  <div class="col"><div class="border rounded p-2 bg-light"><strong>Lucro Final:</strong> R$ <span id="lucroFinal">0,00</span></div></div>
-</div>
 
-          <div class="col-md-3">
-            <label class="form-label">Data</label>
-            <input type="date" class="form-control" id="data" required />
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Responsável</label>
-            <select id="responsavel" class="form-select"></select>
-          </div>
-        </div>
-
-        
-
-        <div class="mt-4">
-          <h5 class="mt-4">👥 Equipe Alocada</h5>
-          <div id="equipeContainer"></div>
-          <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="adicionarEquipe()">+ Adicionar Equipe</button>
-        </div>
-
-        <div class="mt-4">
-          <h5 class="mt-4">🚚 Logística</h5>
-          <div id="logisticaContainer"></div>
-          <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="adicionarLogistica()">+ Adicionar Prestador</button>
-        </div>
-<div class="mt-4">
-          <h5 class="mt-4">📦 Produtos Enviados</h5>
-          <div id="produtosContainer"></div>
-          <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="adicionarProduto()">+ Adicionar Produto</button>
-        </div>
-
-
-        <div class="mt-4 row">
-          <div class="col-md-4">
-            <label class="form-label">Estimativa de Venda</label>
-            <input type="number" class="form-control mb-2" id="estimativaVenda" step="0.01" />
-            <label class="form-label">Valor Real de Venda (PDV)</label>
-            <input type="number" class="form-control" id="vendaPDV" step="0.01" />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">CMV Real</label>
-            <input type="number" class="form-control" id="cmvReal" step="0.01" />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Status</label>
-            <select class="form-select" id="status">
-              <option>Aberto</option>
-              <option>Finalizado</option>
-              <option>Fechado</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="mt-3">
-          <label class="form-label">Observações</label>
-          <textarea id="observacoes" class="form-control" rows="2"></textarea>
-        </div>
-
-        <div class="mt-3 d-flex gap-2">
-          <button type="submit" class="btn btn-primary">Salvar Evento</button>
-          
-        </div>
-      </form>
-
-      <h4 class="mt-4">🧾 Lista de Produtos</h4>
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>Produto</th>
-            <th>Qtd</th>
-            <th>Valor Venda</th>
-            <th>Custo</th>
-            <th>Potencial</th>
-            
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="tabelaProdutos"></tbody>
-      </table>
-    
-    </main>
-  </div>
-
-  <script src="eventos.js"></script>
+<script src="eventos.js"></script>
 </body>
 </html>
