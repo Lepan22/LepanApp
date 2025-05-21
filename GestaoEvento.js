@@ -11,13 +11,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let equipeDisponivel = [];
-let logisticaDisponivel = [];
-let produtosDisponiveis = [];
-
-let equipeAlocada = [];
-let logisticaAlocada = [];
-let listaProdutos = [];
+let equipeDisponivel = [], logisticaDisponivel = [], produtosDisponiveis = [];
+let equipeAlocada = [], logisticaAlocada = [], listaProdutos = [];
 
 function carregarClientes() {
   const selectEvento = document.getElementById('nomeEvento');
@@ -95,17 +90,10 @@ function renderizarEquipe() {
     const div = document.createElement('div');
     div.className = 'row mb-2';
     div.innerHTML = `
-      <div class="col">
-        <select class="form-select form-select-sm">
-          ${equipeDisponivel.map(m => `<option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>`).join('')}
-        </select>
-      </div>
-      <div class="col">
-        <input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}">
-      </div>
+      <div class="col"><select class="form-select form-select-sm">${equipeDisponivel.map(m => `<option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>`).join('')}</select></div>
+      <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
     `;
     container.appendChild(div);
-
     div.querySelector('select').onchange = e => { item.membroId = e.target.value; calcularTotais(); };
     div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
   });
@@ -123,17 +111,10 @@ function renderizarLogistica() {
     const div = document.createElement('div');
     div.className = 'row mb-2';
     div.innerHTML = `
-      <div class="col">
-        <select class="form-select form-select-sm">
-          ${logisticaDisponivel.map(l => `<option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>`).join('')}
-        </select>
-      </div>
-      <div class="col">
-        <input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}">
-      </div>
+      <div class="col"><select class="form-select form-select-sm">${logisticaDisponivel.map(l => `<option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>`).join('')}</select></div>
+      <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
     `;
     container.appendChild(div);
-
     div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; calcularTotais(); };
     div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
   });
@@ -155,11 +136,7 @@ function renderizarProdutos() {
 
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>
-        <select class="form-select form-select-sm">
-          ${produtosDisponiveis.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}
-        </select>
-      </td>
+      <td><select class="form-select form-select-sm">${produtosDisponiveis.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.quantidade}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.congelado}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.assado}"></td>
@@ -170,7 +147,6 @@ function renderizarProdutos() {
       <td><button class="btn btn-sm btn-outline-danger">🗑️</button></td>
     `;
     tabela.appendChild(row);
-
     const inputs = row.querySelectorAll('input');
     row.querySelector('select').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
     inputs[0].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
@@ -182,7 +158,7 @@ function renderizarProdutos() {
 }
 
 function calcularTotais() {
-  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmv = 0;
+  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmv = 0, potencialVenda = 0;
 
   listaProdutos.forEach(item => {
     const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
@@ -192,6 +168,7 @@ function calcularTotais() {
     custoPerda += item.perda * produto.custo;
     valorAssados += item.assado * produto.custo;
     cmv += vendida * produto.custo;
+    potencialVenda += item.quantidade * produto.valorVenda;
   });
 
   document.getElementById('totalVendida').innerText = totalVendida;
@@ -199,6 +176,7 @@ function calcularTotais() {
   document.getElementById('custoPerda').innerText = custoPerda.toFixed(2);
   document.getElementById('valorAssados').innerText = valorAssados.toFixed(2);
   document.getElementById('cmvCalculado').innerText = cmv.toFixed(2);
+  document.getElementById('potencialVenda').innerText = potencialVenda.toFixed(2);
 
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
   const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
@@ -216,6 +194,7 @@ function calcularTotais() {
 document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
   e.preventDefault();
 
+  const estimativaVenda = parseFloat(document.getElementById('estimativaVenda').value) || 0;
   const evento = {
     nomeEvento: document.getElementById('nomeEvento').value,
     data: document.getElementById('data').value,
@@ -223,9 +202,22 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     status: document.getElementById('status').value,
     vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
     cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
+    estimativaVenda: estimativaVenda,
     produtos: listaProdutos,
     equipe: equipeAlocada,
-    logistica: logisticaAlocada
+    logistica: logisticaAlocada,
+    totais: {
+      potencialVenda: parseFloat(document.getElementById('potencialVenda').innerText) || 0,
+      totalVendida: parseFloat(document.getElementById('totalVendida').innerText) || 0,
+      vendaSistema: parseFloat(document.getElementById('vendaSistema').innerText) || 0,
+      custoPerda: parseFloat(document.getElementById('custoPerda').innerText) || 0,
+      valorAssados: parseFloat(document.getElementById('valorAssados').innerText) || 0,
+      cmv: parseFloat(document.getElementById('cmvCalculado').innerText) || 0,
+      custoLogistica: parseFloat(document.getElementById('custoLogistica').innerText) || 0,
+      custoEquipe: parseFloat(document.getElementById('custoEquipe').innerText) || 0,
+      lucro: parseFloat(document.getElementById('lucroFinal').innerText) || 0,
+      diferenca: parseFloat(document.getElementById('diferencaVenda').innerText) || 0
+    }
   };
 
   const id = db.ref('eventos').push().key;
