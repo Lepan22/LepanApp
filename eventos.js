@@ -50,6 +50,7 @@ function aplicarFiltros() {
       <td>R$ ${(e.vendaPDV || 0).toFixed(2)}</td>
       <td>R$ ${(e.estimativaVenda || 0).toFixed(2)}</td>
       <td>
+        <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${e.id}')">Editar</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${e.id}')">Duplicar</button>
         <button class="btn btn-sm btn-outline-success" onclick="enviarLink('${e.id}')">Enviar Link</button>
         <button class="btn btn-sm btn-outline-danger" onclick="excluirEvento('${e.id}')">Excluir</button>
@@ -120,6 +121,18 @@ function excluirEvento(id) {
       carregarEventos();
     });
   }
+}
+
+function editarEvento(id) {
+  window.location.href = `GestaoEvento.html?id=${id}`;
+}
+
+function limparFiltros() {
+  document.getElementById('filtroStatus').value = 'Todos';
+  document.getElementById('filtroNome').value = '';
+  document.getElementById('filtroDataInicio').value = '';
+  document.getElementById('filtroDataFim').value = '';
+  aplicarFiltros();
 }
 
 document.getElementById('filtrosForm').addEventListener('submit', function(e) {
