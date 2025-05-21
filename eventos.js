@@ -3,7 +3,7 @@ const firebaseConfig = {
   authDomain: "lepanapp.firebaseapp.com",
   databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
   projectId: "lepanapp",
-  storageBucket: "lepanapp.firebasestorage.app",
+  storageBucket: "lepanapp.appspot.com",
   messagingSenderId: "542989944344",
   appId: "1:542989944344:web:576e28199960fd5440a56d"
 };
@@ -108,7 +108,7 @@ function duplicarEvento(id) {
 }
 
 function enviarLink(id) {
-  const url = `${window.location.origin}/GestaoEvento.html?id=${id}`;
+  const url = `${window.location.origin}/form.html?id=${id}`;
   navigator.clipboard.writeText(url).then(() => {
     alert('Link copiado para a área de transferência!');
   });
@@ -124,7 +124,7 @@ function excluirEvento(id) {
 }
 
 function editarEvento(id) {
-  window.location.href = `GestaoEvento.html?id=${id}`;
+  window.location.href = `form.html?id=${id}`;
 }
 
 function limparFiltros() {
@@ -143,3 +143,4 @@ document.getElementById('filtrosForm').addEventListener('submit', function(e) {
 document.addEventListener("DOMContentLoaded", () => {
   carregarEventos();
 });
+
