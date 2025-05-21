@@ -108,7 +108,7 @@ function duplicarEvento(id) {
 }
 
 function enviarLink(id) {
-  const url = `${window.location.origin}/form.html?id=${id}`;
+  const url = `${window.location.origin}/LepanApp/form.html?id=${id}`;
   navigator.clipboard.writeText(url).then(() => {
     alert('Link copiado para a área de transferência!');
   });
@@ -124,7 +124,7 @@ function excluirEvento(id) {
 }
 
 function editarEvento(id) {
-  window.location.href = `form.html?id=${id}`;
+  window.location.href = `GestaoEvento.html?id=${id}`;
 }
 
 function limparFiltros() {
@@ -143,4 +143,3 @@ document.getElementById('filtrosForm').addEventListener('submit', function(e) {
 document.addEventListener("DOMContentLoaded", () => {
   carregarEventos();
 });
-
