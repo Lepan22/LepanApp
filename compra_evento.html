@@ -41,13 +41,9 @@
           <th id="eventosHeader" colspan="0"></th>
           <th rowspan="2">Total Enviado</th>
         </tr>
-        <tr id="subHeaderRow">
-          <!-- Sub-colunas Env e Méd -->
-        </tr>
+        <tr id="subHeaderRow"></tr>
       </thead>
-      <tbody id="tabelaProdutos">
-        <!-- Linhas aqui -->
-      </tbody>
+      <tbody id="tabelaProdutos"></tbody>
     </table>
   </main>
 </div>
@@ -123,7 +119,7 @@
   }
 
   function renderTabela() {
-    const eventosNomes = [...new Set(eventos.map(e => e.nomeEvento || e.id))];
+    const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
 
     const eventosHeader = document.getElementById('eventosHeader');
     eventosHeader.setAttribute('colspan', eventosNomes.length * 2);
@@ -131,8 +127,8 @@
     const subHeaderRow = document.getElementById('subHeaderRow');
     subHeaderRow.innerHTML = '';
 
-    eventosNomes.forEach(() => {
-      subHeaderRow.innerHTML += `<th>Env</th><th>Méd</th>`;
+    eventosNomes.forEach(nome => {
+      subHeaderRow.innerHTML += `<th>${nome}</th><th></th>`;
     });
 
     const tabela = document.getElementById('tabelaProdutos');
@@ -161,25 +157,18 @@
     const div = document.getElementById('totaisEventos');
     div.innerHTML = '<h3>Totais por Evento</h3>';
 
-    const eventosUnicos = [...new Set(eventos.map(e => e.nomeEvento || e.id))];
-
-    eventosUnicos.forEach(nomeEvento => {
-      let estimativa = 0;
+    eventos.forEach(evento => {
       let potencial = 0;
 
-      eventos.filter(e => e.nomeEvento === nomeEvento).forEach(evento => {
-        estimativa += Number(evento.estimativaVenda) || 0;
-
-        if (evento.produtos) {
-          evento.produtos.forEach(prod => {
-            const valorVenda = produtosDB[prod.produtoId]?.valorVenda || 0;
-            potencial += (prod.quantidade || 0) * valorVenda;
-          });
-        }
-      });
+      if (evento.produtos) {
+        evento.produtos.forEach(prod => {
+          const valorVenda = produtosDB[prod.produtoId]?.valorVenda || 0;
+          potencial += (prod.quantidade || 0) * valorVenda;
+        });
+      }
 
       div.innerHTML += `
-        <p><strong>${nomeEvento}</strong> - Estimativa Venda: R$ ${estimativa}, Potencial Venda: R$ ${potencial.toFixed(2)}</p>
+        <p><strong>${evento.nomeEvento}</strong> - Estimativa Venda: R$ ${evento.estimativaVenda || 0}, Potencial Venda: R$ ${potencial.toFixed(2)}</p>
       `;
     });
   }
@@ -187,10 +176,10 @@
   function exportarXLSX() {
     const ws_data = [];
     const header = ["Produto"];
-    const eventosNomes = [...new Set(eventos.map(e => e.nomeEvento || e.id))];
+    const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
 
-    eventosNomes.forEach(() => {
-      header.push("Env", "Méd");
+    eventosNomes.forEach(nome => {
+      header.push(`${nome} Env`, `${nome} Méd`);
     });
     header.push("Total Enviado");
     ws_data.push(header);
@@ -200,7 +189,7 @@
       let totalEnviado = 0;
 
       eventosNomes.forEach(nome => {
-        const dados = dadosTabela[produto][nome];
+        const dados = dadosTabela[prodNome][nome];
         const enviada = dados ? dados.enviada : 0;
         const media = dados ? dados.media : 0;
         totalEnviado += Number(enviada);
@@ -214,7 +203,7 @@
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     XLSX.utils.book_append_sheet(wb, ws, "Produtos por Evento");
-    XLSX.writeFile(wb, "produtos_por_evento_formatado.xlsx");
+    XLSX.writeFile(wb, "produtos_por_evento.xlsx");
   }
 
   document.addEventListener("DOMContentLoaded", carregarDados);
