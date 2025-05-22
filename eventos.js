@@ -153,5 +153,7 @@ document.getElementById('filtrosForm').addEventListener('submit', function(e) {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Define o valor padrão como 'Todos'
+  document.getElementById('filtroStatus').value = 'Todos';
   carregarEventos();
 });
