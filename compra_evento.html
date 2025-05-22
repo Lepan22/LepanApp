@@ -27,7 +27,7 @@
       margin-top: 20px;
       width: 50%;
     }
-    .btn {
+    .btn-export {
       background-color: #ff7f00;
       color: white;
       padding: 10px 15px;
@@ -35,9 +35,8 @@
       cursor: pointer;
       border-radius: 5px;
       margin-top: 10px;
-      margin-right: 10px;
     }
-    .btn:hover {
+    .btn-export:hover {
       background-color: #e96f00;
     }
   </style>
@@ -55,10 +54,9 @@
   </aside>
 
   <main class="main-content">
-    <h1>Produtos por Evento - Edição Inline com Média</h1>
+    <h1>Produtos por Evento</h1>
 
-    <button class="btn" onclick="salvarAlteracoes()">Salvar Alterações</button>
-    <button class="btn" onclick="exportarXLSX()">Exportar para XLSX</button>
+    <button class="btn-export" onclick="exportarXLSX()">Exportar para XLSX</button>
 
     <div id="totaisEventos"></div>
 
@@ -118,7 +116,7 @@
 
       if (!evento.produtos) return;
 
-      evento.produtos.forEach((produto, idx) => {
+      evento.produtos.forEach((produto) => {
         const prodId = produto.produtoId;
         const prodNome = produtosDB[prodId] ? produtosDB[prodId].nome : prodId;
 
@@ -126,16 +124,7 @@
           dadosTabela[prodNome] = {};
         }
 
-        if (!dadosTabela[prodNome][nomeEvento]) {
-          dadosTabela[prodNome][nomeEvento] = { enviada: 0, refs: [] };
-        }
-
-        dadosTabela[prodNome][nomeEvento].enviada = produto.quantidade || 0;
-        dadosTabela[prodNome][nomeEvento].refs.push(`eventos/${evento.id}/produtos/${idx}/quantidade`);
-
-        // calculando média: simplificado como enviada neste exemplo
-        const media = produto.media || (produto.quantidade ? (produto.quantidade / 1).toFixed(1).replace('.', ',') : '0,0');
-        dadosTabela[prodNome][nomeEvento].media = media;
+        dadosTabela[prodNome][nomeEvento] = produto.quantidade || 0;
       });
     });
 
@@ -147,13 +136,13 @@
     const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
 
     const eventosHeader = document.getElementById('eventosHeader');
-    eventosHeader.setAttribute('colspan', eventosNomes.length * 2);
+    eventosHeader.setAttribute('colspan', eventosNomes.length);
 
     const subHeaderRow = document.getElementById('subHeaderRow');
     subHeaderRow.innerHTML = '';
 
     eventosNomes.forEach(nome => {
-      subHeaderRow.innerHTML += `<th>${nome} Env</th><th>Méd</th>`;
+      subHeaderRow.innerHTML += `<th>${nome}</th>`;
     });
 
     const tbody = document.querySelector('#tabelaProdutos tbody');
@@ -165,40 +154,15 @@
       let totalEnviado = 0;
 
       eventosNomes.forEach(nome => {
-        const dados = dadosTabela[produto][nome];
-        const enviada = dados ? Number(dados.enviada).toFixed(1).replace('.', ',') : '0,0';
-        const media = dados ? dados.media : '0,0';
-        totalEnviado += dados ? Number(dados.enviada) : 0;
-
-        row += `<td><input type="number" step="0.1" value="${enviada.replace(',', '.')}" 
-                  data-produto="${produto}" data-evento="${nome}"></td>
-                <td>${media}</td>`;
+        const enviada = dadosTabela[produto][nome] || 0;
+        totalEnviado += enviada;
+        row += `<td>${Number(enviada).toFixed(1).replace('.', ',')}</td>`;
       });
 
       row += `<td>${totalEnviado.toFixed(1).replace('.', ',')}</td>`;
       tr.innerHTML = row;
       tbody.appendChild(tr);
     });
-  }
-
-  function salvarAlteracoes() {
-    const inputs = document.querySelectorAll('#tabelaProdutos input');
-
-    inputs.forEach(input => {
-      const produto = input.dataset.produto;
-      const evento = input.dataset.evento;
-      const valor = parseFloat(input.value) || 0;
-
-      const refs = dadosTabela[produto][evento].refs;
-
-      refs.forEach(refPath => {
-        db.ref(refPath).set(valor)
-          .then(() => console.log(`Atualizado ${produto} em ${evento} para ${valor}`))
-          .catch(err => console.error('Erro ao atualizar:', err));
-      });
-    });
-
-    alert('Alterações salvas com sucesso!');
   }
 
   function renderTotaisEventos() {
@@ -251,10 +215,9 @@
       let totalEnviado = 0;
 
       eventosNomes.forEach(nome => {
-        const dados = dadosTabela[produto][nome];
-        const enviada = dados ? Number(dados.enviada).toFixed(1).replace('.', ',') : '0,0';
-        totalEnviado += dados ? Number(dados.enviada) : 0;
-        row.push(enviada);
+        const enviada = dadosTabela[produto][nome] || 0;
+        totalEnviado += enviada;
+        row.push(Number(enviada).toFixed(1).replace('.', ','));
       });
 
       row.push(totalEnviado.toFixed(1).replace('.', ','));
