@@ -3,127 +3,87 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pedido de Compra por Evento</title>
+  <title>Compra - Lista de Eventos</title>
   <link rel="stylesheet" href="assets/style.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 
 <div class="layout">
-  <aside class="sidebar" id="menuLateral"></aside>
+  <aside class="sidebar" id="menuLateral">
+    <h4>LePanApp</h4>
+    <a href="produtos.html">Produtos</a>
+    <a href="equipe.html">Equipe</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="eventos.html">Eventos</a>
+    <a href="compra_evento.html">Compra</a>
+  </aside>
 
   <main class="main-content">
-    <h1>Pedido de Compra por Evento</h1>
-
-    <button onclick="exportarXLSX()">Exportar para XLSX</button>
-    <button onclick="location.href='controle_etapas.html'">Voltar</button>
+    <h1>Lista de Eventos</h1>
 
     <table class="table table-bordered" style="margin-top:20px;">
       <thead>
         <tr>
-          <th>Produto</th>
-          <th>Evento</th>
-          <th>Enviada</th>
-          <th>Estimativa</th>
-          <th>Potencial</th>
+          <th>Nome do Evento</th>
+          <th>Data</th>
+          <th>Status</th>
+          <th>Ações</th>
         </tr>
       </thead>
-      <tbody id="tabelaCompra">
+      <tbody id="tabelaEventos">
         <!-- Preenchido via JS -->
       </tbody>
     </table>
   </main>
 </div>
 
-<script src="incluir-menu.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "542989944344",
+    appId: "1:542989944344:web:576e28199960fd5440a56d"
+  };
 
-<script type="module">
-  import { db } from './assets/firebase-config.js';
-  import { ref, get, update, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-  const tabela = document.getElementById('tabelaCompra');
+  function carregarEventos() {
+    db.ref('eventos').once('value').then(snapshot => {
+      const tabela = document.getElementById('tabelaEventos');
+      tabela.innerHTML = '';
 
-  let dadosExport = [];
+      snapshot.forEach(child => {
+        const evento = child.val();
+        const id = child.key;
 
-  function renderTabela(eventos) {
-    tabela.innerHTML = '';
-
-    Object.entries(eventos).forEach(([eventoId, evento]) => {
-      const nomeEvento = evento.nome || eventoId;
-
-      if (!evento.itens) return;
-
-      evento.itens.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${item.nomeItem}</td>
-          <td>${nomeEvento}</td>
-          <td><input type="number" value="${item.quantidade}" min="0"
-            onchange="atualizarQuantidade('${eventoId}', ${index}, this.value)"></td>
-          <td>${item.estimativaVenda || ''}</td>
-          <td>${item.potencialVenda || ''}</td>
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${evento.nome || '-'}</td>
+          <td>${evento.data || '-'}</td>
+          <td>${evento.status || '-'}</td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary" onclick="selecionarEvento('${id}')">Selecionar</button>
+          </td>
         `;
-        tabela.appendChild(tr);
-
-        dadosExport.push({
-          produto: item.nomeItem,
-          evento: nomeEvento,
-          enviada: item.quantidade,
-          estimativa: item.estimativaVenda || '',
-          potencial: item.potencialVenda || ''
-        });
+        tabela.appendChild(row);
       });
     });
   }
 
-  async function carregarDados() {
-    const dbRef = ref(db);
-    try {
-      const snapshot = await get(child(dbRef, `eventos`));
-      console.log("Snapshot:", snapshot.val());
-
-      if (snapshot.exists()) {
-        const eventos = snapshot.val();
-        dadosExport = [];
-        renderTabela(eventos);
-      } else {
-        console.log("Nenhum dado encontrado em 'eventos'.");
-      }
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-    }
+  function selecionarEvento(id) {
+    alert('Evento selecionado: ' + id);
+    // Aqui futuramente pode redirecionar ou carregar produtos do evento.
   }
 
-  window.atualizarQuantidade = function(eventoId, index, novaQuantidade) {
-    novaQuantidade = parseInt(novaQuantidade) || 0;
-
-    const itemRef = ref(db, `eventos/${eventoId}/itens/${index}`);
-    update(itemRef, { quantidade: novaQuantidade })
-      .then(() => {
-        console.log(`Atualizado evento ${eventoId}, item ${index}, nova quantidade: ${novaQuantidade}`);
-        alert("Quantidade atualizada com sucesso!");
-      })
-      .catch(err => {
-        console.error("Erro ao atualizar:", err);
-        alert("Erro ao atualizar quantidade.");
-      });
-  };
-
-  window.exportarXLSX = function() {
-    const wb = XLSX.utils.book_new();
-    const ws_data = [["Produto", "Evento", "Enviada", "Estimativa", "Potencial"]];
-
-    dadosExport.forEach(d => {
-      ws_data.push([d.produto, d.evento, d.enviada, d.estimativa, d.potencial]);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(ws_data);
-    XLSX.utils.book_append_sheet(wb, ws, "Pedido");
-    XLSX.writeFile(wb, "pedido_compra.xlsx");
-  };
-
-  carregarDados();
-
+  document.addEventListener("DOMContentLoaded", () => {
+    carregarEventos();
+  });
 </script>
 
 </body>
