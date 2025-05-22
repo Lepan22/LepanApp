@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Controle de Etapas do Evento</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar" id="menuLateral"></aside>
+
+  <main class="main-content">
+    <h1>Controle de Etapas dos Eventos</h1>
+
+    <h3>Eventos da Semana</h3>
+
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Evento</th>
+          <th>Data</th>
+          <th>Status das Etapas</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Exemplo de linha de evento -->
+        <tr>
+          <td>Evento Alpha</td>
+          <td>27/05/2025</td>
+          <td>
+            <span class="etapa-status" data-status="pendente">🟥</span>
+          </td>
+          <td>
+            <button onclick="abrirFicha('eventoAlpha')">Gerenciar</button>
+          </td>
+        </tr>
+        <tr>
+          <td>Evento Beta</td>
+          <td>29/05/2025</td>
+          <td>
+            <span class="etapa-status" data-status="concluido">🟩</span>
+          </td>
+          <td>
+            <button onclick="abrirFicha('eventoBeta')">Gerenciar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div id="fichaControle" style="display:none; margin-top:20px;" class="form-area">
+      <h3>Ficha de Controle: <span id="eventoNome"></span></h3>
+
+      <div>
+        <label><input type="checkbox" class="etapa-check" data-etapa="produtos"> Produtos definidos</label>
+      </div>
+      <div>
+        <label><input type="checkbox" class="etapa-check" data-etapa="equipe"> Equipe confirmada</label>
+      </div>
+      <div>
+        <label><input type="checkbox" class="etapa-check" data-etapa="logistica"> Logística definida</label>
+      </div>
+      <div>
+        <label><input type="checkbox" class="etapa-check" data-etapa="cliente"> Cliente confirmado</label>
+      </div>
+      <div>
+        <label><input type="checkbox" class="etapa-check" data-etapa="divulgacao"> Divulgação realizada</label>
+      </div>
+      <div>
+        <label><input type="checkbox" class="etapa-check" data-etapa="compra"> Compra de insumos</label>
+      </div>
+
+      <div style="margin-top:10px;">
+        <label>Observações:</label>
+        <textarea rows="3" style="width:100%;"></textarea>
+      </div>
+
+      <div style="margin-top:15px;">
+        <button onclick="salvarFicha()">Salvar</button>
+        <button onclick="fecharFicha()">Fechar</button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="incluir-menu.js"></script>
+<script>
+  let eventoAtual = '';
+
+  function abrirFicha(evento) {
+    eventoAtual = evento;
+    document.getElementById('eventoNome').innerText = evento;
+    document.getElementById('fichaControle').style.display = 'block';
+  }
+
+  function fecharFicha() {
+    document.getElementById('fichaControle').style.display = 'none';
+  }
+
+  function salvarFicha() {
+    const checks = document.querySelectorAll('.etapa-check');
+    let total = 0;
+    checks.forEach(chk => { if(chk.checked) total++; });
+    let status = total === checks.length ? '🟩' : '🟥';
+
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+      if(row.querySelector('td').innerText.toLowerCase().includes(eventoAtual.toLowerCase())) {
+        row.querySelector('.etapa-status').innerText = status;
+      }
+    });
+
+    fecharFicha();
+    alert('Ficha salva!');
+  }
+</script>
+
+</body>
+</html>
