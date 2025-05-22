@@ -11,13 +11,15 @@
   <style>
     table {
       border-collapse: collapse;
-      width: 100%;
+      width: auto;
       margin-top: 20px;
+      font-size: 12px;
     }
     th, td {
       border: 1px solid #ddd;
       text-align: center;
-      padding: 8px;
+      padding: 4px 6px;
+      white-space: nowrap;
     }
     th {
       background-color: #f2f2f2;
@@ -25,19 +27,24 @@
     }
     .totais-table {
       margin-top: 20px;
-      width: 50%;
+      width: auto;
+      font-size: 12px;
     }
     .btn-export {
       background-color: #ff7f00;
       color: white;
-      padding: 10px 15px;
+      padding: 8px 12px;
       border: none;
       cursor: pointer;
       border-radius: 5px;
       margin-top: 10px;
+      font-size: 12px;
     }
     .btn-export:hover {
       background-color: #e96f00;
+    }
+    h1, h3 {
+      font-size: 16px;
     }
   </style>
 </head>
@@ -65,7 +72,7 @@
         <tr>
           <th>Produto</th>
           <th id="eventosHeader" colspan="0"></th>
-          <th>Total Enviado</th>
+          <th>Total</th>
         </tr>
         <tr id="subHeaderRow"></tr>
       </thead>
@@ -205,9 +212,9 @@
     const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
 
     eventosNomes.forEach(nome => {
-      header.push(`${nome} Env`);
+      header.push(nome);
     });
-    header.push("Total Enviado");
+    header.push("Total");
     ws_data.push(header);
 
     Object.keys(dadosTabela).forEach(produto => {
