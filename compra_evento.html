@@ -22,7 +22,7 @@
   </aside>
 
   <main class="main-content">
-    <h1>Produtos por Evento</h1>
+    <h1>Produtos por Evento - Com Média</h1>
 
     <button onclick="exportarXLSX()">Exportar para XLSX</button>
 
@@ -30,11 +30,11 @@
       <thead>
         <tr id="headerRow">
           <th>Produto</th>
-          <!-- Eventos serão inseridos aqui -->
+          <!-- Eventos inseridos aqui -->
         </tr>
       </thead>
       <tbody id="tabelaProdutos">
-        <!-- Linhas de produtos -->
+        <!-- Linhas inseridas aqui -->
       </tbody>
     </table>
   </main>
@@ -55,40 +55,71 @@
   const db = firebase.database();
 
   let eventos = [];
-  let produtos = {};
+  let produtosDB = {};
+  let dadosTabela = {};
 
-  function carregarEventos() {
-    db.ref('eventos').once('value').then(snapshot => {
-      eventos = [];
+  async function carregarDados() {
+    const produtosSnap = await db.ref('produtos').once('value');
+    produtosDB = produtosSnap.val();
 
-      snapshot.forEach(child => {
-        const evento = child.val();
-        evento.id = child.key;
-        eventos.push(evento);
-      });
+    const eventosSnap = await db.ref('eventos').once('value');
+    eventos = [];
 
-      processarProdutos();
+    eventosSnap.forEach(child => {
+      const evento = child.val();
+      evento.id = child.key;
+      eventos.push(evento);
     });
+
+    processarDados();
   }
 
-  function processarProdutos() {
-    produtos = {};
+  function processarDados() {
+    dadosTabela = {};
 
     eventos.forEach(evento => {
-      const nomeEvento = evento.nome || evento.id;
+      const nomeEvento = evento.nomeEvento || evento.id;
 
-      if (!evento.itens) return;
+      if (!evento.produtos) return;
 
-      evento.itens.forEach(item => {
-        const nomeProduto = item.nomeItem || 'Produto Sem Nome';
+      evento.produtos.forEach(produto => {
+        const prodId = produto.produtoId;
+        const prodNome = produtosDB[prodId] ? produtosDB[prodId].nome : prodId;
 
-        if (!produtos[nomeProduto]) {
-          produtos[nomeProduto] = {};
+        if (!dadosTabela[prodNome]) {
+          dadosTabela[prodNome] = {};
         }
 
-        produtos[nomeProduto][nomeEvento] = item.quantidade || 0;
+        if (!dadosTabela[prodNome][nomeEvento]) {
+          dadosTabela[prodNome][nomeEvento] = { enviada: 0, historico: [] };
+        }
+
+        dadosTabela[prodNome][nomeEvento].enviada = produto.quantidade || 0;
       });
     });
+
+    // calcular histórico (média) para cada produto + evento
+    for (let prodNome in dadosTabela) {
+      for (let nomeEvento in dadosTabela[prodNome]) {
+        let total = 0;
+        let count = 0;
+
+        eventos.forEach(evento => {
+          if (evento.nomeEvento === nomeEvento && evento.produtos) {
+            evento.produtos.forEach(produto => {
+              const prodId = produto.produtoId;
+              const pNome = produtosDB[prodId] ? produtosDB[prodId].nome : prodId;
+              if (pNome === prodNome) {
+                total += produto.quantidade || 0;
+                count++;
+              }
+            });
+          }
+        });
+
+        dadosTabela[prodNome][nomeEvento].media = count ? (total / count).toFixed(2) : '0';
+      }
+    }
 
     renderTabela();
   }
@@ -97,23 +128,22 @@
     const headerRow = document.getElementById('headerRow');
     const tabela = document.getElementById('tabelaProdutos');
 
-    // Limpa cabeçalho e corpo
     headerRow.innerHTML = '<th>Produto</th>';
     tabela.innerHTML = '';
 
-    const eventosNomes = eventos.map(e => e.nome || e.id);
+    const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
 
     eventosNomes.forEach(nome => {
-      headerRow.innerHTML += `<th>${nome}</th>`;
+      headerRow.innerHTML += `<th>${nome} - Env</th><th>${nome} - Méd</th>`;
     });
 
-    Object.keys(produtos).forEach(produto => {
+    Object.keys(dadosTabela).forEach(produto => {
       const tr = document.createElement('tr');
       let row = `<td>${produto}</td>`;
 
       eventosNomes.forEach(nome => {
-        const quantidade = produtos[produto][nome] || 0;
-        row += `<td>${quantidade}</td>`;
+        const dados = dadosTabela[produto][nome];
+        row += `<td>${dados ? dados.enviada : 0}</td><td>${dados ? dados.media : 0}</td>`;
       });
 
       tr.innerHTML = row;
@@ -123,27 +153,33 @@
 
   function exportarXLSX() {
     const ws_data = [];
-    const header = ["Produto", ...eventos.map(e => e.nome || e.id)];
+    const header = ["Produto"];
+
+    const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
+    eventosNomes.forEach(nome => {
+      header.push(`${nome} - Env`, `${nome} - Méd`);
+    });
+
     ws_data.push(header);
 
-    Object.keys(produtos).forEach(produto => {
+    Object.keys(dadosTabela).forEach(produto => {
       const row = [produto];
-      eventos.forEach(evento => {
-        const nomeEvento = evento.nome || evento.id;
-        row.push(produtos[produto][nomeEvento] || 0);
+
+      eventosNomes.forEach(nome => {
+        const dados = dadosTabela[produto][nome];
+        row.push(dados ? dados.enviada : 0, dados ? dados.media : 0);
       });
+
       ws_data.push(row);
     });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     XLSX.utils.book_append_sheet(wb, ws, "Produtos por Evento");
-    XLSX.writeFile(wb, "produtos_por_evento.xlsx");
+    XLSX.writeFile(wb, "produtos_por_evento_com_media.xlsx");
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    carregarEventos();
-  });
+  document.addEventListener("DOMContentLoaded", carregarDados);
 </script>
 
 </body>
