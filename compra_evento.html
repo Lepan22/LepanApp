@@ -94,6 +94,22 @@
   let produtosDB = {};
   let dadosTabela = {};
 
+  function formatDateBR(dataISO) {
+    const [ano, mes, dia] = dataISO.split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  function isThisWeek(dataStr) {
+    const hoje = new Date();
+    const dia = hoje.getDay();
+    const inicio = new Date(hoje);
+    inicio.setDate(hoje.getDate() - dia);
+    const fim = new Date(inicio);
+    fim.setDate(inicio.getDate() + 6);
+    const data = new Date(dataStr);
+    return data >= inicio && data <= fim;
+  }
+
   async function carregarDados() {
     const produtosSnap = await db.ref('produtos').once('value');
     produtosDB = produtosSnap.val();
@@ -113,12 +129,18 @@
   function processarDados() {
     dadosTabela = {};
 
+    const eventosFiltrados = eventos.filter(e => 
+      (e.status || 'aberto') === 'aberto' && isThisWeek(e.data)
+    );
+
+    eventos = eventosFiltrados;
+
     eventos.forEach(evento => {
-      const nomeEvento = evento.nomeEvento || evento.id;
+      const nomeData = `${evento.nomeEvento || evento.id} ${evento.data ? formatDateBR(evento.data) : ''}`;
 
       if (!evento.produtos) return;
 
-      evento.produtos.forEach((produto) => {
+      evento.produtos.forEach(produto => {
         const prodId = produto.produtoId;
         const prodNome = produtosDB[prodId] ? produtosDB[prodId].nome : prodId;
 
@@ -126,7 +148,7 @@
           dadosTabela[prodNome] = {};
         }
 
-        dadosTabela[prodNome][nomeEvento] = produto.quantidade || 0;
+        dadosTabela[prodNome][nomeData] = produto.quantidade || 0;
       });
     });
 
@@ -135,7 +157,7 @@
   }
 
   function renderTabela() {
-    const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
+    const eventosNomes = eventos.map(e => `${e.nomeEvento || e.id} ${e.data ? formatDateBR(e.data) : ''}`);
 
     const headerRow = document.getElementById('headerRow');
     headerRow.innerHTML = `<th>Produto</th>`;
@@ -188,7 +210,7 @@
       }
 
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${evento.nomeEvento}</td>
+      tr.innerHTML = `<td>${evento.nomeEvento} ${evento.data ? formatDateBR(evento.data) : ''}</td>
                       <td>R$ ${Number(evento.estimativaVenda || 0).toFixed(2).replace('.', ',')}</td>
                       <td>R$ ${potencial.toFixed(2).replace('.', ',')}</td>`;
       tbody.appendChild(tr);
@@ -201,7 +223,7 @@
   function exportarXLSX() {
     const ws_data = [];
     const header = ["Produto"];
-    const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
+    const eventosNomes = eventos.map(e => `${e.nomeEvento || e.id} ${e.data ? formatDateBR(e.data) : ''}`);
 
     eventosNomes.forEach(nome => {
       header.push(nome);
