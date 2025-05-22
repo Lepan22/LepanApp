@@ -28,32 +28,44 @@ function carregarEventos() {
 
 function aplicarFiltros() {
   const status = document.getElementById('filtroStatus').value;
-  const nome = document.getElementById('filtroNome').value.toLowerCase();
+  const nomeFiltro = document.getElementById('filtroNome').value.toLowerCase();
   const dataInicio = document.getElementById('filtroDataInicio').value;
   const dataFim = document.getElementById('filtroDataFim').value;
 
   const tabela = document.getElementById('tabelaEventos');
   tabela.innerHTML = '';
 
-  eventos.filter(e => {
+  const eventosFiltrados = eventos.filter(e => {
     if (status !== 'Todos' && e.status !== status) return false;
-    if (nome && !(e.nomeEvento || '').toLowerCase().includes(nome)) return false;
+    if (nomeFiltro && !(e.nomeEvento || '').toLowerCase().includes(nomeFiltro)) return false;
     if (dataInicio && (!e.data || e.data < dataInicio)) return false;
     if (dataFim && (!e.data || e.data > dataFim)) return false;
     return true;
-  }).forEach(e => {
+  });
+
+  eventosFiltrados.forEach(eAtual => {
+    // Calcula média apenas com eventos anteriores com mesmo nome
+    const eventosAnteriores = eventos.filter(e => 
+      e.nomeEvento === eAtual.nomeEvento && 
+      e.data && eAtual.data && e.data < eAtual.data
+    );
+
+    const somaVenda = eventosAnteriores.reduce((s, ev) => s + (parseFloat(ev.vendaPDV) || 0), 0);
+    const quantidade = eventosAnteriores.length;
+    const mediaVenda = quantidade > 0 ? somaVenda / quantidade : 0;
+
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td>${e.nomeEvento || '-'}</td>
-      <td>${e.data || '-'}</td>
-      <td>${e.status || '-'}</td>
-      <td>R$ ${(e.vendaPDV || 0).toFixed(2)}</td>
-      <td>R$ ${(e.estimativaVenda || 0).toFixed(2)}</td>
+      <td>${eAtual.nomeEvento || '-'}</td>
+      <td>${eAtual.data || '-'}</td>
+      <td>${eAtual.status || '-'}</td>
+      <td>R$ ${mediaVenda.toFixed(2)}</td>
+      <td>R$ ${(eAtual.estimativaVenda || 0).toFixed(2)}</td>
       <td>
-        <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${e.id}')">Editar</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${e.id}')">Duplicar</button>
-        <button class="btn btn-sm btn-outline-success" onclick="enviarLink('${e.id}')">Enviar Link</button>
-        <button class="btn btn-sm btn-outline-danger" onclick="excluirEvento('${e.id}')">Excluir</button>
+        <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${eAtual.id}')">Editar</button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${eAtual.id}')">Duplicar</button>
+        <button class="btn btn-sm btn-outline-success" onclick="enviarLink('${eAtual.id}')">Enviar Link</button>
+        <button class="btn btn-sm btn-outline-danger" onclick="excluirEvento('${eAtual.id}')">Excluir</button>
       </td>
     `;
     tabela.appendChild(row);
