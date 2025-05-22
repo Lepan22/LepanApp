@@ -30,7 +30,7 @@
       <thead>
         <tr id="headerRow">
           <th>Produto</th>
-          <!-- Eventos serão inseridos aqui dinamicamente -->
+          <!-- Eventos serão inseridos aqui -->
         </tr>
       </thead>
       <tbody id="tabelaProdutos">
@@ -75,16 +75,18 @@
     produtos = {};
 
     eventos.forEach(evento => {
+      const nomeEvento = evento.nome || evento.id;
+
       if (!evento.itens) return;
 
       evento.itens.forEach(item => {
-        const nome = item.nomeItem || 'Sem Nome';
+        const nomeProduto = item.nomeItem || 'Produto Sem Nome';
 
-        if (!produtos[nome]) {
-          produtos[nome] = {};
+        if (!produtos[nomeProduto]) {
+          produtos[nomeProduto] = {};
         }
 
-        produtos[nome][evento.nome] = item.quantidade || 0;
+        produtos[nomeProduto][nomeEvento] = item.quantidade || 0;
       });
     });
 
@@ -95,22 +97,22 @@
     const headerRow = document.getElementById('headerRow');
     const tabela = document.getElementById('tabelaProdutos');
 
-    // Limpa header e corpo
+    // Limpa cabeçalho e corpo
     headerRow.innerHTML = '<th>Produto</th>';
     tabela.innerHTML = '';
 
-    // Adiciona colunas de eventos
-    eventos.forEach(evento => {
-      headerRow.innerHTML += `<th>${evento.nome}</th>`;
+    const eventosNomes = eventos.map(e => e.nome || e.id);
+
+    eventosNomes.forEach(nome => {
+      headerRow.innerHTML += `<th>${nome}</th>`;
     });
 
-    // Adiciona linhas de produtos
     Object.keys(produtos).forEach(produto => {
       const tr = document.createElement('tr');
       let row = `<td>${produto}</td>`;
 
-      eventos.forEach(evento => {
-        const quantidade = produtos[produto][evento.nome] || 0;
+      eventosNomes.forEach(nome => {
+        const quantidade = produtos[produto][nome] || 0;
         row += `<td>${quantidade}</td>`;
       });
 
@@ -121,13 +123,14 @@
 
   function exportarXLSX() {
     const ws_data = [];
-    const header = ["Produto", ...eventos.map(e => e.nome)];
+    const header = ["Produto", ...eventos.map(e => e.nome || e.id)];
     ws_data.push(header);
 
     Object.keys(produtos).forEach(produto => {
       const row = [produto];
       eventos.forEach(evento => {
-        row.push(produtos[produto][evento.nome] || 0);
+        const nomeEvento = evento.nome || evento.id;
+        row.push(produtos[produto][nomeEvento] || 0);
       });
       ws_data.push(row);
     });
