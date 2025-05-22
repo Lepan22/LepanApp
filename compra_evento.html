@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Compra - Lista de Eventos</title>
+  <title>Compra - Produtos por Evento</title>
   <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
@@ -21,19 +22,19 @@
   </aside>
 
   <main class="main-content">
-    <h1>Lista de Eventos</h1>
+    <h1>Produtos por Evento</h1>
+
+    <button onclick="exportarXLSX()">Exportar para XLSX</button>
 
     <table class="table table-bordered" style="margin-top:20px;">
       <thead>
-        <tr>
-          <th>Nome do Evento</th>
-          <th>Data</th>
-          <th>Status</th>
-          <th>Ações</th>
+        <tr id="headerRow">
+          <th>Produto</th>
+          <!-- Eventos serão inseridos aqui dinamicamente -->
         </tr>
       </thead>
-      <tbody id="tabelaEventos">
-        <!-- Preenchido via JS -->
+      <tbody id="tabelaProdutos">
+        <!-- Linhas de produtos -->
       </tbody>
     </table>
   </main>
@@ -53,32 +54,88 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
+  let eventos = [];
+  let produtos = {};
+
   function carregarEventos() {
     db.ref('eventos').once('value').then(snapshot => {
-      const tabela = document.getElementById('tabelaEventos');
-      tabela.innerHTML = '';
+      eventos = [];
 
       snapshot.forEach(child => {
         const evento = child.val();
-        const id = child.key;
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${evento.nome || '-'}</td>
-          <td>${evento.data || '-'}</td>
-          <td>${evento.status || '-'}</td>
-          <td>
-            <button class="btn btn-sm btn-outline-primary" onclick="selecionarEvento('${id}')">Selecionar</button>
-          </td>
-        `;
-        tabela.appendChild(row);
+        evento.id = child.key;
+        eventos.push(evento);
       });
+
+      processarProdutos();
     });
   }
 
-  function selecionarEvento(id) {
-    alert('Evento selecionado: ' + id);
-    // Aqui futuramente pode redirecionar ou carregar produtos do evento.
+  function processarProdutos() {
+    produtos = {};
+
+    eventos.forEach(evento => {
+      if (!evento.itens) return;
+
+      evento.itens.forEach(item => {
+        const nome = item.nomeItem || 'Sem Nome';
+
+        if (!produtos[nome]) {
+          produtos[nome] = {};
+        }
+
+        produtos[nome][evento.nome] = item.quantidade || 0;
+      });
+    });
+
+    renderTabela();
+  }
+
+  function renderTabela() {
+    const headerRow = document.getElementById('headerRow');
+    const tabela = document.getElementById('tabelaProdutos');
+
+    // Limpa header e corpo
+    headerRow.innerHTML = '<th>Produto</th>';
+    tabela.innerHTML = '';
+
+    // Adiciona colunas de eventos
+    eventos.forEach(evento => {
+      headerRow.innerHTML += `<th>${evento.nome}</th>`;
+    });
+
+    // Adiciona linhas de produtos
+    Object.keys(produtos).forEach(produto => {
+      const tr = document.createElement('tr');
+      let row = `<td>${produto}</td>`;
+
+      eventos.forEach(evento => {
+        const quantidade = produtos[produto][evento.nome] || 0;
+        row += `<td>${quantidade}</td>`;
+      });
+
+      tr.innerHTML = row;
+      tabela.appendChild(tr);
+    });
+  }
+
+  function exportarXLSX() {
+    const ws_data = [];
+    const header = ["Produto", ...eventos.map(e => e.nome)];
+    ws_data.push(header);
+
+    Object.keys(produtos).forEach(produto => {
+      const row = [produto];
+      eventos.forEach(evento => {
+        row.push(produtos[produto][evento.nome] || 0);
+      });
+      ws_data.push(row);
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, "Produtos por Evento");
+    XLSX.writeFile(wb, "produtos_por_evento.xlsx");
   }
 
   document.addEventListener("DOMContentLoaded", () => {
