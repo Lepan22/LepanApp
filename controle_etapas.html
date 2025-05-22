@@ -3,73 +3,128 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Controle de Etapas dos Eventos</title>
+  <title>Controle de Etapas</title>
   <link rel="stylesheet" href="assets/style.css">
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      text-align: center;
+      padding: 8px;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    .btn {
+      padding: 5px 10px;
+      background: #ff7f00;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: #e96f00;
+    }
+  </style>
 </head>
 <body>
 
-<div class="layout">
-  <aside class="sidebar" id="menuLateral"></aside>
+<h1>Controle de Etapas dos Eventos</h1>
 
-  <main class="main-content">
-    <h1>Controle de Etapas dos Eventos</h1>
+<table>
+  <thead>
+    <tr>
+      <th>Evento</th>
+      <th>Data</th>
+      <th>Produtos</th>
+      <th>Equipe</th>
+      <th>Logística</th>
+      <th>Cliente</th>
+      <th>Divulgação</th>
+      <th>Compra</th>
+      <th>Pedido</th>
+      <th>Gestão</th>
+    </tr>
+  </thead>
+  <tbody id="tabelaEventos"></tbody>
+</table>
 
-    <button onclick="location.href='compra_evento.html'">Gerar Pedido de Compra</button>
-
-    <table class="table table-bordered" style="margin-top:20px;">
-      <thead>
-        <tr>
-          <th>Evento</th>
-          <th>Data</th>
-          <th>Produtos</th>
-          <th>Equipe</th>
-          <th>Logística</th>
-          <th>Cliente</th>
-          <th>Divulgação</th>
-          <th>Compra</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Exemplo de evento -->
-        <tr>
-          <td>Evento Alpha</td>
-          <td>27/05/2025</td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td>
-            <button onclick="abrirGestaoEvento('eventoAlpha')">Abrir Gestão</button>
-          </td>
-        </tr>
-        <tr>
-          <td>Evento Beta</td>
-          <td>29/05/2025</td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td><input type="checkbox" class="etapa-check"></td>
-          <td>
-            <button onclick="abrirGestaoEvento('eventoBeta')">Abrir Gestão</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-  </main>
-</div>
-
-<script src="incluir-menu.js"></script>
 <script>
-  function abrirGestaoEvento(eventoId) {
-    // Simples redirecionamento para gestaoevento com id
-    window.location.href = `gestaoevento.html?id=${eventoId}`;
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "542989944344",
+    appId: "1:542989944344:web:576e28199960fd5440a56d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  function carregarEventos() {
+    db.ref('eventos').once('value').then(snapshot => {
+      const tabela = document.getElementById('tabelaEventos');
+      tabela.innerHTML = '';
+
+      snapshot.forEach(child => {
+        const evento = child.val();
+        const id = child.key;
+
+        const etapas = evento.etapas || {
+          produtosDefinidos: false,
+          equipeConfirmada: false,
+          logisticaDefinida: false,
+          clienteConfirmado: false,
+          divulgacaoRealizada: false,
+          compraInsumos: false
+        };
+
+        const row = document.createElement('tr');
+
+        row.innerHTML = `
+          <td>${evento.nomeEvento || id}</td>
+          <td>${evento.data || '-'}</td>
+          <td><input type="checkbox" ${etapas.produtosDefinidos ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'produtosDefinidos', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.equipeConfirmada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'equipeConfirmada', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.logisticaDefinida ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'logisticaDefinida', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.clienteConfirmado ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'clienteConfirmado', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.divulgacaoRealizada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'divulgacaoRealizada', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.compraInsumos ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'compraInsumos', this.checked)"></td>
+          <td><button class="btn" onclick="gerarPedido()">Gerar Pedido</button></td>
+          <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
+        `;
+
+        tabela.appendChild(row);
+      });
+    });
   }
+
+  function atualizarEtapa(eventoId, etapa, valor) {
+    const refEtapa = db.ref(`eventos/${eventoId}/etapas`);
+    refEtapa.update({ [etapa]: valor })
+      .then(() => console.log(`Etapa ${etapa} do evento ${eventoId} atualizada para ${valor}`))
+      .catch(err => console.error('Erro ao atualizar:', err));
+  }
+
+  function gerarPedido() {
+    window.location.href = 'compra_evento.html';
+  }
+
+  function gestaoEvento(id) {
+    window.location.href = `gestaoevento.html?id=${id}`;
+  }
+
+  document.addEventListener('DOMContentLoaded', carregarEventos);
 </script>
 
 </body>
