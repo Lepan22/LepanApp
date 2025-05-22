@@ -6,8 +6,6 @@
   <title>Pedido de Compra por Evento</title>
   <link rel="stylesheet" href="assets/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
 </head>
 <body>
 
@@ -38,22 +36,11 @@
 </div>
 
 <script src="incluir-menu.js"></script>
+
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-  import { getDatabase, ref, get, update, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  import { db } from './assets/firebase-config.js';
+  import { ref, get, update, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-  const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SUA_AUTH_DOMAIN",
-    databaseURL: "SUA_DB_URL",
-    projectId: "SUA_PROJECT_ID",
-    storageBucket: "SUA_BUCKET",
-    messagingSenderId: "SUA_SENDER",
-    appId: "SUA_APP_ID"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
   const tabela = document.getElementById('tabelaCompra');
 
   let dadosExport = [];
@@ -63,6 +50,7 @@
 
     Object.entries(eventos).forEach(([eventoId, evento]) => {
       const nomeEvento = evento.nome || eventoId;
+
       if (!evento.itens) return;
 
       evento.itens.forEach((item, index) => {
@@ -90,14 +78,19 @@
 
   async function carregarDados() {
     const dbRef = ref(db);
-    const snapshot = await get(child(dbRef, `eventos`));
+    try {
+      const snapshot = await get(child(dbRef, `eventos`));
+      console.log("Snapshot:", snapshot.val());
 
-    if (snapshot.exists()) {
-      const eventos = snapshot.val();
-      dadosExport = [];
-      renderTabela(eventos);
-    } else {
-      console.log("Nenhum dado encontrado.");
+      if (snapshot.exists()) {
+        const eventos = snapshot.val();
+        dadosExport = [];
+        renderTabela(eventos);
+      } else {
+        console.log("Nenhum dado encontrado em 'eventos'.");
+      }
+    } catch (error) {
+      console.error("Erro ao carregar dados:", error);
     }
   }
 
@@ -106,16 +99,14 @@
 
     const itemRef = ref(db, `eventos/${eventoId}/itens/${index}`);
     update(itemRef, { quantidade: novaQuantidade })
-      .then(() => console.log(`Atualizado evento ${eventoId}, item ${index}, nova quantidade: ${novaQuantidade}`))
-      .catch(err => console.error("Erro:", err));
-
-    // Atualiza também dadosExport local
-    dadosExport = dadosExport.map(d => {
-      if (d.evento === eventoId && d.produto === index) {
-        d.enviada = novaQuantidade;
-      }
-      return d;
-    });
+      .then(() => {
+        console.log(`Atualizado evento ${eventoId}, item ${index}, nova quantidade: ${novaQuantidade}`);
+        alert("Quantidade atualizada com sucesso!");
+      })
+      .catch(err => {
+        console.error("Erro ao atualizar:", err);
+        alert("Erro ao atualizar quantidade.");
+      });
   };
 
   window.exportarXLSX = function() {
