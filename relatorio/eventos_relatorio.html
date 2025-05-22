@@ -59,12 +59,12 @@
 <div class="layout">
   <div class="sidebar">
     <h4>LePanApp</h4>
-    <a href="produtos.html">Produtos</a>
-    <a href="equipe.html">Equipe</a>
-    <a href="clientes.html">Clientes</a>
-    <a href="eventos.html">Eventos</a>
-    <a href="logistica.html">Logística</a>
-    <a href="relatorio/eventos_relatorio.html">Relatório</a>
+    <a href="../produtos.html">Produtos</a>
+    <a href="../equipe.html">Equipe</a>
+    <a href="../clientes.html">Clientes</a>
+    <a href="../eventos.html">Eventos</a>
+    <a href="../logistica.html">Logística</a>
+    <a href="eventos_relatorio.html">Relatório</a>
   </div>
 
   <div class="main-content">
@@ -110,4 +110,118 @@
 
 <script>
   const firebaseConfig = {
-    apiKey: "AIzaSy
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "542989944344",
+    appId: "1:542989944344:web:576e28199960fd5440a56d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  let eventos = [], eventosFiltrados = [], linhasRelatorio = [];
+
+  db.ref('eventos').once('value').then(snapshot => {
+    eventos = [];
+    snapshot.forEach(child => {
+      const e = child.val();
+      e.id = child.key;
+      eventos.push(e);
+    });
+    aplicarFiltros();
+  });
+
+  document.getElementById('filtrosForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    aplicarFiltros();
+  });
+
+  function limparFiltros() {
+    document.getElementById('filtroNome').value = '';
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    aplicarFiltros();
+  }
+
+  function aplicarFiltros() {
+    const nomeFiltro = document.getElementById('filtroNome').value.toLowerCase();
+    const dataInicio = document.getElementById('filtroDataInicio').value;
+    const dataFim = document.getElementById('filtroDataFim').value;
+
+    const tabela = document.getElementById('relatorioTabela');
+    tabela.innerHTML = '';
+    linhasRelatorio = [];
+
+    eventosFiltrados = eventos.filter(e => {
+      if (nomeFiltro && !(e.nomeEvento || '').toLowerCase().includes(nomeFiltro)) return false;
+      if (dataInicio && (!e.data || e.data < dataInicio)) return false;
+      if (dataFim && (!e.data || e.data > dataFim)) return false;
+      return true;
+    });
+
+    const eventosPorNome = {};
+
+    eventosFiltrados.forEach(e => {
+      if (!eventosPorNome[e.nomeEvento]) {
+        eventosPorNome[e.nomeEvento] = [];
+      }
+      eventosPorNome[e.nomeEvento].push(e);
+    });
+
+    Object.keys(eventosPorNome).forEach(nome => {
+      const grupo = eventosPorNome[nome];
+      grupo.sort((a, b) => (a.data > b.data) ? 1 : -1);
+
+      grupo.forEach((eAtual, idx) => {
+        const anteriores = grupo.slice(0, idx);
+        const somaVenda = anteriores.reduce((s, ev) => s + (parseFloat(ev.vendaPDV) || 0), 0);
+        const qtd = anteriores.length;
+        const media = qtd ? (somaVenda / qtd) : 0;
+
+        const vendaPDV = parseFloat(eAtual.vendaPDV) || 0;
+        const cmvReal = parseFloat(eAtual.cmvReal) || 0;
+        const custoEquipe = (eAtual.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
+        const custoLogistica = (eAtual.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
+        const custoPerda = parseFloat(eAtual.custoPerda || 0);
+        const valorAssados = parseFloat(eAtual.valorAssados || 0);
+
+        const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${eAtual.nomeEvento || '-'}</td>
+          <td>${eAtual.data || '-'}</td>
+          <td>R$ ${vendaPDV.toFixed(2)}</td>
+          <td>R$ ${media.toFixed(2)}</td>
+          <td>R$ ${lucro.toFixed(2)}</td>
+          <td>R$ ${custoPerda.toFixed(2)}</td>
+          <td>R$ ${valorAssados.toFixed(2)}</td>
+        `;
+        tabela.appendChild(row);
+
+        linhasRelatorio.push({
+          'Nome do Evento': eAtual.nomeEvento || '-',
+          'Data': eAtual.data || '-',
+          'Venda PDV': vendaPDV.toFixed(2),
+          'Média Histórica': media.toFixed(2),
+          'Lucro': lucro.toFixed(2),
+          'Custo Perda': custoPerda.toFixed(2),
+          'Custo Assado': valorAssados.toFixed(2)
+        });
+      });
+    });
+  }
+
+  function exportarXLSX() {
+    const ws = XLSX.utils.json_to_sheet(linhasRelatorio);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+    XLSX.writeFile(wb, "relatorio_eventos.xlsx");
+  }
+</script>
+
+</body>
+</html>
