@@ -27,7 +27,7 @@
       margin-top: 20px;
       width: 50%;
     }
-    .btn-export {
+    .btn {
       background-color: #ff7f00;
       color: white;
       padding: 10px 15px;
@@ -35,8 +35,9 @@
       cursor: pointer;
       border-radius: 5px;
       margin-top: 10px;
+      margin-right: 10px;
     }
-    .btn-export:hover {
+    .btn:hover {
       background-color: #e96f00;
     }
   </style>
@@ -54,18 +55,19 @@
   </aside>
 
   <main class="main-content">
-    <h1>Produtos por Evento - Com Totais</h1>
+    <h1>Produtos por Evento - Edição Inline</h1>
 
-    <button class="btn-export" onclick="exportarXLSX()">Exportar para XLSX</button>
+    <button class="btn" onclick="salvarAlteracoes()">Salvar Alterações</button>
+    <button class="btn" onclick="exportarXLSX()">Exportar para XLSX</button>
 
     <div id="totaisEventos"></div>
 
     <table id="tabelaProdutos">
       <thead>
         <tr>
-          <th rowspan="2">Produto</th>
+          <th>Produto</th>
           <th id="eventosHeader" colspan="0"></th>
-          <th rowspan="2">Total Enviado</th>
+          <th>Total Enviado</th>
         </tr>
         <tr id="subHeaderRow"></tr>
       </thead>
@@ -91,6 +93,7 @@
   let eventos = [];
   let produtosDB = {};
   let dadosTabela = {};
+  let produtosRefs = {};
 
   async function carregarDados() {
     const produtosSnap = await db.ref('produtos').once('value');
@@ -110,13 +113,14 @@
 
   function processarDados() {
     dadosTabela = {};
+    produtosRefs = {};
 
     eventos.forEach(evento => {
       const nomeEvento = evento.nomeEvento || evento.id;
 
       if (!evento.produtos) return;
 
-      evento.produtos.forEach(produto => {
+      evento.produtos.forEach((produto, idx) => {
         const prodId = produto.produtoId;
         const prodNome = produtosDB[prodId] ? produtosDB[prodId].nome : prodId;
 
@@ -124,11 +128,10 @@
           dadosTabela[prodNome] = {};
         }
 
-        if (!dadosTabela[prodNome][nomeEvento]) {
-          dadosTabela[prodNome][nomeEvento] = { enviada: 0 };
-        }
-
-        dadosTabela[prodNome][nomeEvento].enviada += produto.quantidade || 0;
+        dadosTabela[prodNome][nomeEvento] = {
+          enviada: produto.quantidade || 0,
+          ref: `eventos/${evento.id}/produtos/${idx}/quantidade`
+        };
       });
     });
 
@@ -159,15 +162,35 @@
 
       eventosNomes.forEach(nome => {
         const dados = dadosTabela[produto][nome];
-        const enviada = dados ? Number(dados.enviada).toFixed(1).replace('.', ',') : '0,0';
+        const valor = dados ? Number(dados.enviada).toFixed(1).replace('.', ',') : '0,0';
         totalEnviado += dados ? Number(dados.enviada) : 0;
-        row += `<td>${enviada}</td>`;
+
+        row += `<td><input type="number" step="0.1" value="${valor.replace(',', '.')}" 
+                  data-produto="${produto}" data-evento="${nome}"></td>`;
       });
 
       row += `<td>${totalEnviado.toFixed(1).replace('.', ',')}</td>`;
       tr.innerHTML = row;
       tbody.appendChild(tr);
     });
+  }
+
+  function salvarAlteracoes() {
+    const inputs = document.querySelectorAll('#tabelaProdutos input');
+
+    inputs.forEach(input => {
+      const produto = input.dataset.produto;
+      const evento = input.dataset.evento;
+      const valor = parseFloat(input.value) || 0;
+
+      const refPath = dadosTabela[produto][evento].ref;
+
+      db.ref(refPath).set(valor)
+        .then(() => console.log(`Atualizado ${produto} em ${evento} para ${valor}`))
+        .catch(err => console.error('Erro ao atualizar:', err));
+    });
+
+    alert('Alterações salvas com sucesso!');
   }
 
   function renderTotaisEventos() {
