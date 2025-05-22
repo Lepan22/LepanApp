@@ -207,12 +207,13 @@ function calcularTotais() {
   });
 
   const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
+  const cmvReal = parseFloat(document.getElementById('cmvReal').value) || 0;
 
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
   const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
 
   const diferencaVenda = vendaPDV - vendaSistema;
-  const lucroFinal = vendaPDV - cmvCalculado - custoLogistica - custoEquipe - custoPerda;
+  const lucroFinal = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
 
   document.getElementById('totalVendida').innerText = totalVendida;
   document.getElementById('vendaSistema').innerText = vendaSistema.toFixed(2);
