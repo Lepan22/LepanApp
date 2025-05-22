@@ -46,6 +46,10 @@
     h1, h3 {
       font-size: 16px;
     }
+    .filtros {
+      margin-top: 10px;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -62,6 +66,24 @@
 
   <main class="main-content">
     <h1>Produtos por Evento</h1>
+
+    <div class="filtros">
+      <label>Status:
+        <select id="filtroStatus">
+          <option value="todos">Todos</option>
+          <option value="aberto" selected>Aberto</option>
+          <option value="fechado">Fechado</option>
+        </select>
+      </label>
+
+      <label>Data:
+        <select id="filtroData">
+          <option value="semana" selected>Esta semana</option>
+          <option value="30dias">Últimos 30 dias</option>
+          <option value="todos">Todos</option>
+        </select>
+      </label>
+    </div>
 
     <button class="btn-export" onclick="exportarXLSX()">Exportar para XLSX</button>
 
@@ -99,15 +121,24 @@
     return `${dia}/${mes}/${ano}`;
   }
 
-  function isThisWeek(dataStr) {
-    const hoje = new Date();
-    const dia = hoje.getDay();
-    const inicio = new Date(hoje);
-    inicio.setDate(hoje.getDate() - dia);
-    const fim = new Date(inicio);
-    fim.setDate(inicio.getDate() + 6);
+  function isWithinRange(dataStr, filtroData) {
     const data = new Date(dataStr);
-    return data >= inicio && data <= fim;
+    const hoje = new Date();
+
+    if (filtroData === 'semana') {
+      const dia = hoje.getDay();
+      const inicio = new Date(hoje);
+      inicio.setDate(hoje.getDate() - dia);
+      const fim = new Date(inicio);
+      fim.setDate(inicio.getDate() + 6);
+      return data >= inicio && data <= fim;
+    } else if (filtroData === '30dias') {
+      const inicio = new Date();
+      inicio.setDate(hoje.getDate() - 30);
+      return data >= inicio && data <= hoje;
+    } else {
+      return true;
+    }
   }
 
   async function carregarDados() {
@@ -129,13 +160,18 @@
   function processarDados() {
     dadosTabela = {};
 
-    const eventosFiltrados = eventos.filter(e => 
-      (e.status || 'aberto') === 'aberto' && isThisWeek(e.data)
-    );
+    const filtroStatus = document.getElementById('filtroStatus').value;
+    const filtroData = document.getElementById('filtroData').value;
 
-    eventos = eventosFiltrados;
+    const eventosFiltrados = eventos.filter(e => {
+      const statusOk = filtroStatus === 'todos' || (e.status || 'aberto') === filtroStatus;
+      const dataOk = e.data ? isWithinRange(e.data, filtroData) : true;
+      return statusOk && dataOk;
+    });
 
-    eventos.forEach(evento => {
+    const eventosNomes = eventosFiltrados.map(e => `${e.nomeEvento || e.id} ${e.data ? formatDateBR(e.data) : ''}`);
+
+    eventosFiltrados.forEach(evento => {
       const nomeData = `${evento.nomeEvento || evento.id} ${evento.data ? formatDateBR(evento.data) : ''}`;
 
       if (!evento.produtos) return;
@@ -152,13 +188,11 @@
       });
     });
 
-    renderTabela();
-    renderTotaisEventos();
+    renderTabela(eventosNomes);
+    renderTotaisEventos(eventosFiltrados);
   }
 
-  function renderTabela() {
-    const eventosNomes = eventos.map(e => `${e.nomeEvento || e.id} ${e.data ? formatDateBR(e.data) : ''}`);
-
+  function renderTabela(eventosNomes) {
     const headerRow = document.getElementById('headerRow');
     headerRow.innerHTML = `<th>Produto</th>`;
     eventosNomes.forEach(nome => {
@@ -186,7 +220,7 @@
     });
   }
 
-  function renderTotaisEventos() {
+  function renderTotaisEventos(eventosFiltrados) {
     const div = document.getElementById('totaisEventos');
     div.innerHTML = '<h3>Totais por Evento</h3>';
 
@@ -199,7 +233,7 @@
 
     const tbody = document.createElement('tbody');
 
-    eventos.forEach(evento => {
+    eventosFiltrados.forEach(evento => {
       let potencial = 0;
 
       if (evento.produtos) {
@@ -217,14 +251,14 @@
     });
 
     table.appendChild(tbody);
+    div.innerHTML = '';
     div.appendChild(table);
   }
 
   function exportarXLSX() {
     const ws_data = [];
     const header = ["Produto"];
-    const eventosNomes = eventos.map(e => `${e.nomeEvento || e.id} ${e.data ? formatDateBR(e.data) : ''}`);
-
+    const eventosNomes = Object.keys(dadosTabela[Object.keys(dadosTabela)[0]] || {});
     eventosNomes.forEach(nome => {
       header.push(nome);
     });
@@ -250,6 +284,9 @@
     XLSX.utils.book_append_sheet(wb, ws, "Produtos por Evento");
     XLSX.writeFile(wb, "produtos_por_evento.xlsx");
   }
+
+  document.getElementById('filtroStatus').addEventListener('change', processarDados);
+  document.getElementById('filtroData').addEventListener('change', processarDados);
 
   document.addEventListener("DOMContentLoaded", carregarDados);
 </script>
