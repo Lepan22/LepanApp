@@ -22,11 +22,12 @@
 
     <table class="table table-bordered" style="margin-top:20px;">
       <thead>
-        <tr id="headerRow">
+        <tr>
           <th>Produto</th>
-          <!-- Cabeçalho dinâmico para eventos -->
-          <!-- Exemplo: <th>Evento A - Env</th><th>Est</th><th>Pot</th>... -->
-          <th>Total</th>
+          <th>Evento</th>
+          <th>Enviada</th>
+          <th>Estimativa</th>
+          <th>Potencial</th>
         </tr>
       </thead>
       <tbody id="tabelaCompra">
@@ -39,7 +40,7 @@
 <script src="incluir-menu.js"></script>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-  import { getDatabase, ref, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  import { getDatabase, ref, get, update, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
   const firebaseConfig = {
     apiKey: "SUA_API_KEY",
@@ -53,102 +54,85 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getDatabase(app);
-
-  const eventos = ["EventoA", "EventoB", "EventoC"];
-  const produtos = [
-    { nome: "Pão de Queijo" },
-    { nome: "Coxinha" }
-  ];
-
-  const dados = {
-    "Pão de Queijo": {
-      "EventoA": { enviada: 15, estimativa: 12, potencial: 20 },
-      "EventoB": { enviada: 20, estimativa: 18, potencial: 25 },
-      "EventoC": { enviada: 10, estimativa: 12, potencial: 15 }
-    },
-    "Coxinha": {
-      "EventoA": { enviada: 10, estimativa: 9, potencial: 15 },
-      "EventoB": { enviada: 15, estimativa: 12, potencial: 18 },
-      "EventoC": { enviada: 5, estimativa: 7, potencial: 10 }
-    }
-  };
-
-  const headerRow = document.getElementById('headerRow');
   const tabela = document.getElementById('tabelaCompra');
 
-  // Montar cabeçalho
-  eventos.forEach(evento => {
-    headerRow.innerHTML += `<th>${evento} - Env</th><th>Est</th><th>Pot</th>`;
-  });
+  let dadosExport = [];
 
-  // Montar tabela
-  produtos.forEach(prod => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${prod.nome}</td>`;
-    let total = 0;
+  function renderTabela(eventos) {
+    tabela.innerHTML = '';
 
-    eventos.forEach(evento => {
-      const d = dados[prod.nome][evento];
-      total += d.enviada;
+    Object.entries(eventos).forEach(([eventoId, evento]) => {
+      const nomeEvento = evento.nome || eventoId;
+      if (!evento.itens) return;
 
-      tr.innerHTML += `
-        <td><input type="number" value="${d.enviada}" min="0" 
-            onchange="atualizarQuantidade('${prod.nome}','${evento}',this.value,this)"></td>
-        <td>${d.estimativa}</td>
-        <td>${d.potencial}</td>
-      `;
+      evento.itens.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.nomeItem}</td>
+          <td>${nomeEvento}</td>
+          <td><input type="number" value="${item.quantidade}" min="0"
+            onchange="atualizarQuantidade('${eventoId}', ${index}, this.value)"></td>
+          <td>${item.estimativaVenda || ''}</td>
+          <td>${item.potencialVenda || ''}</td>
+        `;
+        tabela.appendChild(tr);
+
+        dadosExport.push({
+          produto: item.nomeItem,
+          evento: nomeEvento,
+          enviada: item.quantidade,
+          estimativa: item.estimativaVenda || '',
+          potencial: item.potencialVenda || ''
+        });
+      });
     });
+  }
 
-    tr.innerHTML += `<td class="total">${total}</td>`;
-    tabela.appendChild(tr);
-  });
+  async function carregarDados() {
+    const dbRef = ref(db);
+    const snapshot = await get(child(dbRef, `eventos`));
 
-  window.atualizarQuantidade = function(produto, evento, valor, input) {
-    valor = parseInt(valor) || 0;
-    dados[produto][evento].enviada = valor;
+    if (snapshot.exists()) {
+      const eventos = snapshot.val();
+      dadosExport = [];
+      renderTabela(eventos);
+    } else {
+      console.log("Nenhum dado encontrado.");
+    }
+  }
 
-    // Atualiza Total
-    const row = input.closest('tr');
-    let total = 0;
-    row.querySelectorAll('input').forEach(inp => {
-      total += parseInt(inp.value) || 0;
-    });
-    row.querySelector('.total').innerText = total;
+  window.atualizarQuantidade = function(eventoId, index, novaQuantidade) {
+    novaQuantidade = parseInt(novaQuantidade) || 0;
 
-    // Atualiza no Firebase
-    const path = `eventos/${evento}/produtos/${produto}/quantidadeEnviada`;
-    update(ref(db, path), { quantidadeEnviada: valor })
-      .then(() => console.log(`Atualizado ${produto} em ${evento} para ${valor}`))
+    const itemRef = ref(db, `eventos/${eventoId}/itens/${index}`);
+    update(itemRef, { quantidade: novaQuantidade })
+      .then(() => console.log(`Atualizado evento ${eventoId}, item ${index}, nova quantidade: ${novaQuantidade}`))
       .catch(err => console.error("Erro:", err));
+
+    // Atualiza também dadosExport local
+    dadosExport = dadosExport.map(d => {
+      if (d.evento === eventoId && d.produto === index) {
+        d.enviada = novaQuantidade;
+      }
+      return d;
+    });
   };
 
   window.exportarXLSX = function() {
     const wb = XLSX.utils.book_new();
-    const ws_data = [];
-    const headers = ["Produto"];
+    const ws_data = [["Produto", "Evento", "Enviada", "Estimativa", "Potencial"]];
 
-    eventos.forEach(e => {
-      headers.push(`${e} - Enviada`, `${e} - Estimativa`, `${e} - Potencial`);
-    });
-    headers.push("Total");
-    ws_data.push(headers);
-
-    produtos.forEach(prod => {
-      const row = [prod.nome];
-      let total = 0;
-      eventos.forEach(evento => {
-        const d = dados[prod.nome][evento];
-        row.push(d.enviada, d.estimativa, d.potencial);
-        total += d.enviada;
-      });
-      row.push(total);
-      ws_data.push(row);
+    dadosExport.forEach(d => {
+      ws_data.push([d.produto, d.evento, d.enviada, d.estimativa, d.potencial]);
     });
 
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     XLSX.utils.book_append_sheet(wb, ws, "Pedido");
     XLSX.writeFile(wb, "pedido_compra.xlsx");
   };
+
+  carregarDados();
+
 </script>
 
 </body>
