@@ -22,19 +22,22 @@
   </aside>
 
   <main class="main-content">
-    <h1>Produtos por Evento - Com Média</h1>
+    <h1>Produtos por Evento - Com Média e Totais</h1>
 
     <button onclick="exportarXLSX()">Exportar para XLSX</button>
+
+    <div id="totaisEventos"></div>
 
     <table class="table table-bordered" style="margin-top:20px;">
       <thead>
         <tr id="headerRow">
           <th>Produto</th>
-          <!-- Eventos inseridos aqui -->
+          <!-- Eventos aqui -->
+          <th>Total Enviado</th>
         </tr>
       </thead>
       <tbody id="tabelaProdutos">
-        <!-- Linhas inseridas aqui -->
+        <!-- Linhas aqui -->
       </tbody>
     </table>
   </main>
@@ -91,37 +94,32 @@
         }
 
         if (!dadosTabela[prodNome][nomeEvento]) {
-          dadosTabela[prodNome][nomeEvento] = { enviada: 0, historico: [] };
+          dadosTabela[prodNome][nomeEvento] = { enviada: 0, count: 0 };
         }
 
         dadosTabela[prodNome][nomeEvento].enviada = produto.quantidade || 0;
+        dadosTabela[prodNome][nomeEvento].count = 1;
       });
     });
 
-    // calcular histórico (média) para cada produto + evento
+    // calcular média correta: total de envios ÷ total de eventos
     for (let prodNome in dadosTabela) {
+      let totalEnvios = 0, totalOcorrencias = 0;
+
       for (let nomeEvento in dadosTabela[prodNome]) {
-        let total = 0;
-        let count = 0;
+        totalEnvios += dadosTabela[prodNome][nomeEvento].enviada;
+        totalOcorrencias += 1;
+      }
 
-        eventos.forEach(evento => {
-          if (evento.nomeEvento === nomeEvento && evento.produtos) {
-            evento.produtos.forEach(produto => {
-              const prodId = produto.produtoId;
-              const pNome = produtosDB[prodId] ? produtosDB[prodId].nome : prodId;
-              if (pNome === prodNome) {
-                total += produto.quantidade || 0;
-                count++;
-              }
-            });
-          }
-        });
+      const mediaGeral = totalOcorrencias ? (totalEnvios / totalOcorrencias).toFixed(2) : '0';
 
-        dadosTabela[prodNome][nomeEvento].media = count ? (total / count).toFixed(2) : '0';
+      for (let nomeEvento in dadosTabela[prodNome]) {
+        dadosTabela[prodNome][nomeEvento].media = mediaGeral;
       }
     }
 
     renderTabela();
+    renderTotaisEventos();
   }
 
   function renderTabela() {
@@ -134,20 +132,47 @@
     const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
 
     eventosNomes.forEach(nome => {
-      headerRow.innerHTML += `<th>${nome} - Env</th><th>${nome} - Méd</th>`;
+      headerRow.innerHTML += `<th>${nome} Env</th><th>${nome} Méd</th>`;
     });
+
+    headerRow.innerHTML += '<th>Total Enviado</th>';
 
     Object.keys(dadosTabela).forEach(produto => {
       const tr = document.createElement('tr');
       let row = `<td>${produto}</td>`;
+      let totalEnviado = 0;
 
       eventosNomes.forEach(nome => {
         const dados = dadosTabela[produto][nome];
-        row += `<td>${dados ? dados.enviada : 0}</td><td>${dados ? dados.media : 0}</td>`;
+        const enviada = dados ? dados.enviada : 0;
+        const media = dados ? dados.media : 0;
+        totalEnviado += Number(enviada);
+        row += `<td>${enviada}</td><td>${media}</td>`;
       });
 
+      row += `<td>${totalEnviado}</td>`;
       tr.innerHTML = row;
       tabela.appendChild(tr);
+    });
+  }
+
+  function renderTotaisEventos() {
+    const div = document.getElementById('totaisEventos');
+    div.innerHTML = '<h3>Totais por Evento</h3>';
+
+    eventos.forEach(evento => {
+      let potencial = 0;
+
+      if (evento.produtos) {
+        evento.produtos.forEach(prod => {
+          const valorVenda = produtosDB[prod.produtoId]?.valorVenda || 0;
+          potencial += (prod.quantidade || 0) * valorVenda;
+        });
+      }
+
+      div.innerHTML += `
+        <p><strong>${evento.nomeEvento}</strong> - Estimativa Venda: R$ ${evento.estimativaVenda || 0}, Potencial Venda: R$ ${potencial.toFixed(2)}</p>
+      `;
     });
   }
 
@@ -157,26 +182,32 @@
 
     const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
     eventosNomes.forEach(nome => {
-      header.push(`${nome} - Env`, `${nome} - Méd`);
+      header.push(`${nome} Env`, `${nome} Méd`);
     });
+    header.push("Total Enviado");
 
     ws_data.push(header);
 
     Object.keys(dadosTabela).forEach(produto => {
       const row = [produto];
+      let totalEnviado = 0;
 
       eventosNomes.forEach(nome => {
         const dados = dadosTabela[produto][nome];
-        row.push(dados ? dados.enviada : 0, dados ? dados.media : 0);
+        const enviada = dados ? dados.enviada : 0;
+        const media = dados ? dados.media : 0;
+        totalEnviado += Number(enviada);
+        row.push(enviada, media);
       });
 
+      row.push(totalEnviado);
       ws_data.push(row);
     });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(ws_data);
     XLSX.utils.book_append_sheet(wb, ws, "Produtos por Evento");
-    XLSX.writeFile(wb, "produtos_por_evento_com_media.xlsx");
+    XLSX.writeFile(wb, "produtos_por_evento_corrigido.xlsx");
   }
 
   document.addEventListener("DOMContentLoaded", carregarDados);
