@@ -137,4 +137,100 @@
   function renderTabela() {
     const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
 
-    const headerRow = document.getElementBy
+    const headerRow = document.getElementById('headerRow');
+    headerRow.innerHTML = `<th>Produto</th>`;
+    eventosNomes.forEach(nome => {
+      headerRow.innerHTML += `<th>${nome}</th>`;
+    });
+    headerRow.innerHTML += `<th>Total</th>`;
+
+    const tbody = document.querySelector('#tabelaProdutos tbody');
+    tbody.innerHTML = '';
+
+    Object.keys(dadosTabela).forEach(produto => {
+      const tr = document.createElement('tr');
+      let row = `<td>${produto}</td>`;
+      let totalEnviado = 0;
+
+      eventosNomes.forEach(nome => {
+        const enviada = dadosTabela[produto][nome] || 0;
+        totalEnviado += enviada;
+        row += `<td>${Number(enviada).toFixed(1).replace('.', ',')}</td>`;
+      });
+
+      row += `<td>${totalEnviado.toFixed(1).replace('.', ',')}</td>`;
+      tr.innerHTML = row;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderTotaisEventos() {
+    const div = document.getElementById('totaisEventos');
+    div.innerHTML = '<h3>Totais por Evento</h3>';
+
+    const table = document.createElement('table');
+    table.classList.add('totais-table');
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = `<tr><th>Evento</th><th>Estimativa Venda</th><th>Potencial Venda</th></tr>`;
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    eventos.forEach(evento => {
+      let potencial = 0;
+
+      if (evento.produtos) {
+        evento.produtos.forEach(prod => {
+          const valorVenda = produtosDB[prod.produtoId]?.valorVenda || 0;
+          potencial += (prod.quantidade || 0) * valorVenda;
+        });
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${evento.nomeEvento}</td>
+                      <td>R$ ${Number(evento.estimativaVenda || 0).toFixed(2).replace('.', ',')}</td>
+                      <td>R$ ${potencial.toFixed(2).replace('.', ',')}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    div.appendChild(table);
+  }
+
+  function exportarXLSX() {
+    const ws_data = [];
+    const header = ["Produto"];
+    const eventosNomes = eventos.map(e => e.nomeEvento || e.id);
+
+    eventosNomes.forEach(nome => {
+      header.push(nome);
+    });
+    header.push("Total");
+    ws_data.push(header);
+
+    Object.keys(dadosTabela).forEach(produto => {
+      const row = [produto];
+      let totalEnviado = 0;
+
+      eventosNomes.forEach(nome => {
+        const enviada = dadosTabela[produto][nome] || 0;
+        totalEnviado += enviada;
+        row.push(Number(enviada).toFixed(1).replace('.', ','));
+      });
+
+      row.push(totalEnviado.toFixed(1).replace('.', ','));
+      ws_data.push(row);
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, "Produtos por Evento");
+    XLSX.writeFile(wb, "produtos_por_evento.xlsx");
+  }
+
+  document.addEventListener("DOMContentLoaded", carregarDados);
+</script>
+
+</body>
+</html>
