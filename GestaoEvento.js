@@ -187,10 +187,42 @@ function renderizarProdutos() {
 }
 
 function calcularTotais() {
+  let totalVendida = 0;
+  let vendaSistema = 0;
+  let custoPerda = 0;
+  let valorAssados = 0;
+  let cmvCalculado = 0;
+
+  listaProdutos.forEach(item => {
+    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
+    
+    totalVendida += vendida;
+    vendaSistema += vendida * produto.valorVenda;
+    custoPerda += item.perda * produto.custo;
+    valorAssados += item.assado * produto.custo;
+    cmvCalculado += vendida * produto.custo;
+  });
+
+  const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
+  const estimativaVenda = parseFloat(document.getElementById('estimativaVenda').value) || 0;
+
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
   const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
-  document.getElementById('custoEquipe').innerText = custoEquipe.toFixed(2);
+
+  const diferencaVenda = vendaPDV - vendaSistema;
+  const lucroFinal = vendaPDV - cmvCalculado - custoLogistica - custoEquipe - custoPerda;
+
+  document.getElementById('totalVendida').innerText = totalVendida;
+  document.getElementById('vendaSistema').innerText = vendaSistema.toFixed(2);
+  document.getElementById('diferencaVenda').innerText = diferencaVenda.toFixed(2);
+  document.getElementById('cmvCalculado').innerText = cmvCalculado.toFixed(2);
+  document.getElementById('lucroFinal').innerText = lucroFinal.toFixed(2);
+  document.getElementById('custoPerda').innerText = custoPerda.toFixed(2);
+  document.getElementById('valorAssados').innerText = valorAssados.toFixed(2);
   document.getElementById('custoLogistica').innerText = custoLogistica.toFixed(2);
+  document.getElementById('custoEquipe').innerText = custoEquipe.toFixed(2);
+  document.getElementById('potencialVenda').innerText = estimativaVenda.toFixed(2);
 }
 
 document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
