@@ -1,68 +1,58 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Le Pan Pan - Teste Firebase</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LepanApp - Dashboard</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Le Pan Pan | Firebase Teste</h1>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+    <main class="main-content">
+      <h1>Dashboard</h1>
 
-  <label for="nome">Nome:</label>
-  <input type="text" id="nome" />
-  <button onclick="salvarNome()">Salvar no Firebase</button>
+      <div class="card-dashboard">
+        <h4>Total de Eventos no Mês</h4>
+        <p><strong>12</strong> eventos realizados</p>
+      </div>
 
-  <h2>Nome salvo:</h2>
-  <p id="resultado"></p>
+      <div class="card-dashboard">
+        <h4>Faturamento Total</h4>
+        <p>R$ <strong>25.000,00</strong></p>
+      </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-analytics.js";
-    import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+      <div class="card-dashboard">
+        <h4>Produtos Mais Vendidos</h4>
+        <ul>
+          <li>Pão de Queijo</li>
+          <li>Coxinha</li>
+          <li>Pastel</li>
+        </ul>
+      </div>
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d",
-      measurementId: "G-VTNGJR7YRL"
-    };
+      <div class="card-dashboard">
+        <h4>Clientes Mais Ativos</h4>
+        <ul>
+          <li>Condomínio Alpha</li>
+          <li>Escola Beta</li>
+          <li>Empresa Gama</li>
+        </ul>
+      </div>
 
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getDatabase(app);
+      <div class="card-dashboard">
+        <h4>Próximos Eventos</h4>
+        <ul>
+          <li>25/05 - Evento A - Aberto</li>
+          <li>27/05 - Evento B - Confirmado</li>
+          <li>29/05 - Evento C - Aberto</li>
+        </ul>
+        <button onclick="location.href='eventos.html'">Ver Todos</button>
+      </div>
 
-    // Salvar nome no Firebase
-    window.salvarNome = function () {
-      const nome = document.getElementById("nome").value;
-      set(ref(db, "teste/usuario"), {
-        nome: nome
-      }).then(() => {
-        alert("Nome salvo com sucesso!");
-        carregarNome();
-      }).catch((error) => {
-        alert("Erro ao salvar: " + error);
-      });
-    }
+    </main>
+  </div>
 
-    // Carregar nome salvo
-    function carregarNome() {
-      const dbRef = ref(db);
-      get(child(dbRef, "teste/usuario")).then((snapshot) => {
-        if (snapshot.exists()) {
-          document.getElementById("resultado").innerText = snapshot.val().nome;
-        } else {
-          document.getElementById("resultado").innerText = "Nada salvo ainda.";
-        }
-      }).catch((error) => {
-        alert("Erro ao ler: " + error);
-      });
-    }
-
-    carregarNome();
-  </script>
+  <script src="incluir-menu.js"></script>
 </body>
 </html>
