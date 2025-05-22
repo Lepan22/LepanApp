@@ -9,9 +9,35 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
-    table th, table td {
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
       text-align: center;
-      padding: 4px;
+      padding: 8px;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    .totais-table {
+      margin-top: 20px;
+      width: 50%;
+    }
+    .btn-export {
+      background-color: #ff7f00;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    .btn-export:hover {
+      background-color: #e96f00;
     }
   </style>
 </head>
@@ -30,11 +56,11 @@
   <main class="main-content">
     <h1>Produtos por Evento - Com Média e Totais</h1>
 
-    <button onclick="exportarXLSX()">Exportar para XLSX</button>
+    <button class="btn-export" onclick="exportarXLSX()">Exportar para XLSX</button>
 
     <div id="totaisEventos"></div>
 
-    <table class="table table-bordered" style="margin-top:20px;">
+    <table id="tabelaProdutos">
       <thead>
         <tr>
           <th rowspan="2">Produto</th>
@@ -43,7 +69,7 @@
         </tr>
         <tr id="subHeaderRow"></tr>
       </thead>
-      <tbody id="tabelaProdutos"></tbody>
+      <tbody></tbody>
     </table>
   </main>
 </div>
@@ -110,7 +136,7 @@
     for (let prodNome in dadosTabela) {
       for (let nomeEvento in dadosTabela[prodNome]) {
         const d = dadosTabela[prodNome][nomeEvento];
-        d.media = d.count ? (d.enviada / d.count).toFixed(2) : '0';
+        d.media = d.count ? (d.enviada / d.count).toFixed(1).replace('.', ',') : '0,0';
       }
     }
 
@@ -131,8 +157,8 @@
       subHeaderRow.innerHTML += `<th>${nome}</th><th></th>`;
     });
 
-    const tabela = document.getElementById('tabelaProdutos');
-    tabela.innerHTML = '';
+    const tbody = document.querySelector('#tabelaProdutos tbody');
+    tbody.innerHTML = '';
 
     Object.keys(dadosTabela).forEach(produto => {
       const tr = document.createElement('tr');
@@ -141,21 +167,30 @@
 
       eventosNomes.forEach(nome => {
         const dados = dadosTabela[produto][nome];
-        const enviada = dados ? dados.enviada : 0;
-        const media = dados ? dados.media : 0;
-        totalEnviado += Number(enviada);
+        const enviada = dados ? Number(dados.enviada).toFixed(1).replace('.', ',') : '0,0';
+        const media = dados ? dados.media : '0,0';
+        totalEnviado += dados ? Number(dados.enviada) : 0;
         row += `<td>${enviada}</td><td>${media}</td>`;
       });
 
-      row += `<td>${totalEnviado}</td>`;
+      row += `<td>${totalEnviado.toFixed(1).replace('.', ',')}</td>`;
       tr.innerHTML = row;
-      tabela.appendChild(tr);
+      tbody.appendChild(tr);
     });
   }
 
   function renderTotaisEventos() {
     const div = document.getElementById('totaisEventos');
     div.innerHTML = '<h3>Totais por Evento</h3>';
+
+    const table = document.createElement('table');
+    table.classList.add('totais-table');
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = `<tr><th>Evento</th><th>Estimativa Venda</th><th>Potencial Venda</th></tr>`;
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
 
     eventos.forEach(evento => {
       let potencial = 0;
@@ -167,10 +202,15 @@
         });
       }
 
-      div.innerHTML += `
-        <p><strong>${evento.nomeEvento}</strong> - Estimativa Venda: R$ ${evento.estimativaVenda || 0}, Potencial Venda: R$ ${potencial.toFixed(2)}</p>
-      `;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${evento.nomeEvento}</td>
+                      <td>R$ ${Number(evento.estimativaVenda || 0).toFixed(2).replace('.', ',')}</td>
+                      <td>R$ ${potencial.toFixed(2).replace('.', ',')}</td>`;
+      tbody.appendChild(tr);
     });
+
+    table.appendChild(tbody);
+    div.appendChild(table);
   }
 
   function exportarXLSX() {
@@ -189,14 +229,14 @@
       let totalEnviado = 0;
 
       eventosNomes.forEach(nome => {
-        const dados = dadosTabela[prodNome][nome];
-        const enviada = dados ? dados.enviada : 0;
-        const media = dados ? dados.media : 0;
-        totalEnviado += Number(enviada);
+        const dados = dadosTabela[produto][nome];
+        const enviada = dados ? Number(dados.enviada).toFixed(1).replace('.', ',') : '0,0';
+        const media = dados ? dados.media : '0,0';
+        totalEnviado += dados ? Number(dados.enviada) : 0;
         row.push(enviada, media);
       });
 
-      row.push(totalEnviado);
+      row.push(totalEnviado.toFixed(1).replace('.', ','));
       ws_data.push(row);
     });
 
