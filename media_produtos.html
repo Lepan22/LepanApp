@@ -13,6 +13,7 @@
     body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
     h1 { color: var(--cor-primaria); }
     table th { background-color: var(--cor-primaria); color: white; }
+    th, td { text-align: center; }
   </style>
 </head>
 <body>
@@ -46,15 +47,9 @@
   <button class="btn btn-primary mb-3" onclick="filtrarRelatorio()">Filtrar</button>
   <button class="btn btn-success mb-3" onclick="exportarExcel()">Exportar Excel</button>
 
-  <table class="table table-bordered">
-    <thead>
-      <tr>
-        <th>Produto</th>
-        <th>Nome do Evento</th>
-        <th>Média de Consumo</th>
-      </tr>
-    </thead>
-    <tbody id="tabelaRelatorio"></tbody>
+  <table class="table table-bordered" id="tabelaRelatorio">
+    <thead id="theadRelatorio"></thead>
+    <tbody id="tbodyRelatorio"></tbody>
   </table>
 
   <script src="assets/media_produtos.js"></script>
