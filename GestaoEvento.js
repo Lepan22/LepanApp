@@ -2,10 +2,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
   authDomain: "lepanapp.firebaseapp.com",
   databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-  projectId: "lepanapp",
-  storageBucket: "lepanapp.appspot.com",
-  messagingSenderId: "542989944344",
-  appId: "1:542989944344:web:576e28199960fd5440a56d"
+  projectId: "lepanapp"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -154,19 +151,31 @@ function adicionarProduto() {
   renderizarProdutos();
 }
 
-function renderizarProdutos() {
+async function buscarMediaProduto(nomeEvento, produtoId) {
+  const snap = await db.ref(`media_evento/${nomeEvento}/${produtoId}`).once('value');
+  return snap.exists() ? snap.val().toFixed(1) : '0.0';
+}
+
+async function renderizarProdutos() {
   const tabela = document.getElementById('tabelaProdutos');
   tabela.innerHTML = '';
-  listaProdutos.forEach((item, index) => {
-    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
+
+  const nomeEvento = document.getElementById('nomeEvento').value;
+
+  for (let index = 0; index < listaProdutos.length; index++) {
+    const item = listaProdutos[index];
+    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { nome: item.produtoId, valorVenda: 0, custo: 0 };
     const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
     const valorVenda = vendida * produto.valorVenda;
     const valorPerda = item.perda * produto.custo;
+
+    const media = item.produtoId && nomeEvento ? await buscarMediaProduto(nomeEvento, item.produtoId) : '0.0';
 
     const row = document.createElement('tr');
     row.innerHTML = `
       <td><select class="form-select form-select-sm">${produtosDisponiveis.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.quantidade}"></td>
+      <td><small>${media}</small></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.congelado}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.assado}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.perda}"></td>
@@ -175,24 +184,22 @@ function renderizarProdutos() {
       <td><input type="text" class="form-control form-control-sm" value="R$ ${valorPerda.toFixed(2)}" disabled></td>
       <td><button class="btn btn-sm btn-outline-danger">🗑️</button></td>
     `;
+
     tabela.appendChild(row);
-    const inputs = row.querySelectorAll('input');
+
     row.querySelector('select').onchange = e => { item.produtoId = e.target.value; renderizarProdutos(); calcularTotais(); };
+    const inputs = row.querySelectorAll('input');
     inputs[0].onchange = e => { item.quantidade = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
     inputs[1].onchange = e => { item.congelado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
     inputs[2].onchange = e => { item.assado = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
     inputs[3].onchange = e => { item.perda = parseInt(e.target.value) || 0; renderizarProdutos(); calcularTotais(); };
+
     row.querySelector('button').onclick = () => { listaProdutos.splice(index, 1); renderizarProdutos(); calcularTotais(); };
-  });
+  }
 }
 
 function calcularTotais() {
-  let totalVendida = 0;
-  let vendaSistema = 0;
-  let custoPerda = 0;
-  let valorAssados = 0;
-  let cmvCalculado = 0;
-  let potencialVenda = 0;
+  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmvCalculado = 0, potencialVenda = 0;
 
   listaProdutos.forEach(item => {
     const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
