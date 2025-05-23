@@ -172,9 +172,14 @@
 
       db.ref('equipe/' + id).set(membro).then(() => {
         form.reset();
-        document.getElementById('equipeId').value = '';  // ✅ LIMPA O ID para evitar sobrescrever.
+        document.getElementById('equipeId').value = '';  // ✅ Limpeza após salvar
         carregarEquipe();
       });
+    });
+
+    // ✅ Limpeza do ID também ao clicar no botão "Limpar"
+    form.addEventListener('reset', () => {
+      document.getElementById('equipeId').value = '';
     });
 
     function carregarEquipe() {
