@@ -92,7 +92,6 @@
 
     <form id="formGestaoEvento" class="form-area">
 
-      <!-- Campos gerais: Nome, Data, Responsável, Status -->
       <div class="row">
         <div class="col-md-3 mb-2">
           <label class="form-label">Nome do Evento</label>
@@ -116,7 +115,21 @@
         </div>
       </div>
 
-      <!-- Totais do Evento -->
+      <div class="row">
+        <div class="col-md-4 mb-2">
+          <label class="form-label">Venda (PDV)</label>
+          <input type="number" id="vendaPDV" class="form-control form-control-sm" step="0.01" oninput="calcularTotais()">
+        </div>
+        <div class="col-md-4 mb-2">
+          <label class="form-label">CMV Real</label>
+          <input type="number" id="cmvReal" class="form-control form-control-sm" step="0.01" oninput="calcularTotais()">
+        </div>
+        <div class="col-md-4 mb-2">
+          <label class="form-label">Estimativa de Venda</label>
+          <input type="number" id="estimativaVenda" class="form-control form-control-sm" step="0.01" oninput="calcularTotais()">
+        </div>
+      </div>
+
       <h4 class="section-title">📊 Totais do Evento</h4>
       <div class="totais-resumo">
         <span>Qtd Vendida: <strong><span id="totalVendida">0</span></strong></span>
@@ -131,7 +144,6 @@
         <span>Potencial Venda: <strong>R$ <span id="potencialVenda">0.00</span></strong></span>
       </div>
 
-      <!-- Equipe e Logística -->
       <h4 class="section-title">👥 Equipe e 🚚 Logística</h4>
       <div class="equipe-logistica">
         <div>
@@ -144,7 +156,6 @@
         </div>
       </div>
 
-      <!-- Produtos -->
       <h4 class="section-title">📦 Produtos</h4>
       <button type="button" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarProduto()">+ Adicionar Produto</button>
 
@@ -153,7 +164,6 @@
           <tr>
             <th>Produto</th>
             <th>Qtd Enviada</th>
-            <th>Média Histórica</th>
             <th>Congelado</th>
             <th>Assado</th>
             <th>Perda</th>
