@@ -72,32 +72,32 @@
       <h1>Equipe</h1>
 
       <form id="formEquipe" class="row g-2 form-area">
+        <input type="hidden" id="equipeId" />
         <div class="col-md-4">
           <label class="form-label">Nome completo</label>
           <input type="text" class="form-control" id="nomeCompleto" required />
         </div>
-        <div class="col-md-4">
+        <div class="col-md-2">
           <label class="form-label">Apelido</label>
           <input type="text" class="form-control" id="apelido" />
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">RG/CPF</label>
           <input type="text" class="form-control" id="documento" />
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">Telefone</label>
           <input type="text" class="form-control" id="telefone" />
         </div>
-        <div class="col-md-4">
+        <div class="col-md-2">
           <label class="form-label">Valor da diária</label>
           <input type="number" class="form-control" id="valorDiaria" step="0.01" />
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">Classificação</label>
           <input type="text" class="form-control" id="classificacao" />
         </div>
-
-        <div class="col-12">
+        <div class="col-md-7">
           <label class="form-label">Disponibilidade (dias da semana)</label>
           <div class="dias-checkbox">
             <label><input type="checkbox" value="Seg" /> Seg</label>
@@ -109,25 +109,24 @@
             <label><input type="checkbox" value="Dom" /> Dom</label>
           </div>
         </div>
-
         <div class="col-12">
           <label class="form-label">Observações</label>
           <textarea class="form-control" id="observacoes" rows="2"></textarea>
         </div>
-
         <div class="col-12 d-flex gap-2 mt-2">
           <button type="submit" class="btn btn-primary">Salvar</button>
           <button type="reset" class="btn btn-secondary">Limpar</button>
         </div>
       </form>
 
-      <h2 class="mb-2">Equipe Cadastrada</h2>
+      <h2 class="mb-2">Lista de Equipe</h2>
       <table class="table table-bordered table-striped">
         <thead>
           <tr>
             <th>Nome</th>
             <th>Apelido</th>
-            <th>Classificação</th>
+            <th>Valor</th>
+            <th style="width: 100px;">Ações</th>
           </tr>
         </thead>
         <tbody id="tabelaEquipe"></tbody>
@@ -144,7 +143,8 @@
       projectId: "lepanapp",
       storageBucket: "lepanapp.firebasestorage.app",
       messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d"
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -155,6 +155,7 @@
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
+      const id = document.getElementById('equipeId').value || db.ref('equipe').push().key;
 
       const diasSelecionados = Array.from(document.querySelectorAll('.dias-checkbox input:checked')).map(input => input.value);
 
@@ -169,7 +170,7 @@
         observacoes: document.getElementById('observacoes').value
       };
 
-      db.ref('equipe').push(membro).then(() => {
+      db.ref('equipe/' + id).set(membro).then(() => {
         form.reset();
         carregarEquipe();
       });
@@ -179,16 +180,45 @@
       db.ref('equipe').on('value', (snapshot) => {
         tabela.innerHTML = '';
         snapshot.forEach((child) => {
+          const id = child.key;
           const p = child.val();
           const row = `<tr>
-            <td>${p.nomeCompleto}</td>
-            <td>${p.apelido}</td>
-            <td>${p.classificacao}</td>
+            <td>${p.nomeCompleto || ''}</td>
+            <td>${p.apelido || ''}</td>
+            <td>R$ ${parseFloat(p.valorDiaria || 0).toFixed(2)}</td>
+            <td>
+              <button class="btn btn-sm btn-warning" onclick="editarEquipe('${id}')">Editar</button>
+              <button class="btn btn-sm btn-danger" onclick="excluirEquipe('${id}')">Excluir</button>
+            </td>
           </tr>`;
           tabela.insertAdjacentHTML('beforeend', row);
         });
       });
     }
+
+    window.editarEquipe = (id) => {
+      db.ref('equipe/' + id).once('value').then(snapshot => {
+        const p = snapshot.val();
+        document.getElementById('equipeId').value = id;
+        document.getElementById('nomeCompleto').value = p.nomeCompleto || '';
+        document.getElementById('apelido').value = p.apelido || '';
+        document.getElementById('documento').value = p.documento || '';
+        document.getElementById('telefone').value = p.telefone || '';
+        document.getElementById('valorDiaria').value = p.valorDiaria || '';
+        document.getElementById('classificacao').value = p.classificacao || '';
+        document.getElementById('observacoes').value = p.observacoes || '';
+
+        document.querySelectorAll('.dias-checkbox input').forEach(input => {
+          input.checked = (p.disponibilidade || []).includes(input.value);
+        });
+      });
+    };
+
+    window.excluirEquipe = (id) => {
+      if (confirm('Deseja excluir este membro da equipe?')) {
+        db.ref('equipe/' + id).remove();
+      }
+    };
 
     carregarEquipe();
   </script>
