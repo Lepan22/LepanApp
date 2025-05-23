@@ -9,6 +9,17 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let eventos = [];
+let produtos = {};
+
+function carregarProdutos() {
+  db.ref('produtos').once('value').then(snapshot => {
+    produtos = {};
+    snapshot.forEach(child => {
+      produtos[child.key] = child.val().nome;
+    });
+    carregarEventos();
+  });
+}
 
 function carregarEventos() {
   db.ref('eventos').once('value').then(snapshot => {
@@ -43,7 +54,8 @@ function filtrarRelatorio() {
   const nomeFiltro = Array.from(document.getElementById('nomeEventoFiltro').selectedOptions).map(opt => opt.value);
   const statusFiltro = document.getElementById('statusFiltro').value;
 
-  const produtosAgrupados = {};
+  const agrupado = {};
+  const eventosNomes = new Set();
 
   eventos.forEach(evento => {
     if (statusFiltro && evento.status !== statusFiltro) return;
@@ -51,47 +63,57 @@ function filtrarRelatorio() {
     if (dataFim && evento.data > dataFim) return;
     if (nomeFiltro.length && !nomeFiltro.includes(evento.nomeEvento)) return;
 
-    if (evento.status !== "Fechado") return; // Considera só Fechado para média
+    if (!evento.produtos) return;
 
-    evento.produtos?.forEach(produto => {
-      const chave = `${produto.produtoId}_${evento.nomeEvento}`;
-      if (!produtosAgrupados[chave]) {
-        produtosAgrupados[chave] = {
-          nomeProduto: produto.produtoId,
-          nomeEvento: evento.nomeEvento,
-          total: 0,
-          count: 0
-        };
-      }
+    eventosNomes.add(evento.nomeEvento);
+
+    evento.produtos.forEach(produto => {
+      const nomeProduto = produtos[produto.produtoId] || produto.produtoId;
+
+      if (!agrupado[nomeProduto]) agrupado[nomeProduto] = {};
+      if (!agrupado[nomeProduto][evento.nomeEvento]) agrupado[nomeProduto][evento.nomeEvento] = { total: 0, count: 0 };
 
       const consumido = produto.quantidade - (produto.congelado || 0) - (produto.assado || 0) - (produto.perda || 0);
-      produtosAgrupados[chave].total += consumido;
-      produtosAgrupados[chave].count += 1;
+      agrupado[nomeProduto][evento.nomeEvento].total += consumido;
+      agrupado[nomeProduto][evento.nomeEvento].count += 1;
     });
   });
 
-  renderizarTabela(produtosAgrupados);
+  renderizarTabela(agrupado, Array.from(eventosNomes).sort());
 }
 
-function renderizarTabela(produtosAgrupados) {
-  const tbody = document.getElementById('tabelaRelatorio');
+function renderizarTabela(agrupado, eventosNomes) {
+  const thead = document.getElementById('theadRelatorio');
+  const tbody = document.getElementById('tbodyRelatorio');
+
+  thead.innerHTML = '';
   tbody.innerHTML = '';
 
-  Object.values(produtosAgrupados).forEach(item => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${item.nomeProduto}</td>
-      <td>${item.nomeEvento}</td>
-      <td>${(item.total / item.count).toFixed(2)}</td>
-    `;
-    tbody.appendChild(tr);
+  // Cabeçalho
+  let header = '<tr><th>Nome do Produto</th>';
+  eventosNomes.forEach(evt => {
+    header += `<th>${evt}</th>`;
+  });
+  header += '</tr>';
+  thead.innerHTML = header;
+
+  // Linhas
+  Object.keys(agrupado).forEach(produto => {
+    let row = `<tr><td>${produto}</td>`;
+    eventosNomes.forEach(evt => {
+      const data = agrupado[produto][evt];
+      const media = data ? (data.total / data.count).toFixed(2) : '0.00';
+      row += `<td>${media}</td>`;
+    });
+    row += '</tr>';
+    tbody.innerHTML += row;
   });
 }
 
 function exportarExcel() {
-  const tabela = document.querySelector('table');
-  const wb = XLSX.utils.table_to_book(tabela, {sheet:"Relatório"});
+  const tabela = document.getElementById('tabelaRelatorio');
+  const wb = XLSX.utils.table_to_book(tabela, { sheet: "Relatório" });
   XLSX.writeFile(wb, 'media_consumo_evento.xlsx');
 }
 
-document.addEventListener('DOMContentLoaded', carregarEventos);
+document.addEventListener('DOMContentLoaded', carregarProdutos);
