@@ -71,6 +71,7 @@ function filtrarRelatorio() {
 
     evento.produtos.forEach(produto => {
       const nomeProduto = produtos[produto.produtoId] || produto.produtoId;
+
       if (!agrupado[nomeProduto]) agrupado[nomeProduto] = {};
       if (!agrupado[nomeProduto][evento.nomeEvento]) agrupado[nomeProduto][evento.nomeEvento] = { total: 0, count: 0 };
 
@@ -80,6 +81,7 @@ function filtrarRelatorio() {
 
       if (!mediasPorEvento[evento.nomeEvento]) mediasPorEvento[evento.nomeEvento] = {};
       if (!mediasPorEvento[evento.nomeEvento][produto.produtoId]) mediasPorEvento[evento.nomeEvento][produto.produtoId] = { total: 0, count: 0 };
+
       mediasPorEvento[evento.nomeEvento][produto.produtoId].total += consumido;
       mediasPorEvento[evento.nomeEvento][produto.produtoId].count += 1;
     });
@@ -122,6 +124,7 @@ function exportarExcel() {
 
 function atualizarFirebase() {
   const updates = {};
+
   Object.keys(mediasPorEvento).forEach(nomeEvento => {
     Object.keys(mediasPorEvento[nomeEvento]).forEach(produtoId => {
       const mediaObj = mediasPorEvento[nomeEvento][produtoId];
