@@ -152,6 +152,8 @@
     const form = document.getElementById('formEquipe');
     const tabela = document.getElementById('tabelaEquipe');
 
+    let idEdicao = null;
+
     form.addEventListener('submit', (e) => {
       e.preventDefault();
 
@@ -168,17 +170,17 @@
         observacoes: document.getElementById('observacoes').value
       };
 
-      const id = form.dataset.editing || db.ref('equipe').push().key;
+      const ref = idEdicao ? db.ref('equipe/' + idEdicao) : db.ref('equipe').push();
 
-      db.ref('equipe/' + id).set(membro).then(() => {
+      ref.set(membro).then(() => {
         form.reset();
-        delete form.dataset.editing;  // limpa modo edição
+        idEdicao = null;
         carregarEquipe();
       });
     });
 
     form.addEventListener('reset', () => {
-      delete form.dataset.editing;  // limpa modo edição ao limpar form
+      idEdicao = null;
     });
 
     function carregarEquipe() {
@@ -204,7 +206,7 @@
     window.editarEquipe = (id) => {
       db.ref('equipe/' + id).once('value').then(snapshot => {
         const p = snapshot.val();
-        form.dataset.editing = id;
+        idEdicao = id;
 
         document.getElementById('nomeCompleto').value = p.nomeCompleto || '';
         document.getElementById('apelido').value = p.apelido || '';
