@@ -1,42 +1,163 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cadastro de Equipe</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Equipe</title>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+
+  <style>
+    :root {
+      --cor-primaria: #ff7f00;
+      --cor-secundaria: #f9f9f9;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+    }
+
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 220px;
+      background-color: var(--cor-primaria);
+      color: white;
+      padding: 20px 10px;
+    }
+
+    .main-content {
+      flex-grow: 1;
+      padding: 20px;
+    }
+
+    .form-area {
+      background: var(--cor-secundaria);
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .table th {
+      background-color: var(--cor-primaria);
+      color: white;
+      font-size: 0.85rem;
+    }
+
+    .table td {
+      font-size: 0.85rem;
+      padding: 4px 6px;
+      vertical-align: middle;
+    }
+
+    .dias-checkbox {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+
+    <main class="main-content">
+      <h1>Equipe</h1>
+
+      <form id="formEquipe" class="row g-2 form-area">
+        <input type="hidden" id="equipeId" />
+        <div class="col-md-4">
+          <label class="form-label">Nome completo</label>
+          <input type="text" class="form-control" id="nomeCompleto" required />
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Apelido</label>
+          <input type="text" class="form-control" id="apelido" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">RG/CPF</label>
+          <input type="text" class="form-control" id="documento" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Telefone</label>
+          <input type="text" class="form-control" id="telefone" />
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Valor da diária</label>
+          <input type="number" class="form-control" id="valorDiaria" step="0.01" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Classificação</label>
+          <input type="text" class="form-control" id="classificacao" />
+        </div>
+        <div class="col-md-7">
+          <label class="form-label">Disponibilidade (dias da semana)</label>
+          <div class="dias-checkbox">
+            <label><input type="checkbox" value="Seg" /> Seg</label>
+            <label><input type="checkbox" value="Ter" /> Ter</label>
+            <label><input type="checkbox" value="Qua" /> Qua</label>
+            <label><input type="checkbox" value="Qui" /> Qui</label>
+            <label><input type="checkbox" value="Sex" /> Sex</label>
+            <label><input type="checkbox" value="Sáb" /> Sáb</label>
+            <label><input type="checkbox" value="Dom" /> Dom</label>
+          </div>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Observações</label>
+          <textarea class="form-control" id="observacoes" rows="2"></textarea>
+        </div>
+        <div class="col-12 d-flex gap-2 mt-2">
+          <button type="submit" class="btn btn-primary">Salvar</button>
+          <button type="reset" class="btn btn-secondary">Limpar</button>
+        </div>
+      </form>
+
+      <h2 class="mb-2">Lista de Equipe</h2>
+      <table class="table table-bordered table-striped">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Apelido</th>
+            <th>Valor</th>
+            <th style="width: 100px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaEquipe"></tbody>
+      </table>
+    </main>
+  </div>
+
+  <script src="incluir-menu.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp"
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.firebasestorage.app",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    function carregarEquipe() {
-      const lista = document.getElementById('listaEquipe');
-      lista.innerHTML = '';
-      db.ref('equipe').once('value').then(snapshot => {
-        snapshot.forEach(child => {
-          const membro = child.val();
-          const li = document.createElement('li');
-          li.textContent = membro.apelido + ' (' + membro.cargo + ')';
-          lista.appendChild(li);
-        });
-      });
-    }
+    const form = document.getElementById('formEquipe');
+    const tabela = document.getElementById('tabelaEquipe');
 
-    document.addEventListener('DOMContentLoaded', carregarEquipe);
-
-    function salvarEquipe(e) {
+    form.addEventListener('submit', (e) => {
       e.preventDefault();
-      const form = document.getElementById('formEquipe');
-      const id = document.getElementById('equipeId').value || db.ref().child('equipe').push().key;
+      const id = document.getElementById('equipeId').value || db.ref('equipe').push().key;
+
+      const diasSelecionados = Array.from(document.querySelectorAll('.dias-checkbox input:checked')).map(input => input.value);
 
       const membro = {
         nomeCompleto: document.getElementById('nomeCompleto').value,
@@ -45,56 +166,62 @@
         telefone: document.getElementById('telefone').value,
         valorDiaria: parseFloat(document.getElementById('valorDiaria').value),
         classificacao: document.getElementById('classificacao').value,
+        disponibilidade: diasSelecionados,
         observacoes: document.getElementById('observacoes').value
       };
 
       db.ref('equipe/' + id).set(membro).then(() => {
         form.reset();
-        document.getElementById('equipeId').value = '';
+        document.getElementById('equipeId').value = '';  // Correção: limpa o campo ID após salvar
         carregarEquipe();
       });
+    });
+
+    function carregarEquipe() {
+      db.ref('equipe').on('value', (snapshot) => {
+        tabela.innerHTML = '';
+        snapshot.forEach((child) => {
+          const id = child.key;
+          const p = child.val();
+          const row = `<tr>
+            <td>${p.nomeCompleto || ''}</td>
+            <td>${p.apelido || ''}</td>
+            <td>R$ ${parseFloat(p.valorDiaria || 0).toFixed(2)}</td>
+            <td>
+              <button class="btn btn-sm btn-warning" onclick="editarEquipe('${id}')">Editar</button>
+              <button class="btn btn-sm btn-danger" onclick="excluirEquipe('${id}')">Excluir</button>
+            </td>
+          </tr>`;
+          tabela.insertAdjacentHTML('beforeend', row);
+        });
+      });
     }
+
+    window.editarEquipe = (id) => {
+      db.ref('equipe/' + id).once('value').then(snapshot => {
+        const p = snapshot.val();
+        document.getElementById('equipeId').value = id;
+        document.getElementById('nomeCompleto').value = p.nomeCompleto || '';
+        document.getElementById('apelido').value = p.apelido || '';
+        document.getElementById('documento').value = p.documento || '';
+        document.getElementById('telefone').value = p.telefone || '';
+        document.getElementById('valorDiaria').value = p.valorDiaria || '';
+        document.getElementById('classificacao').value = p.classificacao || '';
+        document.getElementById('observacoes').value = p.observacoes || '';
+
+        document.querySelectorAll('.dias-checkbox input').forEach(input => {
+          input.checked = (p.disponibilidade || []).includes(input.value);
+        });
+      });
+    };
+
+    window.excluirEquipe = (id) => {
+      if (confirm('Deseja excluir este membro da equipe?')) {
+        db.ref('equipe/' + id).remove();
+      }
+    };
+
+    carregarEquipe();
   </script>
-</head>
-<body class="container py-4">
-
-  <h2>Cadastro de Equipe</h2>
-
-  <form id="formEquipe" onsubmit="salvarEquipe(event)">
-    <input type="hidden" id="equipeId">
-    <div class="mb-2">
-      <label class="form-label">Nome Completo</label>
-      <input type="text" id="nomeCompleto" class="form-control" required>
-    </div>
-    <div class="mb-2">
-      <label class="form-label">Apelido</label>
-      <input type="text" id="apelido" class="form-control" required>
-    </div>
-    <div class="mb-2">
-      <label class="form-label">Documento</label>
-      <input type="text" id="documento" class="form-control" required>
-    </div>
-    <div class="mb-2">
-      <label class="form-label">Telefone</label>
-      <input type="text" id="telefone" class="form-control" required>
-    </div>
-    <div class="mb-2">
-      <label class="form-label">Valor Diária</label>
-      <input type="number" id="valorDiaria" class="form-control" required>
-    </div>
-    <div class="mb-2">
-      <label class="form-label">Classificação</label>
-      <input type="text" id="classificacao" class="form-control" required>
-    </div>
-    <div class="mb-2">
-      <label class="form-label">Observações</label>
-      <textarea id="observacoes" class="form-control"></textarea>
-    </div>
-    <button type="submit" class="btn btn-primary">Salvar</button>
-  </form>
-
-  <h3 class="mt-4">Equipe Cadastrada</h3>
-  <ul id="listaEquipe" class="list-group"></ul>
-
 </body>
 </html>
