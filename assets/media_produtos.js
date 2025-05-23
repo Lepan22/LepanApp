@@ -10,6 +10,7 @@ const db = firebase.database();
 
 let eventos = [];
 let produtos = {};
+let mediasPorEvento = {};
 
 function carregarProdutos() {
   db.ref('produtos').once('value').then(snapshot => {
@@ -57,25 +58,30 @@ function filtrarRelatorio() {
   const agrupado = {};
   const eventosNomes = new Set();
 
+  mediasPorEvento = {};
+
   eventos.forEach(evento => {
     if (statusFiltro && evento.status !== statusFiltro) return;
     if (dataInicio && evento.data < dataInicio) return;
     if (dataFim && evento.data > dataFim) return;
     if (nomeFiltro.length && !nomeFiltro.includes(evento.nomeEvento)) return;
-
     if (!evento.produtos) return;
 
     eventosNomes.add(evento.nomeEvento);
 
     evento.produtos.forEach(produto => {
       const nomeProduto = produtos[produto.produtoId] || produto.produtoId;
-
       if (!agrupado[nomeProduto]) agrupado[nomeProduto] = {};
       if (!agrupado[nomeProduto][evento.nomeEvento]) agrupado[nomeProduto][evento.nomeEvento] = { total: 0, count: 0 };
 
       const consumido = produto.quantidade - (produto.congelado || 0) - (produto.assado || 0) - (produto.perda || 0);
       agrupado[nomeProduto][evento.nomeEvento].total += consumido;
       agrupado[nomeProduto][evento.nomeEvento].count += 1;
+
+      if (!mediasPorEvento[evento.nomeEvento]) mediasPorEvento[evento.nomeEvento] = {};
+      if (!mediasPorEvento[evento.nomeEvento][produto.produtoId]) mediasPorEvento[evento.nomeEvento][produto.produtoId] = { total: 0, count: 0 };
+      mediasPorEvento[evento.nomeEvento][produto.produtoId].total += consumido;
+      mediasPorEvento[evento.nomeEvento][produto.produtoId].count += 1;
     });
   });
 
@@ -89,7 +95,6 @@ function renderizarTabela(agrupado, eventosNomes) {
   thead.innerHTML = '';
   tbody.innerHTML = '';
 
-  // Cabeçalho
   let header = '<tr><th>Nome do Produto</th>';
   eventosNomes.forEach(evt => {
     header += `<th>${evt}</th>`;
@@ -97,7 +102,6 @@ function renderizarTabela(agrupado, eventosNomes) {
   header += '</tr>';
   thead.innerHTML = header;
 
-  // Linhas
   Object.keys(agrupado).forEach(produto => {
     let row = `<tr><td>${produto}</td>`;
     eventosNomes.forEach(evt => {
@@ -114,6 +118,21 @@ function exportarExcel() {
   const tabela = document.getElementById('tabelaRelatorio');
   const wb = XLSX.utils.table_to_book(tabela, { sheet: "Relatório" });
   XLSX.writeFile(wb, 'media_consumo_evento.xlsx');
+}
+
+function atualizarFirebase() {
+  const updates = {};
+  Object.keys(mediasPorEvento).forEach(nomeEvento => {
+    Object.keys(mediasPorEvento[nomeEvento]).forEach(produtoId => {
+      const mediaObj = mediasPorEvento[nomeEvento][produtoId];
+      const media = (mediaObj.total / mediaObj.count).toFixed(1);
+      updates[`media_evento/${nomeEvento}/${produtoId}`] = parseFloat(media);
+    });
+  });
+
+  db.ref().update(updates).then(() => {
+    alert("Médias atualizadas com sucesso no Firebase!");
+  });
 }
 
 document.addEventListener('DOMContentLoaded', carregarProdutos);
