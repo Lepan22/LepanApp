@@ -9,50 +9,109 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
-    :root { --cor-primaria: #ff7f00; }
-    body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
-    h1 { color: var(--cor-primaria); }
-    table th { background-color: var(--cor-primaria); color: white; }
-    th, td { text-align: center; }
+    :root {
+      --cor-primaria: #ff7f00;
+      --cor-secundaria: #f9f9f9;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+    .sidebar {
+      width: 220px;
+      background-color: var(--cor-primaria);
+      color: white;
+      padding: 20px 10px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      margin-bottom: 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    .main-content {
+      flex-grow: 1;
+      padding: 20px;
+      background: var(--cor-secundaria);
+    }
+    .form-area {
+      background: white;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    h1 {
+      color: var(--cor-primaria);
+      font-size: 1.5rem;
+    }
+    table th {
+      background-color: var(--cor-primaria);
+      color: white;
+      font-size: 0.75rem;
+    }
+    table td {
+      font-size: 0.75rem;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
 
-  <h1>📊 Média de Consumo por Evento</h1>
-
-  <div class="row mb-3">
-    <div class="col">
-      <label>Data Início:</label>
-      <input type="date" id="dataInicio" class="form-control">
-    </div>
-    <div class="col">
-      <label>Data Fim:</label>
-      <input type="date" id="dataFim" class="form-control">
-    </div>
-    <div class="col">
-      <label>Nome do Evento:</label>
-      <select id="nomeEventoFiltro" class="form-select" multiple></select>
-    </div>
-    <div class="col">
-      <label>Status:</label>
-      <select id="statusFiltro" class="form-select">
-        <option value="Fechado">Fechado</option>
-        <option value="Finalizado">Finalizado</option>
-        <option value="Aberto">Aberto</option>
-        <option value="">Todos</option>
-      </select>
-    </div>
+<div class="layout">
+  <div class="sidebar">
+    <h4>LePanApp</h4>
+    <a href="produtos.html">Produtos</a>
+    <a href="equipe.html">Equipe</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="eventos.html">Eventos</a>
+    <a href="logistica.html">Logística</a>
+    <a href="media_produtos.html">Relatório: Média</a>
   </div>
 
-  <button class="btn btn-primary mb-3" onclick="filtrarRelatorio()">Filtrar</button>
-  <button class="btn btn-success mb-3" onclick="exportarExcel()">Exportar Excel</button>
+  <div class="main-content">
+    <h1>📊 Média de Consumo por Evento</h1>
 
-  <table class="table table-bordered" id="tabelaRelatorio">
-    <thead id="theadRelatorio"></thead>
-    <tbody id="tbodyRelatorio"></tbody>
-  </table>
+    <div class="form-area">
+      <div class="row">
+        <div class="col-md-3 mb-2">
+          <label>Data Início:</label>
+          <input type="date" id="dataInicio" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3 mb-2">
+          <label>Data Fim:</label>
+          <input type="date" id="dataFim" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-3 mb-2">
+          <label>Nome do Evento:</label>
+          <select id="nomeEventoFiltro" class="form-select form-select-sm" multiple></select>
+        </div>
+        <div class="col-md-3 mb-2">
+          <label>Status:</label>
+          <select id="statusFiltro" class="form-select form-select-sm">
+            <option value="Fechado">Fechado</option>
+            <option value="Finalizado">Finalizado</option>
+            <option value="Aberto">Aberto</option>
+            <option value="">Todos</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm mt-2" onclick="filtrarRelatorio()">Filtrar</button>
+      <button class="btn btn-success btn-sm mt-2" onclick="exportarExcel()">Exportar Excel</button>
+    </div>
 
-  <script src="assets/media_produtos.js"></script>
+    <table class="table table-bordered">
+      <thead id="theadRelatorio"></thead>
+      <tbody id="tbodyRelatorio"></tbody>
+    </table>
+  </div>
+</div>
+
+<script src="assets/media_produtos.js"></script>
 
 </body>
 </html>
