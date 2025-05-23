@@ -70,8 +70,8 @@
     <div class="filtros">
       <label>Status:
         <select id="filtroStatus">
-          <option value="todos">Todos</option>
           <option value="aberto" selected>Aberto</option>
+          <option value="finalizado">Finalizado</option>
           <option value="fechado">Fechado</option>
         </select>
       </label>
@@ -117,6 +117,7 @@
   let dadosTabela = {};
 
   function formatDateBR(dataISO) {
+    if (!dataISO) return '';
     const [ano, mes, dia] = dataISO.split("-");
     return `${dia}/${mes}/${ano}`;
   }
@@ -164,7 +165,7 @@
     const filtroData = document.getElementById('filtroData').value;
 
     const eventosFiltrados = eventos.filter(e => {
-      const statusOk = filtroStatus === 'todos' || (e.status || 'aberto') === filtroStatus;
+      const statusOk = (e.status || '').toLowerCase() === filtroStatus;
       const dataOk = e.data ? isWithinRange(e.data, filtroData) : true;
       return statusOk && dataOk;
     });
