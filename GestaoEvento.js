@@ -175,7 +175,7 @@ async function renderizarProdutos() {
     row.innerHTML = `
       <td><select class="form-select form-select-sm">${produtosDisponiveis.map(p => `<option value="${p.id}" ${p.id === item.produtoId ? 'selected' : ''}>${p.nome}</option>`).join('')}</select></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.quantidade}"></td>
-      <td><small>${media}</small></td>
+      <td><input type="text" class="form-control form-control-sm" value="${media}" disabled></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.congelado}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.assado}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.perda}"></td>
