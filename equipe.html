@@ -73,7 +73,7 @@
 
       <form id="formEquipe" class="row g-2 form-area">
         <input type="hidden" id="equipeId" />
-        <div class="col-md-4">
+        <div class="col-md-3">
           <label class="form-label">Nome completo</label>
           <input type="text" class="form-control" id="nomeCompleto" required />
         </div>
@@ -81,11 +81,11 @@
           <label class="form-label">Apelido</label>
           <input type="text" class="form-control" id="apelido" />
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label class="form-label">RG/CPF</label>
           <input type="text" class="form-control" id="documento" />
         </div>
-        <div class="col-md-3">
+        <div class="col-md-2">
           <label class="form-label">Telefone</label>
           <input type="text" class="form-control" id="telefone" />
         </div>
@@ -97,7 +97,7 @@
           <label class="form-label">Classificação</label>
           <input type="text" class="form-control" id="classificacao" />
         </div>
-        <div class="col-md-7">
+        <div class="col-md-6">
           <label class="form-label">Disponibilidade (dias da semana)</label>
           <div class="dias-checkbox">
             <label><input type="checkbox" value="Seg" /> Seg</label>
@@ -143,8 +143,7 @@
       projectId: "lepanapp",
       storageBucket: "lepanapp.firebasestorage.app",
       messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d",
-      measurementId: "G-VTNGJR7YRL"
+      appId: "1:542989944344:web:576e28199960fd5440a56d"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -159,12 +158,14 @@
 
       const diasSelecionados = Array.from(document.querySelectorAll('.dias-checkbox input:checked')).map(input => input.value);
 
+      const valorDiaria = document.getElementById('valorDiaria').value ? parseFloat(document.getElementById('valorDiaria').value) : null;
+
       const membro = {
         nomeCompleto: document.getElementById('nomeCompleto').value,
         apelido: document.getElementById('apelido').value,
         documento: document.getElementById('documento').value,
         telefone: document.getElementById('telefone').value,
-        valorDiaria: parseFloat(document.getElementById('valorDiaria').value),
+        valorDiaria: valorDiaria,
         classificacao: document.getElementById('classificacao').value,
         disponibilidade: diasSelecionados,
         observacoes: document.getElementById('observacoes').value
@@ -172,6 +173,7 @@
 
       db.ref('equipe/' + id).set(membro).then(() => {
         form.reset();
+        document.getElementById('equipeId').value = '';  // limpa para evitar sobrescrever
         carregarEquipe();
       });
     });
@@ -185,7 +187,7 @@
           const row = `<tr>
             <td>${p.nomeCompleto || ''}</td>
             <td>${p.apelido || ''}</td>
-            <td>R$ ${parseFloat(p.valorDiaria || 0).toFixed(2)}</td>
+            <td>R$ ${p.valorDiaria ? parseFloat(p.valorDiaria).toFixed(2) : ''}</td>
             <td>
               <button class="btn btn-sm btn-warning" onclick="editarEquipe('${id}')">Editar</button>
               <button class="btn btn-sm btn-danger" onclick="excluirEquipe('${id}')">Excluir</button>
