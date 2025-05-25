@@ -2,37 +2,205 @@ const firebaseConfig = {
   apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
   authDomain: "lepanapp.firebaseapp.com",
   databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-  projectId: "lepanapp",
-  storageBucket: "lepanapp.appspot.com",
-  messagingSenderId: "542989944344",
-  appId: "1:542989944344:web:576e28199960fd5440a56d"
+  projectId: "lepanapp"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-function carregarEventos() {
-  db.ref('eventos').once('value').then(snapshot => {
-    const tabela = document.getElementById('tabelaEventos');
-    tabela.innerHTML = '';
+let equipeDisponivel = [], logisticaDisponivel = [], produtosDisponiveis = [];
+let equipeAlocada = [], logisticaAlocada = [], listaProdutos = [];
+let eventoId = null;
 
+function carregarClientes() {
+  const selectEvento = document.getElementById('nomeEvento');
+  db.ref('clientes').once('value').then(snapshot => {
+    selectEvento.innerHTML = '<option value="">Selecione</option>';
     snapshot.forEach(child => {
-      const evento = child.val();
-      const id = child.key;
-
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${evento.nomeEvento || '-'}</td>
-        <td>${evento.data || '-'}</td>
-        <td>${evento.status || '-'}</td>
-        <td>
-          <a href="teste_gestao.html?id=${id}" class="btn btn-sm btn-outline-primary">Editar</a>
-        </td>
-      `;
-
-      tabela.appendChild(row);
+      const cliente = child.val();
+      if (cliente.status === 'Fechado' && cliente.clienteAtivo?.nomeEvento) {
+        const opt = document.createElement('option');
+        opt.value = cliente.clienteAtivo.nomeEvento;
+        opt.textContent = cliente.clienteAtivo.nomeEvento;
+        selectEvento.appendChild(opt);
+      }
     });
   });
 }
 
-document.addEventListener('DOMContentLoaded', carregarEventos);
+function carregarResponsaveis() {
+  const select = document.getElementById('responsavel');
+  db.ref('equipe').once('value').then(snapshot => {
+    select.innerHTML = '<option value="">Selecione</option>';
+    snapshot.forEach(child => {
+      const membro = child.val();
+      const opt = document.createElement('option');
+      opt.value = membro.apelido;
+      opt.textContent = membro.apelido;
+      select.appendChild(opt);
+    });
+  });
+}
+
+function carregarProdutosDisponiveis() {
+  db.ref('produtos').once('value').then(snapshot => {
+    produtosDisponiveis = [];
+    const datalist = document.getElementById('produtosList');
+    datalist.innerHTML = '';
+    snapshot.forEach(child => {
+      const produto = child.val();
+      produtosDisponiveis.push({ id: child.key, nome: produto.nome, valorVenda: produto.valorVenda || 0, custo: produto.custo || 0 });
+      const opt = document.createElement('option');
+      opt.value = produto.nome;
+      datalist.appendChild(opt);
+    });
+  });
+}
+
+function carregarEventoExistente() {
+  const params = new URLSearchParams(window.location.search);
+  eventoId = params.get('id');
+  if (!eventoId) return;
+
+  db.ref('eventos/' + eventoId).once('value').then(snapshot => {
+    const evento = snapshot.val();
+    if (!evento) return;
+
+    document.getElementById('nomeEvento').value = evento.nomeEvento || '';
+    document.getElementById('data').value = evento.data || '';
+    document.getElementById('responsavel').value = evento.responsavel || '';
+    document.getElementById('status').value = evento.status || '';
+    document.getElementById('vendaPDV').value = evento.vendaPDV || '';
+    document.getElementById('cmvReal').value = evento.cmvReal || '';
+    document.getElementById('estimativaVenda').value = evento.estimativaVenda || '';
+
+    equipeAlocada = evento.equipe || [];
+    logisticaAlocada = evento.logistica || [];
+    listaProdutos = evento.produtos || [];
+
+    renderizarEquipe();
+    renderizarLogistica();
+    renderizarProdutos();
+    calcularTotais();
+  });
+}
+
+function adicionarProduto() {
+  listaProdutos.push({ produtoId: '', produtoNome: '', quantidade: 0, congelado: 0, assado: 0, perda: 0 });
+  renderizarProdutos();
+}
+
+async function buscarMediaProduto(nomeEvento, produtoId) {
+  const snap = await db.ref(`media_evento/${nomeEvento}/${produtoId}`).once('value');
+  return snap.exists() ? snap.val().toFixed(1) : '0.0';
+}
+
+async function renderizarProdutos() {
+  const tabela = document.getElementById('tabelaProdutos');
+  tabela.innerHTML = '';
+
+  const nomeEvento = document.getElementById('nomeEvento').value;
+
+  for (let index = 0; index < listaProdutos.length; index++) {
+    const item = listaProdutos[index];
+    const produto = produtosDisponiveis.find(p => p.nome === item.produtoNome) || { id: '', nome: '', valorVenda: 0, custo: 0 };
+    item.produtoId = produto.id;
+
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
+    const valorVenda = vendida * produto.valorVenda;
+    const valorPerda = item.perda * produto.custo;
+
+    const media = item.produtoId && nomeEvento ? await buscarMediaProduto(nomeEvento, item.produtoId) : '0.0';
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><input type="text" class="form-control form-control-sm" list="produtosList" value="${item.produtoNome}"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.quantidade}"></td>
+      <td><input type="text" class="form-control form-control-sm" value="${media}" disabled></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.congelado}"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.assado}"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.perda}"></td>
+      <td><input type="text" class="form-control form-control-sm" value="${vendida}" disabled></td>
+      <td><input type="text" class="form-control form-control-sm" value="R$ ${valorVenda.toFixed(2)}" disabled></td>
+      <td><input type="text" class="form-control form-control-sm" value="R$ ${valorPerda.toFixed(2)}" disabled></td>
+      <td><button class="btn btn-sm btn-outline-danger">🗑️</button></td>
+    `;
+    tabela.appendChild(row);
+
+    const inputs = row.querySelectorAll('input');
+    inputs[0].onchange = e => { item.produtoNome = e.target.value; calcularTotais(); };
+    inputs[1].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; calcularTotais(); };
+    inputs[3].oninput = e => { item.congelado = parseInt(e.target.value) || 0; calcularTotais(); };
+    inputs[4].oninput = e => { item.assado = parseInt(e.target.value) || 0; calcularTotais(); };
+    inputs[5].oninput = e => { item.perda = parseInt(e.target.value) || 0; calcularTotais(); };
+
+    row.querySelector('button').onclick = () => { listaProdutos.splice(index, 1); renderizarProdutos(); calcularTotais(); };
+  }
+}
+
+function calcularTotais() {
+  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmvCalculado = 0, potencialVenda = 0;
+
+  listaProdutos.forEach(item => {
+    const produto = produtosDisponiveis.find(p => p.nome === item.produtoNome) || { valorVenda: 0, custo: 0 };
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
+
+    totalVendida += vendida;
+    vendaSistema += vendida * produto.valorVenda;
+    custoPerda += item.perda * produto.custo;
+    valorAssados += item.assado * produto.custo;
+    cmvCalculado += vendida * produto.custo;
+    potencialVenda += item.quantidade * produto.valorVenda;
+  });
+
+  const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
+  const cmvReal = parseFloat(document.getElementById('cmvReal').value) || 0;
+
+  const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
+  const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
+
+  const diferencaVenda = vendaPDV - vendaSistema;
+  const lucroFinal = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
+
+  document.getElementById('totalVendida').innerText = totalVendida;
+  document.getElementById('vendaSistema').innerText = vendaSistema.toFixed(2);
+  document.getElementById('diferencaVenda').innerText = diferencaVenda.toFixed(2);
+  document.getElementById('cmvCalculado').innerText = cmvCalculado.toFixed(2);
+  document.getElementById('lucroFinal').innerText = lucroFinal.toFixed(2);
+  document.getElementById('custoPerda').innerText = custoPerda.toFixed(2);
+  document.getElementById('valorAssados').innerText = valorAssados.toFixed(2);
+  document.getElementById('custoLogistica').innerText = custoLogistica.toFixed(2);
+  document.getElementById('custoEquipe').innerText = custoEquipe.toFixed(2);
+  document.getElementById('potencialVenda').innerText = potencialVenda.toFixed(2);
+}
+
+document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const evento = {
+    nomeEvento: document.getElementById('nomeEvento').value,
+    data: document.getElementById('data').value,
+    responsavel: document.getElementById('responsavel').value,
+    status: document.getElementById('status').value,
+    vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
+    cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
+    estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
+    produtos: listaProdutos,
+    equipe: equipeAlocada,
+    logistica: logisticaAlocada
+  };
+
+  const id = eventoId || db.ref('eventos').push().key;
+  db.ref('eventos/' + id).set(evento).then(() => {
+    alert('Evento salvo com sucesso!');
+    window.location.href = "eventos.html";
+  });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  carregarClientes();
+  carregarResponsaveis();
+  carregarProdutosDisponiveis();
+  carregarEventoExistente();
+});
+
