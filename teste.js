@@ -42,6 +42,32 @@ function carregarResponsaveis() {
   });
 }
 
+function carregarEquipeDisponivel() {
+  const btn = document.getElementById('btnEquipe');
+  if (btn) btn.disabled = true;
+  equipeDisponivel = [];
+  db.ref('equipe').once('value').then(snapshot => {
+    snapshot.forEach(child => {
+      const membro = child.val();
+      equipeDisponivel.push({ id: child.key, nome: membro.apelido || membro.nomeCompleto });
+    });
+    if (btn) btn.disabled = false;
+  });
+}
+
+function carregarLogisticaDisponivel() {
+  const btn = document.getElementById('btnLogistica');
+  if (btn) btn.disabled = true;
+  logisticaDisponivel = [];
+  db.ref('logistica').once('value').then(snapshot => {
+    snapshot.forEach(child => {
+      const prestador = child.val();
+      logisticaDisponivel.push({ id: child.key, nome: prestador.nome });
+    });
+    if (btn) btn.disabled = false;
+  });
+}
+
 function carregarProdutosDisponiveis() {
   db.ref('produtos').once('value').then(snapshot => {
     produtosDisponiveis = [];
@@ -85,6 +111,48 @@ function carregarEventoExistente() {
   });
 }
 
+function adicionarEquipe() {
+  equipeAlocada.push({ membroId: '', valor: 0 });
+  renderizarEquipe();
+}
+
+function renderizarEquipe() {
+  const container = document.getElementById('equipeContainer');
+  container.innerHTML = '';
+  equipeAlocada.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'row mb-2';
+    div.innerHTML = `
+      <div class="col"><select class="form-select form-select-sm">${equipeDisponivel.map(m => `<option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>`).join('')}</select></div>
+      <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
+    `;
+    container.appendChild(div);
+    div.querySelector('select').onchange = e => { item.membroId = e.target.value; calcularTotais(); };
+    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
+  });
+}
+
+function adicionarLogistica() {
+  logisticaAlocada.push({ prestadorId: '', valor: 0 });
+  renderizarLogistica();
+}
+
+function renderizarLogistica() {
+  const container = document.getElementById('logisticaContainer');
+  container.innerHTML = '';
+  logisticaAlocada.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'row mb-2';
+    div.innerHTML = `
+      <div class="col"><select class="form-select form-select-sm">${logisticaDisponivel.map(l => `<option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>`).join('')}</select></div>
+      <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
+    `;
+    container.appendChild(div);
+    div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; calcularTotais(); };
+    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
+  });
+}
+
 function adicionarProduto() {
   listaProdutos.push({ produtoId: '', produtoNome: '', quantidade: 0, congelado: 0, assado: 0, perda: 0 });
   renderizarProdutos();
@@ -103,8 +171,7 @@ async function renderizarProdutos() {
 
   for (let index = 0; index < listaProdutos.length; index++) {
     const item = listaProdutos[index];
-    const produto = produtosDisponiveis.find(p => p.nome === item.produtoNome) || { id: '', nome: '', valorVenda: 0, custo: 0 };
-    item.produtoId = produto.id;
+    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { id: '', nome: '', valorVenda: 0, custo: 0 };
 
     const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
     const valorVenda = vendida * produto.valorVenda;
@@ -114,7 +181,7 @@ async function renderizarProdutos() {
 
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td><input type="text" class="form-control form-control-sm" list="produtosList" value="${item.produtoNome}"></td>
+      <td><input type="text" class="form-control form-control-sm" list="produtosList" value="${produto.nome}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.quantidade}"></td>
       <td><input type="text" class="form-control form-control-sm" value="${media}" disabled></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.congelado}"></td>
@@ -128,7 +195,15 @@ async function renderizarProdutos() {
     tabela.appendChild(row);
 
     const inputs = row.querySelectorAll('input');
-    inputs[0].onchange = e => { item.produtoNome = e.target.value; calcularTotais(); };
+    inputs[0].onchange = e => {
+      const nome = e.target.value;
+      const prod = produtosDisponiveis.find(p => p.nome === nome);
+      if (prod) {
+        item.produtoId = prod.id;
+        item.produtoNome = prod.nome;
+      }
+      calcularTotais();
+    };
     inputs[1].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; calcularTotais(); };
     inputs[3].oninput = e => { item.congelado = parseInt(e.target.value) || 0; calcularTotais(); };
     inputs[4].oninput = e => { item.assado = parseInt(e.target.value) || 0; calcularTotais(); };
@@ -142,7 +217,7 @@ function calcularTotais() {
   let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmvCalculado = 0, potencialVenda = 0;
 
   listaProdutos.forEach(item => {
-    const produto = produtosDisponiveis.find(p => p.nome === item.produtoNome) || { valorVenda: 0, custo: 0 };
+    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
     const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
 
     totalVendida += vendida;
@@ -200,7 +275,8 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
 document.addEventListener("DOMContentLoaded", () => {
   carregarClientes();
   carregarResponsaveis();
+  carregarEquipeDisponivel();
+  carregarLogisticaDisponivel();
   carregarProdutosDisponiveis();
   carregarEventoExistente();
 });
-
