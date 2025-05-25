@@ -44,7 +44,6 @@ function carregarResponsaveis() {
 
 function carregarEquipeDisponivel() {
   const btn = document.getElementById('btnEquipe');
-  if (btn) btn.disabled = true;
   equipeDisponivel = [];
   db.ref('equipe').once('value').then(snapshot => {
     snapshot.forEach(child => {
@@ -57,7 +56,6 @@ function carregarEquipeDisponivel() {
 
 function carregarLogisticaDisponivel() {
   const btn = document.getElementById('btnLogistica');
-  if (btn) btn.disabled = true;
   logisticaDisponivel = [];
   db.ref('logistica').once('value').then(snapshot => {
     snapshot.forEach(child => {
