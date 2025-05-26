@@ -70,17 +70,22 @@ function gerarRelatorio() {
     if (statusFiltro && status !== statusFiltro) return;
     if (nomeFiltro.length > 0 && !nomeFiltro.includes(nomeEv)) return;
 
-    if (!ev.produtos) return;
+    if (!ev.produtos || !Array.isArray(ev.produtos)) return;
 
-    for (let pid in ev.produtos) {
-      const prod = ev.produtos[pid];
-      const enviado = parseFloat(prod.enviado) || 0;
+    ev.produtos.forEach(prod => {
+      const pid = prod.produtoId;
+      if (!pid) return;
+
+      const enviado = parseFloat(prod.quantidade) || 0;
       const congelado = parseFloat(prod.congelado) || 0;
       const assado = parseFloat(prod.assado) || 0;
       const perda = parseFloat(prod.perda) || 0;
 
       const vendido = enviado - (congelado + assado + perda);
-      if (!relatorio[pid]) relatorio[pid] = { nome: produtos[pid]?.nome || pid, eventos: [] };
+
+      if (!relatorio[pid]) {
+        relatorio[pid] = { nome: produtos[pid]?.nome || pid, eventos: [] };
+      }
 
       // Só considerar se o produto foi levado
       if (enviado > 0) {
@@ -90,7 +95,7 @@ function gerarRelatorio() {
           vendido: vendido < 0 ? 0 : vendido
         });
       }
-    }
+    });
   });
 
   exibirTabela(relatorio);
@@ -159,7 +164,6 @@ function exportarExcel() {
 }
 
 function atualizarFirebase() {
-  // Implementação conforme necessidade
   alert("Atualização no Firebase implementada conforme regras internas.");
 }
 
