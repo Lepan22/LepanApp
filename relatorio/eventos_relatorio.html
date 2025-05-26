@@ -25,13 +25,33 @@
       background-color: var(--cor-primaria);
       color: white;
       padding: 20px 10px;
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar h4 {
+      margin-bottom: 20px;
+    }
+    .sidebar hr {
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      margin: 10px 0;
+    }
+    .sidebar .menu-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      margin-top: 10px;
+      margin-bottom: 5px;
+      opacity: 0.7;
     }
     .sidebar a {
       display: block;
       color: white;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       text-decoration: none;
       font-weight: bold;
+      font-size: 0.85rem;
+    }
+    .sidebar a:hover {
+      text-decoration: underline;
     }
     .main-content {
       flex-grow: 1;
@@ -60,11 +80,14 @@
 <div class="layout">
   <div class="sidebar">
     <h4>LePanApp</h4>
+    <div class="menu-title">Gestão</div>
     <a href="../produtos.html">Produtos</a>
     <a href="../equipe.html">Equipe</a>
     <a href="../clientes.html">Clientes</a>
     <a href="../eventos.html">Eventos</a>
-    <a href="eventos_relatorio.html">Relatório</a>
+    <hr>
+    <div class="menu-title">Relatórios</div>
+    <a href="eventos_relatorio.html">Análise por Cliente</a>
   </div>
 
   <div class="main-content">
