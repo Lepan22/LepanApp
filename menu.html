@@ -1,11 +1,82 @@
-<h2>LepanApp</h2>
-<button onclick="location.href='index.html'">Dashboard</button>
-<button onclick="location.href='calendario.html'">Calendário</button>
-<button onclick="location.href='eventos.html'">Eventos</button>
-<button onclick="location.href='relatorios.html'">Relatórios</button>
-<button onclick="location.href='clientes.html'">Clientes</button>
+<div class="sidebar">
+  <h4>LePanApp</h4>
 
-<h3 style="margin-top: 20px; font-size: 0.9rem; border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px;">Cadastros</h3>
-<button onclick="location.href='produto.html'">Produtos</button>
-<button onclick="location.href='equipe.html'">Equipe</button>
-<button onclick="location.href='logistica.html'">Logística</button>
+  <div class="menu-item">
+    <a href="#">Cadastros</a>
+    <div class="submenu">
+      <a href="equipe.html">Equipe</a>
+      <a href="produto.html">Produto</a>
+      <a href="logistica.html">Logística</a>
+    </div>
+  </div>
+
+  <div class="menu-item">
+    <a href="#">Evento</a>
+    <div class="submenu">
+      <a href="GestaoEvento.html">Criar</a>
+      <a href="compra_evento.html">Compras</a>
+      <a href="controle_etapas.html">Etapas</a>
+      <a href="media_produtos.html">Média Produto</a>
+      <a href="eventos_relatorio.html">Visão por Cliente</a>
+      <a href="equipe_relatorio.html">Visão por Equipe</a>
+    </div>
+  </div>
+
+  <div class="menu-item">
+    <a href="#">Cliente</a>
+    <div class="submenu">
+      <a href="GestaoCliente.html">Gestão Cliente</a>
+      <a href="GestaoCliente.html">Cadastro Cliente</a>
+    </div>
+  </div>
+
+  <div class="menu-item">
+    <a href="#">Relatório</a>
+    <div class="submenu">
+      <a href="#">Dinâmico?</a>
+    </div>
+  </div>
+</div>
+
+<style>
+  .sidebar {
+    width: 220px;
+    background-color: #ff7f00;
+    color: white;
+    padding: 20px 10px;
+    font-family: 'Segoe UI', sans-serif;
+  }
+
+  .menu-item {
+    margin-bottom: 10px;
+  }
+
+  .menu-item > a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+
+  .submenu {
+    display: none;
+    margin-left: 10px;
+  }
+
+  .menu-item:hover .submenu {
+    display: block;
+  }
+
+  .submenu a {
+    display: block;
+    color: white;
+    text-decoration: none;
+    margin: 3px 0;
+    font-size: 0.85em;
+  }
+
+  .submenu a:hover {
+    text-decoration: underline;
+  }
+</style>
