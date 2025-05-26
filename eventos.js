@@ -71,13 +71,12 @@ function aplicarFiltros() {
         <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${eAtual.id}')">Editar</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${eAtual.id}')">Duplicar</button>
         <button class="btn btn-sm btn-outline-success" onclick="enviarLink('${eAtual.id}')">Enviar Link</button>
+        <button class="btn btn-sm btn-outline-info" onclick="visualizarEvento('${eAtual.id}')">Visualizar</button>
         <button class="btn btn-sm btn-outline-danger" onclick="excluirEvento('${eAtual.id}')">Excluir</button>
       </td>
     `;
     tabela.appendChild(row);
   });
-
-  calcularKPIEstimativaFiltrada(eventosFiltrados);
 }
 
 function calcularKPIs() {
@@ -101,11 +100,6 @@ function calcularKPIs() {
   document.getElementById('kpiSemana').innerText = kpiSemana;
   document.getElementById('kpiMes').innerText = kpiMes;
   document.getElementById('kpiVendasMes').innerText = kpiVendasMes.toFixed(2);
-}
-
-function calcularKPIEstimativaFiltrada(eventosFiltrados) {
-  const totalEstimativa = eventosFiltrados.reduce((s, e) => s + (parseFloat(e.estimativaVenda) || 0), 0);
-  document.getElementById('kpiEstimativa').innerText = totalEstimativa.toFixed(2);
 }
 
 function duplicarEvento(id) {
@@ -138,6 +132,10 @@ function enviarLink(id) {
   navigator.clipboard.writeText(url).then(() => {
     alert('Link copiado para a área de transferência!');
   });
+}
+
+function visualizarEvento(id) {
+  window.location.href = `visualizar_evento.html?id=${id}`;
 }
 
 function excluirEvento(id) {
