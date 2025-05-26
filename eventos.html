@@ -23,6 +23,7 @@
       background-color: var(--cor-primaria);
       color: white;
       padding: 20px 10px;
+      font-family: 'Segoe UI', sans-serif;
     }
     .sidebar a {
       display: block;
@@ -30,6 +31,12 @@
       margin-bottom: 10px;
       text-decoration: none;
       font-weight: bold;
+    }
+    .sidebar a:hover {
+      text-decoration: underline;
+    }
+    .sidebar button {
+      width: 100%;
     }
     .main-content {
       flex-grow: 1;
@@ -64,20 +71,22 @@
 <body>
 
 <div class="layout">
+  
   <div class="sidebar">
     <h4>LePanApp</h4>
-    <a href="produtos.html">Produtos</a>
-    <a href="equipe.html">Equipe</a>
+    <a href="index.html">Home</a>
+    <a href="Cadastro.html">Cadastros</a>
     <a href="clientes.html">Clientes</a>
     <a href="eventos.html">Eventos</a>
-    <a href="logistica.html">Logística</a>
-    <a href="eventos_relatorio.html">Relatórios</a>
+    <a href="relatorio.html">Relatórios</a>
+
+    <button onclick="history.back()" class="btn btn-sm btn-outline-light mt-3">Voltar</button>
   </div>
 
   <div class="main-content">
     <h1>Eventos</h1>
 
-    <!-- ✅ Submenu local -->
+    <!-- ✅ Submenu bonito -->
     <div class="submenu mb-3">
       <a href="GestaoEvento.html" class="btn btn-sm btn-outline-primary">Criar</a>
       <a href="compra_evento.html" class="btn btn-sm btn-outline-secondary">Compras</a>
@@ -86,8 +95,6 @@
       <a href="eventos_relatorio.html" class="btn btn-sm btn-outline-secondary">Visão por Cliente</a>
       <a href="equipe_relatorio.html" class="btn btn-sm btn-outline-secondary">Visão por Equipe</a>
     </div>
-
-    <a href="GestaoEvento.html" class="btn btn-sm btn-primary mb-3">+ Criar Evento</a>
 
     <div class="row mb-3">
       <div class="col kpi-box">
