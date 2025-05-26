@@ -225,7 +225,7 @@
       if (statusFiltro && (e.status !== statusFiltro)) return false;
       if (condominiosSelecionados.length > 0 && !condominiosSelecionados.includes(e.nomeEvento)) return false;
       return true;
-    }).sort((a, b) => (a.data < b.data) ? 1 : -1);
+    }).sort((a, b) => (a.data > b.data) ? 1 : -1);
 
     eventosFiltrados.forEach(eAtual => {
       const vendaPDV = parseFloat(eAtual.vendaPDV) || 0;
@@ -276,7 +276,11 @@
     const selectedIndicators = ['vendaPDV', 'lucro', 'custoPerda', 'custoLogistica']
       .filter(id => document.getElementById('chk' + id.charAt(0).toUpperCase() + id.slice(1)).checked);
 
-    const labels = linhasRelatorio.map(e => e.data);
+    const labels = linhasRelatorio.map(e => {
+      const [ano, mes, dia] = e.data.split('-');
+      return `${dia}/${mes}/${ano.slice(-2)}`;
+    });
+
     const datasets = selectedIndicators.map(ind => ({
       label: ind,
       data: linhasRelatorio.map(e => e[ind]),
