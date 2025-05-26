@@ -1,105 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compra - Produtos por Evento</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: auto;
+      margin-top: 20px;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      text-align: center;
+      padding: 4px 6px;
+      white-space: nowrap;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    .totais-table {
+      margin-top: 20px;
+      width: auto;
+      font-size: 12px;
+    }
+    .btn-export {
+      background-color: #ff7f00;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+    .btn-export:hover {
+      background-color: #e96f00;
+    }
+    h1, h3 {
+      font-size: 16px;
+    }
+    .filtros {
+      margin-top: 10px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
 <div class="layout">
-  <div class="sidebar">
-    <div>
-      <h4 class="text-center">Le PanApp</h4>
+  <aside class="sidebar" id="menuLateral">
+    <h4>LePanApp</h4>
+    <a href="produtos.html">Produtos</a>
+    <a href="equipe.html">Equipe</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="eventos.html">Eventos</a>
+    <a href="compra_evento.html">Compra</a>
+  </aside>
 
-      <div class="menu-top">
-        <a href="index.html">Home</a>
-        <a href="Cadastro.html">Cadastros</a>
-        <a href="clientes.html">Clientes</a>
-        <a href="eventos.html">Eventos</a>
-        <a href="relatorio.html">Relatórios</a>
-      </div>
+  <main class="main-content">
+    <h1>Produtos por Evento</h1>
 
-      <hr>
+    <div class="filtros">
+      <label>Status:
+        <select id="filtroStatus">
+          <option value="aberto" selected>Aberto</option>
+          <option value="finalizado">Finalizado</option>
+          <option value="fechado">Fechado</option>
+        </select>
+      </label>
 
-      <div class="submenu">
-        <a href="GestaoEvento.html">Criar</a>
-        <a href="compra_evento.html">Compras</a>
-        <a href="controle_etapas.html">Etapas</a>
-        <a href="media_produtos.html">Média Produto</a>
-        <a href="relatorio/eventos_relatorio.html">Visão por Cliente</a>
-        <a href="relatorio/equipe_relatorio.html">Visão por Equipe</a>
-      </div>
+      <label>Data:
+        <select id="filtroData">
+          <option value="semana" selected>Esta semana</option>
+          <option value="30dias">Últimos 30 dias</option>
+          <option value="todos">Todos</option>
+        </select>
+      </label>
     </div>
 
-    <button onclick="history.back()">Voltar</button>
-  </div>
+    <button class="btn-export" onclick="exportarXLSX()">Exportar para XLSX</button>
 
-  <div class="main-content">
-    <!-- ✅ AQUI MANTENHA TODO O SEU CÓDIGO ORIGINAL DE COMPRA_EVENTO -->
-    <!-- Exemplo: Filtros, tabela, funções, etc -->
-    
-    <h1>Compras por Evento</h1>
+    <div id="totaisEventos"></div>
 
-    <div class="form-area">
-      <div class="row mb-2">
-        <div class="col-md-3">
-          <label class="form-label">Status</label>
-          <select id="filtroStatus" class="form-select form-select-sm">
-            <option value="Aberto">Aberto</option>
-            <option value="Finalizado">Finalizado</option>
-            <option value="Fechado">Fechado</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Data Início</label>
-          <input type="date" id="filtroDataInicio" class="form-control form-control-sm">
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">Data Fim</label>
-          <input type="date" id="filtroDataFim" class="form-control form-control-sm">
-        </div>
-      </div>
-      <button class="btn btn-sm btn-outline-primary" onclick="filtrar()">Aplicar Filtros</button>
-    </div>
-
-    <table class="table table-bordered" id="tabelaRelatorio">
-      <thead></thead>
+    <table id="tabelaProdutos">
+      <thead>
+        <tr id="headerRow"></tr>
+      </thead>
       <tbody></tbody>
     </table>
-
-    <button class="btn btn-sm btn-outline-success mt-2" onclick="exportarExcel()">Exportar Excel</button>
-
-  </div>
+  </main>
 </div>
 
-<style>
-  .sidebar {
-    width: 220px;
-    background-color: #ff7f00;
-    color: white;
-    padding: 20px 10px;
-    font-family: 'Segoe UI', sans-serif;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-  .sidebar a, .sidebar button {
-    display: block;
-    width: 100%;
-    margin-bottom: 10px;
-    text-decoration: none;
-    font-weight: bold;
-    border: 1px solid white;
-    color: white;
-    background: transparent;
-    padding: 5px;
-    text-align: center;
-    border-radius: 4px;
-  }
-  .sidebar a:hover, .sidebar button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    text-decoration: none;
-  }
-  .menu-top { margin-bottom: 20px; }
-  .submenu { margin-bottom: 20px; }
-  hr { border-top: 1px solid rgba(255, 255, 255, 0.3); margin: 10px 0; }
-</style>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "542989944344",
+    appId: "1:542989944344:web:576e28199960fd5440a56d"
+  };
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script src="compra_evento.js"></script>
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  let eventos = [];
+  let produtosDB = {};
+  let dadosTabela = {};
+
+  function formatDateBR(dataISO) {
+    if (!dataISO) return '';
+    const [ano, mes, dia] = dataISO.split("-");
+    return `${dia}/${mes}/${ano}`;
+  }
+
+  function isWithinRange(dataStr, filtroData) {
+    const data = new Date(dataStr);
+    const hoje = new Date();
+
+    if (filtroData === 'semana') {
+      const dia = hoje.getDay();
+      const inicio = new Date(hoje);
+      inicio.setDate(hoje.getDate() - dia);
+      const fim = new Date(inicio);
+      fim.setDate(inicio.getDate() + 6);
+      return data >= inicio && data <= fim;
+    } else if (filtroData === '30dias') {
+      const inicio = new Date();
+      inicio.setDate(hoje.getDate() - 30);
+      return data >= inicio && data <= hoje;
+    } else {
+      return true;
+    }
+  }
+
+  async function carregarDados() {
+    const produtosSnap = await db.ref('produtos').once('value');
+    produtosDB = produtosSnap.val();
+
+    const eventosSnap = await db.ref('eventos').once('value');
+    eventos = [];
+
+    eventosSnap.forEach(child => {
+      const evento = child.val();
+      evento.id = child.key;
+      eventos.push(evento);
+    });
+
+    processarDados();
+  }
+
+  function processarDados() {
+    dadosTabela = {};
+
+    const filtroStatus = document.getElementById('filtroStatus').value;
+    const filtroData = document.getElementById('filtroData').value;
+
+    const eventosFiltrados = eventos.filter(e => {
+      const statusOk = (e.status || '').toLowerCase() === filtroStatus;
+      const dataOk = e.data ? isWithinRange(e.data, filtroData) : true;
+      return statusOk && dataOk;
+    });
+
+    const eventosNomes = eventosFiltrados.map(e => `${e.nomeEvento || e.id} ${e.data ? formatDateBR(e.data) : ''}`);
+
+    eventosFiltrados.forEach(evento => {
+      const nomeData = `${evento.nomeEvento || evento.id} ${evento.data ? formatDateBR(evento.data) : ''}`;
+
+      if (!evento.produtos) return;
+
+      evento.produtos.forEach(produto => {
+        const prodId = produto.produtoId;
+        const prodNome = produtosDB[prodId] ? produtosDB[prodId].nome : prodId;
+
+        if (!dadosTabela[prodNome]) {
+          dadosTabela[prodNome] = {};
+        }
+
+        dadosTabela[prodNome][nomeData] = produto.quantidade || 0;
+      });
+    });
+
+    renderTabela(eventosNomes);
+    renderTotaisEventos(eventosFiltrados);
+  }
+
+  function renderTabela(eventosNomes) {
+    const headerRow = document.getElementById('headerRow');
+    headerRow.innerHTML = `<th>Produto</th>`;
+    eventosNomes.forEach(nome => {
+      headerRow.innerHTML += `<th>${nome}</th>`;
+    });
+    headerRow.innerHTML += `<th>Total</th>`;
+
+    const tbody = document.querySelector('#tabelaProdutos tbody');
+    tbody.innerHTML = '';
+
+    Object.keys(dadosTabela).forEach(produto => {
+      const tr = document.createElement('tr');
+      let row = `<td>${produto}</td>`;
+      let totalEnviado = 0;
+
+      eventosNomes.forEach(nome => {
+        const enviada = dadosTabela[produto][nome] || 0;
+        totalEnviado += enviada;
+        row += `<td>${Number(enviada).toFixed(1).replace('.', ',')}</td>`;
+      });
+
+      row += `<td>${totalEnviado.toFixed(1).replace('.', ',')}</td>`;
+      tr.innerHTML = row;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderTotaisEventos(eventosFiltrados) {
+    const div = document.getElementById('totaisEventos');
+    div.innerHTML = '<h3>Totais por Evento</h3>';
+
+    const table = document.createElement('table');
+    table.classList.add('totais-table');
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = `<tr><th>Evento</th><th>Estimativa Venda</th><th>Potencial Venda</th></tr>`;
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    eventosFiltrados.forEach(evento => {
+      let potencial = 0;
+
+      if (evento.produtos) {
+        evento.produtos.forEach(prod => {
+          const valorVenda = produtosDB[prod.produtoId]?.valorVenda || 0;
+          potencial += (prod.quantidade || 0) * valorVenda;
+        });
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${evento.nomeEvento} ${evento.data ? formatDateBR(evento.data) : ''}</td>
+                      <td>R$ ${Number(evento.estimativaVenda || 0).toFixed(2).replace('.', ',')}</td>
+                      <td>R$ ${potencial.toFixed(2).replace('.', ',')}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    div.innerHTML = '';
+    div.appendChild(table);
+  }
+
+  function exportarXLSX() {
+    const ws_data = [];
+    const header = ["Produto"];
+    const eventosNomes = Object.keys(dadosTabela[Object.keys(dadosTabela)[0]] || {});
+    eventosNomes.forEach(nome => {
+      header.push(nome);
+    });
+    header.push("Total");
+    ws_data.push(header);
+
+    Object.keys(dadosTabela).forEach(produto => {
+      const row = [produto];
+      let totalEnviado = 0;
+
+      eventosNomes.forEach(nome => {
+        const enviada = dadosTabela[produto][nome] || 0;
+        totalEnviado += enviada;
+        row.push(Number(enviada).toFixed(1).replace('.', ','));
+      });
+
+      row.push(totalEnviado.toFixed(1).replace('.', ','));
+      ws_data.push(row);
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    XLSX.utils.book_append_sheet(wb, ws, "Produtos por Evento");
+    XLSX.writeFile(wb, "produtos_por_evento.xlsx");
+  }
+
+  document.getElementById('filtroStatus').addEventListener('change', processarDados);
+  document.getElementById('filtroData').addEventListener('change', processarDados);
+
+  document.addEventListener("DOMContentLoaded", carregarDados);
+</script>
 
 </body>
 </html>
