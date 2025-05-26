@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Análise por Equipe</title>
+  <title>Análise por Cliente</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -92,13 +92,13 @@
   </div>
 
   <div class="main-content">
-    <h1>Análise por Equipe</h1>
+    <h1>Análise por Cliente</h1>
 
     <h4>Filtros</h4>
     <form id="filtrosForm" class="row g-2 mb-3">
       <div class="col-md-3">
-        <label class="form-label">Responsável</label>
-        <select id="filtroResponsavel" class="form-select form-select-sm" multiple></select>
+        <label class="form-label">Cliente</label>
+        <select id="filtroCliente" class="form-select form-select-sm" multiple></select>
       </div>
       <div class="col-md-3">
         <label class="form-label">Data Início</label>
@@ -116,10 +116,6 @@
           <option value="Finalizado">Finalizado</option>
         </select>
       </div>
-      <div class="col-md-3">
-        <label class="form-label">Condomínio</label>
-        <select id="filtroCondominio" class="form-select form-select-sm" multiple></select>
-      </div>
       <div class="col-12">
         <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Aplicar Filtros</button>
         <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="limparFiltros()">Limpar Filtros</button>
@@ -130,7 +126,7 @@
     <table class="table table-bordered">
       <thead>
         <tr>
-          <th>Responsável</th>
+          <th>Cliente</th>
           <th>Nome do Evento</th>
           <th>Data</th>
           <th>Venda PDV</th>
@@ -201,27 +197,14 @@
         e.id = child.key;
         eventos.push(e);
       });
-      popularFiltroCondominio();
-      popularFiltroResponsavel();
+      popularFiltroCliente();
       aplicarFiltros();
     });
   }
 
-  function popularFiltroCondominio() {
-    const filtro = document.getElementById('filtroCondominio');
-    const nomes = [...new Set(eventos.map(e => e.nomeEvento))].filter(Boolean);
-    filtro.innerHTML = '';
-    nomes.forEach(nome => {
-      const opt = document.createElement('option');
-      opt.value = nome;
-      opt.textContent = nome;
-      filtro.appendChild(opt);
-    });
-  }
-
-  function popularFiltroResponsavel() {
-    const filtro = document.getElementById('filtroResponsavel');
-    const nomes = [...new Set(eventos.map(e => e.responsavel))].filter(Boolean);
+  function popularFiltroCliente() {
+    const filtro = document.getElementById('filtroCliente');
+    const nomes = [...new Set(eventos.map(e => e.cliente))].filter(Boolean);
     filtro.innerHTML = '';
     nomes.forEach(nome => {
       const opt = document.createElement('option');
@@ -241,31 +224,28 @@
   });
 
   function limparFiltros() {
-    [...document.getElementById('filtroResponsavel').options].forEach(o => o.selected = false);
+    [...document.getElementById('filtroCliente').options].forEach(o => o.selected = false);
     document.getElementById('filtroDataInicio').value = '';
     document.getElementById('filtroDataFim').value = '';
     document.getElementById('filtroStatus').value = 'Fechado';
-    [...document.getElementById('filtroCondominio').options].forEach(o => o.selected = false);
     aplicarFiltros();
   }
 
   function aplicarFiltros() {
-    const responsaveisSelecionados = [...document.getElementById('filtroResponsavel').selectedOptions].map(o => o.value);
+    const clientesSelecionados = [...document.getElementById('filtroCliente').selectedOptions].map(o => o.value);
     const dataInicio = document.getElementById('filtroDataInicio').value;
     const dataFim = document.getElementById('filtroDataFim').value;
     const statusFiltro = document.getElementById('filtroStatus').value;
-    const condominiosSelecionados = [...document.getElementById('filtroCondominio').selectedOptions].map(o => o.value);
 
     const tabela = document.getElementById('relatorioTabela');
     tabela.innerHTML = '';
     linhasRelatorio = [];
 
     const eventosFiltrados = eventos.filter(e => {
-      if (responsaveisSelecionados.length > 0 && !responsaveisSelecionados.includes(e.responsavel)) return false;
+      if (clientesSelecionados.length > 0 && !clientesSelecionados.includes(e.cliente)) return false;
       if (dataInicio && (!e.data || e.data < dataInicio)) return false;
       if (dataFim && (!e.data || e.data > dataFim)) return false;
       if (statusFiltro && (e.status !== statusFiltro)) return false;
-      if (condominiosSelecionados.length > 0 && !condominiosSelecionados.includes(e.nomeEvento)) return false;
       return true;
     }).sort((a, b) => (a.data > b.data) ? 1 : -1);
 
@@ -289,9 +269,20 @@
 
       const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
 
+      linhasRelatorio.push({
+        cliente: eAtual.cliente || '-',
+        nomeEvento: eAtual.nomeEvento || '-',
+        data: eAtual.data || '-',
+        vendaPDV,
+        lucro,
+        custoPerda,
+        custoAssado,
+        custoLogistica
+      });
+
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td>${eAtual.responsavel || '-'}</td>
+        <td>${eAtual.cliente || '-'}</td>
         <td>${eAtual.nomeEvento || '-'}</td>
         <td>${eAtual.data || '-'}</td>
         <td>R$ ${vendaPDV.toFixed(2)}</td>
@@ -301,17 +292,6 @@
         <td>R$ ${custoLogistica.toFixed(2)}</td>
       `;
       tabela.appendChild(row);
-
-      linhasRelatorio.push({
-        responsavel: eAtual.responsavel || '-',
-        nomeEvento: eAtual.nomeEvento || '-',
-        data: eAtual.data || '-',
-        vendaPDV,
-        lucro,
-        custoPerda,
-        custoAssado,
-        custoLogistica
-      });
     });
 
     desenharGrafico();
@@ -321,25 +301,36 @@
     const selectedIndicators = ['vendaPDV', 'lucro', 'custoPerda', 'custoAssado', 'custoLogistica']
       .filter(id => document.getElementById('chk' + id.charAt(0).toUpperCase() + id.slice(1)).checked);
 
-    const labels = linhasRelatorio.map(e => {
-      const [ano, mes, dia] = e.data.split('-');
-      return `${dia}/${mes}/${ano.slice(-2)}`;
-    });
+    const datasUnicas = [...new Set(linhasRelatorio.map(e => e.data))].sort();
+    const clientesUnicos = [...new Set(linhasRelatorio.map(e => e.cliente))];
 
-    const datasets = selectedIndicators.map(ind => ({
-      label: ind,
-      data: linhasRelatorio.map(e => e[ind]),
-      borderWidth: 2
-    }));
+    const datasets = [];
+
+    clientesUnicos.forEach(cliente => {
+      selectedIndicators.forEach(metrica => {
+        const dataPorCliente = datasUnicas.map(data => {
+          const evento = linhasRelatorio.find(e => e.cliente === cliente && e.data === data);
+          return evento ? evento[metrica] : null;
+        });
+        datasets.push({
+          label: `${cliente} - ${metrica}`,
+          data: dataPorCliente,
+          borderWidth: 2
+        });
+      });
+    });
 
     if (chart) chart.destroy();
     const ctx = document.getElementById('graficoRelatorio').getContext('2d');
     chart = new Chart(ctx, {
       type: 'line',
-      data: { labels, datasets },
+      data: { labels: datasUnicas, datasets },
       options: {
         responsive: true,
-        plugins: { legend: { position: 'top' }, title: { display: true, text: 'Resumo por Responsável' } }
+        plugins: { 
+          legend: { position: 'top' },
+          title: { display: true, text: 'Resumo por Cliente' }
+        }
       }
     });
   }
@@ -348,7 +339,7 @@
     const ws = XLSX.utils.json_to_sheet(linhasRelatorio);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Relatório");
-    XLSX.writeFile(wb, "relatorio_equipe.xlsx");
+    XLSX.writeFile(wb, "relatorio_cliente.xlsx");
   }
 </script>
 
