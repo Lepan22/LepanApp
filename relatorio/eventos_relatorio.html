@@ -8,69 +8,19 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root {
-      --cor-primaria: #ff7f00;
-      --cor-secundaria: #f9f9f9;
-    }
-    body {
-      margin: 0;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .layout {
-      display: flex;
-      min-height: 100vh;
-    }
-    .sidebar {
-      width: 220px;
-      background-color: var(--cor-primaria);
-      color: white;
-      padding: 20px 10px;
-      display: flex;
-      flex-direction: column;
-    }
-    .sidebar h4 {
-      margin-bottom: 20px;
-    }
-    .sidebar hr {
-      border-top: 1px solid rgba(255, 255, 255, 0.3);
-      margin: 10px 0;
-    }
-    .sidebar .menu-title {
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      margin-top: 10px;
-      margin-bottom: 5px;
-      opacity: 0.7;
-    }
-    .sidebar a {
-      display: block;
-      color: white;
-      margin-bottom: 8px;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 0.85rem;
-    }
-    .sidebar a:hover {
-      text-decoration: underline;
-    }
-    .main-content {
-      flex-grow: 1;
-      padding: 20px;
-    }
-    .table th {
-      background-color: var(--cor-primaria);
-      color: white;
-      font-size: 0.75rem;
-      padding: 4px;
-    }
-    .table td {
-      font-size: 0.75rem;
-      padding: 2px 4px;
-      vertical-align: middle;
-    }
-    .form-label {
-      font-size: 0.75rem;
-    }
+    :root { --cor-primaria: #ff7f00; --cor-secundaria: #f9f9f9; }
+    body { margin: 0; font-family: 'Segoe UI', sans-serif; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background-color: var(--cor-primaria); color: white; padding: 20px 10px; display: flex; flex-direction: column; }
+    .sidebar h4 { margin-bottom: 20px; }
+    .sidebar hr { border-top: 1px solid rgba(255,255,255,0.3); margin: 10px 0; }
+    .sidebar .menu-title { font-size: 0.8rem; text-transform: uppercase; margin-top: 10px; margin-bottom: 5px; opacity: 0.7; }
+    .sidebar a { display: block; color: white; margin-bottom: 8px; text-decoration: none; font-weight: bold; font-size: 0.85rem; }
+    .sidebar a:hover { text-decoration: underline; }
+    .main-content { flex-grow: 1; padding: 20px; }
+    .table th { background-color: var(--cor-primaria); color: white; font-size: 0.75rem; padding: 4px; }
+    .table td { font-size: 0.75rem; padding: 2px 4px; vertical-align: middle; }
+    .form-label { font-size: 0.75rem; }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -88,6 +38,7 @@
     <hr>
     <div class="menu-title">Relatórios</div>
     <a href="eventos_relatorio.html">Análise por Cliente</a>
+    <a href="equipe_relatorio.html">Análise por Equipe</a>
   </div>
 
   <div class="main-content">
@@ -126,38 +77,12 @@
       </div>
     </form>
 
-    <table class="table table-bordered">
-      <thead>
-        <tr>
-          <th>Nome do Evento</th>
-          <th>Data</th>
-          <th>Venda PDV</th>
-          <th>Lucro</th>
-          <th>Custo Perda</th>
-          <th>Custo Assado</th>
-          <th>Custo Logística</th>
-        </tr>
-      </thead>
-      <tbody id="relatorioTabela"></tbody>
-    </table>
-
     <h5>Exibir no Gráfico:</h5>
-    <div class="form-check">
-      <input class="form-check-input" type="checkbox" value="vendaPDV" id="chkVendaPDV" checked>
-      <label class="form-check-label" for="chkVendaPDV">Venda PDV</label>
-    </div>
-    <div class="form-check">
-      <input class="form-check-input" type="checkbox" value="lucro" id="chkLucro" checked>
-      <label class="form-check-label" for="chkLucro">Lucro</label>
-    </div>
-    <div class="form-check">
-      <input class="form-check-input" type="checkbox" value="custoPerda" id="chkCustoPerda" checked>
-      <label class="form-check-label" for="chkCustoPerda">Custo Perda</label>
-    </div>
-    <div class="form-check">
-      <input class="form-check-input" type="checkbox" value="custoLogistica" id="chkCustoLogistica" checked>
-      <label class="form-check-label" for="chkCustoLogistica">Custo Logística</label>
-    </div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" value="vendaPDV" id="chkVendaPDV" checked><label class="form-check-label" for="chkVendaPDV">Venda PDV</label></div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" value="lucro" id="chkLucro" checked><label class="form-check-label" for="chkLucro">Lucro</label></div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" value="custoPerda" id="chkCustoPerda" checked><label class="form-check-label" for="chkCustoPerda">Custo Perda</label></div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" value="custoAssado" id="chkCustoAssado" checked><label class="form-check-label" for="chkCustoAssado">Custo Assado</label></div>
+    <div class="form-check"><input class="form-check-input" type="checkbox" value="custoLogistica" id="chkCustoLogistica" checked><label class="form-check-label" for="chkCustoLogistica">Custo Logística</label></div>
 
     <canvas id="graficoRelatorio" height="100"></canvas>
   </div>
@@ -173,7 +98,6 @@
     messagingSenderId: "542989944344",
     appId: "1:542989944344:web:576e28199960fd5440a56d"
   };
-
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
@@ -181,9 +105,7 @@
   let chart = null;
 
   db.ref('produtos').once('value').then(snapshot => {
-    snapshot.forEach(child => {
-      produtos[child.key] = child.val();
-    });
+    snapshot.forEach(child => { produtos[child.key] = child.val(); });
     carregarEventos();
   });
 
@@ -237,8 +159,6 @@
     const statusFiltro = document.getElementById('filtroStatus').value;
     const condominiosSelecionados = [...document.getElementById('filtroCondominio').selectedOptions].map(o => o.value);
 
-    const tabela = document.getElementById('relatorioTabela');
-    tabela.innerHTML = '';
     linhasRelatorio = [];
 
     const eventosFiltrados = eventos.filter(e => {
@@ -248,7 +168,7 @@
       if (statusFiltro && (e.status !== statusFiltro)) return false;
       if (condominiosSelecionados.length > 0 && !condominiosSelecionados.includes(e.nomeEvento)) return false;
       return true;
-    }).sort((a, b) => (a.data > b.data) ? 1 : -1);
+    });
 
     eventosFiltrados.forEach(eAtual => {
       const vendaPDV = parseFloat(eAtual.vendaPDV) || 0;
@@ -270,25 +190,10 @@
 
       const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
 
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${eAtual.nomeEvento || '-'}</td>
-        <td>${eAtual.data || '-'}</td>
-        <td>R$ ${vendaPDV.toFixed(2)}</td>
-        <td>R$ ${lucro.toFixed(2)}</td>
-        <td>R$ ${custoPerda.toFixed(2)}</td>
-        <td>R$ ${custoAssado.toFixed(2)}</td>
-        <td>R$ ${custoLogistica.toFixed(2)}</td>
-      `;
-      tabela.appendChild(row);
-
       linhasRelatorio.push({
         nome: eAtual.nomeEvento || '-',
         data: eAtual.data || '-',
-        vendaPDV,
-        lucro,
-        custoPerda,
-        custoLogistica
+        vendaPDV, lucro, custoPerda, custoAssado, custoLogistica
       });
     });
 
@@ -296,25 +201,32 @@
   }
 
   function desenharGrafico() {
-    const selectedIndicators = ['vendaPDV', 'lucro', 'custoPerda', 'custoLogistica']
+    const selectedIndicators = ['vendaPDV', 'lucro', 'custoPerda', 'custoAssado', 'custoLogistica']
       .filter(id => document.getElementById('chk' + id.charAt(0).toUpperCase() + id.slice(1)).checked);
 
-    const labels = linhasRelatorio.map(e => {
-      const [ano, mes, dia] = e.data.split('-');
-      return `${dia}/${mes}/${ano.slice(-2)}`;
-    });
+    const datasUnicas = [...new Set(linhasRelatorio.map(e => e.data))].sort();
+    const nomes = [...new Set(linhasRelatorio.map(e => e.nome))];
 
-    const datasets = selectedIndicators.map(ind => ({
-      label: ind,
-      data: linhasRelatorio.map(e => e[ind]),
-      borderWidth: 2
-    }));
+    const datasets = [];
+
+    nomes.forEach(nome => {
+      selectedIndicators.forEach(indicador => {
+        const data = datasUnicas.map(data => {
+          const item = linhasRelatorio.find(e => e.data === data && e.nome === nome);
+          return item ? item[indicador] : 0;
+        });
+        datasets.push({
+          label: `${nome} - ${indicador}`,
+          data, borderWidth: 2
+        });
+      });
+    });
 
     if (chart) chart.destroy();
     const ctx = document.getElementById('graficoRelatorio').getContext('2d');
     chart = new Chart(ctx, {
       type: 'line',
-      data: { labels, datasets },
+      data: { labels: datasUnicas, datasets },
       options: {
         responsive: true,
         plugins: { legend: { position: 'top' }, title: { display: true, text: 'Resumo dos Eventos' } }
