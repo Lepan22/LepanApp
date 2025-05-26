@@ -22,7 +22,6 @@ function carregarEventos() {
       eventos.push(evento);
     });
 
-    // ✅ Ordenar por data decrescente
     eventos.sort((a, b) => {
       if (!a.data) return 1;
       if (!b.data) return -1;
@@ -77,15 +76,18 @@ function aplicarFiltros() {
     `;
     tabela.appendChild(row);
   });
+
+  calcularKPIEstimativaFiltrada(eventosFiltrados);
 }
 
 function calcularKPIs() {
   const hoje = new Date();
   const semanaInicio = new Date(hoje);
   semanaInicio.setDate(hoje.getDate() - hoje.getDay());
+
   const mesInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
 
-  let kpiSemana = 0, kpiMes = 0, kpiEstimativa = 0, kpiVendasMes = 0;
+  let kpiSemana = 0, kpiMes = 0, kpiVendasMes = 0;
 
   eventos.forEach(e => {
     const dataEvento = new Date(e.data);
@@ -94,13 +96,16 @@ function calcularKPIs() {
       kpiMes++;
       kpiVendasMes += parseFloat(e.vendaPDV || 0);
     }
-    kpiEstimativa += parseFloat(e.estimativaVenda || 0);
   });
 
   document.getElementById('kpiSemana').innerText = kpiSemana;
   document.getElementById('kpiMes').innerText = kpiMes;
-  document.getElementById('kpiEstimativa').innerText = kpiEstimativa.toFixed(2);
   document.getElementById('kpiVendasMes').innerText = kpiVendasMes.toFixed(2);
+}
+
+function calcularKPIEstimativaFiltrada(eventosFiltrados) {
+  const totalEstimativa = eventosFiltrados.reduce((s, e) => s + (parseFloat(e.estimativaVenda) || 0), 0);
+  document.getElementById('kpiEstimativa').innerText = totalEstimativa.toFixed(2);
 }
 
 function duplicarEvento(id) {
@@ -116,7 +121,6 @@ function duplicarEvento(id) {
     perda: 0
   }));
 
-  // ✅ Ajustes conforme solicitado
   delete novoEvento.id;
   delete novoEvento.vendaPDV;
   novoEvento.status = "Aberto";
