@@ -4,73 +4,73 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Análise por Cliente</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
-    :root { --cor-primaria: #ff7f00; }
-    body { margin: 0; font-family: 'Segoe UI', sans-serif; }
-    .layout { display: flex; min-height: 100vh; }
+    :root {
+      --cor-primaria: #ff7f00;
+      --cor-secundaria: #f9f9f9;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
     .sidebar {
       width: 220px;
       background-color: var(--cor-primaria);
       color: white;
       padding: 20px 10px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
     }
-    .sidebar a, .sidebar button {
+    .sidebar a {
       display: block;
-      width: 100%;
+      color: white;
       margin-bottom: 10px;
       text-decoration: none;
       font-weight: bold;
-      border: 1px solid white;
+    }
+    .main-content {
+      flex-grow: 1;
+      padding: 20px;
+    }
+    .table th {
+      background-color: var(--cor-primaria);
       color: white;
-      background: transparent;
-      padding: 5px;
-      text-align: center;
-      border-radius: 4px;
+      font-size: 0.75rem;
+      padding: 4px;
     }
-    .sidebar a:hover, .sidebar button:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+    .table td {
+      font-size: 0.75rem;
+      padding: 2px 4px;
+      vertical-align: middle;
     }
-    .menu-top { margin-bottom: 20px; }
-    .submenu { margin-bottom: 20px; }
-    hr { border-top: 1px solid rgba(255, 255, 255, 0.3); margin: 10px 0; }
-    .main-content { flex-grow: 1; padding: 20px; }
-    .table th { background-color: var(--cor-primaria); color: white; font-size: 0.75rem; padding: 4px; }
-    .table td { font-size: 0.75rem; padding: 2px 4px; vertical-align: middle; }
+    .form-label {
+      font-size: 0.75rem;
+    }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 
 <div class="layout">
   <div class="sidebar">
-    <div>
-      <h4 class="text-center">Le PanApp</h4>
-      <div class="menu-top">
-        <a href="index.html">Home</a>
-        <a href="Cadastro.html">Cadastros</a>
-        <a href="clientes.html">Clientes</a>
-        <a href="eventos.html">Eventos</a>
-        <a href="relatorio.html">Relatórios</a>
-      </div>
-      <hr>
-      <div class="submenu">
-        <a href="GestaoEvento.html">Criar</a>
-        <a href="compra_evento.html">Compras</a>
-        <a href="controle_etapas.html">Etapas</a>
-        <a href="media_produtos.html">Média Produto</a>
-        <a href="relatorio/eventos_relatorio.html">Visão por Cliente</a>
-        <a href="relatorio/equipe_relatorio.html">Visão por Equipe</a>
-      </div>
-    </div>
-    <button onclick="history.back()">Voltar</button>
+    <h4>LePanApp</h4>
+    <a href="../produtos.html">Produtos</a>
+    <a href="../equipe.html">Equipe</a>
+    <a href="../clientes.html">Clientes</a>
+    <a href="../eventos.html">Eventos</a>
+    <a href="../logistica.html">Logística</a>
+    <a href="eventos_relatorio.html">Relatório</a>
   </div>
 
   <div class="main-content">
     <h1>Análise por Cliente</h1>
 
+    <h4>Filtros</h4>
     <form id="filtrosForm" class="row g-2 mb-3">
       <div class="col-md-3">
         <label class="form-label">Nome do Evento</label>
@@ -84,108 +84,154 @@
         <label class="form-label">Data Fim</label>
         <input type="date" id="filtroDataFim" class="form-control form-control-sm">
       </div>
-      <div class="col-md-3">
-        <label class="form-label">Status</label>
-        <select id="filtroStatus" class="form-select form-select-sm">
-          <option value="Fechado">Fechado</option>
-          <option value="Finalizado">Finalizado</option>
-          <option value="Aberto">Aberto</option>
-          <option value="">Todos</option>
-        </select>
-      </div>
       <div class="col-12">
         <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Aplicar Filtros</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="limparFiltros()">Limpar Filtros</button>
+        <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="exportarXLSX()">Exportar XLSX</button>
       </div>
     </form>
 
-    <table class="table table-bordered" id="tabelaRelatorio">
+    <table class="table table-bordered">
       <thead>
         <tr>
           <th>Nome do Evento</th>
           <th>Data</th>
+          <th>Venda PDV</th>
+          <th>Média Histórica</th>
+          <th>Lucro</th>
           <th>Custo Perda</th>
-          <th>Valor Assados</th>
+          <th>Custo Assado</th>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="relatorioTabela"></tbody>
     </table>
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
 <script>
   const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SUA_AUTH_DOMAIN",
-    databaseURL: "SUA_DATABASE_URL",
-    projectId: "SUA_PROJECT_ID"
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "542989944344",
+    appId: "1:542989944344:web:576e28199960fd5440a56d"
   };
+
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  let eventos = [];
+  let eventos = [], eventosFiltrados = [], linhasRelatorio = [];
 
-  function carregarEventos() {
-    db.ref('eventos').once('value').then(snapshot => {
-      eventos = [];
-      snapshot.forEach(child => {
-        const evento = child.val();
-        evento.id = child.key;
-        eventos.push(evento);
-      });
-      aplicarFiltros();
+  db.ref('eventos').once('value').then(snapshot => {
+    eventos = [];
+    snapshot.forEach(child => {
+      const e = child.val();
+      e.id = child.key;
+      eventos.push(e);
     });
-  }
-
-  function aplicarFiltros() {
-    const nomeFiltro = document.getElementById('filtroNome').value.toLowerCase();
-    const dataInicio = document.getElementById('filtroDataInicio').value;
-    const dataFim = document.getElementById('filtroDataFim').value;
-    const statusFiltro = document.getElementById('filtroStatus').value;
-
-    const tbody = document.querySelector('#tabelaRelatorio tbody');
-    tbody.innerHTML = '';
-
-    eventos.filter(e => {
-      if (nomeFiltro && !(e.nomeEvento || '').toLowerCase().includes(nomeFiltro)) return false;
-      if (dataInicio && (!e.data || e.data < dataInicio)) return false;
-      if (dataFim && (!e.data || e.data > dataFim)) return false;
-      if (statusFiltro && e.status !== statusFiltro) return false;
-      return true;
-    }).forEach(eAtual => {
-      const produtos = eAtual.produtos || [];
-
-      const custoPerda = produtos.reduce((s, p) => {
-        const perda = parseFloat(p.perda) || 0;
-        const valorVenda = parseFloat(p.valorVenda) || 0;
-        return s + (perda * valorVenda);
-      }, 0);
-
-      const valorAssados = produtos.reduce((s, p) => {
-        const assado = parseFloat(p.assado) || 0;
-        const valorVenda = parseFloat(p.valorVenda) || 0;
-        return s + (assado * valorVenda);
-      }, 0);
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${eAtual.nomeEvento || '-'}</td>
-        <td>${eAtual.data || '-'}</td>
-        <td>R$ ${custoPerda.toFixed(2)}</td>
-        <td>R$ ${valorAssados.toFixed(2)}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
+    aplicarFiltros();
+  });
 
   document.getElementById('filtrosForm').addEventListener('submit', function(e) {
     e.preventDefault();
     aplicarFiltros();
   });
 
-  document.addEventListener('DOMContentLoaded', carregarEventos);
+  function limparFiltros() {
+    document.getElementById('filtroNome').value = '';
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    aplicarFiltros();
+  }
+
+  function aplicarFiltros() {
+    const nomeFiltro = document.getElementById('filtroNome').value.toLowerCase();
+    const dataInicio = document.getElementById('filtroDataInicio').value;
+    const dataFim = document.getElementById('filtroDataFim').value;
+
+    const tabela = document.getElementById('relatorioTabela');
+    tabela.innerHTML = '';
+    linhasRelatorio = [];
+
+    eventosFiltrados = eventos.filter(e => {
+      if (nomeFiltro && !(e.nomeEvento || '').toLowerCase().includes(nomeFiltro)) return false;
+      if (dataInicio && (!e.data || e.data < dataInicio)) return false;
+      if (dataFim && (!e.data || e.data > dataFim)) return false;
+      return true;
+    });
+
+    const eventosPorNome = {};
+
+    eventosFiltrados.forEach(e => {
+      if (!eventosPorNome[e.nomeEvento]) {
+        eventosPorNome[e.nomeEvento] = [];
+      }
+      eventosPorNome[e.nomeEvento].push(e);
+    });
+
+    Object.keys(eventosPorNome).forEach(nome => {
+      const grupo = eventosPorNome[nome];
+      grupo.sort((a, b) => (a.data > b.data) ? 1 : -1);
+
+      grupo.forEach((eAtual, idx) => {
+        const anteriores = grupo.slice(0, idx);
+        const somaVenda = anteriores.reduce((s, ev) => s + (parseFloat(ev.vendaPDV) || 0), 0);
+        const qtd = anteriores.length;
+        const media = qtd ? (somaVenda / qtd) : 0;
+
+        const vendaPDV = parseFloat(eAtual.vendaPDV) || 0;
+        const cmvReal = parseFloat(eAtual.cmvReal) || 0;
+        const custoEquipe = (eAtual.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
+        const custoLogistica = (eAtual.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
+
+        let custoPerda = 0;
+        let custoAssado = 0;
+
+        if (eAtual.produtos) {
+          eAtual.produtos.forEach(p => {
+            const perda = parseFloat(p.perda || 0);
+            const assado = parseFloat(p.assado || 0);
+            const custo = parseFloat(p.custo || 0);
+            custoPerda += perda * custo;
+            custoAssado += assado * custo;
+          });
+        }
+
+        const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${eAtual.nomeEvento || '-'}</td>
+          <td>${eAtual.data || '-'}</td>
+          <td>R$ ${vendaPDV.toFixed(2)}</td>
+          <td>R$ ${media.toFixed(2)}</td>
+          <td>R$ ${lucro.toFixed(2)}</td>
+          <td>R$ ${custoPerda.toFixed(2)}</td>
+          <td>R$ ${custoAssado.toFixed(2)}</td>
+        `;
+        tabela.appendChild(row);
+
+        linhasRelatorio.push({
+          'Nome do Evento': eAtual.nomeEvento || '-',
+          'Data': eAtual.data || '-',
+          'Venda PDV': vendaPDV.toFixed(2),
+          'Média Histórica': media.toFixed(2),
+          'Lucro': lucro.toFixed(2),
+          'Custo Perda': custoPerda.toFixed(2),
+          'Custo Assado': custoAssado.toFixed(2)
+        });
+      });
+    });
+  }
+
+  function exportarXLSX() {
+    const ws = XLSX.utils.json_to_sheet(linhasRelatorio);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+    XLSX.writeFile(wb, "relatorio_eventos.xlsx");
+  }
 </script>
 
 </body>
