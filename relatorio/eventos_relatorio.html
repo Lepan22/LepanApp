@@ -63,7 +63,6 @@
     <a href="../equipe.html">Equipe</a>
     <a href="../clientes.html">Clientes</a>
     <a href="../eventos.html">Eventos</a>
-    <a href="../logistica.html">Logística</a>
     <a href="eventos_relatorio.html">Relatório</a>
   </div>
 
@@ -122,17 +121,26 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  let eventos = [], eventosFiltrados = [], linhasRelatorio = [];
+  let eventos = [], produtos = {}, eventosFiltrados = [], linhasRelatorio = [];
 
-  db.ref('eventos').once('value').then(snapshot => {
-    eventos = [];
+  db.ref('produtos').once('value').then(snapshot => {
     snapshot.forEach(child => {
-      const e = child.val();
-      e.id = child.key;
-      eventos.push(e);
+      produtos[child.key] = child.val();
     });
-    aplicarFiltros();
+    carregarEventos();
   });
+
+  function carregarEventos() {
+    db.ref('eventos').once('value').then(snapshot => {
+      eventos = [];
+      snapshot.forEach(child => {
+        const e = child.val();
+        e.id = child.key;
+        eventos.push(e);
+      });
+      aplicarFiltros();
+    });
+  }
 
   document.getElementById('filtrosForm').addEventListener('submit', function(e) {
     e.preventDefault();
@@ -191,9 +199,10 @@
 
         if (eAtual.produtos) {
           eAtual.produtos.forEach(p => {
+            const produtoId = p.produtoId;
             const perda = parseFloat(p.perda || 0);
             const assado = parseFloat(p.assado || 0);
-            const custo = parseFloat(p.custo || 0);
+            const custo = produtos[produtoId] ? parseFloat(produtos[produtoId].custo || 0) : 0;
             custoPerda += perda * custo;
             custoAssado += assado * custo;
           });
