@@ -45,6 +45,12 @@ function carregarEvento() {
     document.getElementById('responsavel').value = evento.responsavel || '';
 
     listaProdutos = evento.produtos || [];
+
+    const status = evento.status || 'Aberto';
+    if (status !== 'Aberto') {
+      desabilitarFormulario();
+    }
+
     renderizarProdutos();
   });
 }
@@ -94,9 +100,36 @@ function finalizarEvento() {
     return;
   }
 
-  db.ref('eventos/' + eventoId + '/status').set('Finalizado').then(() => {
-    alert('Evento finalizado com sucesso!');
-  });
+  // 1. Atualiza os dados preenchidos
+  salvarRetorno();
+
+  // 2. Atualiza status
+  db.ref('eventos/' + eventoId + '/status').set('Finalizado')
+    .then(() => {
+      // 3. Faz o backup completo
+      db.ref('eventos/' + eventoId).once('value')
+        .then(snapshot => {
+          const eventoCompleto = snapshot.val();
+          return db.ref('historico_eventos_finalizados/' + eventoId).set(eventoCompleto);
+        })
+        .then(() => {
+          alert('Evento finalizado e backup salvo com sucesso!');
+          desabilitarFormulario();
+        })
+        .catch(err => {
+          console.error('Erro ao salvar backup:', err);
+          alert('Evento finalizado, mas falha ao salvar backup!');
+        });
+    })
+    .catch(err => {
+      console.error('Erro ao finalizar evento:', err);
+      alert('Erro ao finalizar evento!');
+    });
+}
+
+function desabilitarFormulario() {
+  document.querySelectorAll('input').forEach(input => input.disabled = true);
+  document.querySelectorAll('button').forEach(button => button.disabled = true);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
