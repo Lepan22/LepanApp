@@ -1,170 +1,149 @@
-// Configuração Firebase
 const firebaseConfig = {
-  apiKey: "SUA_API_KEY",
-  authDomain: "SUA_AUTH_DOMAIN",
-  databaseURL: "SUA_DATABASE_URL",
-  projectId: "SUA_PROJECT_ID",
-  storageBucket: "SUA_STORAGE_BUCKET",
-  messagingSenderId: "SUA_MESSAGING_SENDER_ID",
-  appId: "SUA_APP_ID"
+  apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+  authDomain: "lepanapp.firebaseapp.com",
+  databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+  projectId: "lepanapp"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let produtos = {};
 let eventos = [];
+let produtos = {};
+let mediasPorEvento = {};
 
-async function carregarDados() {
-  const snapshot = await db.ref('eventos').once('value');
-  const eventosData = snapshot.val();
-  eventos = [];
-
-  for (let id in eventosData) {
-    const evento = eventosData[id];
-    evento.id = id;
-    eventos.push(evento);
-  }
-
-  const prodSnapshot = await db.ref('produtos').once('value');
-  produtos = prodSnapshot.val();
-
-  popularFiltroEventos();
-  gerarRelatorio();
+function carregarProdutos() {
+  db.ref('produtos').once('value').then(snapshot => {
+    produtos = {};
+    snapshot.forEach(child => {
+      produtos[child.key] = child.val().nome;
+    });
+    carregarEventos();
+  });
 }
 
-function popularFiltroEventos() {
-  const select = document.getElementById('nomeEventoFiltro');
-  const nomes = new Set();
+function carregarEventos() {
+  db.ref('eventos').once('value').then(snapshot => {
+    eventos = [];
+    const nomesEventos = new Set();
 
-  eventos.forEach(ev => {
-    if (ev.nomeEvento) nomes.add(ev.nomeEvento);
-  });
+    snapshot.forEach(child => {
+      const evento = child.val();
+      evento.id = child.key;
+      eventos.push(evento);
+      if (evento.nomeEvento) {
+        nomesEventos.add(evento.nomeEvento);
+      }
+    });
 
-  nomes.forEach(nome => {
-    const opt = document.createElement('option');
-    opt.value = nome;
-    opt.textContent = nome;
-    select.appendChild(opt);
+    const select = document.getElementById('nomeEventoFiltro');
+    select.innerHTML = '';
+    nomesEventos.forEach(nome => {
+      const opt = document.createElement('option');
+      opt.value = nome;
+      opt.textContent = nome;
+      select.appendChild(opt);
+    });
+
+    filtrarRelatorio();
   });
 }
 
 function filtrarRelatorio() {
-  gerarRelatorio();
-}
-
-function gerarRelatorio() {
   const dataInicio = document.getElementById('dataInicio').value;
   const dataFim = document.getElementById('dataFim').value;
   const nomeFiltro = Array.from(document.getElementById('nomeEventoFiltro').selectedOptions).map(opt => opt.value);
   const statusFiltro = document.getElementById('statusFiltro').value;
 
-  const relatorio = {};
+  const agrupado = {};
+  const eventosNomes = new Set();
 
-  eventos.forEach(ev => {
-    const dataEv = ev.data;
-    const status = ev.status || '';
-    const nomeEv = ev.nomeEvento || '';
+  mediasPorEvento = {};
 
-    if (dataInicio && dataEv < dataInicio) return;
-    if (dataFim && dataEv > dataFim) return;
-    if (statusFiltro && status !== statusFiltro) return;
-    if (nomeFiltro.length > 0 && !nomeFiltro.includes(nomeEv)) return;
+  eventos.forEach(evento => {
+    if (statusFiltro && evento.status !== statusFiltro) return;
+    if (dataInicio && evento.data < dataInicio) return;
+    if (dataFim && evento.data > dataFim) return;
+    if (nomeFiltro.length && !nomeFiltro.includes(evento.nomeEvento)) return;
+    if (!evento.produtos) return;
 
-    if (!ev.produtos || !Array.isArray(ev.produtos)) return;
+    eventosNomes.add(evento.nomeEvento);
 
-    ev.produtos.forEach(prod => {
-      const pid = prod.produtoId;
-      if (!pid) return;
+    evento.produtos.forEach(produto => {
+      const enviado = parseFloat(produto.quantidade) || 0;
 
-      const enviado = parseFloat(prod.quantidade) || 0;
-      const congelado = parseFloat(prod.congelado) || 0;
-      const assado = parseFloat(prod.assado) || 0;
-      const perda = parseFloat(prod.perda) || 0;
+      if (enviado > 0) {  // ✅ Só considera produtos levados
+        const congelado = parseFloat(produto.congelado) || 0;
+        const assado = parseFloat(produto.assado) || 0;
+        const perda = parseFloat(produto.perda) || 0;
 
-      const vendido = enviado - (congelado + assado + perda);
+        const consumido = enviado - (congelado + assado + perda);
+        const nomeProduto = produtos[produto.produtoId] || produto.produtoId;
 
-      if (!relatorio[pid]) {
-        relatorio[pid] = { nome: produtos[pid]?.nome || pid, eventos: [] };
-      }
+        if (!agrupado[nomeProduto]) agrupado[nomeProduto] = {};
+        if (!agrupado[nomeProduto][evento.nomeEvento]) agrupado[nomeProduto][evento.nomeEvento] = { total: 0, count: 0 };
 
-      // Só considerar se o produto foi levado
-      if (enviado > 0) {
-        relatorio[pid].eventos.push({
-          data: dataEv,
-          nomeEvento: nomeEv,
-          vendido: vendido < 0 ? 0 : vendido
-        });
+        agrupado[nomeProduto][evento.nomeEvento].total += consumido;
+        agrupado[nomeProduto][evento.nomeEvento].count += 1;
+
+        if (!mediasPorEvento[evento.nomeEvento]) mediasPorEvento[evento.nomeEvento] = {};
+        if (!mediasPorEvento[evento.nomeEvento][produto.produtoId]) mediasPorEvento[evento.nomeEvento][produto.produtoId] = { total: 0, count: 0 };
+
+        mediasPorEvento[evento.nomeEvento][produto.produtoId].total += consumido;
+        mediasPorEvento[evento.nomeEvento][produto.produtoId].count += 1;
       }
     });
   });
 
-  exibirTabela(relatorio);
+  renderizarTabela(agrupado, Array.from(eventosNomes).sort());
 }
 
-function exibirTabela(relatorio) {
+function renderizarTabela(agrupado, eventosNomes) {
   const thead = document.getElementById('theadRelatorio');
   const tbody = document.getElementById('tbodyRelatorio');
 
   thead.innerHTML = '';
   tbody.innerHTML = '';
 
-  const datasUnicas = new Set();
-  for (let pid in relatorio) {
-    relatorio[pid].eventos.forEach(e => {
-      datasUnicas.add(`${e.nomeEvento} - ${e.data}`);
-    });
-  }
-
-  const datasArray = Array.from(datasUnicas).sort();
-
-  // Cabeçalho
-  const trHead = document.createElement('tr');
-  trHead.innerHTML = `<th>Produto</th>`;
-  datasArray.forEach(dt => {
-    const th = document.createElement('th');
-    th.textContent = dt;
-    trHead.appendChild(th);
+  let header = '<tr><th>Nome do Produto</th>';
+  eventosNomes.forEach(evt => {
+    header += `<th>${evt}</th>`;
   });
-  trHead.innerHTML += `<th>Média</th>`;
-  thead.appendChild(trHead);
+  header += '</tr>';
+  thead.innerHTML = header;
 
-  for (let pid in relatorio) {
-    const linha = document.createElement('tr');
-    const prod = relatorio[pid];
-    linha.innerHTML = `<td>${prod.nome}</td>`;
-
-    let soma = 0;
-    let contagem = 0;
-
-    datasArray.forEach(dt => {
-      const evento = prod.eventos.find(e => `${e.nomeEvento} - ${e.data}` === dt);
-      const td = document.createElement('td');
-
-      if (evento) {
-        td.textContent = evento.vendido.toFixed(1);
-        soma += evento.vendido;
-        contagem++;
-      } else {
-        td.textContent = '-';
-      }
-      linha.appendChild(td);
+  Object.keys(agrupado).forEach(produto => {
+    let row = `<tr><td>${produto}</td>`;
+    eventosNomes.forEach(evt => {
+      const data = agrupado[produto][evt];
+      const media = data ? (data.total / data.count).toFixed(2) : '-';
+      row += `<td>${media}</td>`;
     });
-
-    const media = contagem > 0 ? (soma / contagem).toFixed(2) : '-';
-    linha.innerHTML += `<td>${media}</td>`;
-    tbody.appendChild(linha);
-  }
+    row += '</tr>';
+    tbody.innerHTML += row;
+  });
 }
 
 function exportarExcel() {
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.table_to_sheet(document.getElementById('tabelaRelatorio'));
-  XLSX.utils.book_append_sheet(wb, ws, "Relatório");
-  XLSX.writeFile(wb, "relatorio_media.xlsx");
+  const tabela = document.getElementById('tabelaRelatorio');
+  const wb = XLSX.utils.table_to_book(tabela, { sheet: "Relatório" });
+  XLSX.writeFile(wb, 'media_consumo_evento.xlsx');
 }
 
 function atualizarFirebase() {
-  alert("Atualização no Firebase implementada conforme regras internas.");
+  const updates = {};
+
+  Object.keys(mediasPorEvento).forEach(nomeEvento => {
+    Object.keys(mediasPorEvento[nomeEvento]).forEach(produtoId => {
+      const mediaObj = mediasPorEvento[nomeEvento][produtoId];
+      const media = (mediaObj.total / mediaObj.count).toFixed(1);
+      updates[`media_evento/${nomeEvento}/${produtoId}`] = parseFloat(media);
+    });
+  });
+
+  db.ref().update(updates).then(() => {
+    alert("Médias atualizadas com sucesso no Firebase!");
+  });
 }
 
-carregarDados();
+document.addEventListener('DOMContentLoaded', carregarProdutos);
