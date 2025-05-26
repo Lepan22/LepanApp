@@ -18,9 +18,26 @@
       display: flex;
       min-height: 100vh;
     }
+    .sidebar {
+      width: 220px;
+      background-color: var(--cor-primaria);
+      color: white;
+      padding: 20px 10px;
+    }
+    .sidebar a {
+      display: block;
+      color: white;
+      margin-bottom: 10px;
+      text-decoration: none;
+      font-weight: bold;
+    }
     .main-content {
       flex-grow: 1;
       padding: 20px;
+    }
+    .submenu a {
+      margin-right: 8px;
+      margin-bottom: 6px;
     }
     .kpi-box {
       background: var(--cor-secundaria);
@@ -47,11 +64,28 @@
 <body>
 
 <div class="layout">
-  
-  <div id="menu"></div>  <!-- ✅ Aqui o menu será carregado automaticamente -->
+  <div class="sidebar">
+    <h4>LePanApp</h4>
+    <a href="produtos.html">Produtos</a>
+    <a href="equipe.html">Equipe</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="eventos.html">Eventos</a>
+    <a href="logistica.html">Logística</a>
+    <a href="eventos_relatorio.html">Relatórios</a>
+  </div>
 
   <div class="main-content">
     <h1>Eventos</h1>
+
+    <!-- ✅ Submenu local -->
+    <div class="submenu mb-3">
+      <a href="GestaoEvento.html" class="btn btn-sm btn-outline-primary">Criar</a>
+      <a href="compra_evento.html" class="btn btn-sm btn-outline-secondary">Compras</a>
+      <a href="controle_etapas.html" class="btn btn-sm btn-outline-secondary">Etapas</a>
+      <a href="media_produtos.html" class="btn btn-sm btn-outline-secondary">Média Produto</a>
+      <a href="eventos_relatorio.html" class="btn btn-sm btn-outline-secondary">Visão por Cliente</a>
+      <a href="equipe_relatorio.html" class="btn btn-sm btn-outline-secondary">Visão por Equipe</a>
+    </div>
 
     <a href="GestaoEvento.html" class="btn btn-sm btn-primary mb-3">+ Criar Evento</a>
 
@@ -116,14 +150,5 @@
 </div>
 
 <script src="eventos.js"></script>
-
-<script>
-  fetch('menu.html')
-    .then(response => response.text())
-    .then(data => {
-      document.getElementById('menu').innerHTML = data;
-    });
-</script>
-
 </body>
 </html>
