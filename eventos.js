@@ -21,6 +21,14 @@ function carregarEventos() {
       evento.id = child.key;
       eventos.push(evento);
     });
+
+    // ✅ Ordenar por data decrescente
+    eventos.sort((a, b) => {
+      if (!a.data) return 1;
+      if (!b.data) return -1;
+      return b.data.localeCompare(a.data);
+    });
+
     aplicarFiltros();
     calcularKPIs();
   });
@@ -44,7 +52,6 @@ function aplicarFiltros() {
   });
 
   eventosFiltrados.forEach(eAtual => {
-    // Calcula média apenas com eventos anteriores com mesmo nome
     const eventosAnteriores = eventos.filter(e => 
       e.nomeEvento === eAtual.nomeEvento && 
       e.data && eAtual.data && e.data < eAtual.data
@@ -76,7 +83,6 @@ function calcularKPIs() {
   const hoje = new Date();
   const semanaInicio = new Date(hoje);
   semanaInicio.setDate(hoje.getDate() - hoje.getDay());
-
   const mesInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
 
   let kpiSemana = 0, kpiMes = 0, kpiEstimativa = 0, kpiVendasMes = 0;
@@ -110,7 +116,11 @@ function duplicarEvento(id) {
     perda: 0
   }));
 
+  // ✅ Ajustes conforme solicitado
   delete novoEvento.id;
+  delete novoEvento.vendaPDV;
+  novoEvento.status = "Aberto";
+  delete novoEvento.data;
 
   const novoId = db.ref('eventos').push().key;
   db.ref('eventos/' + novoId).set(novoEvento).then(() => {
@@ -153,7 +163,6 @@ document.getElementById('filtrosForm').addEventListener('submit', function(e) {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Define o valor padrão como 'Todos'
   document.getElementById('filtroStatus').value = 'Todos';
   carregarEventos();
 });
