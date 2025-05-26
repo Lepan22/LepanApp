@@ -98,7 +98,7 @@
     <form id="filtrosForm" class="row g-2 mb-3">
       <div class="col-md-3">
         <label class="form-label">Responsável</label>
-        <input type="text" id="filtroResponsavel" class="form-control form-control-sm">
+        <select id="filtroResponsavel" class="form-select form-select-sm" multiple></select>
       </div>
       <div class="col-md-3">
         <label class="form-label">Data Início</label>
@@ -157,6 +157,10 @@
       <label class="form-check-label" for="chkCustoPerda">Custo Perda</label>
     </div>
     <div class="form-check">
+      <input class="form-check-input" type="checkbox" value="custoAssado" id="chkCustoAssado" checked>
+      <label class="form-check-label" for="chkCustoAssado">Custo Assado</label>
+    </div>
+    <div class="form-check">
       <input class="form-check-input" type="checkbox" value="custoLogistica" id="chkCustoLogistica" checked>
       <label class="form-check-label" for="chkCustoLogistica">Custo Logística</label>
     </div>
@@ -198,6 +202,7 @@
         eventos.push(e);
       });
       popularFiltroCondominio();
+      popularFiltroResponsavel();
       aplicarFiltros();
     });
   }
@@ -205,6 +210,18 @@
   function popularFiltroCondominio() {
     const filtro = document.getElementById('filtroCondominio');
     const nomes = [...new Set(eventos.map(e => e.nomeEvento))].filter(Boolean);
+    filtro.innerHTML = '';
+    nomes.forEach(nome => {
+      const opt = document.createElement('option');
+      opt.value = nome;
+      opt.textContent = nome;
+      filtro.appendChild(opt);
+    });
+  }
+
+  function popularFiltroResponsavel() {
+    const filtro = document.getElementById('filtroResponsavel');
+    const nomes = [...new Set(eventos.map(e => e.responsavel))].filter(Boolean);
     filtro.innerHTML = '';
     nomes.forEach(nome => {
       const opt = document.createElement('option');
@@ -224,7 +241,7 @@
   });
 
   function limparFiltros() {
-    document.getElementById('filtroResponsavel').value = '';
+    [...document.getElementById('filtroResponsavel').options].forEach(o => o.selected = false);
     document.getElementById('filtroDataInicio').value = '';
     document.getElementById('filtroDataFim').value = '';
     document.getElementById('filtroStatus').value = 'Fechado';
@@ -233,7 +250,7 @@
   }
 
   function aplicarFiltros() {
-    const responsavelFiltro = document.getElementById('filtroResponsavel').value.toLowerCase();
+    const responsaveisSelecionados = [...document.getElementById('filtroResponsavel').selectedOptions].map(o => o.value);
     const dataInicio = document.getElementById('filtroDataInicio').value;
     const dataFim = document.getElementById('filtroDataFim').value;
     const statusFiltro = document.getElementById('filtroStatus').value;
@@ -244,7 +261,7 @@
     linhasRelatorio = [];
 
     const eventosFiltrados = eventos.filter(e => {
-      if (responsavelFiltro && !(e.responsavel || '').toLowerCase().includes(responsavelFiltro)) return false;
+      if (responsaveisSelecionados.length > 0 && !responsaveisSelecionados.includes(e.responsavel)) return false;
       if (dataInicio && (!e.data || e.data < dataInicio)) return false;
       if (dataFim && (!e.data || e.data > dataFim)) return false;
       if (statusFiltro && (e.status !== statusFiltro)) return false;
@@ -292,6 +309,7 @@
         vendaPDV,
         lucro,
         custoPerda,
+        custoAssado,
         custoLogistica
       });
     });
@@ -300,7 +318,7 @@
   }
 
   function desenharGrafico() {
-    const selectedIndicators = ['vendaPDV', 'lucro', 'custoPerda', 'custoLogistica']
+    const selectedIndicators = ['vendaPDV', 'lucro', 'custoPerda', 'custoAssado', 'custoLogistica']
       .filter(id => document.getElementById('chk' + id.charAt(0).toUpperCase() + id.slice(1)).checked);
 
     const labels = linhasRelatorio.map(e => {
