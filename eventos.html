@@ -24,27 +24,36 @@
       color: white;
       padding: 20px 10px;
       font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
-    .sidebar a {
+    .sidebar a, .sidebar button {
       display: block;
-      color: white;
+      width: 100%;
       margin-bottom: 10px;
       text-decoration: none;
       font-weight: bold;
+      border: 1px solid white;
+      color: white;
+      background: transparent;
+      padding: 5px;
+      text-align: center;
+      border-radius: 4px;
     }
-    .sidebar a:hover {
-      text-decoration: underline;
+    .sidebar a:hover, .sidebar button:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      text-decoration: none;
     }
-    .sidebar button {
-      width: 100%;
+    .menu-top {
+      margin-bottom: 20px;
+    }
+    .submenu {
+      margin-bottom: 20px;
     }
     .main-content {
       flex-grow: 1;
       padding: 20px;
-    }
-    .submenu a {
-      margin-right: 8px;
-      margin-bottom: 6px;
     }
     .kpi-box {
       background: var(--cor-secundaria);
@@ -64,6 +73,10 @@
       padding: 2px 4px;
       vertical-align: middle;
     }
+    hr {
+      border-top: 1px solid rgba(255, 255, 255, 0.3);
+      margin: 10px 0;
+    }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -73,28 +86,34 @@
 <div class="layout">
   
   <div class="sidebar">
-    <h4>LePanApp</h4>
-    <a href="index.html">Home</a>
-    <a href="Cadastro.html">Cadastros</a>
-    <a href="clientes.html">Clientes</a>
-    <a href="eventos.html">Eventos</a>
-    <a href="relatorio.html">Relatórios</a>
+    <div>
+      <h4 class="text-center">Le PanApp</h4>
 
-    <button onclick="history.back()" class="btn btn-sm btn-outline-light mt-3">Voltar</button>
+      <div class="menu-top">
+        <a href="index.html">Home</a>
+        <a href="Cadastro.html">Cadastros</a>
+        <a href="clientes.html">Clientes</a>
+        <a href="eventos.html">Eventos</a>
+        <a href="relatorio.html">Relatórios</a>
+      </div>
+
+      <hr>
+
+      <div class="submenu">
+        <a href="GestaoEvento.html">Criar</a>
+        <a href="compra_evento.html">Compras</a>
+        <a href="controle_etapas.html">Etapas</a>
+        <a href="media_produtos.html">Média Produto</a>
+        <a href="eventos_relatorio.html">Visão por Cliente</a>
+        <a href="equipe_relatorio.html">Visão por Equipe</a>
+      </div>
+    </div>
+
+    <button onclick="history.back()">Voltar</button>
   </div>
 
   <div class="main-content">
     <h1>Eventos</h1>
-
-    <!-- ✅ Submenu bonito -->
-    <div class="submenu mb-3">
-      <a href="GestaoEvento.html" class="btn btn-sm btn-outline-primary">Criar</a>
-      <a href="compra_evento.html" class="btn btn-sm btn-outline-secondary">Compras</a>
-      <a href="controle_etapas.html" class="btn btn-sm btn-outline-secondary">Etapas</a>
-      <a href="media_produtos.html" class="btn btn-sm btn-outline-secondary">Média Produto</a>
-      <a href="eventos_relatorio.html" class="btn btn-sm btn-outline-secondary">Visão por Cliente</a>
-      <a href="equipe_relatorio.html" class="btn btn-sm btn-outline-secondary">Visão por Equipe</a>
-    </div>
 
     <div class="row mb-3">
       <div class="col kpi-box">
