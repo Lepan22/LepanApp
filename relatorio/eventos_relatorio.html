@@ -83,6 +83,14 @@
         <label class="form-label">Data Fim</label>
         <input type="date" id="filtroDataFim" class="form-control form-control-sm">
       </div>
+      <div class="col-md-3">
+        <label class="form-label">Status</label>
+        <select id="filtroStatus" class="form-select form-select-sm">
+          <option value="Fechado" selected>Fechado</option>
+          <option value="Aberto">Aberto</option>
+          <option value="Finalizado">Finalizado</option>
+        </select>
+      </div>
       <div class="col-12">
         <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Aplicar Filtros</button>
         <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="limparFiltros()">Limpar Filtros</button>
@@ -151,6 +159,7 @@
     document.getElementById('filtroNome').value = '';
     document.getElementById('filtroDataInicio').value = '';
     document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroStatus').value = 'Fechado';
     aplicarFiltros();
   }
 
@@ -158,6 +167,7 @@
     const nomeFiltro = document.getElementById('filtroNome').value.toLowerCase();
     const dataInicio = document.getElementById('filtroDataInicio').value;
     const dataFim = document.getElementById('filtroDataFim').value;
+    const statusFiltro = document.getElementById('filtroStatus').value;
 
     const tabela = document.getElementById('relatorioTabela');
     tabela.innerHTML = '';
@@ -167,70 +177,55 @@
       if (nomeFiltro && !(e.nomeEvento || '').toLowerCase().includes(nomeFiltro)) return false;
       if (dataInicio && (!e.data || e.data < dataInicio)) return false;
       if (dataFim && (!e.data || e.data > dataFim)) return false;
+      if (statusFiltro && (e.status !== statusFiltro)) return false;
       return true;
     });
 
-    const eventosPorNome = {};
+    // Ordenar por data decrescente
+    eventosFiltrados.sort((a, b) => (a.data < b.data) ? 1 : -1);
 
-    eventosFiltrados.forEach(e => {
-      if (!eventosPorNome[e.nomeEvento]) {
-        eventosPorNome[e.nomeEvento] = [];
-      }
-      eventosPorNome[e.nomeEvento].push(e);
-    });
+    eventosFiltrados.forEach(eAtual => {
+      const vendaPDV = parseFloat(eAtual.vendaPDV) || 0;
+      const cmvReal = parseFloat(eAtual.cmvReal) || 0;
+      const custoEquipe = (eAtual.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
+      const custoLogistica = (eAtual.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
 
-    Object.keys(eventosPorNome).forEach(nome => {
-      const grupo = eventosPorNome[nome];
-      grupo.sort((a, b) => (a.data > b.data) ? 1 : -1);
+      let custoPerda = 0;
+      let custoAssado = 0;
 
-      grupo.forEach((eAtual, idx) => {
-        const anteriores = grupo.slice(0, idx);
-        const somaVenda = anteriores.reduce((s, ev) => s + (parseFloat(ev.vendaPDV) || 0), 0);
-        const qtd = anteriores.length;
-        const media = qtd ? (somaVenda / qtd) : 0;
-
-        const vendaPDV = parseFloat(eAtual.vendaPDV) || 0;
-        const cmvReal = parseFloat(eAtual.cmvReal) || 0;
-        const custoEquipe = (eAtual.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
-        const custoLogistica = (eAtual.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
-
-        let custoPerda = 0;
-        let custoAssado = 0;
-
-        if (eAtual.produtos) {
-          eAtual.produtos.forEach(p => {
-            const produtoId = p.produtoId;
-            const perda = parseFloat(p.perda || 0);
-            const assado = parseFloat(p.assado || 0);
-            const custo = produtos[produtoId] ? parseFloat(produtos[produtoId].custo || 0) : 0;
-            custoPerda += perda * custo;
-            custoAssado += assado * custo;
-          });
-        }
-
-        const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${eAtual.nomeEvento || '-'}</td>
-          <td>${eAtual.data || '-'}</td>
-          <td>R$ ${vendaPDV.toFixed(2)}</td>
-          <td>R$ ${media.toFixed(2)}</td>
-          <td>R$ ${lucro.toFixed(2)}</td>
-          <td>R$ ${custoPerda.toFixed(2)}</td>
-          <td>R$ ${custoAssado.toFixed(2)}</td>
-        `;
-        tabela.appendChild(row);
-
-        linhasRelatorio.push({
-          'Nome do Evento': eAtual.nomeEvento || '-',
-          'Data': eAtual.data || '-',
-          'Venda PDV': vendaPDV.toFixed(2),
-          'Média Histórica': media.toFixed(2),
-          'Lucro': lucro.toFixed(2),
-          'Custo Perda': custoPerda.toFixed(2),
-          'Custo Assado': custoAssado.toFixed(2)
+      if (eAtual.produtos) {
+        eAtual.produtos.forEach(p => {
+          const produtoId = p.produtoId;
+          const perda = parseFloat(p.perda || 0);
+          const assado = parseFloat(p.assado || 0);
+          const custo = produtos[produtoId] ? parseFloat(produtos[produtoId].custo || 0) : 0;
+          custoPerda += perda * custo;
+          custoAssado += assado * custo;
         });
+      }
+
+      const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
+
+      const row = document.createElement('tr');
+      row.innerHTML = `
+        <td>${eAtual.nomeEvento || '-'}</td>
+        <td>${eAtual.data || '-'}</td>
+        <td>R$ ${vendaPDV.toFixed(2)}</td>
+        <td>-</td>
+        <td>R$ ${lucro.toFixed(2)}</td>
+        <td>R$ ${custoPerda.toFixed(2)}</td>
+        <td>R$ ${custoAssado.toFixed(2)}</td>
+      `;
+      tabela.appendChild(row);
+
+      linhasRelatorio.push({
+        'Nome do Evento': eAtual.nomeEvento || '-',
+        'Data': eAtual.data || '-',
+        'Venda PDV': vendaPDV.toFixed(2),
+        'Média Histórica': '-', // Pode adicionar se quiser cálculo.
+        'Lucro': lucro.toFixed(2),
+        'Custo Perda': custoPerda.toFixed(2),
+        'Custo Assado': custoAssado.toFixed(2)
       });
     });
   }
