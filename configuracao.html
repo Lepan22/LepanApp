@@ -2,42 +2,66 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Configuração - LePanApp</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuração</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <style>
-    h1 {
-      font-size: 16px;
-      margin-bottom: 10px;
-    }
+    .form-control { max-width: 400px; }
+    .container { margin-top: 30px; }
   </style>
 </head>
 <body>
-
-<div class="layout">
-  <aside class="sidebar" id="menuLateral">
-    <h4>Le PanApp</h4>
-    <a href="home.html">Home</a>
-    <a href="cadastro.html">Cadastros</a>
-    <a href="clientes.html">Clientes</a>
-    <a href="eventos.html">Eventos</a>
-    <a href="relatorios.html">Relatórios</a>
-    <a href="criar.html">Criar</a>
-    <a href="compra_evento.html">Compras</a>
-    <a href="etapas.html">Etapas</a>
-    <a href="media_produto.html">Média Produto</a>
-    <a href="visao_cliente.html">Visão por Cliente</a>
-    <a href="visao_equipe.html">Visão por Equipe</a>
-    <a href="index.html">Voltar</a>
-  </aside>
-
-  <main class="main-content">
+  <div class="container">
     <h1>Configuração</h1>
 
-    <!-- Conteúdo será adicionado futuramente -->
+    <form id="configForm">
+      <div class="mb-3">
+        <label for="capacidadeEventos" class="form-label">Capacidade de Eventos no Mês</label>
+        <input type="number" class="form-control" id="capacidadeEventos" required>
+      </div>
 
-  </main>
-</div>
+      <div class="mb-3">
+        <label for="percentualCMV" class="form-label">Percentual CMV Real (%)</label>
+        <input type="number" step="0.01" class="form-control" id="percentualCMV" required>
+      </div>
 
+      <button type="submit" class="btn btn-primary">Salvar Configurações</button>
+    </form>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "856526642874",
+      appId: "1:856526642874:web:6e20b70c7dbcd2aaed503f"
+    };
+
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const configForm = document.getElementById('configForm');
+
+    configForm.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const capacidadeEventos = Number(document.getElementById('capacidadeEventos').value);
+      const percentualCMV = parseFloat(document.getElementById('percentualCMV').value);
+
+      const configuracao = {
+        capacidadeEventos,
+        percentualCMV
+      };
+
+      db.ref('configuracao').set(configuracao)
+        .then(() => alert('Configurações salvas com sucesso!'))
+        .catch(error => console.error('Erro ao salvar:', error));
+    });
+  </script>
 </body>
 </html>
