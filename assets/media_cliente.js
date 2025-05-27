@@ -17,14 +17,11 @@ function carregarClientes() {
     clientes = {};
     snapshot.forEach(child => {
       const val = child.val();
-      const clienteAtivo = val.clienteAtivo;
-      if (clienteAtivo && clienteAtivo.status === 'Ativo') {  // ✅ Ajustado aqui!
-        clientes[child.key] = {
-          nome: val.nome || 'Sem Nome',
-          id: child.key,
-          nomeEvento: clienteAtivo.nomeEvento || ''
-        };
-      }
+      clientes[child.key] = {
+        nome: val.nome || 'Sem Nome',
+        id: child.key,
+        nomeEvento: val.clienteAtivo?.nomeEvento || ''  // ✅ Pega nomeEvento se existir
+      };
     });
     carregarEventos();
   }).catch(err => {
@@ -55,7 +52,7 @@ function preencherFiltroClientes() {
 
   if (Object.keys(clientes).length === 0) {
     const opt = document.createElement('option');
-    opt.textContent = 'Nenhum cliente ativo encontrado';
+    opt.textContent = 'Nenhum cliente encontrado';
     opt.disabled = true;
     select.appendChild(opt);
     return;
@@ -82,11 +79,13 @@ function filtrarRelatorio() {
     if (clienteFiltro.length && !clienteFiltro.includes(clienteId)) return;
 
     const cliente = clientes[clienteId];
+    if (!cliente.nomeEvento) return;  // ✅ Só processa se tiver nomeEvento
+
     let totalPDV = 0;
     let totalEventos = 0;
 
     eventos.forEach(evento => {
-      if (evento.nomeEvento === cliente.nomeEvento) {  // ✅ Baseado no nome do evento
+      if (evento.nomeEvento === cliente.nomeEvento) {
         if (statusFiltro && evento.status !== statusFiltro) return;
         if (dataInicio && evento.data < dataInicio) return;
         if (dataFim && evento.data > dataFim) return;
