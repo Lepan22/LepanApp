@@ -27,6 +27,12 @@
 
       <button type="submit" class="btn btn-primary">Salvar Configurações</button>
     </form>
+
+    <hr>
+
+    <h4>Configuração Atual</h4>
+    <p><strong>Capacidade de Eventos no Mês:</strong> <span id="capacidadeAtual">-</span></p>
+    <p><strong>Percentual CMV Real:</strong> <span id="percentualAtual">-</span>%</p>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
@@ -46,12 +52,35 @@
     const db = firebase.database();
 
     const configForm = document.getElementById('configForm');
+    const capacidadeInput = document.getElementById('capacidadeEventos');
+    const percentualInput = document.getElementById('percentualCMV');
+
+    const capacidadeAtual = document.getElementById('capacidadeAtual');
+    const percentualAtual = document.getElementById('percentualAtual');
+
+    function carregarConfiguracao() {
+      db.ref('configuracao').once('value')
+        .then(snapshot => {
+          const data = snapshot.val();
+          if (data) {
+            capacidadeInput.value = data.capacidadeEventos;
+            percentualInput.value = data.percentualCMV;
+
+            capacidadeAtual.innerText = data.capacidadeEventos;
+            percentualAtual.innerText = data.percentualCMV;
+          } else {
+            capacidadeAtual.innerText = 'Não configurado';
+            percentualAtual.innerText = 'Não configurado';
+          }
+        })
+        .catch(error => console.error('Erro ao carregar:', error));
+    }
 
     configForm.addEventListener('submit', e => {
       e.preventDefault();
 
-      const capacidadeEventos = Number(document.getElementById('capacidadeEventos').value);
-      const percentualCMV = parseFloat(document.getElementById('percentualCMV').value);
+      const capacidadeEventos = Number(capacidadeInput.value);
+      const percentualCMV = parseFloat(percentualInput.value);
 
       const configuracao = {
         capacidadeEventos,
@@ -59,9 +88,16 @@
       };
 
       db.ref('configuracao').set(configuracao)
-        .then(() => alert('Configurações salvas com sucesso!'))
+        .then(() => {
+          alert('Configurações salvas com sucesso!');
+          capacidadeAtual.innerText = capacidadeEventos;
+          percentualAtual.innerText = percentualCMV;
+        })
         .catch(error => console.error('Erro ao salvar:', error));
     });
+
+    // Carrega a configuração ao abrir a página
+    carregarConfiguracao();
   </script>
 </body>
 </html>
