@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Média de Venda por Cliente</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    :root { --cor-primaria: #ff7f00; --cor-secundaria: #f9f9f9; }
+    body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
+    h1 { color: var(--cor-primaria); }
+    table th { background-color: var(--cor-primaria); color: white; font-size: 0.75rem; }
+    table td { font-size: 0.75rem; text-align: center; }
+    .form-area { background: var(--cor-secundaria); padding: 10px; border-radius: 8px; margin-bottom: 15px; }
+  </style>
+</head>
+<body>
+
+  <h1>📊 Média de Venda por Cliente</h1>
+
+  <div class="form-area">
+    <div class="row mb-2">
+      <div class="col">
+        <label>Data Início:</label>
+        <input type="date" id="dataInicio" class="form-control form-control-sm">
+      </div>
+      <div class="col">
+        <label>Data Fim:</label>
+        <input type="date" id="dataFim" class="form-control form-control-sm">
+      </div>
+      <div class="col">
+        <label>Cliente:</label>
+        <select id="clienteFiltro" class="form-select form-select-sm" multiple></select>
+      </div>
+      <div class="col">
+        <label>Status:</label>
+        <select id="statusFiltro" class="form-select form-select-sm">
+          <option value="Fechado">Fechado</option>
+          <option value="Finalizado">Finalizado</option>
+          <option value="Aberto">Aberto</option>
+          <option value="">Todos</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="filtrarRelatorio()">Filtrar</button>
+    <button class="btn btn-success btn-sm" onclick="exportarExcel()">Exportar Excel</button>
+    <button class="btn btn-warning btn-sm" onclick="atualizarFirebase()">Salvar Médias</button>
+  </div>
+
+  <table class="table table-bordered table-sm" id="tabelaRelatorio">
+    <thead id="theadRelatorio"></thead>
+    <tbody id="tbodyRelatorio"></tbody>
+  </table>
+
+  <script src="assets/media_cliente.js"></script>
+</body>
+</html>
