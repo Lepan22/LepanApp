@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Previsão Receita</title>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+
+  <style>
+    .form-area { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; max-width: 800px; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background-color: #ff7f00; color: white; padding: 20px 10px; }
+    .main-content { flex-grow: 1; padding: 20px; }
+    table { font-size: 14px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="menuLateral"></aside>
+
+  <main class="main-content">
+    <h1>Previsão Receita</h1>
+
+    <div class="mb-3">
+      <button class="btn btn-secondary" onclick="alterarMes(-1)">Mês Anterior</button>
+      <span id="mesAtual" class="mx-3"></span>
+      <button class="btn btn-secondary" onclick="alterarMes(1)">Mês Seguinte</button>
+    </div>
+
+    <form id="formPrevisao" class="form-area">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Nome do Evento</th>
+            <th>Frequência</th>
+            <th>Valor Médio Venda PDV</th>
+            <th>Quantidade</th>
+            <th>Previsão Receita</th>
+          </tr>
+        </thead>
+        <tbody id="listaClientes"></tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4"><strong>Total Previsão do Mês:</strong></td>
+            <td><strong id="totalPrevisao">R$ 0,00</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <button type="submit" class="btn btn-primary">Atualizar</button>
+    </form>
+
+    <div id="statusMsg"></div>
+  </main>
+</div>
+
+<script src="incluir-menu.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "542989944344",
+    appId: "1:542989944344:web:576e28199960fd5440a56d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  let mesReferencia = new Date();
+
+  const mesAtualSpan = document.getElementById('mesAtual');
+  const listaClientes = document.getElementById('listaClientes');
+  const totalPrevisaoEl = document.getElementById('totalPrevisao');
+  const statusMsg = document.getElementById('statusMsg');
+
+  let clientes = {};
+  let medias = {};
+  let quantidades = {};
+
+  function atualizarMesTexto() {
+    const mes = mesReferencia.getMonth() + 1;
+    const ano = mesReferencia.getFullYear();
+    mesAtualSpan.innerText = `${ano}-${mes.toString().padStart(2, '0')}`;
+  }
+
+  function alterarMes(delta) {
+    mesReferencia.setMonth(mesReferencia.getMonth() + delta);
+    carregarPrevisao();
+  }
+
+  function carregarPrevisao() {
+    atualizarMesTexto();
+    const anoMes = `${mesReferencia.getFullYear()}_${(mesReferencia.getMonth()+1).toString().padStart(2, '0')}`;
+
+    Promise.all([
+      db.ref('clientes').once('value'),
+      db.ref('media_cliente').once('value'),
+      db.ref(`previsao_receita/${anoMes}`).once('value')
+    ]).then(([clientesSnap, mediasSnap, previsaoSnap]) => {
+      clientes = clientesSnap.val() || {};
+      medias = mediasSnap.val() || {};
+      const previsao = previsaoSnap.val() || {};
+      quantidades = previsao;
+
+      listaClientes.innerHTML = '';
+
+      let total = 0;
+
+      for (let clienteId in clientes) {
+        const cli = clientes[clienteId];
+        if (cli.clienteAtivo && cli.clienteAtivo.status === 'Ativo') {
+          const nomeEvento = cli.clienteAtivo.nomeEvento || '-';
+          const frequencia = cli.clienteAtivo.frequencia || '-';
+          const valorMedio = medias[clienteId] || 0;
+          const quantidade = previsao[clienteId] || 0;
+          const previsaoReceita = valorMedio * quantidade;
+
+          total += previsaoReceita;
+
+          const tr = document.createElement('tr');
+
+          tr.innerHTML = `
+            <td>${nomeEvento}</td>
+            <td>${frequencia}</td>
+            <td>R$ ${valorMedio.toFixed(2)}</td>
+            <td>
+              <input type="number" class="form-control quantidade" data-id="${clienteId}" value="${quantidade}">
+            </td>
+            <td class="previsao" data-id="${clienteId}">R$ ${previsaoReceita.toFixed(2)}</td>
+          `;
+
+          listaClientes.appendChild(tr);
+        }
+      }
+
+      totalPrevisaoEl.innerText = `R$ ${total.toFixed(2)}`;
+    });
+  }
+
+  document.getElementById('formPrevisao').addEventListener('input', () => {
+    let total = 0;
+
+    document.querySelectorAll('.quantidade').forEach(input => {
+      const clienteId = input.dataset.id;
+      const valorMedio = medias[clienteId] || 0;
+      const quantidade = Number(input.value);
+      const previsao = valorMedio * quantidade;
+      document.querySelector(`.previsao[data-id="${clienteId}"]`).innerText = `R$ ${previsao.toFixed(2)}`;
+      total += previsao;
+    });
+
+    totalPrevisaoEl.innerText = `R$ ${total.toFixed(2)}`;
+  });
+
+  document.getElementById('formPrevisao').addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const anoMes = `${mesReferencia.getFullYear()}_${(mesReferencia.getMonth()+1).toString().padStart(2, '0')}`;
+    const updates = {};
+    let total = 0;
+
+    document.querySelectorAll('.quantidade').forEach(input => {
+      const clienteId = input.dataset.id;
+      const quantidade = Number(input.value);
+      const valorMedio = medias[clienteId] || 0;
+      const previsao = valorMedio * quantidade;
+
+      updates[`${clienteId}`] = quantidade;
+      total += previsao;
+    });
+
+    updates['total'] = total;
+
+    db.ref(`previsao_receita/${anoMes}`).set(updates)
+      .then(() => {
+        statusMsg.innerHTML = '<div class="alert alert-success">Previsão atualizada com sucesso!</div>';
+      })
+      .catch(err => {
+        console.error(err);
+        statusMsg.innerHTML = '<div class="alert alert-danger">Erro ao atualizar previsão.</div>';
+      });
+  });
+
+  // Inicial
+  carregarPrevisao();
+</script>
+</body>
+</html>
