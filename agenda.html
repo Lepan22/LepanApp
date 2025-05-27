@@ -14,13 +14,23 @@
     .container-agenda { display: flex; gap: 20px; margin-top: 20px; }
     .calendario { width: 75%; display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
     .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 90px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; width: 75%; }
-    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; font-size: 10px; height: 20px; display: flex; align-items: center; justify-content: center; padding: 2px; }
+    .cabecalho { 
+      font-weight: bold; 
+      background-color: #f2f2f2; 
+      text-align: center; 
+      font-size: 10px; 
+      height: 20px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      min-height: unset; 
+      padding: 2px;
+    }
     .semana-atual { background-color: #ffe0b2; }
     table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
     th { background-color: #f2f2f2; }
     .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; word-break: break-word; }
-    .evento-projetado { background: #90caf9; }
     .lista-eventos { width: 25%; }
   </style>
 </head>
@@ -50,7 +60,6 @@
       <button class="btn-navegar" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
       <span id="mesAtual">Maio 2025</span>
       <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
-      <button class="btn-navegar" onclick="salvarProjecao()">Salvar Projeção</button>
     </div>
 
     <div class="container-agenda">
@@ -86,11 +95,6 @@
 
   let mesAtual = new Date();
   let eventos = [];
-  let eventosProjetados = [];
-  let clientes = [];
-  let indisponibilidades = [];
-  let medias = {};
-  let totalProjecao = 0;
 
   function mudarMes(delta) {
     mesAtual.setMonth(mesAtual.getMonth() + delta);
@@ -98,111 +102,15 @@
   }
 
   async function carregarDados() {
-    const [eventosSnap, clientesSnap, indispSnap, mediasSnap] = await Promise.all([
-      db.ref('eventos').once('value'),
-      db.ref('clientes').once('value'),
-      db.ref('indisponibilidades').once('value'),
-      db.ref('media_cliente').once('value')
-    ]);
-
+    const eventosSnap = await db.ref('eventos').once('value');
     eventos = [];
-    clientes = [];
-    indisponibilidades = [];
-    medias = mediasSnap.val() || {};
-
-    eventosSnap.forEach(child => eventos.push({...child.val(), id: child.key}));
-    clientesSnap.forEach(child => {
-      const c = child.val();
-      if (c.clienteAtivo && c.clienteAtivo.status === 'Ativo') {
-        clientes.push({...c, id: child.key});
-      }
+    eventosSnap.forEach(child => {
+      const evento = child.val();
+      evento.id = child.key;
+      eventos.push(evento);
     });
-    indispSnap.forEach(child => indisponibilidades.push(child.val()));
 
-    gerarProjecoes();
     atualizarInterface();
-  }
-
-  function gerarProjecoes() {
-    eventosProjetados = [];
-    const futuro = new Date(mesAtual);
-    futuro.setMonth(futuro.getMonth() + 3);
-
-    clientes.forEach(cliente => {
-      const freq = cliente.clienteAtivo.frequencia;
-      const diaSemana = cliente.clienteAtivo.diaSemana;
-      const nomeEvento = cliente.clienteAtivo.nomeEvento;
-      const clienteId = cliente.id;
-
-      const hoje = new Date();
-      let datas = [];
-
-      if (freq === 'Semanal') {
-        datas = gerarSemanal(hoje, futuro, diaSemana);
-      } else if (freq === 'Quinzenal') {
-        datas = gerarQuinzenal(cliente, futuro);
-      } else if (freq === 'Mensal') {
-        datas = gerarMensal(hoje, futuro);
-      }
-
-      datas.forEach(dataStr => {
-        if (!existeEventoReal(nomeEvento, dataStr) && !indisponivel(dataStr)) {
-          eventosProjetados.push({nomeEvento, data: dataStr, status: 'Projetado', tipo: 'projetado'});
-        }
-      });
-    });
-
-    calcularProjecao();
-  }
-
-  function gerarSemanal(inicio, fim, diaSemana) {
-    const dias = [];
-    const mapDia = {'Domingo': 0, 'Segunda': 1, 'Terça': 2, 'Quarta': 3, 'Quinta': 4, 'Sexta': 5, 'Sábado': 6};
-    let data = new Date(inicio);
-    data.setDate(data.getDate() + (7 + mapDia[diaSemana] - data.getDay()) % 7);
-    while (data <= fim) {
-      dias.push(data.toISOString().split('T')[0]);
-      data.setDate(data.getDate() + 7);
-    }
-    return dias;
-  }
-
-  function gerarQuinzenal(cliente, fim) {
-    const nomeEvento = cliente.clienteAtivo.nomeEvento;
-    const eventosCliente = eventos.filter(e => e.nomeEvento === nomeEvento);
-    const ultEvento = eventosCliente.sort((a,b) => new Date(b.data) - new Date(a.data))[0];
-    let data = ultEvento ? new Date(ultEvento.data) : new Date();
-    data.setDate(data.getDate() + 14);
-    const dias = [];
-    while (data <= fim) {
-      dias.push(data.toISOString().split('T')[0]);
-      data.setDate(data.getDate() + 14);
-    }
-    return dias;
-  }
-
-  function gerarMensal(inicio, fim) {
-    const datas = [];
-    let data = new Date(inicio.getFullYear(), inicio.getMonth(), 1);
-    while (data <= fim) {
-      while (data.getDay() !== 1) data.setDate(data.getDate() + 1);
-      datas.push(data.toISOString().split('T')[0]);
-      data.setMonth(data.getMonth() + 1);
-      data.setDate(1);
-    }
-    return datas;
-  }
-
-  function existeEventoReal(nomeEvento, data) {
-    return eventos.some(e => e.nomeEvento === nomeEvento && e.data === data);
-  }
-
-  function indisponivel(data) {
-    return indisponibilidades.some(i => {
-      if (i.data) return i.data === data;
-      if (i.inicio && i.fim) return data >= i.inicio && data <= i.fim;
-      return false;
-    });
   }
 
   function atualizarInterface() {
@@ -229,25 +137,30 @@
     const ultimoDia = new Date(ano, mes + 1, 0);
     const diaSemanaInicio = (primeiroDia.getDay() + 6) % 7;
 
-    for (let i = 0; i < diaSemanaInicio; i++) calendario.appendChild(document.createElement('div'));
+    for (let i = 0; i < diaSemanaInicio; i++) {
+      calendario.appendChild(document.createElement('div'));
+    }
 
     const semanaAtual = getSemanaAtual();
 
     for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
       const data = new Date(ano, mes, dia);
       const dataStr = data.toISOString().split('T')[0];
+
       const divDia = document.createElement('div');
       divDia.classList.add('dia');
-      if (semanaAtual.includes(dataStr)) divDia.classList.add('semana-atual');
+
+      if (semanaAtual.includes(dataStr)) {
+        divDia.classList.add('semana-atual');
+      }
 
       const numeroDia = document.createElement('div');
       numeroDia.textContent = dia;
       divDia.appendChild(numeroDia);
 
-      [...eventos, ...eventosProjetados].filter(ev => ev.data === dataStr).forEach(ev => {
+      eventos.filter(ev => ev.data === dataStr).forEach(ev => {
         const eventoDiv = document.createElement('div');
         eventoDiv.classList.add('evento-dia');
-        if (ev.tipo === 'projetado') eventoDiv.classList.add('evento-projetado');
         eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
         divDia.appendChild(eventoDiv);
       });
@@ -262,11 +175,13 @@
     const inicio = new Date(hoje);
     inicio.setDate(hoje.getDate() - diaSemana + 1);
     const datas = [];
+
     for (let i = 0; i < 7; i++) {
       const d = new Date(inicio);
       d.setDate(inicio.getDate() + i);
       datas.push(d.toISOString().split('T')[0]);
     }
+
     return datas;
   }
 
@@ -277,35 +192,13 @@
     const ano = mesAtual.getFullYear();
     const mes = (mesAtual.getMonth() + 1).toString().padStart(2, '0');
 
-    [...eventos, ...eventosProjetados].filter(e => e.data && e.data.startsWith(`${ano}-${mes}`)).forEach(e => {
+    const eventosFiltrados = eventos.filter(e => e.data && e.data.startsWith(`${ano}-${mes}`));
+
+    eventosFiltrados.forEach(e => {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td>`;
       tbody.appendChild(tr);
     });
-  }
-
-  function calcularProjecao() {
-    totalProjecao = 0;
-    clientes.forEach(c => {
-      const nomeEvento = c.clienteAtivo.nomeEvento;
-      const clienteId = c.id;
-      const eventosProj = eventosProjetados.filter(e => e.nomeEvento === nomeEvento);
-      const media = medias[clienteId] || 0;
-      totalProjecao += media * eventosProj.length;
-    });
-  }
-
-  async function salvarProjecao() {
-    const anoMes = `${mesAtual.getFullYear()}_${(mesAtual.getMonth() + 1).toString().padStart(2, '0')}`;
-    const projSnap = await db.ref(`projecaoReceita/${anoMes}/total`).once('value');
-    if (projSnap.exists()) {
-      alert("Projeção já existente, não sobrescrevida.");
-      return;
-    }
-    if (confirm("Deseja realmente salvar a projeção de receita deste mês?")) {
-      await db.ref(`projecaoReceita/${anoMes}`).set({total: totalProjecao});
-      alert("Projeção salva com sucesso.");
-    }
   }
 
   document.addEventListener('DOMContentLoaded', carregarDados);
