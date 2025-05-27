@@ -30,7 +30,7 @@
     table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
     th { background-color: #f2f2f2; }
-    .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; word-break: break-word; }
+    .evento-dia { font-size: 7px; margin-top: 2px; border-radius: 3px; padding: 1px; word-break: break-word; }
     .lista-eventos { width: 25%; }
   </style>
 </head>
@@ -73,9 +73,10 @@
           </thead>
           <tbody id="tabelaEventos"></tbody>
         </table>
+
+        <button class="btn-navegar" onclick="salvarProjecao()">Salvar Projeção</button>
       </div>
     </div>
-
   </main>
 </div>
 
@@ -89,120 +90,10 @@
     messagingSenderId: "542989944344",
     appId: "1:542989944344:web:576e28199960fd5440a56d"
   };
-
   firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  let mesAtual = new Date();
-  let eventos = [];
-
-  function mudarMes(delta) {
-    mesAtual.setMonth(mesAtual.getMonth() + delta);
-    atualizarInterface();
-  }
-
-  async function carregarDados() {
-    const eventosSnap = await db.ref('eventos').once('value');
-    eventos = [];
-    eventosSnap.forEach(child => {
-      const evento = child.val();
-      evento.id = child.key;
-      eventos.push(evento);
-    });
-
-    atualizarInterface();
-  }
-
-  function atualizarInterface() {
-    document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-    renderizarCalendario();
-    listarEventos();
-  }
-
-  function renderizarCalendario() {
-    const calendario = document.getElementById('calendario');
-    calendario.innerHTML = '';
-
-    const cabecalho = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
-    cabecalho.forEach(dia => {
-      const div = document.createElement('div');
-      div.classList.add('cabecalho');
-      div.textContent = dia;
-      calendario.appendChild(div);
-    });
-
-    const ano = mesAtual.getFullYear();
-    const mes = mesAtual.getMonth();
-    const primeiroDia = new Date(ano, mes, 1);
-    const ultimoDia = new Date(ano, mes + 1, 0);
-    const diaSemanaInicio = (primeiroDia.getDay() + 6) % 7;
-
-    for (let i = 0; i < diaSemanaInicio; i++) {
-      calendario.appendChild(document.createElement('div'));
-    }
-
-    const semanaAtual = getSemanaAtual();
-
-    for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
-      const data = new Date(ano, mes, dia);
-      const dataStr = data.toISOString().split('T')[0];
-
-      const divDia = document.createElement('div');
-      divDia.classList.add('dia');
-
-      if (semanaAtual.includes(dataStr)) {
-        divDia.classList.add('semana-atual');
-      }
-
-      const numeroDia = document.createElement('div');
-      numeroDia.textContent = dia;
-      divDia.appendChild(numeroDia);
-
-      eventos.filter(ev => ev.data === dataStr).forEach(ev => {
-        const eventoDiv = document.createElement('div');
-        eventoDiv.classList.add('evento-dia');
-        eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
-        divDia.appendChild(eventoDiv);
-      });
-
-      calendario.appendChild(divDia);
-    }
-  }
-
-  function getSemanaAtual() {
-    const hoje = new Date();
-    const diaSemana = hoje.getDay();
-    const inicio = new Date(hoje);
-    inicio.setDate(hoje.getDate() - diaSemana + 1);
-    const datas = [];
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(inicio);
-      d.setDate(inicio.getDate() + i);
-      datas.push(d.toISOString().split('T')[0]);
-    }
-
-    return datas;
-  }
-
-  function listarEventos() {
-    const tbody = document.getElementById('tabelaEventos');
-    tbody.innerHTML = '';
-
-    const ano = mesAtual.getFullYear();
-    const mes = (mesAtual.getMonth() + 1).toString().padStart(2, '0');
-
-    const eventosFiltrados = eventos.filter(e => e.data && e.data.startsWith(`${ano}-${mes}`));
-
-    eventosFiltrados.forEach(e => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', carregarDados);
 </script>
+
+<script src="assets/agenda.js"></script>
 
 </body>
 </html>
