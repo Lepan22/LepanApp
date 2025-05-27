@@ -9,29 +9,23 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
     h1 { font-size: 16px; margin-bottom: 10px; }
+    .kpis { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+    .kpi { background-color: #f2f2f2; padding: 10px; border-radius: 5px; flex: 1 1 200px; }
     .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
     .btn-navegar:hover { background-color: #e96f00; }
-    .container-agenda { display: flex; gap: 20px; margin-top: 20px; }
-    .calendario { width: 75%; display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 90px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; width: 75%; }
-    .cabecalho { 
-      font-weight: bold; 
-      background-color: #f2f2f2; 
-      text-align: center; 
-      font-size: 10px; 
-      height: 20px; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      min-height: unset; 
-      padding: 2px;
-    }
+    .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
+    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 60px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
     .semana-atual { background-color: #ffe0b2; }
+    .farol { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .farol-cinza { background-color: gray; }
+    .farol-verde { background-color: green; }
+    .farol-vermelho { background-color: red; }
     table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
     th { background-color: #f2f2f2; }
-    .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; word-break: break-word; }
-    .lista-eventos { width: 25%; }
+    .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; }
+    .evento-dia-projetado { font-size: 7px; margin-top: 2px; background: #ccc; color: #333; border-radius: 3px; padding: 1px; border: 1px dashed #999; }
   </style>
 </head>
 <body>
@@ -56,26 +50,38 @@
   <main class="main-content">
     <h1>Agenda</h1>
 
+    <div class="kpis">
+      <div class="kpi">Capacidade de Eventos no Mês: <span id="capacidadeEventosMes">0</span></div>
+      <div class="kpi">Previsão de Receita no Mês: <span id="previsaoReceitaMes">R$ 0,00</span></div>
+    </div>
+
     <div>
       <button class="btn-navegar" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
       <span id="mesAtual">Maio 2025</span>
       <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
     </div>
 
-    <div class="container-agenda">
-      <div class="calendario" id="calendario"></div>
+    <div class="calendario" id="calendario"></div>
 
-      <div class="lista-eventos">
-        <h2>Eventos</h2>
-        <table>
-          <thead>
-            <tr><th>Nome do Evento</th><th>Data</th><th>Status</th></tr>
-          </thead>
-          <tbody id="tabelaEventos"></tbody>
-        </table>
-      </div>
+    <div class="lista-clientes">
+      <h2>Clientes Ativos</h2>
+      <table>
+        <thead>
+          <tr><th>Cliente</th><th>Nome do Evento</th><th>Frequência</th><th>Farol</th></tr>
+        </thead>
+        <tbody id="tabelaClientesAtivos"></tbody>
+      </table>
     </div>
 
+    <div class="lista-eventos">
+      <h2>Eventos</h2>
+      <table>
+        <thead>
+          <tr><th>Nome do Evento</th><th>Data</th><th>Status</th><th>Tipo</th></tr>
+        </thead>
+        <tbody id="tabelaEventos"></tbody>
+      </table>
+    </div>
   </main>
 </div>
 
@@ -94,7 +100,11 @@
   const db = firebase.database();
 
   let mesAtual = new Date();
+  let clientes = [];
+  let capacidadeEventos = 0;
+  let previsaoReceita = 0;
   let eventos = [];
+  let eventosProjecao = [];
 
   function mudarMes(delta) {
     mesAtual.setMonth(mesAtual.getMonth() + delta);
@@ -102,6 +112,23 @@
   }
 
   async function carregarDados() {
+    const clientesSnap = await db.ref('clientes').once('value');
+    clientes = [];
+    clientesSnap.forEach(child => {
+      const cliente = child.val();
+      if (cliente.clienteAtivo && cliente.clienteAtivo.status === "Ativo") {
+        cliente.id = child.key;
+        clientes.push(cliente);
+      }
+    });
+
+    const configSnap = await db.ref('configuracao/capacidadeEventos').once('value');
+    capacidadeEventos = configSnap.val() || 0;
+
+    const mesAno = mesAtual.toISOString().slice(0,7).replace('-', '_');
+    const previsaoSnap = await db.ref(`previsao_receita/${mesAno}/total`).once('value');
+    previsaoReceita = previsaoSnap.val() || 0;
+
     const eventosSnap = await db.ref('eventos').once('value');
     eventos = [];
     eventosSnap.forEach(child => {
@@ -110,23 +137,65 @@
       eventos.push(evento);
     });
 
+    gerarEventosProjecao();
     atualizarInterface();
+  }
+
+  function gerarEventosProjecao() {
+    eventosProjecao = [];
+    const eventosReaisMap = new Set(eventos.map(e => `${e.nomeEvento}_${e.data}`));
+
+    clientes.forEach(c => {
+      const nomeEvento = c.clienteAtivo.nomeEvento;
+      const freq = c.clienteAtivo.frequencia;
+      const diasSemana = Array.isArray(c.clienteAtivo.diasSemana) ? c.clienteAtivo.diasSemana : [c.clienteAtivo.diaSemana];
+      const ano = mesAtual.getFullYear();
+      const mes = mesAtual.getMonth();
+
+      for (let dia = 1; dia <= 31; dia++) {
+        const data = new Date(ano, mes, dia);
+        if (data.getMonth() !== mes) break;
+        const diaSemanaTexto = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][data.getDay()];
+
+        if (!diasSemana.includes(diaSemanaTexto)) continue;
+
+        let incluir = false;
+
+        if (freq === 'Semanal') incluir = true;
+        if (freq === 'Quinzenal' && Math.floor((dia - 1) / 7) % 2 === 0) incluir = true;
+        if (freq === 'Mensal' && dia <= 7) incluir = true;
+
+        const dataStr = data.toISOString().split('T')[0];
+        const chave = `${nomeEvento}_${dataStr}`;
+
+        if (incluir && !eventosReaisMap.has(chave)) {
+          eventosProjecao.push({ nomeEvento, data: dataStr, status: 'Projetado', tipo: 'Projeção' });
+        }
+      }
+    });
   }
 
   function atualizarInterface() {
     document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+    atualizarKPIs();
     renderizarCalendario();
+    listarClientesAtivos();
     listarEventos();
+  }
+
+  function atualizarKPIs() {
+    document.getElementById('capacidadeEventosMes').textContent = capacidadeEventos;
+    document.getElementById('previsaoReceitaMes').textContent = 'R$ ' + previsaoReceita.toFixed(2).replace('.', ',');
   }
 
   function renderizarCalendario() {
     const calendario = document.getElementById('calendario');
     calendario.innerHTML = '';
 
-    const cabecalho = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
+    const cabecalho = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
     cabecalho.forEach(dia => {
       const div = document.createElement('div');
-      div.classList.add('cabecalho');
+      div.classList.add('dia', 'cabecalho');
       div.textContent = dia;
       calendario.appendChild(div);
     });
@@ -135,7 +204,7 @@
     const mes = mesAtual.getMonth();
     const primeiroDia = new Date(ano, mes, 1);
     const ultimoDia = new Date(ano, mes + 1, 0);
-    const diaSemanaInicio = (primeiroDia.getDay() + 6) % 7;
+    const diaSemanaInicio = primeiroDia.getDay();
 
     for (let i = 0; i < diaSemanaInicio; i++) {
       calendario.appendChild(document.createElement('div'));
@@ -165,6 +234,13 @@
         divDia.appendChild(eventoDiv);
       });
 
+      eventosProjecao.filter(ev => ev.data === dataStr).forEach(ev => {
+        const eventoDiv = document.createElement('div');
+        eventoDiv.classList.add('evento-dia-projetado');
+        eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
+        divDia.appendChild(eventoDiv);
+      });
+
       calendario.appendChild(divDia);
     }
   }
@@ -185,18 +261,38 @@
     return datas;
   }
 
+  function listarClientesAtivos() {
+    const tbody = document.getElementById('tabelaClientesAtivos');
+    tbody.innerHTML = '';
+
+    clientes.forEach(c => {
+      const freq = c.clienteAtivo.frequencia;
+      const farol = getFarol(c);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${c.nome}</td><td>${c.clienteAtivo.nomeEvento}</td><td>${freq}</td><td><span class="farol ${farol}"></span></td>`;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function getFarol(cliente) {
+    const freq = cliente.clienteAtivo.frequencia;
+    if (freq === "Esporadico") return 'farol-cinza';
+    return 'farol-vermelho';
+  }
+
   function listarEventos() {
     const tbody = document.getElementById('tabelaEventos');
     tbody.innerHTML = '';
 
-    const ano = mesAtual.getFullYear();
-    const mes = (mesAtual.getMonth() + 1).toString().padStart(2, '0');
-
-    const eventosFiltrados = eventos.filter(e => e.data && e.data.startsWith(`${ano}-${mes}`));
-
-    eventosFiltrados.forEach(e => {
+    eventos.forEach(e => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td>`;
+      tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td><td>Real</td>`;
+      tbody.appendChild(tr);
+    });
+
+    eventosProjecao.forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status}</td><td>Projeção</td>`;
       tbody.appendChild(tr);
     });
   }
