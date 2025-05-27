@@ -15,6 +15,7 @@
     .btn-navegar:hover { background-color: #e96f00; }
     .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
     .dia { border: 1px solid #ddd; border-radius: 4px; padding: 5px; min-height: 60px; font-size: 10px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
     .semana-atual { background-color: #ffe0b2; }
     .evento-pequeno { font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .farol { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 5px; }
@@ -148,10 +149,24 @@
     const calendario = document.getElementById('calendario');
     calendario.innerHTML = '';
 
+    const cabecalho = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+    cabecalho.forEach(dia => {
+      const div = document.createElement('div');
+      div.classList.add('dia', 'cabecalho');
+      div.textContent = dia;
+      calendario.appendChild(div);
+    });
+
     const ano = mesAtual.getFullYear();
     const mes = mesAtual.getMonth();
     const primeiroDia = new Date(ano, mes, 1);
     const ultimoDia = new Date(ano, mes + 1, 0);
+    const diaSemanaInicio = primeiroDia.getDay(); 
+
+    for (let i = 0; i < diaSemanaInicio; i++) {
+      calendario.appendChild(document.createElement('div'));
+    }
+
     const semanaAtual = getSemanaAtual();
 
     for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
@@ -161,7 +176,7 @@
       const divDia = document.createElement('div');
       divDia.classList.add('dia');
 
-      if (semanaAtual.includes(dia) && mes === new Date().getMonth()) {
+      if (semanaAtual.includes(dataStr)) {
         divDia.classList.add('semana-atual');
       }
 
@@ -184,15 +199,26 @@
   function getSemanaAtual() {
     const hoje = new Date();
     const diaSemana = hoje.getDay();
-    const inicio = hoje.getDate() - diaSemana + 1;
-    return Array.from({length: 7}, (_, i) => inicio + i);
+    const inicio = new Date(hoje);
+    inicio.setDate(hoje.getDate() - diaSemana + 1);
+    const datas = [];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(inicio);
+      d.setDate(inicio.getDate() + i);
+      datas.push(d.toISOString().split('T')[0]);
+    }
+
+    return datas;
   }
 
   function listarEventosAgendados() {
     const tbody = document.getElementById('tabelaEventosAgendados');
     tbody.innerHTML = '';
 
-    eventos.filter(e => e.data.startsWith(mesAtual.toISOString().slice(0,7))).forEach(e => {
+    const mesAtualStr = mesAtual.toISOString().slice(0,7);
+
+    eventos.filter(e => e.data.startsWith(mesAtualStr)).forEach(e => {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${e.nomeEvento}</td><td>${e.data}</td><td>${e.status}</td>`;
       tbody.appendChild(tr);
