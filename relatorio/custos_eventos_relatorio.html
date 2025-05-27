@@ -179,7 +179,7 @@
         dadosTabela.push({
           Nome: item.Nome,
           Data: item.Data,
-          Valor: item.Valor.toFixed(2),
+          Valor: item.Valor,
           'Centro de Custo': item.Centro,
           'Nome do Evento': item.Evento
         });
@@ -190,8 +190,16 @@
   }
 
   function exportarExcel() {
+    const dadosFormatados = dadosTabela.map(item => ({
+      Nome: item.Nome,
+      Data: item.Data,
+      Valor: `R$ ${Number(item.Valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      'Centro de Custo': item['Centro de Custo'],
+      'Nome do Evento': item['Nome do Evento']
+    }));
+
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(dadosTabela);
+    const ws = XLSX.utils.json_to_sheet(dadosFormatados);
     XLSX.utils.book_append_sheet(wb, ws, "Custos");
     XLSX.writeFile(wb, "relatorio_custos.xlsx");
   }
