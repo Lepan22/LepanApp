@@ -184,10 +184,10 @@
       numeroDia.textContent = dia;
       divDia.appendChild(numeroDia);
 
-      const eventosDoDia = eventos.filter(e => e.data === dataStr).slice(0, 5);
+      const eventosDoDia = eventos.filter(e => e.data && e.data === dataStr).slice(0, 5);
       eventosDoDia.forEach(e => {
         const p = document.createElement('div');
-        p.textContent = e.nomeEvento;
+        p.textContent = e.nomeEvento || 'Sem nome';
         p.classList.add('evento-pequeno');
         divDia.appendChild(p);
       });
@@ -217,8 +217,12 @@
     tbody.innerHTML = '';
 
     eventos.forEach(e => {
+      const nome = e.nomeEvento || 'Sem nome';
+      const data = e.data || 'Sem data';
+      const status = e.status || 'Sem status';
+
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.nomeEvento}</td><td>${e.data}</td><td>${e.status}</td>`;
+      tr.innerHTML = `<td>${nome}</td><td>${data}</td><td>${status}</td>`;
       tbody.appendChild(tr);
     });
   }
@@ -240,7 +244,7 @@
     const freq = cliente.clienteAtivo.frequencia;
     if (freq === "Esporadico") return 'farol-cinza';
 
-    const eventosCliente = eventos.filter(e => e.nomeEvento === cliente.clienteAtivo.nomeEvento && new Date(e.data).getMonth() === mesAtual.getMonth());
+    const eventosCliente = eventos.filter(e => e.nomeEvento === cliente.clienteAtivo.nomeEvento && e.data && new Date(e.data).getMonth() === mesAtual.getMonth());
 
     if (freq === "Semanal" && eventosCliente.length >= 4) return 'farol-verde';
     if (freq === "Quinzenal" && eventosCliente.length >= 2) return 'farol-verde';
@@ -249,7 +253,7 @@
   }
 
   function atualizarKPIs() {
-    const eventosMes = eventos.filter(e => new Date(e.data).getMonth() === mesAtual.getMonth());
+    const eventosMes = eventos.filter(e => e.data && new Date(e.data).getMonth() === mesAtual.getMonth());
     const totalEventos = eventosMes.length;
     const totalReceita = eventosMes.reduce((sum, e) => sum + (e.vendaPDV || 0), 0);
 
