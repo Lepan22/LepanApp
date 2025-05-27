@@ -22,13 +22,15 @@ async function carregarDados() {
   clientesSnap.forEach(c => {
     const cli = c.val();
     cli.id = c.key;
-    if (cli.status === "Fechado") clientes.push(cli);
+    if (cli.status === "Fechado" && cli.clienteAtivo && cli.clienteAtivo.statusEvento === "Ativo") {
+      clientes.push(cli);
+    }
   });
 
   const eventosSnap = await db.ref('eventos').once('value');
   eventosSnap.forEach(e => eventosReais.push(e.val()));
 
-  const indisSnap = await db.ref('configuracao/indisponibilidades').once('value');
+  const indisSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
   indisSnap.forEach(i => indisponibilidades.push(i.val()));
 
   gerarProjecoes();
@@ -39,26 +41,28 @@ function gerarProjecoes() {
   const fim = new Date('2025-12-31');
 
   clientes.forEach(cliente => {
-    const nomeEvento = cliente.nomeEvento || "Evento";
-    const frequencia = cliente.frequencia;
-    const diaSemana = cliente.diaSemana;
-    const estimativaVenda = cliente.estimativaVenda || 0;
-    const mediaRef = db.ref('media_cliente/' + cliente.id);
+    const ativo = cliente.clienteAtivo;
+    const nomeEvento = ativo.nomeEvento || "Evento";
+    const frequencia = ativo.frequencia;
+    const diasSemana = ativo.diasSemana || [];
+    const clienteId = cliente.id;
 
-    resumoClientes[cliente.id] = { nome: nomeEvento, qtd: 0, media: 0, estimativa: 0 };
+    resumoClientes[clienteId] = { nome: nomeEvento, qtd: 0, media: 0, estimativa: 0 };
 
-    mediaRef.once('value').then(mediaSnap => {
+    db.ref('media_cliente/' + clienteId).once('value').then(mediaSnap => {
       const media = mediaSnap.val() || 0;
-      resumoClientes[cliente.id].media = media;
+      resumoClientes[clienteId].media = media;
 
       let datas = [];
 
       if (frequencia === "Semanal") {
-        for (let dt = new Date(hoje); dt <= fim; dt.setDate(dt.getDate() + 1)) {
-          if (dt.toLocaleDateString('pt-BR', { weekday: 'long' }) === diaSemana) {
-            datas.push(new Date(dt));
+        diasSemana.forEach(dia => {
+          for (let dt = new Date(hoje); dt <= fim; dt.setDate(dt.getDate() + 1)) {
+            if (diaSemanaTexto(dt.getDay()) === dia) {
+              datas.push(new Date(dt));
+            }
           }
-        }
+        });
       } else if (frequencia === "Quinzenal") {
         let lastEvent = eventosReais.filter(e => e.nomeEvento === nomeEvento)
           .map(e => new Date(e.data))
@@ -80,8 +84,8 @@ function gerarProjecoes() {
         if (existeEventoReal(nomeEvento, dataStr) || indisponivel(dataStr)) return;
 
         eventosProjetados.push({ nomeEvento, data: dataStr, frequencia, status: "Projetado" });
-        resumoClientes[cliente.id].qtd++;
-        resumoClientes[cliente.id].estimativa += media;
+        resumoClientes[clienteId].qtd++;
+        resumoClientes[clienteId].estimativa += media;
         totalEstimado += media;
       });
 
@@ -89,6 +93,11 @@ function gerarProjecoes() {
       exibirResumo();
     });
   });
+}
+
+function diaSemanaTexto(num) {
+  const dias = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+  return dias[num];
 }
 
 function existeEventoReal(nome, data) {
