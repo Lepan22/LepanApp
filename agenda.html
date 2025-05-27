@@ -9,15 +9,8 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
     h1 { font-size: 16px; margin-bottom: 10px; }
-    .kpis { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-    .kpi { background-color: #f2f2f2; padding: 10px; border-radius: 5px; flex: 1 1 200px; }
     .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
     .btn-navegar:hover { background-color: #e96f00; }
-    .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 48px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
-    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
-    .semana-atual { background-color: #ffe0b2; }
-    .evento-pequeno { font-size: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .farol { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     .farol-cinza { background-color: gray; }
     .farol-verde { background-color: green; }
@@ -49,33 +42,6 @@
   <main class="main-content">
     <h1>Agenda</h1>
 
-    <div class="kpis">
-      <div class="kpi">Total de Eventos no Mês: <span id="totalEventosMes">0</span></div>
-      <div class="kpi">Capacidade de Eventos no Mês: <span id="capacidadeEventosMes">0</span></div>
-      <div class="kpi">Percentual de Ocupação: <span id="percentualOcupacao">0%</span></div>
-      <div class="kpi">Total de Receita no Mês: <span id="totalReceitaMes">R$ 0,00</span></div>
-      <div class="kpi">Previsão de Receita no Mês: <span id="previsaoReceitaMes">R$ 0,00</span></div>
-      <div class="kpi">Percentual de Meta: <span id="percentualMeta">0%</span></div>
-    </div>
-
-    <div>
-      <button class="btn-navegar" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
-      <span id="mesAtual">Maio 2025</span>
-      <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
-    </div>
-
-    <div class="calendario" id="calendario"></div>
-
-    <div class="lista-eventos">
-      <h2>Lista de Eventos Agendados</h2>
-      <table>
-        <thead>
-          <tr><th>Nome do Evento</th><th>Data</th><th>Status</th></tr>
-        </thead>
-        <tbody id="tabelaEventosAgendados"></tbody>
-      </table>
-    </div>
-
     <div class="lista-clientes">
       <h2>Clientes Ativos</h2>
       <table>
@@ -102,22 +68,9 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  let mesAtual = new Date();
-  let eventos = [];
   let clientes = [];
-  let capacidadeEventos = 0;
-  let previsaoReceita = 0;
-
-  function mudarMes(delta) {
-    mesAtual.setMonth(mesAtual.getMonth() + delta);
-    atualizarInterface();
-  }
 
   async function carregarDados() {
-    const eventosSnap = await db.ref('eventos').once('value');
-    eventos = [];
-    eventosSnap.forEach(child => eventos.push(child.val()));
-
     const clientesSnap = await db.ref('clientes').once('value');
     clientes = [];
     clientesSnap.forEach(child => {
@@ -127,104 +80,7 @@
       }
     });
 
-    const configSnap = await db.ref('configuracao/capacidadeEventos').once('value');
-    capacidadeEventos = configSnap.val() || 0;
-
-    const mesAno = mesAtual.toISOString().slice(0,7).replace('-', '_');
-    const previsaoSnap = await db.ref(`previsao_receita/${mesAno}/total`).once('value');
-    previsaoReceita = previsaoSnap.val() || 0;
-
-    atualizarInterface();
-  }
-
-  function atualizarInterface() {
-    document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-    renderizarCalendario();
-    listarEventosAgendados();
     listarClientesAtivos();
-    atualizarKPIs();
-  }
-
-  function renderizarCalendario() {
-    const calendario = document.getElementById('calendario');
-    calendario.innerHTML = '';
-
-    const cabecalho = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-    cabecalho.forEach(dia => {
-      const div = document.createElement('div');
-      div.classList.add('dia', 'cabecalho');
-      div.textContent = dia;
-      calendario.appendChild(div);
-    });
-
-    const ano = mesAtual.getFullYear();
-    const mes = mesAtual.getMonth();
-    const primeiroDia = new Date(ano, mes, 1);
-    const ultimoDia = new Date(ano, mes + 1, 0);
-    const diaSemanaInicio = primeiroDia.getDay();
-
-    for (let i = 0; i < diaSemanaInicio; i++) {
-      calendario.appendChild(document.createElement('div'));
-    }
-
-    const semanaAtual = getSemanaAtual();
-
-    for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
-      const data = new Date(ano, mes, dia);
-      const dataStr = data.toISOString().split('T')[0];
-
-      const divDia = document.createElement('div');
-      divDia.classList.add('dia');
-
-      if (semanaAtual.includes(dataStr)) {
-        divDia.classList.add('semana-atual');
-      }
-
-      const numeroDia = document.createElement('div');
-      numeroDia.textContent = dia;
-      divDia.appendChild(numeroDia);
-
-      const eventosDoDia = eventos.filter(e => e.data && e.data === dataStr).slice(0, 5);
-      eventosDoDia.forEach(e => {
-        const p = document.createElement('div');
-        p.textContent = e.nomeEvento || 'Sem nome';
-        p.classList.add('evento-pequeno');
-        divDia.appendChild(p);
-      });
-
-      calendario.appendChild(divDia);
-    }
-  }
-
-  function getSemanaAtual() {
-    const hoje = new Date();
-    const diaSemana = hoje.getDay();
-    const inicio = new Date(hoje);
-    inicio.setDate(hoje.getDate() - diaSemana + 1);
-    const datas = [];
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(inicio);
-      d.setDate(inicio.getDate() + i);
-      datas.push(d.toISOString().split('T')[0]);
-    }
-
-    return datas;
-  }
-
-  function listarEventosAgendados() {
-    const tbody = document.getElementById('tabelaEventosAgendados');
-    tbody.innerHTML = '';
-
-    eventos.forEach(e => {
-      const nome = e.nomeEvento || 'Sem nome';
-      const data = e.data || 'Sem data';
-      const status = e.status || 'Sem status';
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${nome}</td><td>${data}</td><td>${status}</td>`;
-      tbody.appendChild(tr);
-    });
   }
 
   function listarClientesAtivos() {
@@ -244,25 +100,8 @@
     const freq = cliente.clienteAtivo.frequencia;
     if (freq === "Esporadico") return 'farol-cinza';
 
-    const eventosCliente = eventos.filter(e => e.nomeEvento === cliente.clienteAtivo.nomeEvento && e.data && new Date(e.data).getMonth() === mesAtual.getMonth());
-
-    if (freq === "Semanal" && eventosCliente.length >= 4) return 'farol-verde';
-    if (freq === "Quinzenal" && eventosCliente.length >= 2) return 'farol-verde';
-    if (freq === "Mensal" && eventosCliente.length >= 1) return 'farol-verde';
+    // Sem referência a eventos, assumimos sempre vermelho para frequência não esporádica.
     return 'farol-vermelho';
-  }
-
-  function atualizarKPIs() {
-    const eventosMes = eventos.filter(e => e.data && new Date(e.data).getMonth() === mesAtual.getMonth());
-    const totalEventos = eventosMes.length;
-    const totalReceita = eventosMes.reduce((sum, e) => sum + (e.vendaPDV || 0), 0);
-
-    document.getElementById('totalEventosMes').textContent = totalEventos;
-    document.getElementById('capacidadeEventosMes').textContent = capacidadeEventos;
-    document.getElementById('percentualOcupacao').textContent = capacidadeEventos ? ((totalEventos / capacidadeEventos) * 100).toFixed(1) + '%' : '0%';
-    document.getElementById('totalReceitaMes').textContent = 'R$ ' + totalReceita.toFixed(2).replace('.', ',');
-    document.getElementById('previsaoReceitaMes').textContent = 'R$ ' + previsaoReceita.toFixed(2).replace('.', ',');
-    document.getElementById('percentualMeta').textContent = previsaoReceita ? ((totalReceita / previsaoReceita) * 100).toFixed(1) + '%' : '0%';
   }
 
   document.addEventListener('DOMContentLoaded', carregarDados);
