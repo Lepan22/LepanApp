@@ -18,10 +18,11 @@ function carregarClientes() {
     snapshot.forEach(child => {
       const val = child.val();
       const clienteAtivo = val.clienteAtivo;
-      if (clienteAtivo && clienteAtivo.status === 'Cliente Ativo') {
+      if (clienteAtivo && clienteAtivo.status === 'Ativo') {  // ✅ Ajustado aqui!
         clientes[child.key] = {
-          nome: val.nome,
-          id: child.key
+          nome: val.nome || 'Sem Nome',
+          id: child.key,
+          nomeEvento: clienteAtivo.nomeEvento || ''
         };
       }
     });
@@ -40,7 +41,6 @@ function carregarEventos() {
       evento.id = child.key;
       eventos.push(evento);
     });
-
     preencherFiltroClientes();
     filtrarRelatorio();
   }).catch(err => {
@@ -86,11 +86,11 @@ function filtrarRelatorio() {
     let totalEventos = 0;
 
     eventos.forEach(evento => {
-      if (evento.clienteId === clienteId) {
+      if (evento.nomeEvento === cliente.nomeEvento) {  // ✅ Baseado no nome do evento
         if (statusFiltro && evento.status !== statusFiltro) return;
         if (dataInicio && evento.data < dataInicio) return;
         if (dataFim && evento.data > dataFim) return;
-        const valorPDV = parseFloat(evento.valorPDV) || 0;
+        const valorPDV = parseFloat(evento.vendaPDV) || 0;
         totalPDV += valorPDV;
         totalEventos += 1;
       }
