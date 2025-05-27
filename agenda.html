@@ -70,6 +70,16 @@
         <tbody id="tabelaClientesAtivos"></tbody>
       </table>
     </div>
+
+    <div class="lista-eventos">
+      <h2>Eventos</h2>
+      <table>
+        <thead>
+          <tr><th>Nome do Evento</th><th>Data</th><th>Status</th></tr>
+        </thead>
+        <tbody id="tabelaEventos"></tbody>
+      </table>
+    </div>
   </main>
 </div>
 
@@ -91,6 +101,7 @@
   let clientes = [];
   let capacidadeEventos = 0;
   let previsaoReceita = 0;
+  let eventos = [];
 
   function mudarMes(delta) {
     mesAtual.setMonth(mesAtual.getMonth() + delta);
@@ -114,6 +125,14 @@
     const previsaoSnap = await db.ref(`previsao_receita/${mesAno}/total`).once('value');
     previsaoReceita = previsaoSnap.val() || 0;
 
+    const eventosSnap = await db.ref('eventos').once('value');
+    eventos = [];
+    eventosSnap.forEach(child => {
+      const evento = child.val();
+      evento.id = child.key;
+      eventos.push(evento);
+    });
+
     atualizarInterface();
   }
 
@@ -122,6 +141,7 @@
     atualizarKPIs();
     renderizarCalendario();
     listarClientesAtivos();
+    listarEventos();
   }
 
   function atualizarKPIs() {
@@ -204,7 +224,18 @@
   function getFarol(cliente) {
     const freq = cliente.clienteAtivo.frequencia;
     if (freq === "Esporadico") return 'farol-cinza';
-    return 'farol-vermelho';  // Sem eventos, sempre vermelho.
+    return 'farol-vermelho';
+  }
+
+  function listarEventos() {
+    const tbody = document.getElementById('tabelaEventos');
+    tbody.innerHTML = '';
+
+    eventos.forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td>`;
+      tbody.appendChild(tr);
+    });
   }
 
   document.addEventListener('DOMContentLoaded', carregarDados);
