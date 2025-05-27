@@ -11,18 +11,27 @@
     h1 { font-size: 16px; margin-bottom: 10px; }
     .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
     .btn-navegar:hover { background-color: #e96f00; }
-    .btn-salvar { background-color: #007bff; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 10px 0; }
     .container-agenda { display: flex; gap: 20px; margin-top: 20px; }
     .calendario { width: 75%; display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
     .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 90px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; width: 75%; }
-    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; font-size: 10px; height: 20px; display: flex; align-items: center; justify-content: center; }
+    .cabecalho { 
+      font-weight: bold; 
+      background-color: #f2f2f2; 
+      text-align: center; 
+      font-size: 10px; 
+      height: 20px; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      min-height: unset; 
+      padding: 2px;
+    }
     .semana-atual { background-color: #ffe0b2; }
-    .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; word-break: break-word; }
-    .evento-projetado { font-size: 7px; margin-top: 2px; background: #007bff; color: white; border-radius: 3px; padding: 1px; word-break: break-word; }
-    .lista-eventos { width: 25%; }
     table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
     th { background-color: #f2f2f2; }
+    .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; word-break: break-word; }
+    .lista-eventos { width: 25%; }
   </style>
 </head>
 <body>
@@ -35,6 +44,12 @@
     <a href="clientes.html">Clientes</a>
     <a href="eventos.html">Eventos</a>
     <a href="relatorios.html">Relatórios</a>
+    <a href="criar.html">Criar</a>
+    <a href="compra_evento.html">Compras</a>
+    <a href="etapas.html">Etapas</a>
+    <a href="media_produto.html">Média Produto</a>
+    <a href="visao_cliente.html">Visão por Cliente</a>
+    <a href="visao_equipe.html">Visão por Equipe</a>
     <a href="index.html">Voltar</a>
   </aside>
 
@@ -46,8 +61,6 @@
       <span id="mesAtual">Maio 2025</span>
       <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
     </div>
-
-    <button class="btn-salvar" onclick="salvarProjecao()">Salvar Projeção</button>
 
     <div class="container-agenda">
       <div class="calendario" id="calendario"></div>
@@ -62,6 +75,7 @@
         </table>
       </div>
     </div>
+
   </main>
 </div>
 
@@ -81,10 +95,6 @@
 
   let mesAtual = new Date();
   let eventos = [];
-  let clientes = [];
-  let mediasClientes = {};
-  let indisponiveis = [];
-  let eventosProjetados = [];
 
   function mudarMes(delta) {
     mesAtual.setMonth(mesAtual.getMonth() + delta);
@@ -94,105 +104,19 @@
   async function carregarDados() {
     const eventosSnap = await db.ref('eventos').once('value');
     eventos = [];
-    eventosSnap.forEach(child => eventos.push(child.val()));
-
-    const clientesSnap = await db.ref('clientes').once('value');
-    clientes = [];
-    clientesSnap.forEach(child => {
-      const c = child.val();
-      if (c.clienteAtivo && c.clienteAtivo.status === "Ativo") {
-        c.id = child.key;
-        clientes.push(c);
-      }
+    eventosSnap.forEach(child => {
+      const evento = child.val();
+      evento.id = child.key;
+      eventos.push(evento);
     });
-
-    const mediasSnap = await db.ref('media_cliente').once('value');
-    mediasClientes = mediasSnap.val() || {};
-
-    const indisponiveisSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
-    indisponiveis = [];
-    indisponiveisSnap.forEach(child => indisponiveis.push(child.val()));
 
     atualizarInterface();
   }
 
   function atualizarInterface() {
     document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-    gerarEventosProjetados();
     renderizarCalendario();
     listarEventos();
-  }
-
-  function gerarEventosProjetados() {
-    eventosProjetados = [];
-
-    clientes.forEach(cliente => {
-      const freq = cliente.clienteAtivo.frequencia;
-      const diaSemana = cliente.clienteAtivo.diaSemana;
-      const nomeEvento = cliente.clienteAtivo.nomeEvento;
-
-      let datasProjetadas = [];
-
-      if (freq === 'Semanal') {
-        datasProjetadas = gerarSemanais(diaSemana);
-      } else if (freq === 'Quinzenal') {
-        datasProjetadas = gerarQuinzenais(cliente);
-      } else if (freq === 'Mensal') {
-        datasProjetadas = [primeiraSegundaMes()];
-      }
-
-      datasProjetadas.forEach(data => {
-        if (!eventoRealExiste(nomeEvento, data) && !dataIndisponivel(data)) {
-          eventosProjetados.push({ nomeEvento, data, status: 'Projetado', clienteId: cliente.id });
-        }
-      });
-    });
-  }
-
-  function gerarSemanais(diaSemana) {
-    const datas = [];
-    const ano = mesAtual.getFullYear();
-    const mes = mesAtual.getMonth();
-    const primeiro = new Date(ano, mes, 1);
-    const ultimo = new Date(ano, mes + 1, 0);
-
-    for (let d = new Date(primeiro); d <= ultimo; d.setDate(d.getDate() + 1)) {
-      if (d.toLocaleDateString('pt-BR', { weekday: 'long' }) === diaSemana) {
-        datas.push(d.toISOString().split('T')[0]);
-      }
-    }
-    return datas;
-  }
-
-  function gerarQuinzenais(cliente) {
-    const datas = [];
-    const nomeEvento = cliente.clienteAtivo.nomeEvento;
-    const ultimos = eventos.filter(e => e.nomeEvento === nomeEvento).sort((a, b) => b.data.localeCompare(a.data));
-    let lastDate = ultimos.length ? new Date(ultimos[0].data) : new Date();
-
-    for (let i = 0; i < 3; i++) {
-      lastDate.setDate(lastDate.getDate() + 14);
-      datas.push(lastDate.toISOString().split('T')[0]);
-    }
-    return datas;
-  }
-
-  function primeiraSegundaMes() {
-    const ano = mesAtual.getFullYear();
-    const mes = mesAtual.getMonth();
-    const d = new Date(ano, mes, 1);
-    while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
-  }
-
-  function eventoRealExiste(nome, data) {
-    return eventos.some(e => e.nomeEvento === nome && e.data === data);
-  }
-
-  function dataIndisponivel(data) {
-    const dia = indisponiveis.some(i => i.tipo === 'único' && i.data === data);
-    const periodo = indisponiveis.some(i => i.tipo === 'período' && data >= i.inicio && data <= i.fim);
-    return dia || periodo;
   }
 
   function renderizarCalendario() {
@@ -217,68 +141,63 @@
       calendario.appendChild(document.createElement('div'));
     }
 
+    const semanaAtual = getSemanaAtual();
+
     for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
-      const data = new Date(ano, mes, dia).toISOString().split('T')[0];
+      const data = new Date(ano, mes, dia);
+      const dataStr = data.toISOString().split('T')[0];
+
       const divDia = document.createElement('div');
       divDia.classList.add('dia');
+
+      if (semanaAtual.includes(dataStr)) {
+        divDia.classList.add('semana-atual');
+      }
 
       const numeroDia = document.createElement('div');
       numeroDia.textContent = dia;
       divDia.appendChild(numeroDia);
 
-      eventos.filter(ev => ev.data === data).forEach(ev => {
-        const evDiv = document.createElement('div');
-        evDiv.classList.add('evento-dia');
-        evDiv.textContent = ev.nomeEvento;
-        divDia.appendChild(evDiv);
-      });
-
-      eventosProjetados.filter(ev => ev.data === data).forEach(ev => {
-        const evDiv = document.createElement('div');
-        evDiv.classList.add('evento-projetado');
-        evDiv.textContent = ev.nomeEvento;
-        divDia.appendChild(evDiv);
+      eventos.filter(ev => ev.data === dataStr).forEach(ev => {
+        const eventoDiv = document.createElement('div');
+        eventoDiv.classList.add('evento-dia');
+        eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
+        divDia.appendChild(eventoDiv);
       });
 
       calendario.appendChild(divDia);
     }
   }
 
+  function getSemanaAtual() {
+    const hoje = new Date();
+    const diaSemana = hoje.getDay();
+    const inicio = new Date(hoje);
+    inicio.setDate(hoje.getDate() - diaSemana + 1);
+    const datas = [];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(inicio);
+      d.setDate(inicio.getDate() + i);
+      datas.push(d.toISOString().split('T')[0]);
+    }
+
+    return datas;
+  }
+
   function listarEventos() {
     const tbody = document.getElementById('tabelaEventos');
     tbody.innerHTML = '';
 
-    eventos.concat(eventosProjetados).forEach(e => {
+    const ano = mesAtual.getFullYear();
+    const mes = (mesAtual.getMonth() + 1).toString().padStart(2, '0');
+
+    const eventosFiltrados = eventos.filter(e => e.data && e.data.startsWith(`${ano}-${mes}`));
+
+    eventosFiltrados.forEach(e => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.nomeEvento}</td><td>${e.data}</td><td>${e.status || 'Real'}</td>`;
+      tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td>`;
       tbody.appendChild(tr);
-    });
-  }
-
-  function salvarProjecao() {
-    if (!confirm('Deseja realmente salvar a projeção de receita deste mês?')) return;
-
-    const anoMes = `${mesAtual.getFullYear()}_${(mesAtual.getMonth() + 1).toString().padStart(2, '0')}`;
-
-    db.ref(`projecaoReceita/${anoMes}/total`).once('value').then(snap => {
-      if (snap.exists()) {
-        alert('Projeção já existente para este mês. Não sobrescrita.');
-      } else {
-        let total = 0;
-        clientes.forEach(c => {
-          const media = mediasClientes[c.id] || 0;
-          const freq = c.clienteAtivo.frequencia;
-          let qnt = 0;
-          if (freq === 'Semanal') qnt = gerarSemanais(c.clienteAtivo.diaSemana).length;
-          else if (freq === 'Quinzenal') qnt = 2;
-          else if (freq === 'Mensal') qnt = 1;
-          total += media * qnt;
-        });
-
-        db.ref(`projecaoReceita/${anoMes}`).set({ total }).then(() => {
-          alert('Projeção de receita salva com sucesso!');
-        });
-      }
     });
   }
 
