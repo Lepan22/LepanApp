@@ -13,8 +13,8 @@
     .btn-navegar:hover { background-color: #e96f00; }
     .container-agenda { display: flex; gap: 20px; margin-top: 20px; }
     .calendario { width: 75%; display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
-    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 90px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
-    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
+    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 90px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; width: 75%; }
+    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; font-size: 6px; height: 15px; }
     .semana-atual { background-color: #ffe0b2; }
     table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
@@ -112,7 +112,7 @@
     const calendario = document.getElementById('calendario');
     calendario.innerHTML = '';
 
-    const cabecalho = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+    const cabecalho = ['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'];
     cabecalho.forEach(dia => {
       const div = document.createElement('div');
       div.classList.add('dia', 'cabecalho');
@@ -124,7 +124,7 @@
     const mes = mesAtual.getMonth();
     const primeiroDia = new Date(ano, mes, 1);
     const ultimoDia = new Date(ano, mes + 1, 0);
-    const diaSemanaInicio = primeiroDia.getDay();
+    const diaSemanaInicio = (primeiroDia.getDay() + 6) % 7;
 
     for (let i = 0; i < diaSemanaInicio; i++) {
       calendario.appendChild(document.createElement('div'));
@@ -178,7 +178,12 @@
     const tbody = document.getElementById('tabelaEventos');
     tbody.innerHTML = '';
 
-    eventos.forEach(e => {
+    const ano = mesAtual.getFullYear();
+    const mes = (mesAtual.getMonth() + 1).toString().padStart(2, '0');
+
+    const eventosFiltrados = eventos.filter(e => e.data && e.data.startsWith(`${ano}-${mes}`));
+
+    eventosFiltrados.forEach(e => {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td>`;
       tbody.appendChild(tr);
