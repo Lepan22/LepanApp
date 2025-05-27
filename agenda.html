@@ -184,11 +184,7 @@
       numeroDia.textContent = dia;
       divDia.appendChild(numeroDia);
 
-      const eventosDoDia = eventos.filter(e => {
-        const d = new Date(e.data);
-        return d.getMonth() === mesAtual.getMonth() && d.getFullYear() === mesAtual.getFullYear() && e.data === dataStr;
-      }).slice(0, 5);
-
+      const eventosDoDia = eventos.filter(e => e.data === dataStr).slice(0, 5);
       eventosDoDia.forEach(e => {
         const p = document.createElement('div');
         p.textContent = e.nomeEvento;
@@ -220,10 +216,7 @@
     const tbody = document.getElementById('tabelaEventosAgendados');
     tbody.innerHTML = '';
 
-    eventos.filter(e => {
-      const d = new Date(e.data);
-      return d.getMonth() === mesAtual.getMonth() && d.getFullYear() === mesAtual.getFullYear();
-    }).forEach(e => {
+    eventos.forEach(e => {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${e.nomeEvento}</td><td>${e.data}</td><td>${e.status}</td>`;
       tbody.appendChild(tr);
