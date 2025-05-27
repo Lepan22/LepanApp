@@ -5,76 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Agenda - LePanApp</title>
   <link rel="stylesheet" href="assets/style.css">
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
-    h1 {
-      font-size: 16px;
-      margin-bottom: 10px;
-    }
-    .kpis {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .kpi {
-      background-color: #f2f2f2;
-      padding: 10px;
-      border-radius: 5px;
-      flex: 1 1 200px;
-    }
-    .calendario {
-      margin-top: 20px;
-    }
-    .semana-atual {
-      background-color: #ffe0b2;
-    }
-    .farol {
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      display: inline-block;
-      margin-right: 5px;
-    }
+    h1 { font-size: 16px; margin-bottom: 10px; }
+    .kpis { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+    .kpi { background-color: #f2f2f2; padding: 10px; border-radius: 5px; flex: 1 1 200px; }
+    .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
+    .btn-navegar:hover { background-color: #e96f00; }
+    .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
+    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 5px; min-height: 60px; font-size: 10px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .semana-atual { background-color: #ffe0b2; }
+    .evento-pequeno { font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .farol { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     .farol-cinza { background-color: gray; }
     .farol-verde { background-color: green; }
     .farol-vermelho { background-color: red; }
-    .lista-clientes, .lista-eventos {
-      margin-top: 20px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 12px;
-      margin-top: 10px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 6px;
-      text-align: left;
-    }
-    th {
-      background-color: #f2f2f2;
-    }
-    .btn-navegar {
-      background-color: #ff7f00;
-      color: white;
-      padding: 6px 10px;
-      border: none;
-      cursor: pointer;
-      border-radius: 5px;
-      font-size: 12px;
-      margin: 0 5px;
-    }
-    .btn-navegar:hover {
-      background-color: #e96f00;
-    }
+    table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
+    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+    th { background-color: #f2f2f2; }
   </style>
 </head>
 <body>
 
 <div class="layout">
   <aside class="sidebar" id="menuLateral">
-    <h4>Le PanApp</h4>
+    <h4>LePanApp</h4>
     <a href="home.html">Home</a>
     <a href="cadastro.html">Cadastros</a>
     <a href="clientes.html">Clientes</a>
@@ -107,23 +63,15 @@
       <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
     </div>
 
-    <div class="calendario" id="calendario">
-      <!-- Calendário será gerado via script -->
-    </div>
+    <div class="calendario" id="calendario"></div>
 
     <div class="lista-eventos">
       <h2>Lista de Eventos Agendados</h2>
       <table>
         <thead>
-          <tr>
-            <th>Nome do Evento</th>
-            <th>Data</th>
-            <th>Status</th>
-          </tr>
+          <tr><th>Nome do Evento</th><th>Data</th><th>Status</th></tr>
         </thead>
-        <tbody id="tabelaEventosAgendados">
-          <!-- Eventos agendados aqui -->
-        </tbody>
+        <tbody id="tabelaEventosAgendados"></tbody>
       </table>
     </div>
 
@@ -131,58 +79,103 @@
       <h2>Clientes Ativos</h2>
       <table>
         <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Nome do Evento</th>
-            <th>Frequência</th>
-            <th>Farol</th>
-          </tr>
+          <tr><th>Cliente</th><th>Nome do Evento</th><th>Frequência</th><th>Farol</th></tr>
         </thead>
-        <tbody id="tabelaClientesAtivos">
-          <!-- Clientes ativos aqui -->
-        </tbody>
+        <tbody id="tabelaClientesAtivos"></tbody>
       </table>
     </div>
-
   </main>
 </div>
 
 <script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "542989944344",
+    appId: "1:542989944344:web:576e28199960fd5440a56d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
   let mesAtual = new Date();
+  let eventos = [];
+  let clientes = [];
+  let capacidadeEventos = 0;
+  let previsaoReceita = 0;
 
   function mudarMes(delta) {
     mesAtual.setMonth(mesAtual.getMonth() + delta);
-    atualizarCalendario();
+    atualizarInterface();
   }
 
-  function atualizarCalendario() {
-    const calendario = document.getElementById('calendario');
-    const mes = mesAtual.getMonth();
-    const ano = mesAtual.getFullYear();
+  async function carregarDados() {
+    const eventosSnap = await db.ref('eventos').once('value');
+    eventos = [];
+    eventosSnap.forEach(child => eventos.push(child.val()));
 
+    const clientesSnap = await db.ref('clientes').once('value');
+    clientes = [];
+    clientesSnap.forEach(child => {
+      const cliente = child.val();
+      if (cliente.clienteAtivo && cliente.clienteAtivo.status === "Ativo") {
+        clientes.push(cliente);
+      }
+    });
+
+    const configSnap = await db.ref('configuracao/capacidadeEventos').once('value');
+    capacidadeEventos = configSnap.val() || 0;
+
+    const mesAno = mesAtual.toISOString().slice(0,7).replace('-', '_');
+    const previsaoSnap = await db.ref(`previsao_receita/${mesAno}/total`).once('value');
+    previsaoReceita = previsaoSnap.val() || 0;
+
+    atualizarInterface();
+  }
+
+  function atualizarInterface() {
     document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+    renderizarCalendario();
+    listarEventosAgendados();
+    listarClientesAtivos();
+    atualizarKPIs();
+  }
 
+  function renderizarCalendario() {
+    const calendario = document.getElementById('calendario');
     calendario.innerHTML = '';
+
+    const ano = mesAtual.getFullYear();
+    const mes = mesAtual.getMonth();
     const primeiroDia = new Date(ano, mes, 1);
     const ultimoDia = new Date(ano, mes + 1, 0);
-
-    const hoje = new Date();
     const semanaAtual = getSemanaAtual();
 
     for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
       const data = new Date(ano, mes, dia);
-      const divDia = document.createElement('div');
-      divDia.textContent = `${dia}`;
-      divDia.style.padding = '5px';
-      divDia.style.display = 'inline-block';
-      divDia.style.width = '30px';
-      divDia.style.textAlign = 'center';
-      divDia.style.margin = '2px';
-      divDia.style.borderRadius = '4px';
+      const dataStr = data.toISOString().split('T')[0];
 
-      if (semanaAtual.includes(dia) && data.getMonth() === hoje.getMonth()) {
+      const divDia = document.createElement('div');
+      divDia.classList.add('dia');
+
+      if (semanaAtual.includes(dia) && mes === new Date().getMonth()) {
         divDia.classList.add('semana-atual');
       }
+
+      const numeroDia = document.createElement('div');
+      numeroDia.textContent = dia;
+      divDia.appendChild(numeroDia);
+
+      const eventosDoDia = eventos.filter(e => e.data === dataStr).slice(0, 5);
+      eventosDoDia.forEach(e => {
+        const p = document.createElement('div');
+        p.textContent = e.nomeEvento;
+        p.classList.add('evento-pequeno');
+        divDia.appendChild(p);
+      });
 
       calendario.appendChild(divDia);
     }
@@ -191,46 +184,60 @@
   function getSemanaAtual() {
     const hoje = new Date();
     const diaSemana = hoje.getDay();
-    const inicioSemana = hoje.getDate() - diaSemana + 1;
-    return Array.from({length: 7}, (_, i) => inicioSemana + i);
+    const inicio = hoje.getDate() - diaSemana + 1;
+    return Array.from({length: 7}, (_, i) => inicio + i);
   }
 
-  // Placeholder: Função para calcular KPIs a partir de dados reais
-  function atualizarKPIs() {
-    // Aqui vão as integrações com Firebase ou dados de configuracao.html
-  }
-
-  // Placeholder: Função para gerar a lista de eventos agendados
   function listarEventosAgendados() {
     const tbody = document.getElementById('tabelaEventosAgendados');
-    tbody.innerHTML = `<tr><td>Evento Exemplo</td><td>10/05/2025</td><td>Confirmado</td></tr>`;
+    tbody.innerHTML = '';
+
+    eventos.filter(e => e.data.startsWith(mesAtual.toISOString().slice(0,7))).forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${e.nomeEvento}</td><td>${e.data}</td><td>${e.status}</td>`;
+      tbody.appendChild(tr);
+    });
   }
 
-  // Placeholder: Função para gerar lista de clientes ativos com farol
   function listarClientesAtivos() {
     const tbody = document.getElementById('tabelaClientesAtivos');
-    tbody.innerHTML = `
-      <tr>
-        <td>Condomínio Exemplo</td>
-        <td>Feira Orgânica</td>
-        <td>Semanal</td>
-        <td><span class="farol farol-verde"></span></td>
-      </tr>
-      <tr>
-        <td>Residencial ABC</td>
-        <td>Feira Mensal</td>
-        <td>Mensal</td>
-        <td><span class="farol farol-vermelho"></span></td>
-      </tr>
-    `;
+    tbody.innerHTML = '';
+
+    clientes.forEach(c => {
+      const freq = c.clienteAtivo.frequencia;
+      const farol = getFarol(c);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${c.nome}</td><td>${c.clienteAtivo.nomeEvento}</td><td>${freq}</td><td><span class="farol ${farol}"></span></td>`;
+      tbody.appendChild(tr);
+    });
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    atualizarCalendario();
-    atualizarKPIs();
-    listarEventosAgendados();
-    listarClientesAtivos();
-  });
+  function getFarol(cliente) {
+    const freq = cliente.clienteAtivo.frequencia;
+    if (freq === "Esporadico") return 'farol-cinza';
+
+    const eventosCliente = eventos.filter(e => e.nomeEvento === cliente.clienteAtivo.nomeEvento && e.data.startsWith(mesAtual.toISOString().slice(0,7)));
+
+    if (freq === "Semanal" && eventosCliente.length >= 4) return 'farol-verde';
+    if (freq === "Quinzenal" && eventosCliente.length >= 2) return 'farol-verde';
+    if (freq === "Mensal" && eventosCliente.length >= 1) return 'farol-verde';
+    return 'farol-vermelho';
+  }
+
+  function atualizarKPIs() {
+    const eventosMes = eventos.filter(e => e.data.startsWith(mesAtual.toISOString().slice(0,7)));
+    const totalEventos = eventosMes.length;
+    const totalReceita = eventosMes.reduce((sum, e) => sum + (e.vendaPDV || 0), 0);
+
+    document.getElementById('totalEventosMes').textContent = totalEventos;
+    document.getElementById('capacidadeEventosMes').textContent = capacidadeEventos;
+    document.getElementById('percentualOcupacao').textContent = capacidadeEventos ? ((totalEventos / capacidadeEventos) * 100).toFixed(1) + '%' : '0%';
+    document.getElementById('totalReceitaMes').textContent = 'R$ ' + totalReceita.toFixed(2).replace('.', ',');
+    document.getElementById('previsaoReceitaMes').textContent = 'R$ ' + previsaoReceita.toFixed(2).replace('.', ',');
+    document.getElementById('percentualMeta').textContent = previsaoReceita ? ((totalReceita / previsaoReceita) * 100).toFixed(1) + '%' : '0%';
+  }
+
+  document.addEventListener('DOMContentLoaded', carregarDados);
 </script>
 
 </body>
