@@ -1,93 +1,69 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Agenda - LePanApp</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Relatório de Custos</title>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
+
   <style>
-    h1 { font-size: 16px; margin-bottom: 10px; }
-    .kpis { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-    .kpi { background-color: #f2f2f2; padding: 10px; border-radius: 5px; flex: 1 1 200px; }
-    .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
-    .btn-navegar:hover { background-color: #e96f00; }
-    .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 48px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
-    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
-    .semana-atual { background-color: #ffe0b2; }
-    .evento-pequeno { font-size: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .farol { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    .farol-cinza { background-color: gray; }
-    .farol-verde { background-color: green; }
-    .farol-vermelho { background-color: red; }
-    table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-    th { background-color: #f2f2f2; }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background-color: #ff7f00; color: white; padding: 20px 10px; }
+    .main-content { flex-grow: 1; padding: 20px; }
+    table { font-size: 14px; }
   </style>
 </head>
 <body>
-
 <div class="layout">
-  <aside class="sidebar" id="menuLateral">
-    <h4>LePanApp</h4>
-    <a href="home.html">Home</a>
-    <a href="cadastro.html">Cadastros</a>
-    <a href="clientes.html">Clientes</a>
-    <a href="eventos.html">Eventos</a>
-    <a href="relatorios.html">Relatórios</a>
-    <a href="criar.html">Criar</a>
-    <a href="compra_evento.html">Compras</a>
-    <a href="etapas.html">Etapas</a>
-    <a href="media_produto.html">Média Produto</a>
-    <a href="visao_cliente.html">Visão por Cliente</a>
-    <a href="visao_equipe.html">Visão por Equipe</a>
-    <a href="index.html">Voltar</a>
-  </aside>
+  <aside class="sidebar" id="menuLateral"></aside>
 
   <main class="main-content">
-    <h1>Agenda</h1>
+    <h1>Relatório de Custos</h1>
 
-    <div class="kpis">
-      <div class="kpi">Total de Eventos no Mês: <span id="totalEventosMes">0</span></div>
-      <div class="kpi">Capacidade de Eventos no Mês: <span id="capacidadeEventosMes">0</span></div>
-      <div class="kpi">Percentual de Ocupação: <span id="percentualOcupacao">0%</span></div>
-      <div class="kpi">Total de Receita no Mês: <span id="totalReceitaMes">R$ 0,00</span></div>
-      <div class="kpi">Previsão de Receita no Mês: <span id="previsaoReceitaMes">R$ 0,00</span></div>
-      <div class="kpi">Percentual de Meta: <span id="percentualMeta">0%</span></div>
-    </div>
+    <form id="filtroForm" class="row g-3 mb-4">
+      <div class="col-auto">
+        <label>Data Inicial</label>
+        <input type="date" id="dataInicial" class="form-control">
+      </div>
+      <div class="col-auto">
+        <label>Data Final</label>
+        <input type="date" id="dataFinal" class="form-control">
+      </div>
+      <div class="col-auto align-self-end">
+        <button type="submit" class="btn btn-primary">Gerar Relatório</button>
+      </div>
+      <div class="col-auto align-self-end">
+        <button type="button" class="btn btn-success" onclick="exportarExcel()">Exportar Excel</button>
+      </div>
+    </form>
 
-    <div>
-      <button class="btn-navegar" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
-      <span id="mesAtual">Maio 2025</span>
-      <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
-    </div>
-
-    <div class="calendario" id="calendario"></div>
-
-    <div class="lista-eventos">
-      <h2>Lista de Eventos Agendados</h2>
-      <table>
-        <thead>
-          <tr><th>Nome do Evento</th><th>Data</th><th>Status</th></tr>
-        </thead>
-        <tbody id="tabelaEventosAgendados"></tbody>
-      </table>
-    </div>
-
-    <div class="lista-clientes">
-      <h2>Clientes Ativos</h2>
-      <table>
-        <thead>
-          <tr><th>Cliente</th><th>Nome do Evento</th><th>Frequência</th><th>Farol</th></tr>
-        </thead>
-        <tbody id="tabelaClientesAtivos"></tbody>
-      </table>
-    </div>
+    <table class="table table-bordered">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Data</th>
+          <th>Valor</th>
+          <th>Centro de Custo</th>
+          <th>Nome do Evento</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaCustos"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2"><strong>Total Geral:</strong></td>
+          <td colspan="3"><strong id="totalCustos">R$ 0,00</strong></td>
+        </tr>
+      </tfoot>
+    </table>
   </main>
 </div>
 
+<script src="../../incluir-menu.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -102,171 +78,133 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  let mesAtual = new Date();
-  let eventos = [];
-  let clientes = [];
-  let capacidadeEventos = 0;
-  let previsaoReceita = 0;
+  const dataInicial = document.getElementById('dataInicial');
+  const dataFinal = document.getElementById('dataFinal');
+  const tabelaCustos = document.getElementById('tabelaCustos');
+  const totalCustosEl = document.getElementById('totalCustos');
 
-  function mudarMes(delta) {
-    mesAtual.setMonth(mesAtual.getMonth() + delta);
-    atualizarInterface();
+  let dadosTabela = [];
+  let logisticaDB = {};
+  let equipeDB = {};
+
+  function pad2(n) { return n < 10 ? '0' + n : n; }
+
+  function setDataDefault() {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    dataInicial.value = firstDay.toISOString().slice(0,10);
+    dataFinal.value = lastDay.toISOString().slice(0,10);
   }
 
-  async function carregarDados() {
-    const eventosSnap = await db.ref('eventos').once('value');
-    eventos = [];
-    eventosSnap.forEach(child => eventos.push(child.val()));
+  setDataDefault();
 
-    const clientesSnap = await db.ref('clientes').once('value');
-    clientes = [];
-    clientesSnap.forEach(child => {
-      const cliente = child.val();
-      if (cliente.clienteAtivo && cliente.clienteAtivo.status === "Ativo") {
-        clientes.push(cliente);
-      }
-    });
+  document.getElementById('filtroForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    gerarRelatorio();
+  });
 
-    const configSnap = await db.ref('configuracao/capacidadeEventos').once('value');
-    capacidadeEventos = configSnap.val() || 0;
+  function gerarRelatorio() {
+    const ini = new Date(dataInicial.value);
+    const fim = new Date(dataFinal.value);
 
-    const mesAno = mesAtual.toISOString().slice(0,7).replace('-', '_');
-    const previsaoSnap = await db.ref(`previsao_receita/${mesAno}/total`).once('value');
-    previsaoReceita = previsaoSnap.val() || 0;
+    Promise.all([
+      db.ref('eventos').once('value'),
+      db.ref('logistica').once('value'),
+      db.ref('equipe').once('value')
+    ]).then(([eventosSnap, logisticaSnap, equipeSnap]) => {
+      const eventos = eventosSnap.val() || {};
+      logisticaDB = logisticaSnap.val() || {};
+      equipeDB = equipeSnap.val() || {};
 
-    atualizarInterface();
-  }
+      let relatorio = [];
 
-  function atualizarInterface() {
-    document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-    renderizarCalendario();
-    listarEventosAgendados();
-    listarClientesAtivos();
-    atualizarKPIs();
-  }
+      for (let evId in eventos) {
+        const ev = eventos[evId];
+        if (!ev.data) continue;
+        const evDate = new Date(ev.data);
+        if (evDate >= ini && evDate <= fim) {
+          const dataFormatada = `${pad2(evDate.getDate())}/${pad2(evDate.getMonth()+1)}/${evDate.getFullYear()}`;
 
-  function renderizarCalendario() {
-    const calendario = document.getElementById('calendario');
-    calendario.innerHTML = '';
+          if (ev.logistica) {
+            ev.logistica.forEach(log => {
+              const nome = log.prestadorId && logisticaDB[log.prestadorId]?.nome ? logisticaDB[log.prestadorId].nome : 'Sem nome';
+              relatorio.push({
+                Nome: nome,
+                Data: dataFormatada,
+                Valor: log.valor || 0,
+                Centro: 'Logística Operacional',
+                Evento: ev.nomeEvento || '-'
+              });
+            });
+          }
 
-    const cabecalho = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-    cabecalho.forEach(dia => {
-      const div = document.createElement('div');
-      div.classList.add('dia', 'cabecalho');
-      div.textContent = dia;
-      calendario.appendChild(div);
-    });
-
-    const ano = mesAtual.getFullYear();
-    const mes = mesAtual.getMonth();
-    const primeiroDia = new Date(ano, mes, 1);
-    const ultimoDia = new Date(ano, mes + 1, 0);
-    const diaSemanaInicio = primeiroDia.getDay();
-
-    for (let i = 0; i < diaSemanaInicio; i++) {
-      calendario.appendChild(document.createElement('div'));
-    }
-
-    const semanaAtual = getSemanaAtual();
-
-    for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
-      const data = new Date(ano, mes, dia);
-      const dataStr = data.toISOString().split('T')[0];
-
-      const divDia = document.createElement('div');
-      divDia.classList.add('dia');
-
-      if (semanaAtual.includes(dataStr)) {
-        divDia.classList.add('semana-atual');
+          if (ev.equipe) {
+            ev.equipe.forEach(eq => {
+              const nome = eq.membroId && equipeDB[eq.membroId]?.nomeCompleto ? equipeDB[eq.membroId].nomeCompleto : 'Sem nome';
+              relatorio.push({
+                Nome: nome,
+                Data: dataFormatada,
+                Valor: eq.valor || 0,
+                Centro: 'Equipe Evento',
+                Evento: ev.nomeEvento || '-'
+              });
+            });
+          }
+        }
       }
 
-      const numeroDia = document.createElement('div');
-      numeroDia.textContent = dia;
-      divDia.appendChild(numeroDia);
-
-      const eventosDoDia = eventos.filter(e => e.data && e.data === dataStr).slice(0, 5);
-      eventosDoDia.forEach(e => {
-        const p = document.createElement('div');
-        p.textContent = e.nomeEvento || 'Sem nome';
-        p.classList.add('evento-pequeno');
-        divDia.appendChild(p);
+      relatorio.sort((a, b) => {
+        if (a.Nome < b.Nome) return -1;
+        if (a.Nome > b.Nome) return 1;
+        return new Date(a.Data.split('/').reverse().join('-')) - new Date(b.Data.split('/').reverse().join('-'));
       });
 
-      calendario.appendChild(divDia);
-    }
-  }
+      tabelaCustos.innerHTML = '';
+      let total = 0;
+      dadosTabela = [];
 
-  function getSemanaAtual() {
-    const hoje = new Date();
-    const diaSemana = hoje.getDay();
-    const inicio = new Date(hoje);
-    inicio.setDate(hoje.getDate() - diaSemana + 1);
-    const datas = [];
+      relatorio.forEach(item => {
+        total += Number(item.Valor);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.Nome}</td>
+          <td>${item.Data}</td>
+          <td>R$ ${Number(item.Valor).toFixed(2)}</td>
+          <td>${item.Centro}</td>
+          <td>${item.Evento}</td>
+        `;
+        tabelaCustos.appendChild(tr);
 
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(inicio);
-      d.setDate(inicio.getDate() + i);
-      datas.push(d.toISOString().split('T')[0]);
-    }
+        dadosTabela.push({
+          Nome: item.Nome,
+          Data: item.Data,
+          Valor: item.Valor,
+          'Centro de Custo': item.Centro,
+          'Nome do Evento': item.Evento
+        });
+      });
 
-    return datas;
-  }
-
-  function listarEventosAgendados() {
-    const tbody = document.getElementById('tabelaEventosAgendados');
-    tbody.innerHTML = '';
-
-    eventos.forEach(e => {
-      const nome = e.nomeEvento || 'Sem nome';
-      const data = e.data || 'Sem data';
-      const status = e.status || 'Sem status';
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${nome}</td><td>${data}</td><td>${status}</td>`;
-      tbody.appendChild(tr);
+      totalCustosEl.innerText = `R$ ${total.toFixed(2)}`;
     });
   }
 
-  function listarClientesAtivos() {
-    const tbody = document.getElementById('tabelaClientesAtivos');
-    tbody.innerHTML = '';
+  function exportarExcel() {
+    const dadosFormatados = dadosTabela.map(item => ({
+      Nome: item.Nome,
+      Data: item.Data,
+      Valor: Number(item.Valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      'Centro de Custo': item['Centro de Custo'],
+      'Nome do Evento': item['Nome do Evento']
+    }));
 
-    clientes.forEach(c => {
-      const freq = c.clienteAtivo.frequencia;
-      const farol = getFarol(c);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${c.nome}</td><td>${c.clienteAtivo.nomeEvento}</td><td>${freq}</td><td><span class="farol ${farol}"></span></td>`;
-      tbody.appendChild(tr);
-    });
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(dadosFormatados);
+    XLSX.utils.book_append_sheet(wb, ws, "Custos");
+    XLSX.writeFile(wb, "relatorio_custos.xlsx");
   }
 
-  function getFarol(cliente) {
-    const freq = cliente.clienteAtivo.frequencia;
-    if (freq === "Esporadico") return 'farol-cinza';
-
-    const eventosCliente = eventos.filter(e => e.nomeEvento === cliente.clienteAtivo.nomeEvento && e.data && new Date(e.data).getMonth() === mesAtual.getMonth());
-
-    if (freq === "Semanal" && eventosCliente.length >= 4) return 'farol-verde';
-    if (freq === "Quinzenal" && eventosCliente.length >= 2) return 'farol-verde';
-    if (freq === "Mensal" && eventosCliente.length >= 1) return 'farol-verde';
-    return 'farol-vermelho';
-  }
-
-  function atualizarKPIs() {
-    const eventosMes = eventos.filter(e => e.data && new Date(e.data).getMonth() === mesAtual.getMonth());
-    const totalEventos = eventosMes.length;
-    const totalReceita = eventosMes.reduce((sum, e) => sum + (e.vendaPDV || 0), 0);
-
-    document.getElementById('totalEventosMes').textContent = totalEventos;
-    document.getElementById('capacidadeEventosMes').textContent = capacidadeEventos;
-    document.getElementById('percentualOcupacao').textContent = capacidadeEventos ? ((totalEventos / capacidadeEventos) * 100).toFixed(1) + '%' : '0%';
-    document.getElementById('totalReceitaMes').textContent = 'R$ ' + totalReceita.toFixed(2).replace('.', ',');
-    document.getElementById('previsaoReceitaMes').textContent = 'R$ ' + previsaoReceita.toFixed(2).replace('.', ',');
-    document.getElementById('percentualMeta').textContent = previsaoReceita ? ((totalReceita / previsaoReceita) * 100).toFixed(1) + '%' : '0%';
-  }
-
-  document.addEventListener('DOMContentLoaded', carregarDados);
+  gerarRelatorio();
 </script>
-
 </body>
 </html>
