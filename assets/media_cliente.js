@@ -16,9 +16,17 @@ function carregarClientes() {
   db.ref('clientes').once('value').then(snapshot => {
     clientes = {};
     snapshot.forEach(child => {
-      clientes[child.key] = child.val().nome;
+      const val = child.val();
+      if (val && val.nome) {
+        clientes[child.key] = val.nome;
+      } else {
+        clientes[child.key] = child.key;  // fallback: mostra ID
+      }
     });
     carregarEventos();
+  }).catch(err => {
+    console.error('Erro ao carregar clientes:', err);
+    alert('Erro ao carregar clientes. Verifique o console.');
   });
 }
 
@@ -38,14 +46,25 @@ function carregarEventos() {
 
     const select = document.getElementById('clienteFiltro');
     select.innerHTML = '';
-    clientesSet.forEach(clienteId => {
+
+    if (clientesSet.size === 0) {
       const opt = document.createElement('option');
-      opt.value = clienteId;
-      opt.textContent = clientes[clienteId] || clienteId;
+      opt.textContent = 'Nenhum cliente encontrado';
+      opt.disabled = true;
       select.appendChild(opt);
-    });
+    } else {
+      clientesSet.forEach(clienteId => {
+        const opt = document.createElement('option');
+        opt.value = clienteId;
+        opt.textContent = clientes[clienteId] || clienteId;
+        select.appendChild(opt);
+      });
+    }
 
     filtrarRelatorio();
+  }).catch(err => {
+    console.error('Erro ao carregar eventos:', err);
+    alert('Erro ao carregar eventos. Verifique o console.');
   });
 }
 
@@ -91,6 +110,11 @@ function renderizarTabela(agrupado, clientesSelecionados) {
   thead.innerHTML = '';
   tbody.innerHTML = '';
 
+  if (clientesSelecionados.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2">Nenhum dado encontrado.</td></tr>';
+    return;
+  }
+
   let header = '<tr><th>Cliente</th><th>Média Venda PDV</th></tr>';
   thead.innerHTML = header;
 
@@ -120,6 +144,9 @@ function atualizarFirebase() {
 
   db.ref().update(updates).then(() => {
     alert("Médias salvas com sucesso no Firebase!");
+  }).catch(err => {
+    console.error('Erro ao salvar médias:', err);
+    alert('Erro ao salvar no Firebase. Veja o console.');
   });
 }
 
