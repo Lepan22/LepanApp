@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agenda - LePanApp</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    h1 {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+    .kpis {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .kpi {
+      background-color: #f2f2f2;
+      padding: 10px;
+      border-radius: 5px;
+      flex: 1 1 200px;
+    }
+    .calendario {
+      margin-top: 20px;
+    }
+    .semana-atual {
+      background-color: #ffe0b2;
+    }
+    .farol {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+    }
+    .farol-cinza { background-color: gray; }
+    .farol-verde { background-color: green; }
+    .farol-vermelho { background-color: red; }
+    .lista-clientes, .lista-eventos {
+      margin-top: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 6px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+    .btn-navegar {
+      background-color: #ff7f00;
+      color: white;
+      padding: 6px 10px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 12px;
+      margin: 0 5px;
+    }
+    .btn-navegar:hover {
+      background-color: #e96f00;
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+  <aside class="sidebar" id="menuLateral">
+    <h4>Le PanApp</h4>
+    <a href="home.html">Home</a>
+    <a href="cadastro.html">Cadastros</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="eventos.html">Eventos</a>
+    <a href="relatorios.html">Relatórios</a>
+    <a href="criar.html">Criar</a>
+    <a href="compra_evento.html">Compras</a>
+    <a href="etapas.html">Etapas</a>
+    <a href="media_produto.html">Média Produto</a>
+    <a href="visao_cliente.html">Visão por Cliente</a>
+    <a href="visao_equipe.html">Visão por Equipe</a>
+    <a href="index.html">Voltar</a>
+  </aside>
+
+  <main class="main-content">
+    <h1>Agenda</h1>
+
+    <div class="kpis">
+      <div class="kpi">Total de Eventos no Mês: <span id="totalEventosMes">0</span></div>
+      <div class="kpi">Capacidade de Eventos no Mês: <span id="capacidadeEventosMes">0</span></div>
+      <div class="kpi">Percentual de Ocupação: <span id="percentualOcupacao">0%</span></div>
+      <div class="kpi">Total de Receita no Mês: <span id="totalReceitaMes">R$ 0,00</span></div>
+      <div class="kpi">Previsão de Receita no Mês: <span id="previsaoReceitaMes">R$ 0,00</span></div>
+      <div class="kpi">Percentual de Meta: <span id="percentualMeta">0%</span></div>
+    </div>
+
+    <div>
+      <button class="btn-navegar" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
+      <span id="mesAtual">Maio 2025</span>
+      <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
+    </div>
+
+    <div class="calendario" id="calendario">
+      <!-- Calendário será gerado via script -->
+    </div>
+
+    <div class="lista-eventos">
+      <h2>Lista de Eventos Agendados</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome do Evento</th>
+            <th>Data</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaEventosAgendados">
+          <!-- Eventos agendados aqui -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="lista-clientes">
+      <h2>Clientes Ativos</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th>Nome do Evento</th>
+            <th>Frequência</th>
+            <th>Farol</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaClientesAtivos">
+          <!-- Clientes ativos aqui -->
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  let mesAtual = new Date();
+
+  function mudarMes(delta) {
+    mesAtual.setMonth(mesAtual.getMonth() + delta);
+    atualizarCalendario();
+  }
+
+  function atualizarCalendario() {
+    const calendario = document.getElementById('calendario');
+    const mes = mesAtual.getMonth();
+    const ano = mesAtual.getFullYear();
+
+    document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+
+    calendario.innerHTML = '';
+    const primeiroDia = new Date(ano, mes, 1);
+    const ultimoDia = new Date(ano, mes + 1, 0);
+
+    const hoje = new Date();
+    const semanaAtual = getSemanaAtual();
+
+    for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
+      const data = new Date(ano, mes, dia);
+      const divDia = document.createElement('div');
+      divDia.textContent = `${dia}`;
+      divDia.style.padding = '5px';
+      divDia.style.display = 'inline-block';
+      divDia.style.width = '30px';
+      divDia.style.textAlign = 'center';
+      divDia.style.margin = '2px';
+      divDia.style.borderRadius = '4px';
+
+      if (semanaAtual.includes(dia) && data.getMonth() === hoje.getMonth()) {
+        divDia.classList.add('semana-atual');
+      }
+
+      calendario.appendChild(divDia);
+    }
+  }
+
+  function getSemanaAtual() {
+    const hoje = new Date();
+    const diaSemana = hoje.getDay();
+    const inicioSemana = hoje.getDate() - diaSemana + 1;
+    return Array.from({length: 7}, (_, i) => inicioSemana + i);
+  }
+
+  // Placeholder: Função para calcular KPIs a partir de dados reais
+  function atualizarKPIs() {
+    // Aqui vão as integrações com Firebase ou dados de configuracao.html
+  }
+
+  // Placeholder: Função para gerar a lista de eventos agendados
+  function listarEventosAgendados() {
+    const tbody = document.getElementById('tabelaEventosAgendados');
+    tbody.innerHTML = `<tr><td>Evento Exemplo</td><td>10/05/2025</td><td>Confirmado</td></tr>`;
+  }
+
+  // Placeholder: Função para gerar lista de clientes ativos com farol
+  function listarClientesAtivos() {
+    const tbody = document.getElementById('tabelaClientesAtivos');
+    tbody.innerHTML = `
+      <tr>
+        <td>Condomínio Exemplo</td>
+        <td>Feira Orgânica</td>
+        <td>Semanal</td>
+        <td><span class="farol farol-verde"></span></td>
+      </tr>
+      <tr>
+        <td>Residencial ABC</td>
+        <td>Feira Mensal</td>
+        <td>Mensal</td>
+        <td><span class="farol farol-vermelho"></span></td>
+      </tr>
+    `;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    atualizarCalendario();
+    atualizarKPIs();
+    listarEventosAgendados();
+    listarClientesAtivos();
+  });
+</script>
+
+</body>
+</html>
