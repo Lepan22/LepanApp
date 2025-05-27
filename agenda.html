@@ -14,10 +14,10 @@
     .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
     .btn-navegar:hover { background-color: #e96f00; }
     .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 5px; min-height: 60px; font-size: 10px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 48px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
     .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
     .semana-atual { background-color: #ffe0b2; }
-    .evento-pequeno { font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .evento-pequeno { font-size: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .farol { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 5px; }
     .farol-cinza { background-color: gray; }
     .farol-verde { background-color: green; }
@@ -161,7 +161,7 @@
     const mes = mesAtual.getMonth();
     const primeiroDia = new Date(ano, mes, 1);
     const ultimoDia = new Date(ano, mes + 1, 0);
-    const diaSemanaInicio = primeiroDia.getDay(); 
+    const diaSemanaInicio = primeiroDia.getDay();
 
     for (let i = 0; i < diaSemanaInicio; i++) {
       calendario.appendChild(document.createElement('div'));
@@ -184,7 +184,11 @@
       numeroDia.textContent = dia;
       divDia.appendChild(numeroDia);
 
-      const eventosDoDia = eventos.filter(e => e.data === dataStr).slice(0, 5);
+      const eventosDoDia = eventos.filter(e => {
+        const d = new Date(e.data);
+        return d.getMonth() === mesAtual.getMonth() && d.getFullYear() === mesAtual.getFullYear() && e.data === dataStr;
+      }).slice(0, 5);
+
       eventosDoDia.forEach(e => {
         const p = document.createElement('div');
         p.textContent = e.nomeEvento;
@@ -216,9 +220,10 @@
     const tbody = document.getElementById('tabelaEventosAgendados');
     tbody.innerHTML = '';
 
-    const mesAtualStr = mesAtual.toISOString().slice(0,7);
-
-    eventos.filter(e => e.data.startsWith(mesAtualStr)).forEach(e => {
+    eventos.filter(e => {
+      const d = new Date(e.data);
+      return d.getMonth() === mesAtual.getMonth() && d.getFullYear() === mesAtual.getFullYear();
+    }).forEach(e => {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${e.nomeEvento}</td><td>${e.data}</td><td>${e.status}</td>`;
       tbody.appendChild(tr);
@@ -242,7 +247,7 @@
     const freq = cliente.clienteAtivo.frequencia;
     if (freq === "Esporadico") return 'farol-cinza';
 
-    const eventosCliente = eventos.filter(e => e.nomeEvento === cliente.clienteAtivo.nomeEvento && e.data.startsWith(mesAtual.toISOString().slice(0,7)));
+    const eventosCliente = eventos.filter(e => e.nomeEvento === cliente.clienteAtivo.nomeEvento && new Date(e.data).getMonth() === mesAtual.getMonth());
 
     if (freq === "Semanal" && eventosCliente.length >= 4) return 'farol-verde';
     if (freq === "Quinzenal" && eventosCliente.length >= 2) return 'farol-verde';
@@ -251,7 +256,7 @@
   }
 
   function atualizarKPIs() {
-    const eventosMes = eventos.filter(e => e.data.startsWith(mesAtual.toISOString().slice(0,7)));
+    const eventosMes = eventos.filter(e => new Date(e.data).getMonth() === mesAtual.getMonth());
     const totalEventos = eventosMes.length;
     const totalReceita = eventosMes.reduce((sum, e) => sum + (e.vendaPDV || 0), 0);
 
