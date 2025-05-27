@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestão de Agenda</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    h1 { font-size: 18px; }
+    label { display: block; margin-top: 10px; }
+    input, select, button { margin-top: 5px; padding: 5px; width: 100%; max-width: 300px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 12px; }
+    th { background-color: #f2f2f2; }
+    .btn-excluir { background: red; color: white; border: none; padding: 4px 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<h1>Gestão de Agenda - Dias Indisponíveis</h1>
+
+<form id="formIndisponivel">
+  <label>Tipo:
+    <select id="tipo">
+      <option value="único">Data Única</option>
+      <option value="período">Período</option>
+    </select>
+  </label>
+
+  <label id="labelData">Data:
+    <input type="date" id="data">
+  </label>
+
+  <label id="labelInicio" style="display:none;">Início:
+    <input type="date" id="inicio">
+  </label>
+
+  <label id="labelFim" style="display:none;">Fim:
+    <input type="date" id="fim">
+  </label>
+
+  <label>Motivo:
+    <input type="text" id="motivo" placeholder="Ex.: Feriado, Férias...">
+  </label>
+
+  <button type="submit">Salvar</button>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>Tipo</th>
+      <th>Data / Período</th>
+      <th>Motivo</th>
+      <th>Ação</th>
+    </tr>
+  </thead>
+  <tbody id="tabelaIndisponiveis"></tbody>
+</table>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "542989944344",
+    appId: "1:542989944344:web:576e28199960fd5440a56d"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  const tipo = document.getElementById('tipo');
+  const labelData = document.getElementById('labelData');
+  const labelInicio = document.getElementById('labelInicio');
+  const labelFim = document.getElementById('labelFim');
+
+  tipo.addEventListener('change', () => {
+    if (tipo.value === 'único') {
+      labelData.style.display = 'block';
+      labelInicio.style.display = 'none';
+      labelFim.style.display = 'none';
+    } else {
+      labelData.style.display = 'none';
+      labelInicio.style.display = 'block';
+      labelFim.style.display = 'block';
+    }
+  });
+
+  document.getElementById('formIndisponivel').addEventListener('submit', e => {
+    e.preventDefault();
+    const motivo = document.getElementById('motivo').value.trim();
+    if (!motivo) {
+      alert('Motivo é obrigatório!');
+      return;
+    }
+
+    const novoRef = db.ref('configuracao/diasIndisponiveis').push();
+    const obj = {
+      tipo: tipo.value,
+      motivo: motivo
+    };
+
+    if (tipo.value === 'único') {
+      const data = document.getElementById('data').value;
+      if (!data) {
+        alert('Data é obrigatória!');
+        return;
+      }
+      obj.data = data;
+    } else {
+      const inicio = document.getElementById('inicio').value;
+      const fim = document.getElementById('fim').value;
+      if (!inicio || !fim) {
+        alert('Início e Fim são obrigatórios!');
+        return;
+      }
+      obj.inicio = inicio;
+      obj.fim = fim;
+    }
+
+    novoRef.set(obj).then(() => {
+      alert('Indisponibilidade salva!');
+      document.getElementById('formIndisponivel').reset();
+      tipo.value = 'único';
+      tipo.dispatchEvent(new Event('change'));
+      listarIndisponiveis();
+    });
+  });
+
+  function listarIndisponiveis() {
+    const tbody = document.getElementById('tabelaIndisponiveis');
+    tbody.innerHTML = '';
+
+    db.ref('configuracao/diasIndisponiveis').once('value').then(snapshot => {
+      snapshot.forEach(child => {
+        const id = child.key;
+        const item = child.val();
+
+        const tr = document.createElement('tr');
+
+        let dataTexto = '';
+        if (item.tipo === 'único') {
+          dataTexto = item.data;
+        } else {
+          dataTexto = `${item.inicio} a ${item.fim}`;
+        }
+
+        tr.innerHTML = `
+          <td>${item.tipo}</td>
+          <td>${dataTexto}</td>
+          <td>${item.motivo}</td>
+          <td><button class="btn-excluir" onclick="excluirIndisponivel('${id}')">Excluir</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+  }
+
+  function excluirIndisponivel(id) {
+    if (confirm('Tem certeza que deseja excluir?')) {
+      db.ref('configuracao/diasIndisponiveis/' + id).remove().then(() => {
+        alert('Excluído com sucesso!');
+        listarIndisponiveis();
+      });
+    }
+  }
+
+  listarIndisponiveis();
+</script>
+
+</body>
+</html>
