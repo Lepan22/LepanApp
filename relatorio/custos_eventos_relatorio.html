@@ -84,6 +84,8 @@
   const totalCustosEl = document.getElementById('totalCustos');
 
   let dadosTabela = [];
+  let logisticaDB = {};
+  let equipeDB = {};
 
   function pad2(n) { return n < 10 ? '0' + n : n; }
 
@@ -106,8 +108,15 @@
     const ini = new Date(dataInicial.value);
     const fim = new Date(dataFinal.value);
 
-    db.ref('eventos').once('value').then(snapshot => {
-      const eventos = snapshot.val() || {};
+    Promise.all([
+      db.ref('eventos').once('value'),
+      db.ref('logistica').once('value'),
+      db.ref('equipe').once('value')
+    ]).then(([eventosSnap, logisticaSnap, equipeSnap]) => {
+      const eventos = eventosSnap.val() || {};
+      logisticaDB = logisticaSnap.val() || {};
+      equipeDB = equipeSnap.val() || {};
+
       let relatorio = [];
 
       for (let evId in eventos) {
@@ -119,8 +128,9 @@
 
           if (ev.logistica) {
             ev.logistica.forEach(log => {
+              const nome = log.prestadorId && logisticaDB[log.prestadorId]?.nome ? logisticaDB[log.prestadorId].nome : 'Sem nome';
               relatorio.push({
-                Nome: log.nome || 'Sem nome',
+                Nome: nome,
                 Data: dataFormatada,
                 Valor: log.valor || 0,
                 Centro: 'Logística Operacional',
@@ -131,8 +141,9 @@
 
           if (ev.equipe) {
             ev.equipe.forEach(eq => {
+              const nome = eq.membroId && equipeDB[eq.membroId]?.nomeCompleto ? equipeDB[eq.membroId].nomeCompleto : 'Sem nome';
               relatorio.push({
-                Nome: eq.nomeCompleto || 'Sem nome',
+                Nome: nome,
                 Data: dataFormatada,
                 Valor: eq.valor || 0,
                 Centro: 'Equipe Evento',
