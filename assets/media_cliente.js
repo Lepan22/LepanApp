@@ -8,8 +8,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let eventos = [];
 let clientes = {};
+let eventos = [];
 let mediasPorCliente = {};
 
 function carregarClientes() {
@@ -17,54 +17,55 @@ function carregarClientes() {
     clientes = {};
     snapshot.forEach(child => {
       const val = child.val();
-      if (val && val.nome) {
-        clientes[child.key] = val.nome;
-      } else {
-        clientes[child.key] = child.key;  // fallback: mostra ID
+      const clienteAtivo = val.clienteAtivo;
+      if (clienteAtivo && clienteAtivo.status === 'Cliente Ativo') {
+        clientes[child.key] = {
+          nome: val.nome,
+          id: child.key
+        };
       }
     });
     carregarEventos();
   }).catch(err => {
     console.error('Erro ao carregar clientes:', err);
-    alert('Erro ao carregar clientes. Verifique o console.');
+    alert('Erro ao carregar clientes. Veja o console.');
   });
 }
 
 function carregarEventos() {
   db.ref('eventos').once('value').then(snapshot => {
     eventos = [];
-    const clientesSet = new Set();
-
     snapshot.forEach(child => {
       const evento = child.val();
       evento.id = child.key;
       eventos.push(evento);
-      if (evento.clienteId) {
-        clientesSet.add(evento.clienteId);
-      }
     });
 
-    const select = document.getElementById('clienteFiltro');
-    select.innerHTML = '';
-
-    if (clientesSet.size === 0) {
-      const opt = document.createElement('option');
-      opt.textContent = 'Nenhum cliente encontrado';
-      opt.disabled = true;
-      select.appendChild(opt);
-    } else {
-      clientesSet.forEach(clienteId => {
-        const opt = document.createElement('option');
-        opt.value = clienteId;
-        opt.textContent = clientes[clienteId] || clienteId;
-        select.appendChild(opt);
-      });
-    }
-
+    preencherFiltroClientes();
     filtrarRelatorio();
   }).catch(err => {
     console.error('Erro ao carregar eventos:', err);
-    alert('Erro ao carregar eventos. Verifique o console.');
+    alert('Erro ao carregar eventos. Veja o console.');
+  });
+}
+
+function preencherFiltroClientes() {
+  const select = document.getElementById('clienteFiltro');
+  select.innerHTML = '';
+
+  if (Object.keys(clientes).length === 0) {
+    const opt = document.createElement('option');
+    opt.textContent = 'Nenhum cliente ativo encontrado';
+    opt.disabled = true;
+    select.appendChild(opt);
+    return;
+  }
+
+  Object.values(clientes).forEach(cliente => {
+    const opt = document.createElement('option');
+    opt.value = cliente.id;
+    opt.textContent = cliente.nome;
+    select.appendChild(opt);
   });
 }
 
@@ -74,55 +75,60 @@ function filtrarRelatorio() {
   const clienteFiltro = Array.from(document.getElementById('clienteFiltro').selectedOptions).map(opt => opt.value);
   const statusFiltro = document.getElementById('statusFiltro').value;
 
-  const agrupado = {};
-  const clientesSelecionados = new Set();
-
   mediasPorCliente = {};
+  const tabelaDados = [];
 
-  eventos.forEach(evento => {
-    if (statusFiltro && evento.status !== statusFiltro) return;
-    if (dataInicio && evento.data < dataInicio) return;
-    if (dataFim && evento.data > dataFim) return;
-    if (clienteFiltro.length && !clienteFiltro.includes(evento.clienteId)) return;
-    if (!evento.valorPDV) return;
+  Object.keys(clientes).forEach(clienteId => {
+    if (clienteFiltro.length && !clienteFiltro.includes(clienteId)) return;
 
-    clientesSelecionados.add(evento.clienteId);
+    const cliente = clientes[clienteId];
+    let totalPDV = 0;
+    let totalEventos = 0;
 
-    const clienteNome = clientes[evento.clienteId] || evento.clienteId;
-    const valorPDV = parseFloat(evento.valorPDV) || 0;
+    eventos.forEach(evento => {
+      if (evento.clienteId === clienteId) {
+        if (statusFiltro && evento.status !== statusFiltro) return;
+        if (dataInicio && evento.data < dataInicio) return;
+        if (dataFim && evento.data > dataFim) return;
+        const valorPDV = parseFloat(evento.valorPDV) || 0;
+        totalPDV += valorPDV;
+        totalEventos += 1;
+      }
+    });
 
-    if (!agrupado[clienteNome]) agrupado[clienteNome] = { total: 0, count: 0 };
-    agrupado[clienteNome].total += valorPDV;
-    agrupado[clienteNome].count += 1;
+    let media = '-';
+    if (totalEventos > 0) {
+      media = (totalPDV / totalEventos).toFixed(2);
+      mediasPorCliente[clienteId] = parseFloat(media);
+    }
 
-    if (!mediasPorCliente[evento.clienteId]) mediasPorCliente[evento.clienteId] = { total: 0, count: 0 };
-    mediasPorCliente[evento.clienteId].total += valorPDV;
-    mediasPorCliente[evento.clienteId].count += 1;
+    tabelaDados.push({
+      nome: cliente.nome,
+      id: clienteId,
+      media: media
+    });
   });
 
-  renderizarTabela(agrupado, Array.from(clientesSelecionados).sort());
+  renderizarTabela(tabelaDados);
 }
 
-function renderizarTabela(agrupado, clientesSelecionados) {
+function renderizarTabela(dados) {
   const thead = document.getElementById('theadRelatorio');
   const tbody = document.getElementById('tbodyRelatorio');
 
   thead.innerHTML = '';
   tbody.innerHTML = '';
 
-  if (clientesSelecionados.length === 0) {
+  let header = '<tr><th>Cliente</th><th>Média Venda PDV</th></tr>';
+  thead.innerHTML = header;
+
+  if (dados.length === 0) {
     tbody.innerHTML = '<tr><td colspan="2">Nenhum dado encontrado.</td></tr>';
     return;
   }
 
-  let header = '<tr><th>Cliente</th><th>Média Venda PDV</th></tr>';
-  thead.innerHTML = header;
-
-  clientesSelecionados.forEach(clienteId => {
-    const clienteNome = clientes[clienteId] || clienteId;
-    const data = agrupado[clienteNome];
-    const media = data ? (data.total / data.count).toFixed(2) : '-';
-    let row = `<tr><td>${clienteNome}</td><td>${media}</td></tr>`;
+  dados.forEach(item => {
+    let row = `<tr><td>${item.nome}</td><td>${item.media}</td></tr>`;
     tbody.innerHTML += row;
   });
 }
@@ -134,12 +140,15 @@ function exportarExcel() {
 }
 
 function atualizarFirebase() {
+  if (Object.keys(mediasPorCliente).length === 0) {
+    alert('Nenhuma média calculada para salvar!');
+    return;
+  }
+
   const updates = {};
 
   Object.keys(mediasPorCliente).forEach(clienteId => {
-    const mediaObj = mediasPorCliente[clienteId];
-    const media = (mediaObj.total / mediaObj.count).toFixed(1);
-    updates[`media_cliente/${clienteId}`] = parseFloat(media);
+    updates[`media_cliente/${clienteId}`] = mediasPorCliente[clienteId];
   });
 
   db.ref().update(updates).then(() => {
