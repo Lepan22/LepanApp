@@ -14,7 +14,7 @@
     .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
     .btn-navegar:hover { background-color: #e96f00; }
     .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 48px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 60px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
     .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
     .semana-atual { background-color: #ffe0b2; }
     .farol { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 5px; }
@@ -24,6 +24,7 @@
     table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
     th { background-color: #f2f2f2; }
+    .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; }
   </style>
 </head>
 <body>
@@ -188,6 +189,14 @@
       numeroDia.textContent = dia;
       divDia.appendChild(numeroDia);
 
+      // Listar eventos desse dia
+      eventos.filter(ev => ev.data === dataStr).forEach(ev => {
+        const eventoDiv = document.createElement('div');
+        eventoDiv.classList.add('evento-dia');
+        eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
+        divDia.appendChild(eventoDiv);
+      });
+
       calendario.appendChild(divDia);
     }
   }
@@ -197,49 +206,4 @@
     const diaSemana = hoje.getDay();
     const inicio = new Date(hoje);
     inicio.setDate(hoje.getDate() - diaSemana + 1);
-    const datas = [];
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(inicio);
-      d.setDate(inicio.getDate() + i);
-      datas.push(d.toISOString().split('T')[0]);
-    }
-
-    return datas;
-  }
-
-  function listarClientesAtivos() {
-    const tbody = document.getElementById('tabelaClientesAtivos');
-    tbody.innerHTML = '';
-
-    clientes.forEach(c => {
-      const freq = c.clienteAtivo.frequencia;
-      const farol = getFarol(c);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${c.nome}</td><td>${c.clienteAtivo.nomeEvento}</td><td>${freq}</td><td><span class="farol ${farol}"></span></td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  function getFarol(cliente) {
-    const freq = cliente.clienteAtivo.frequencia;
-    if (freq === "Esporadico") return 'farol-cinza';
-    return 'farol-vermelho';
-  }
-
-  function listarEventos() {
-    const tbody = document.getElementById('tabelaEventos');
-    tbody.innerHTML = '';
-
-    eventos.forEach(e => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', carregarDados);
-</script>
-
-</body>
-</html>
+    const dat
