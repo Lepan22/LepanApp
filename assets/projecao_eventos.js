@@ -22,6 +22,11 @@ function normalizeDate(dateStr) {
   return new Date(dateStr).toISOString().split('T')[0];
 }
 
+function formatDateBR(dateStr) {
+  const [year, month, day] = dateStr.split('-');
+  return `${day}/${month}/${year.slice(2)}`;
+}
+
 function reforcarValidacaoIndisponibilidade(dataStr) {
   const dataNorm = normalizeDate(dataStr);
   return indisponibilidades.some(i => {
@@ -122,11 +127,13 @@ function exibirProjetados() {
   const tbody = document.getElementById('tabelaProjetados');
   tbody.innerHTML = '';
 
+  eventosProjetados.sort((a, b) => new Date(a.data) - new Date(b.data));
+
   eventosProjetados.forEach((ev, index) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${ev.nomeEvento}</td>
-      <td contenteditable="true" onblur="editarData(${index}, this.innerText)">${ev.data}</td>
+      <td contenteditable="true" onblur="editarData(${index}, this.innerText)">${formatDateBR(ev.data)}</td>
       <td>${ev.frequencia}</td>
       <td>
         ${ev.status} <button class='btn btn-sm btn-danger' onclick='excluirEvento(${index})'>Excluir</button>
@@ -137,7 +144,9 @@ function exibirProjetados() {
 }
 
 function editarData(index, novaData) {
-  eventosProjetados[index].data = normalizeDate(novaData);
+  const partes = novaData.split('/');
+  const novaISO = `20${partes[2]}-${partes[1]}-${partes[0]}`;
+  eventosProjetados[index].data = novaISO;
   exibirProjetados();
 }
 
@@ -146,6 +155,23 @@ function excluirEvento(index) {
   exibirProjetados();
 }
 
-document.getElementById('carregarBtn').addEventListener('click', carregarDados);
+function incluirEvento() {
+  const nomeEvento = prompt('Nome do Evento:');
+  const data = prompt('Data (dd/mm/aa):');
+  const partes = data.split('/');
+  const isoData = `20${partes[2]}-${partes[1]}-${partes[0]}`;
+  const frequencia = prompt('Frequência:');
 
+  eventosProjetados.push({
+    nomeEvento,
+    data: isoData,
+    frequencia,
+    status: 'Esporádico'
+  });
+
+  exibirProjetados();
+}
+
+document.getElementById('carregarBtn').addEventListener('click', carregarDados);
+document.getElementById('incluirBtn').addEventListener('click', incluirEvento);
 document.addEventListener('DOMContentLoaded', carregarDados);
