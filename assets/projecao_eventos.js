@@ -82,7 +82,7 @@ function gerarProjecoes(ano, mes) {
 
     datas.forEach(data => {
       const dataStr = data.toISOString().split('T')[0];
-      if (existeEventoReal(nomeEvento, dataStr) || indisponivel(dataStr)) return;
+      if (existeEventoReal(nomeEvento, dataStr) || reforcarValidacaoIndisponibilidade(dataStr)) return;
 
       eventosProjetados.push({
         nomeEvento,
@@ -103,14 +103,6 @@ function diaSemanaTexto(num) {
 
 function existeEventoReal(nome, data) {
   return eventosReais.some(e => e.nomeEvento === nome && e.data === data);
-}
-
-function indisponivel(data) {
-  return indisponibilidades.some(i => {
-    if (i.data) return i.data === data;
-    if (i.inicio && i.fim) return data >= i.inicio && data <= i.fim;
-    return false;
-  });
 }
 
 function exibirProjetados() {
