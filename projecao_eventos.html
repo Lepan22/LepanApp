@@ -59,7 +59,10 @@
         <option value="12">Dezembro</option>
       </select>
 
-      <button id="carregarBtn" class="btn btn-sm btn-primary mt-2">Carregar</button>
+      <div class="mt-2">
+        <button id="carregarBtn" class="btn btn-sm btn-primary">Carregar</button>
+        <button id="incluirBtn" class="btn btn-sm btn-success ms-2">Incluir</button>
+      </div>
     </div>
 
     <h4>Eventos Projetados</h4>
@@ -69,23 +72,13 @@
           <th>Nome do Evento</th>
           <th>Data</th>
           <th>Frequência</th>
-          <th>Status</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody id="tabelaProjetados"></tbody>
     </table>
   </div>
 </div>
-
-<script>
-  function reforcarValidacaoIndisponibilidade(dataStr) {
-    return indisponibilidades.some(i => {
-      if (i.data) return i.data.trim() === dataStr.trim();
-      if (i.inicio && i.fim) return dataStr >= i.inicio.trim() && dataStr <= i.fim.trim();
-      return false;
-    });
-  }
-</script>
 
 <script src="assets/projecao_eventos.js"></script>
 </body>
