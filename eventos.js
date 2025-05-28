@@ -1,170 +1,164 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-  authDomain: "lepanapp.firebaseapp.com",
-  databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-  projectId: "lepanapp",
-  storageBucket: "lepanapp.appspot.com",
-  messagingSenderId: "542989944344",
-  appId: "1:542989944344:web:576e28199960fd5440a56d"
-};
+document.addEventListener('DOMContentLoaded', function() {
+  // Carregar o menu
+  const menuContainer = document.getElementById('menuLateral');
+  if (menuContainer) {
+    menuContainer.innerHTML = `
+      <div class="logo-area">
+        <h1>Le Pan</h1>
+      </div>
+      
+      <div class="accordion" id="menuAccordion">
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <a class="accordion-button" href="index.html">Home</a>
+          </h2>
+        </div>
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <a class="accordion-button collapsed" href="cadastros.html" data-bs-toggle="collapse" data-bs-target="#cadastros">Cadastros</a>
+          </h2>
+          <div id="cadastros" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+            <div class="accordion-body">
+              <a href="produto.html">Produtos</a>
+              <a href="clientes.html">Clientes</a>
+              <a href="equipe.html">Equipe</a>
+              <a href="logistica.html">Logística</a>
+            </div>
+          </div>
+        </div>
 
-let eventos = [];
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <a class="accordion-button collapsed" href="eventos.html" data-bs-toggle="collapse" data-bs-target="#eventos">Eventos</a>
+          </h2>
+          <div id="eventos" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+            <div class="accordion-body">
+              <a href="GestaoEvento.html">Gestão de Evento</a>
+              <a href="compra_evento.html">Compras</a>
+              <a href="controle_etapas.html">Controle de Etapas</a>
+              <a href="visualizar_evento.html">Visualizar Evento</a>
+            </div>
+          </div>
+        </div>
 
-function carregarEventos() {
-  db.ref('eventos').once('value').then(snapshot => {
-    eventos = [];
-    snapshot.forEach(child => {
-      const evento = child.val();
-      evento.id = child.key;
-      eventos.push(evento);
-    });
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <a class="accordion-button collapsed" href="agenda.html" data-bs-toggle="collapse" data-bs-target="#agenda">Agenda</a>
+          </h2>
+          <div id="agenda" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+            <div class="accordion-body">
+              <a href="agenda.html">Agenda de Eventos</a>
+              <a href="gestao_agenda.html">Gestão da Agenda</a>
+              <a href="projecao_eventos.html">Projeção de Eventos</a>
+              <a href="previsao_receita.html">Previsão de Receita</a>
+            </div>
+          </div>
+        </div>
 
-    eventos.sort((a, b) => {
-      if (!a.data) return 1;
-      if (!b.data) return -1;
-      return b.data.localeCompare(a.data);
-    });
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <a class="accordion-button collapsed" href="relatorios.html" data-bs-toggle="collapse" data-bs-target="#relatorios">Relatórios</a>
+          </h2>
+          <div id="relatorios" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+            <div class="accordion-body">
+              <a href="relatorio/eventos_relatorio.html">Eventos por Cliente</a>
+              <a href="relatorio/equipe_relatorio.html">Equipe</a>
+              <a href="relatorio/custos_eventos_relatorio.html">Custos dos Eventos</a>
+              <a href="relatorio/perda_prod_relatorio.html">Perdas de Produtos</a>
+            </div>
+          </div>
+        </div>
 
-    aplicarFiltros();
-    calcularKPIs();
-  });
-}
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <a class="accordion-button collapsed" href="configuracao.html" data-bs-toggle="collapse" data-bs-target="#configuracoes">Configurações</a>
+          </h2>
+          <div id="configuracoes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+            <div class="accordion-body">
+              <a href="configuracao.html">Parâmetros Gerais</a>
+            </div>
+          </div>
+        </div>
 
-function aplicarFiltros() {
-  const status = document.getElementById('filtroStatus').value;
-  const nomeFiltro = document.getElementById('filtroNome').value.toLowerCase();
-  const dataInicio = document.getElementById('filtroDataInicio').value;
-  const dataFim = document.getElementById('filtroDataFim').value;
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <a class="accordion-button collapsed" href="financeiro.html" data-bs-toggle="collapse" data-bs-target="#financeiro">Financeiro</a>
+          </h2>
+          <div id="financeiro" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+            <div class="accordion-body">
+              <a href="financeiro_lancamentos.html">Lançamentos</a>
+              <a href="financeiro_fluxo_caixa.html">Fluxo de Caixa</a>
+              <a href="financeiro_contas_pagar.html">Contas a Pagar</a>
+              <a href="financeiro_contas_receber.html">Contas a Receber</a>
+              <a href="financeiro_relatorios.html">Relatórios</a>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  const tabela = document.getElementById('tabelaEventos');
-  tabela.innerHTML = '';
-
-  const eventosFiltrados = eventos.filter(e => {
-    if (status !== 'Todos' && e.status !== status) return false;
-    if (nomeFiltro && !(e.nomeEvento || '').toLowerCase().includes(nomeFiltro)) return false;
-    if (dataInicio && (!e.data || e.data < dataInicio)) return false;
-    if (dataFim && (!e.data || e.data > dataFim)) return false;
-    return true;
-  });
-
-  eventosFiltrados.forEach(eAtual => {
-    const eventosAnteriores = eventos.filter(e => 
-      e.nomeEvento === eAtual.nomeEvento && 
-      e.data && eAtual.data && e.data < eAtual.data
-    );
-
-    const somaVenda = eventosAnteriores.reduce((s, ev) => s + (parseFloat(ev.vendaPDV) || 0), 0);
-    const quantidade = eventosAnteriores.length;
-    const mediaVenda = quantidade > 0 ? somaVenda / quantidade : 0;
-
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td>${eAtual.nomeEvento || '-'}</td>
-      <td>${eAtual.data || '-'}</td>
-      <td>${eAtual.status || '-'}</td>
-      <td>R$ ${mediaVenda.toFixed(2)}</td>
-      <td>R$ ${(eAtual.estimativaVenda || 0).toFixed(2)}</td>
-      <td>
-        <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${eAtual.id}')">Editar</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${eAtual.id}')">Duplicar</button>
-        <button class="btn btn-sm btn-outline-success" onclick="enviarLink('${eAtual.id}')">Enviar Link</button>
-        <button class="btn btn-sm btn-outline-info" onclick="visualizarEvento('${eAtual.id}')">Visualizar</button>
-        <button class="btn btn-sm btn-outline-danger" onclick="excluirEvento('${eAtual.id}')">Excluir</button>
-      </td>
+      <button class="btn-voltar" onclick="history.back()">Voltar</button>
     `;
-    tabela.appendChild(row);
+  }
+
+  // Adicionar botão de toggle para dispositivos móveis
+  const body = document.body;
+  const menuToggle = document.createElement('button');
+  menuToggle.className = 'menu-toggle';
+  menuToggle.innerHTML = '☰';
+  menuToggle.addEventListener('click', function() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('open');
   });
-}
+  body.appendChild(menuToggle);
 
-function calcularKPIs() {
-  const hoje = new Date();
-  const semanaInicio = new Date(hoje);
-  semanaInicio.setDate(hoje.getDate() - hoje.getDay());
+  // Funcionalidade do acordeão
+  const accordionButtons = document.querySelectorAll('.accordion-button[data-bs-toggle="collapse"]');
+  accordionButtons.forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      const target = document.querySelector(this.getAttribute('data-bs-target'));
+      const isCollapsed = this.classList.contains('collapsed');
+      
+      // Fechar todos os outros itens
+      document.querySelectorAll('.accordion-collapse.show').forEach(item => {
+        if (item !== target) {
+          item.classList.remove('show');
+          const btn = document.querySelector(`[data-bs-target="#${item.id}"]`);
+          if (btn) btn.classList.add('collapsed');
+        }
+      });
+      
+      // Alternar o estado do item atual
+      if (isCollapsed) {
+        target.classList.add('show');
+        this.classList.remove('collapsed');
+      } else {
+        target.classList.remove('show');
+        this.classList.add('collapsed');
+      }
+    });
+  });
 
-  const mesInicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-
-  let kpiSemana = 0, kpiMes = 0, kpiVendasMes = 0;
-
-  eventos.forEach(e => {
-    const dataEvento = new Date(e.data);
-    if (e.data && dataEvento >= semanaInicio) kpiSemana++;
-    if (e.data && dataEvento >= mesInicio) {
-      kpiMes++;
-      kpiVendasMes += parseFloat(e.vendaPDV || 0);
+  // Destacar item ativo do menu
+  const currentPage = window.location.pathname.split('/').pop();
+  const menuLinks = document.querySelectorAll('.sidebar a');
+  
+  menuLinks.forEach(link => {
+    const linkHref = link.getAttribute('href');
+    if (linkHref === currentPage) {
+      link.classList.add('active');
+      
+      // Se for um submenu, abrir o acordeão pai
+      const parentCollapse = link.closest('.accordion-collapse');
+      if (parentCollapse) {
+        parentCollapse.classList.add('show');
+        const parentButton = document.querySelector(`[data-bs-target="#${parentCollapse.id}"]`);
+        if (parentButton) {
+          parentButton.classList.remove('collapsed');
+        }
+      }
     }
   });
-
-  document.getElementById('kpiSemana').innerText = kpiSemana;
-  document.getElementById('kpiMes').innerText = kpiMes;
-  document.getElementById('kpiVendasMes').innerText = kpiVendasMes.toFixed(2);
-}
-
-function duplicarEvento(id) {
-  const evento = eventos.find(e => e.id === id);
-  if (!evento) return;
-
-  const novoEvento = { ...evento };
-  novoEvento.produtos = (evento.produtos || []).map(p => ({
-    produtoId: p.produtoId,
-    quantidade: p.quantidade,
-    congelado: 0,
-    assado: 0,
-    perda: 0
-  }));
-
-  delete novoEvento.id;
-  delete novoEvento.vendaPDV;
-  novoEvento.status = "Aberto";
-  delete novoEvento.data;
-
-  const novoId = db.ref('eventos').push().key;
-  db.ref('eventos/' + novoId).set(novoEvento).then(() => {
-    alert('Evento duplicado com sucesso!');
-    carregarEventos();
-  });
-}
-
-function enviarLink(id) {
-  const url = `${window.location.origin}/LepanApp/form.html?id=${id}`;
-  navigator.clipboard.writeText(url).then(() => {
-    alert('Link copiado para a área de transferência!');
-  });
-}
-
-function visualizarEvento(id) {
-  window.location.href = `visualizar_evento.html?id=${id}`;
-}
-
-function excluirEvento(id) {
-  if (confirm('Tem certeza que deseja excluir este evento?')) {
-    db.ref('eventos/' + id).remove().then(() => {
-      alert('Evento excluído com sucesso!');
-      carregarEventos();
-    });
-  }
-}
-
-function editarEvento(id) {
-  window.location.href = `GestaoEvento.html?id=${id}`;
-}
-
-function limparFiltros() {
-  document.getElementById('filtroStatus').value = 'Todos';
-  document.getElementById('filtroNome').value = '';
-  document.getElementById('filtroDataInicio').value = '';
-  document.getElementById('filtroDataFim').value = '';
-  aplicarFiltros();
-}
-
-document.getElementById('filtrosForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  aplicarFiltros();
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById('filtroStatus').value = 'Todos';
-  carregarEventos();
 });
