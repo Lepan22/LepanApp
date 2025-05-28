@@ -13,156 +13,117 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-let anoAtual = new Date().getFullYear();
-let mesAtual = (new Date().getMonth() + 1).toString().padStart(2, '0');
-
-document.getElementById('mesSelect').value = mesAtual;
-document.getElementById('anoSelect').value = anoAtual;
-
-const tabelaProjetados = document.getElementById('tabelaProjetados');
-const tabelaResumo = document.getElementById('tabelaResumo');
-const totalEstimadoEl = document.getElementById('totalEstimado');
-
+let clientes = [];
+let eventosReais = [];
+let indisponibilidades = [];
 let eventosProjetados = [];
 
-function carregarProjecao() {
+function carregarDados() {
   const ano = document.getElementById('anoSelect').value;
   const mes = document.getElementById('mesSelect').value;
 
-  const anoMes = `${ano}_${mes}`;
-  db.ref(`projecao_eventos/${anoMes}`).once('value').then(snapshot => {
-    eventosProjetados = [];
+  clientes = [];
+  eventosReais = [];
+  indisponibilidades = [];
+  eventosProjetados = [];
 
-    snapshot.forEach(child => {
-      eventosProjetados.push({ id: child.key, ...child.val() });
-    });
+  Promise.all([
+    db.ref('clientes').once('value'),
+    db.ref('eventos').once('value'),
+    db.ref('configuracao/diasIndisponiveis').once('value')
+  ]).then(([clientesSnap, eventosSnap, indisSnap]) => {
 
-    eventosProjetados.sort((a, b) => {
-      const [da, ma, aa] = a.data.split('/');
-      const [db, mb, ab] = b.data.split('/');
-      return new Date(`20${aa}-${ma}-${da}`) - new Date(`20${ab}-${mb}-${db}`);
-    });
-
-    listarProjetados();
-  });
-}
-
-function listarProjetados() {
-  tabelaProjetados.innerHTML = '';
-
-  eventosProjetados.forEach(ev => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${ev.nomeEvento}</td>
-      <td>${ev.data}</td>
-      <td>${ev.frequencia}</td>
-      <td>
-        <button class="btn btn-sm btn-warning" onclick="editarEvento('${ev.id}')">Editar</button>
-        <button class="btn btn-sm btn-danger" onclick="excluirEvento('${ev.id}')">Excluir</button>
-      </td>
-    `;
-    tabelaProjetados.appendChild(tr);
-  });
-}
-
-function salvarProjecao() {
-  if (!confirm('Deseja atualizar as projeções para os próximos 6 meses? Clientes inativos terão suas projeções removidas.')) return;
-
-  const ano = parseInt(document.getElementById('anoSelect').value);
-  let mes = parseInt(document.getElementById('mesSelect').value);
-
-  db.ref('clientes').once('value').then(clientesSnap => {
-    const clientes = [];
-
-    clientesSnap.forEach(child => {
-      const c = child.val();
-      if (c.clienteAtivo && c.clienteAtivo.status === 'Ativo') {
-        clientes.push({ id: child.key, ...c });
+    clientesSnap.forEach(c => {
+      const cli = c.val();
+      cli.id = c.key;
+      if (cli.status === "Fechado" && cli.clienteAtivo && cli.clienteAtivo.statusEvento === "Ativo") {
+        clientes.push(cli);
       }
     });
 
-    for (let i = 0; i < 6; i++) {
-      const projAno = mes + i > 12 ? ano + 1 : ano;
-      const projMes = ((mes + i - 1) % 12) + 1;
-      const anoMes = `${projAno}_${projMes.toString().padStart(2, '0')}`;
+    eventosSnap.forEach(e => eventosReais.push(e.val()));
 
-      db.ref(`projecao_eventos/${anoMes}`).once('value').then(snap => {
-        const updates = {};
+    indisSnap.forEach(i => indisponibilidades.push(i.val()));
 
-        snap.forEach(proj => {
-          const p = proj.val();
-          if (!clientes.find(c => c.id === p.clienteId)) {
-            updates[proj.key] = null;
-          }
-        });
-
-        clientes.forEach(cli => {
-          const dias = Array.isArray(cli.clienteAtivo.diasSemana) ? cli.clienteAtivo.diasSemana : [cli.clienteAtivo.diaSemana];
-
-          dias.forEach(diaSemana => {
-            for (let d = 1; d <= 31; d++) {
-              const data = new Date(projAno, projMes - 1, d);
-              if (data.getMonth() !== projMes - 1) break;
-
-              const diaSem = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][data.getDay()];
-              if (!dias.includes(diaSem)) continue;
-
-              let incluir = false;
-              const freq = cli.clienteAtivo.frequencia;
-
-              if (freq === 'Semanal') incluir = true;
-              if (freq === 'Quinzenal' && Math.floor((d - 1) / 7) % 2 === 0) incluir = true;
-              if (freq === 'Mensal' && d <= 7) incluir = true;
-
-              if (incluir) {
-                const dataStr = `${data.getDate().toString().padStart(2, '0')}/${(data.getMonth()+1).toString().padStart(2, '0')}/${data.getFullYear().toString().slice(-2)}`;
-                const id = `${cli.id}_${dataStr.replace(/\//g, '')}`;
-
-                updates[id] = {
-                  clienteId: cli.id,
-                  nomeEvento: cli.clienteAtivo.nomeEvento,
-                  data: dataStr,
-                  frequencia: freq,
-                  status: 'Projetado'
-                };
-              }
-            }
-          });
-        });
-
-        db.ref(`projecao_eventos/${anoMes}`).update(updates);
-      });
-    }
-
-    alert('Projeções atualizadas com sucesso!');
-    carregarProjecao();
+    gerarProjecoes(ano, mes);
   });
 }
 
-function editarEvento(id) {
-  const ev = eventosProjetados.find(e => e.id === id);
-  const novoNome = prompt('Nome do Evento:', ev.nomeEvento);
-  const novaData = prompt('Data (dd/mm/aa):', ev.data);
+function gerarProjecoes(ano, mes) {
+  const dataInicio = new Date(`${ano}-${mes}-01`);
+  const dataFim = new Date(dataInicio);
+  dataFim.setMonth(dataFim.getMonth() + 1);
 
-  if (novoNome && novaData) {
-    db.ref(`projecao_eventos/${getAnoMes(novaData)}/${id}`).update({
-      nomeEvento: novoNome,
-      data: novaData
-    }).then(() => carregarProjecao());
-  }
+  clientes.forEach(cliente => {
+    const ativo = cliente.clienteAtivo;
+    const nomeEvento = ativo.nomeEvento || "Evento";
+    const frequencia = ativo.frequencia;
+    const diasSemana = ativo.diasSemana || [];
+
+    let datas = [];
+
+    if (frequencia === "Semanal") {
+      diasSemana.forEach(dia => {
+        for (let dt = new Date(dataInicio); dt < dataFim; dt.setDate(dt.getDate() + 1)) {
+          if (diaSemanaTexto(dt.getDay()) === dia) {
+            datas.push(new Date(dt));
+          }
+        }
+      });
+    } else if (frequencia === "Quinzenal") {
+      for (let dt = new Date(dataInicio); dt < dataFim; dt.setDate(dt.getDate() + 14)) {
+        datas.push(new Date(dt));
+      }
+    } else if (frequencia === "Mensal") {
+      let primeiroDia = new Date(dataInicio);
+      while (primeiroDia.getDay() !== 1) primeiroDia.setDate(primeiroDia.getDate() + 1);
+      datas.push(primeiroDia);
+    }
+
+    datas.forEach(data => {
+      const dataStr = data.toISOString().split('T')[0];
+      if (existeEventoReal(nomeEvento, dataStr) || indisponivel(dataStr)) return;
+
+      eventosProjetados.push({
+        nomeEvento,
+        data: dataStr,
+        frequencia,
+        status: "Projetado"
+      });
+    });
+  });
+
+  exibirProjetados();
 }
 
-function excluirEvento(id) {
-  if (confirm('Deseja excluir este evento projetado?')) {
-    const ev = eventosProjetados.find(e => e.id === id);
-    db.ref(`projecao_eventos/${getAnoMes(ev.data)}/${id}`).remove().then(() => carregarProjecao());
-  }
+function diaSemanaTexto(num) {
+  const dias = ["dom", "seg", "ter", "qua", "qui", "sex", "sab"];
+  return dias[num];
 }
 
-function getAnoMes(dataStr) {
-  const [dia, mes, ano] = dataStr.split('/');
-  return `20${ano}_${mes}`;
+function existeEventoReal(nome, data) {
+  return eventosReais.some(e => e.nomeEvento === nome && e.data === data);
 }
 
-// Inicial
-carregarProjecao();
+function indisponivel(data) {
+  return indisponibilidades.some(i => {
+    if (i.data) return i.data === data;
+    if (i.inicio && i.fim) return data >= i.inicio && data <= i.fim;
+    return false;
+  });
+}
+
+function exibirProjetados() {
+  const tbody = document.getElementById('tabelaProjetados');
+  tbody.innerHTML = '';
+
+  eventosProjetados.forEach(ev => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${ev.nomeEvento}</td><td>${ev.data}</td><td>${ev.frequencia}</td><td>${ev.status}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById('carregarBtn').addEventListener('click', carregarDados);
+
+document.addEventListener('DOMContentLoaded', carregarDados);
