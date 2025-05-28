@@ -6,7 +6,7 @@
   --cor-texto-menu: #fff;
   --cor-hover: rgba(255, 255, 255, 0.2);
   --cor-submenu-hover: rgba(0, 0, 0, 0.05);
-  --largura-menu: 250px;
+  --largura-menu: 200px; /* Reduzido de 250px para 200px */
   --altura-logo: 80px;
   --sombra-padrao: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
