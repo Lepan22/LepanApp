@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
           </h2>
           <div id="eventos" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
+              <a href="eventos.html">Lista de Eventos</a>
               <a href="GestaoEvento.html">Gestão de Evento</a>
               <a href="compra_evento.html">Compras</a>
               <a href="controle_etapas.html">Controle de Etapas</a>
@@ -72,17 +73,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <a class="accordion-button collapsed" href="configuracao.html" data-bs-toggle="collapse" data-bs-target="#configuracoes">Configurações</a>
-          </h2>
-          <div id="configuracoes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-            <div class="accordion-body">
-              <a href="configuracao.html">Parâmetros Gerais</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="accordion-item">
-          <h2 class="accordion-header">
             <a class="accordion-button collapsed" href="financeiro.html" data-bs-toggle="collapse" data-bs-target="#financeiro">Financeiro</a>
           </h2>
           <div id="financeiro" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
@@ -92,6 +82,17 @@ document.addEventListener('DOMContentLoaded', function() {
               <a href="financeiro_contas_pagar.html">Contas a Pagar</a>
               <a href="financeiro_contas_receber.html">Contas a Receber</a>
               <a href="financeiro_relatorios.html">Relatórios</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <a class="accordion-button collapsed" href="configuracao.html" data-bs-toggle="collapse" data-bs-target="#configuracoes">Configurações</a>
+          </h2>
+          <div id="configuracoes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+            <div class="accordion-body">
+              <a href="configuracao.html">Parâmetros Gerais</a>
             </div>
           </div>
         </div>
