@@ -11,6 +11,13 @@ const db = firebase.database();
 let equipeDisponivel = [], logisticaDisponivel = [], produtosDisponiveis = [];
 let equipeAlocada = [], logisticaAlocada = [], listaProdutos = [];
 let eventoId = null;
+let percentualCMV = 0;
+
+function carregarPercentualCMV() {
+  db.ref('/configuracao/percentualCMV').once('value').then(snapshot => {
+    percentualCMV = snapshot.val() || 0;
+  });
+}
 
 function carregarClientes() {
   const selectEvento = document.getElementById('nomeEvento');
@@ -227,7 +234,8 @@ function calcularTotais() {
   });
 
   const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
-  const cmvReal = parseFloat(document.getElementById('cmvReal').value) || 0;
+  const cmvReal = vendaPDV * (percentualCMV / 100);
+  document.getElementById('cmvReal').value = cmvReal.toFixed(2);
 
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
   const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
@@ -250,13 +258,16 @@ function calcularTotais() {
 document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
   e.preventDefault();
 
+  const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
+  const cmvReal = vendaPDV * (percentualCMV / 100);
+
   const evento = {
     nomeEvento: document.getElementById('nomeEvento').value,
     data: document.getElementById('data').value,
     responsavel: document.getElementById('responsavel').value,
     status: document.getElementById('status').value,
-    vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
-    cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
+    vendaPDV: vendaPDV,
+    cmvReal: cmvReal,
     estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
     produtos: listaProdutos,
     equipe: equipeAlocada,
@@ -277,4 +288,5 @@ document.addEventListener("DOMContentLoaded", () => {
   carregarLogisticaDisponivel();
   carregarProdutosDisponiveis();
   carregarEventoExistente();
+  carregarPercentualCMV();
 });
