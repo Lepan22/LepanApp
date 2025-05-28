@@ -166,12 +166,43 @@ function incluirEvento() {
     nomeEvento,
     data: isoData,
     frequencia,
-    status: 'Esporádico'
+    status: 'Projetado'
   });
 
   exibirProjetados();
 }
 
+function atualizarProjecao() {
+  if (!confirm('Tem certeza que deseja atualizar a projeção dos eventos para este mês? Isso irá sobrescrever a projeção atual.')) return;
+
+  const ano = document.getElementById('anoSelect').value;
+  const mes = document.getElementById('mesSelect').value;
+  const anoMes = `${ano}_${mes}`;
+
+  db.ref(`projecao_eventos/${anoMes}`).remove().then(() => {
+    const updates = {};
+
+    eventosProjetados.forEach((ev, index) => {
+      const id = `${ev.nomeEvento.replace(/\s/g, '_')}_${index}`;
+      updates[id] = {
+        nomeEvento: ev.nomeEvento,
+        data: ev.data,
+        frequencia: ev.frequencia,
+        status: "Projetado"
+      };
+    });
+
+    db.ref(`projecao_eventos/${anoMes}`).update(updates).then(() => {
+      alert('Projeção atualizada com sucesso!');
+    }).catch(error => {
+      console.error('Erro ao salvar projeção:', error);
+    });
+  }).catch(error => {
+    console.error('Erro ao deletar projeção antiga:', error);
+  });
+}
+
 document.getElementById('carregarBtn').addEventListener('click', carregarDados);
 document.getElementById('incluirBtn').addEventListener('click', incluirEvento);
+document.getElementById('atualizarBtn').addEventListener('click', atualizarProjecao);
 document.addEventListener('DOMContentLoaded', carregarDados);
