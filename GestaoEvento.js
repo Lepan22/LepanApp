@@ -14,9 +14,8 @@ let eventoId = null;
 let percentualCMV = 0;
 
 function carregarPercentualCMV() {
-  db.ref('/configuracao/percentualCMV').once('value').then(snapshot => {
+  return db.ref('/configuracao/percentualCMV').once('value').then(snapshot => {
     percentualCMV = snapshot.val() || 0;
-    calcularTotais();  // Garantir que atualiza após carregar
   });
 }
 
@@ -103,7 +102,7 @@ function carregarEventoExistente() {
     document.getElementById('responsavel').value = evento.responsavel || '';
     document.getElementById('status').value = evento.status || '';
     document.getElementById('vendaPDV').value = evento.vendaPDV || '';
-    document.getElementById('cmvReal').value = evento.cmvReal ? evento.cmvReal.toFixed(2) : '';
+    document.getElementById('cmvReal').value = (evento.cmvReal !== undefined && evento.cmvReal !== null) ? evento.cmvReal.toFixed(2) : '';
     document.getElementById('estimativaVenda').value = evento.estimativaVenda || '';
 
     equipeAlocada = evento.equipe || [];
@@ -283,11 +282,12 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  carregarClientes();
-  carregarResponsaveis();
-  carregarEquipeDisponivel();
-  carregarLogisticaDisponivel();
-  carregarProdutosDisponiveis();
-  carregarEventoExistente();
-  carregarPercentualCMV();
+  carregarPercentualCMV().then(() => {
+    carregarClientes();
+    carregarResponsaveis();
+    carregarEquipeDisponivel();
+    carregarLogisticaDisponivel();
+    carregarProdutosDisponiveis();
+    carregarEventoExistente();
+  });
 });
