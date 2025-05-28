@@ -29,13 +29,15 @@ function gerarPrevisao() {
     const medias = mediaSnap.val() || {};
 
     Object.values(eventos).forEach(ev => {
-      const clienteId = ev.clienteId;
-      const media = medias[clienteId] || 0;
+      const nomeEvento = ev.nomeEvento || 'Sem nome';
+      const data = ev.data || 'Sem data';
+      const clienteId = ev.clienteId || '';
+      const media = clienteId && medias[clienteId] ? medias[clienteId] : 0;
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${ev.nomeEvento}</td>
-        <td>${ev.data}</td>
+        <td>${nomeEvento}</td>
+        <td>${data}</td>
         <td>R$ ${media.toFixed(2)}</td>
       `;
       tabela.appendChild(tr);
