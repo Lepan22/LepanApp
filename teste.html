@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Importar Eventos - LePanApp</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
@@ -12,7 +14,7 @@
     table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
     th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
     th { background: #ff7f00; color: white; }
-    button { padding: 10px 20px; background: #ff7f00; color: white; border: none; cursor: pointer; margin-top: 20px; }
+    button { padding: 10px 20px; background: #ff7f00; color: white; border: none; cursor: pointer; margin: 15px 10px 0 0; }
     button:hover { background: #e56f00; }
   </style>
 </head>
@@ -21,9 +23,22 @@
   <h1>Importar Eventos (Excel)</h1>
   <input type="file" id="excelFile" accept=".xlsx" />
   <div id="tabelaContainer"></div>
-  <button onclick="exportarJSON()">Exportar JSON</button>
+  <button onclick="salvarNoFirebase()">Salvar no Firebase</button>
 
   <script>
+    // TODO: Substitua por seu config real do Firebase
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_DOMINIO.firebaseapp.com",
+      databaseURL: "https://SEU_DATABASE.firebaseio.com",
+      projectId: "SEU_PROJECT_ID",
+      storageBucket: "SEU_BUCKET.appspot.com",
+      messagingSenderId: "SEU_SENDER_ID",
+      appId: "SEU_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
     let eventosImportados = [];
 
     document.getElementById('excelFile').addEventListener('change', function (e) {
@@ -53,6 +68,7 @@
     function formatarData(data) {
       if (!data) return "";
       const d = new Date(data);
+      if (isNaN(d)) return ""; // proteção extra
       const pad = v => v.toString().padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     }
@@ -77,19 +93,20 @@
       container.innerHTML = html;
     }
 
-    function exportarJSON() {
+    function salvarNoFirebase() {
       if (eventosImportados.length === 0) {
-        alert("Nenhum evento importado.");
+        alert("Nenhum evento para salvar.");
         return;
       }
 
-      const blob = new Blob([JSON.stringify(eventosImportados, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "eventos_simulados.json";
-      a.click();
-      URL.revokeObjectURL(url);
+      const confirmacao = confirm(`Tem certeza que deseja salvar ${eventosImportados.length} eventos no Firebase?`);
+      if (!confirmacao) return;
+
+      eventosImportados.forEach(evento => {
+        db.ref("eventos").push(evento);
+      });
+
+      alert("Eventos salvos com sucesso!");
     }
   </script>
 </body>
