@@ -1,102 +1,61 @@
-<div class="sidebar">
-  <h4>Le PanApp</h4>
-  <hr>
-
-  <div class="accordion" id="menuAccordion">
-
-    <div class="accordion-item">
-      <h2 class="accordion-header">
-        <a class="accordion-button" href="index.html">Home</a>
-      </h2>
-    </div>
-
-    <div class="accordion-item">
-      <h2 class="accordion-header">
-        <a class="accordion-button collapsed" href="cadastros.html" data-bs-toggle="collapse" data-bs-target="#cadastros">Cadastros</a>
-      </h2>
-      <div id="cadastros" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-        <div class="accordion-body">
-          <a class="d-block mb-1" href="produto.html">Produtos</a>
-          <a class="d-block mb-1" href="clientes.html">Clientes</a>
-          <a class="d-block mb-1" href="equipe.html">Equipe</a>
-          <a class="d-block mb-1" href="logistica.html">Logística</a>
-        </div>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le Pan pan - Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="layout">
+    <!-- Menu lateral será carregado via JavaScript -->
+    <aside class="sidebar" id="menuLateral"></aside>
+    
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Dashboard</h1>
       </div>
-    </div>
 
-    <div class="accordion-item">
-      <h2 class="accordion-header">
-        <a class="accordion-button collapsed" href="eventos.html" data-bs-toggle="collapse" data-bs-target="#eventos">Eventos</a>
-      </h2>
-      <div id="eventos" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-        <div class="accordion-body">
-          <a class="d-block mb-1" href="eventos.html">Lista de Eventos</a>
-          <a class="d-block mb-1" href="GestaoEvento.html">Gestão de Evento</a>
-          <a class="d-block mb-1" href="compra_evento.html">Compras</a>
-          <a class="d-block mb-1" href="controle_etapas.html">Controle de Etapas</a>
-          <a class="d-block mb-1" href="visualizar_evento.html">Visualizar Evento</a>
-        </div>
+      <div class="card-dashboard">
+        <h4>Total de Eventos no Mês</h4>
+        <p><strong>12</strong> eventos realizados</p>
       </div>
-    </div>
 
-    <div class="accordion-item">
-      <h2 class="accordion-header">
-        <a class="accordion-button collapsed" href="agenda.html" data-bs-toggle="collapse" data-bs-target="#agenda">Agenda</a>
-      </h2>
-      <div id="agenda" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-        <div class="accordion-body">
-          <a class="d-block mb-1" href="agenda.html">Agenda de Eventos</a>
-          <a class="d-block mb-1" href="gestao_agenda.html">Gestão da Agenda</a>
-          <a class="d-block mb-1" href="projecao_eventos.html">Projeção de Eventos</a>
-          <a class="d-block mb-1" href="previsao_receita.html">Previsão de Receita</a>
-        </div>
+      <div class="card-dashboard">
+        <h4>Faturamento Total</h4>
+        <p>R$ <strong>25.000,00</strong></p>
       </div>
-    </div>
 
-    <div class="accordion-item">
-      <h2 class="accordion-header">
-        <a class="accordion-button collapsed" href="relatorios.html" data-bs-toggle="collapse" data-bs-target="#relatorios">Relatórios</a>
-      </h2>
-      <div id="relatorios" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-        <div class="accordion-body">
-          <a class="d-block mb-1" href="relatorio/eventos_relatorio.html">Eventos por Cliente</a>
-          <a class="d-block mb-1" href="relatorio/equipe_relatorio.html">Equipe</a>
-          <a class="d-block mb-1" href="relatorio/custos_eventos_relatorio.html">Custos dos Eventos</a>
-          <a class="d-block mb-1" href="relatorio/perda_prod_relatorio.html">Perdas de Produtos</a>
-          <a class="d-block mb-1" href="media_produtos.html">Média Produto</a>
-          <a class="d-block mb-1" href="media_cliente.html">Média Cliente</a>
-        </div>
+      <div class="card-dashboard">
+        <h4>Produtos Mais Vendidos</h4>
+        <ul>
+          <li>Pão de Queijo</li>
+          <li>Coxinha</li>
+          <li>Pastel</li>
+        </ul>
       </div>
-    </div>
 
-    <div class="accordion-item">
-      <h2 class="accordion-header">
-        <a class="accordion-button collapsed" href="configuracao.html" data-bs-toggle="collapse" data-bs-target="#configuracoes">Configurações</a>
-      </h2>
-      <div id="configuracoes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-        <div class="accordion-body">
-          <a class="d-block mb-1" href="configuracao.html">Parâmetros Gerais</a>
-        </div>
+      <div class="card-dashboard">
+        <h4>Clientes Mais Ativos</h4>
+        <ul>
+          <li>Condomínio Alpha</li>
+          <li>Escola Beta</li>
+          <li>Empresa Gama</li>
+        </ul>
       </div>
-    </div>
 
-    <div class="accordion-item">
-      <h2 class="accordion-header">
-        <a class="accordion-button collapsed" href="financeiro.html" data-bs-toggle="collapse" data-bs-target="#financeiro">Financeiro</a>
-      </h2>
-      <div id="financeiro" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-        <div class="accordion-body">
-          <a class="d-block mb-1" href="financeiro_lancamentos.html">Lançamentos</a>
-          <a class="d-block mb-1" href="financeiro_fluxo_caixa.html">Fluxo de Caixa</a>
-          <a class="d-block mb-1" href="financeiro_contas_pagar.html">Contas a Pagar</a>
-          <a class="d-block mb-1" href="financeiro_contas_receber.html">Contas a Receber</a>
-          <a class="d-block mb-1" href="financeiro_relatorios.html">Relatórios</a>
-        </div>
+      <div class="card-dashboard">
+        <h4>Próximos Eventos</h4>
+        <ul>
+          <li>25/05 - Evento A - Aberto</li>
+          <li>27/05 - Evento B - Confirmado</li>
+          <li>29/05 - Evento C - Aberto</li>
+        </ul>
+        <button onclick="location.href='eventos.html'">Ver Todos</button>
       </div>
-    </div>
-
+    </main>
   </div>
 
-  <hr>
-  <button class="btn btn-light w-100" onclick="history.back()">Voltar</button>
-</div>
+  <script src="menu.js"></script>
+</body>
+</html>
