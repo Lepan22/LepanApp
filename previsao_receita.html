@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -17,9 +18,18 @@
     table { font-size: 14px; }
   </style>
 </head>
+
 <body>
 <div class="layout">
-  <aside class="sidebar" id="menuLateral"></aside>
+  <aside class="sidebar">
+    <h4 class="text-center">Le PanApp</h4>
+    <a href="index.html">Home</a>
+    <a href="Cadastro.html">Cadastros</a>
+    <a href="clientes.html">Clientes</a>
+    <a href="eventos.html">Eventos</a>
+    <a href="relatorio.html">Relatórios</a>
+    <button onclick="history.back()" class="btn btn-light mt-3">Voltar</button>
+  </aside>
 
   <main class="main-content">
     <h1>Previsão Receita</h1>
@@ -28,36 +38,32 @@
       <button class="btn btn-secondary" onclick="alterarMes(-1)">Mês Anterior</button>
       <span id="mesAtual" class="mx-3"></span>
       <button class="btn btn-secondary" onclick="alterarMes(1)">Mês Seguinte</button>
+      <button id="atualizarPrevisaoBtn" class="btn btn-warning ms-3">Atualizar Previsão Financeira</button>
     </div>
 
-    <form id="formPrevisao" class="form-area">
+    <div class="form-area">
       <table class="table table-bordered">
         <thead>
           <tr>
-            <th>Nome do Evento</th>
-            <th>Frequência</th>
-            <th>Valor Médio Venda PDV</th>
-            <th>Quantidade</th>
-            <th>Previsão Receita</th>
+            <th>Data</th>
+            <th>Evento</th>
+            <th>Cliente</th>
+            <th>Média PDV</th>
+            <th>Total Previsto</th>
           </tr>
         </thead>
-        <tbody id="listaClientes"></tbody>
+        <tbody id="tabelaPrevisao"></tbody>
         <tfoot>
           <tr>
-            <td colspan="4"><strong>Total Previsão do Mês:</strong></td>
-            <td><strong id="totalPrevisao">R$ 0,00</strong></td>
+            <td colspan="4"><strong>Total Geral:</strong></td>
+            <td><strong id="totalGeral">R$ 0,00</strong></td>
           </tr>
         </tfoot>
       </table>
-
-      <button type="submit" class="btn btn-primary">Atualizar</button>
-    </form>
-
-    <div id="statusMsg"></div>
+    </div>
   </main>
 </div>
 
-<script src="incluir-menu.js"></script>
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -73,20 +79,15 @@
   const db = firebase.database();
 
   let mesReferencia = new Date();
+  const tabelaPrevisao = document.getElementById('tabelaPrevisao');
+  const totalGeralEl = document.getElementById('totalGeral');
 
-  const mesAtualSpan = document.getElementById('mesAtual');
-  const listaClientes = document.getElementById('listaClientes');
-  const totalPrevisaoEl = document.getElementById('totalPrevisao');
-  const statusMsg = document.getElementById('statusMsg');
-
-  let clientes = {};
-  let medias = {};
-  let quantidades = {};
+  document.getElementById('atualizarPrevisaoBtn').addEventListener('click', atualizarPrevisao);
 
   function atualizarMesTexto() {
     const mes = mesReferencia.getMonth() + 1;
     const ano = mesReferencia.getFullYear();
-    mesAtualSpan.innerText = `${ano}-${mes.toString().padStart(2, '0')}`;
+    document.getElementById('mesAtual').innerText = `${ano}-${mes.toString().padStart(2, '0')}`;
   }
 
   function alterarMes(delta) {
@@ -99,96 +100,82 @@
     const anoMes = `${mesReferencia.getFullYear()}_${(mesReferencia.getMonth()+1).toString().padStart(2, '0')}`;
 
     Promise.all([
-      db.ref('clientes').once('value'),
-      db.ref('media_cliente').once('value'),
-      db.ref(`previsao_receita/${anoMes}`).once('value')
-    ]).then(([clientesSnap, mediasSnap, previsaoSnap]) => {
-      clientes = clientesSnap.val() || {};
-      medias = mediasSnap.val() || {};
-      const previsao = previsaoSnap.val() || {};
-      quantidades = previsao;
+      db.ref(`projecao_eventos/${anoMes}`).once('value'),
+      db.ref('media_cliente').once('value')
+    ]).then(([projecaoSnap, mediasSnap]) => {
+      const eventos = projecaoSnap.val() || {};
+      const medias = mediasSnap.val() || {};
 
-      listaClientes.innerHTML = '';
+      tabelaPrevisao.innerHTML = '';
+      let totalGeral = 0;
 
-      let total = 0;
+      Object.values(eventos).forEach(ev => {
+        const clienteId = ev.clienteId;
+        const media = medias[clienteId] || 0;
+        const totalPrevisto = media;
 
-      for (let clienteId in clientes) {
-        const cli = clientes[clienteId];
-        if (cli.clienteAtivo && cli.clienteAtivo.status === 'Ativo') {
-          const nomeEvento = cli.clienteAtivo.nomeEvento || '-';
-          const frequencia = cli.clienteAtivo.frequencia || '-';
-          const valorMedio = medias[clienteId] || 0;
-          const quantidade = previsao[clienteId] || 0;
-          const previsaoReceita = valorMedio * quantidade;
+        totalGeral += totalPrevisto;
 
-          total += previsaoReceita;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${ev.data}</td>
+          <td>${ev.nomeEvento}</td>
+          <td>${clienteId}</td>
+          <td>R$ ${media.toFixed(2)}</td>
+          <td>R$ ${totalPrevisto.toFixed(2)}</td>
+        `;
+        tabelaPrevisao.appendChild(tr);
+      });
 
-          const tr = document.createElement('tr');
-
-          tr.innerHTML = `
-            <td>${nomeEvento}</td>
-            <td>${frequencia}</td>
-            <td>R$ ${valorMedio.toFixed(2)}</td>
-            <td>
-              <input type="number" class="form-control quantidade" data-id="${clienteId}" value="${quantidade}">
-            </td>
-            <td class="previsao" data-id="${clienteId}">R$ ${previsaoReceita.toFixed(2)}</td>
-          `;
-
-          listaClientes.appendChild(tr);
-        }
-      }
-
-      totalPrevisaoEl.innerText = `R$ ${total.toFixed(2)}`;
+      totalGeralEl.innerText = `R$ ${totalGeral.toFixed(2)}`;
     });
   }
 
-  document.getElementById('formPrevisao').addEventListener('input', () => {
-    let total = 0;
-
-    document.querySelectorAll('.quantidade').forEach(input => {
-      const clienteId = input.dataset.id;
-      const valorMedio = medias[clienteId] || 0;
-      const quantidade = Number(input.value);
-      const previsao = valorMedio * quantidade;
-      document.querySelector(`.previsao[data-id="${clienteId}"]`).innerText = `R$ ${previsao.toFixed(2)}`;
-      total += previsao;
-    });
-
-    totalPrevisaoEl.innerText = `R$ ${total.toFixed(2)}`;
-  });
-
-  document.getElementById('formPrevisao').addEventListener('submit', (e) => {
-    e.preventDefault();
+  function atualizarPrevisao() {
+    if (!confirm('Tem certeza que deseja atualizar a previsão financeira deste mês?')) return;
 
     const anoMes = `${mesReferencia.getFullYear()}_${(mesReferencia.getMonth()+1).toString().padStart(2, '0')}`;
-    const updates = {};
-    let total = 0;
 
-    document.querySelectorAll('.quantidade').forEach(input => {
-      const clienteId = input.dataset.id;
-      const quantidade = Number(input.value);
-      const valorMedio = medias[clienteId] || 0;
-      const previsao = valorMedio * quantidade;
+    db.ref(`projecao_eventos/${anoMes}`).once('value').then(projecaoSnap => {
+      const eventos = projecaoSnap.val() || {};
 
-      updates[`${clienteId}`] = quantidade;
-      total += previsao;
-    });
+      db.ref('media_cliente').once('value').then(mediasSnap => {
+        const medias = mediasSnap.val() || {};
 
-    updates['total'] = total;
+        const updates = {};
+        let totalGeral = 0;
 
-    db.ref(`previsao_receita/${anoMes}`).set(updates)
-      .then(() => {
-        statusMsg.innerHTML = '<div class="alert alert-success">Previsão atualizada com sucesso!</div>';
-      })
-      .catch(err => {
-        console.error(err);
-        statusMsg.innerHTML = '<div class="alert alert-danger">Erro ao atualizar previsão.</div>';
+        Object.values(eventos).forEach(ev => {
+          const clienteId = ev.clienteId;
+          const media = medias[clienteId] || 0;
+          const totalPrevisto = media;
+
+          const eventoId = `${clienteId}_${ev.data.replace(/\//g, '')}`;
+
+          updates[eventoId] = {
+            nomeEvento: ev.nomeEvento,
+            data: ev.data,
+            clienteId,
+            media,
+            totalPrevisto
+          };
+
+          totalGeral += totalPrevisto;
+        });
+
+        updates['total'] = totalGeral;
+
+        db.ref(`previsao_receita/${anoMes}`).remove().then(() => {
+          db.ref(`previsao_receita/${anoMes}`).set(updates).then(() => {
+            alert('Previsão financeira atualizada com sucesso!');
+            carregarPrevisao();
+          });
+        });
       });
-  });
+    });
+  }
 
-  // Inicial
-  carregarPrevisao();
+  document.addEventListener('DOMContentLoaded', carregarPrevisao);
 </script>
 </body>
 </html>
