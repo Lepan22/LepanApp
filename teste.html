@@ -43,9 +43,9 @@
         const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
 
         eventosImportados = jsonData.map(row => ({
-          nomeEvento: row.nomeEvento || row.NomeEvento || row.Nome || "",
-          data: formatarData(row.data || row.Data || ""),
-          vendaPDV: parseFloat(row.vendaPDV || row.Valor || 0),
+          nomeEvento: row["Nome"] || "",
+          data: formatarData(row["Data"]),
+          vendaPDV: parseFloat(row["Valor PDV"]) || 0,
           status: "Finalizado"
         })).filter(ev => ev.nomeEvento && ev.data && ev.vendaPDV);
 
