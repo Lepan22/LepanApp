@@ -4,44 +4,33 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Importar Eventos - LePanApp</title>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
-    h1 { color: #ff7f00; }
-    input[type="file"] { margin-bottom: 15px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background: #ff7f00; color: white; }
-    button { padding: 10px 20px; background: #ff7f00; color: white; border: none; cursor: pointer; margin: 15px 10px 0 0; }
-    button:hover { background: #e56f00; }
-  </style>
-</head>
-<body>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-  <h1>Importar Eventos (Excel)</h1>
-  <input type="file" id="excelFile" accept=".xlsx" />
-  <div id="tabelaContainer"></div>
-  <button onclick="salvarNoFirebase()">Salvar no Firebase</button>
-
-  <script>
-    // TODO: Substitua por seu config real do Firebase
     const firebaseConfig = {
-      apiKey: "SUA_API_KEY",
-      authDomain: "SEU_DOMINIO.firebaseapp.com",
-      databaseURL: "https://SEU_DATABASE.firebaseio.com",
-      projectId: "SEU_PROJECT_ID",
-      storageBucket: "SEU_BUCKET.appspot.com",
-      messagingSenderId: "SEU_SENDER_ID",
-      appId: "SEU_APP_ID"
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.firebasestorage.app",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
     let eventosImportados = [];
 
-    document.getElementById('excelFile').addEventListener('change', function (e) {
+    window.onload = () => {
+      document.getElementById('excelFile').addEventListener('change', handleFile);
+      document.getElementById('btnSalvar').addEventListener('click', () => salvarNoFirebase(db));
+    };
+
+    function handleFile(e) {
       const file = e.target.files[0];
       if (!file) return;
 
@@ -63,12 +52,12 @@
         mostrarTabela(eventosImportados);
       };
       reader.readAsArrayBuffer(file);
-    });
+    }
 
     function formatarData(data) {
       if (!data) return "";
       const d = new Date(data);
-      if (isNaN(d)) return ""; // proteção extra
+      if (isNaN(d)) return "";
       const pad = v => v.toString().padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     }
@@ -80,7 +69,8 @@
         return;
       }
 
-      let html = `<table><thead><tr><th>Nome do Evento</th><th>Data</th><th>Venda PDV</th><th>Status</th></tr></thead><tbody>`;
+      let html = `<h2>Lista de Eventos Importados (${eventos.length})</h2>`;
+      html += `<table><thead><tr><th>Nome do Evento</th><th>Data</th><th>Venda PDV</th><th>Status</th></tr></thead><tbody>`;
       eventos.forEach(ev => {
         html += `<tr>
           <td>${ev.nomeEvento}</td>
@@ -93,21 +83,41 @@
       container.innerHTML = html;
     }
 
-    function salvarNoFirebase() {
+    function salvarNoFirebase(db) {
       if (eventosImportados.length === 0) {
         alert("Nenhum evento para salvar.");
         return;
       }
 
-      const confirmacao = confirm(`Tem certeza que deseja salvar ${eventosImportados.length} eventos no Firebase?`);
+      const confirmacao = confirm(`Deseja realmente salvar ${eventosImportados.length} eventos no Firebase?`);
       if (!confirmacao) return;
 
+      const refEventos = ref(db, 'eventos');
       eventosImportados.forEach(evento => {
-        db.ref("eventos").push(evento);
+        push(refEventos, evento);
       });
 
       alert("Eventos salvos com sucesso!");
     }
   </script>
+
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+    h1, h2 { color: #ff7f00; }
+    input[type="file"] { margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #ff7f00; color: white; }
+    button { padding: 10px 20px; background: #ff7f00; color: white; border: none; cursor: pointer; margin-top: 20px; }
+    button:hover { background: #e56f00; }
+  </style>
+</head>
+<body>
+
+  <h1>Importar Eventos (Excel)</h1>
+  <input type="file" id="excelFile" accept=".xlsx" />
+  <div id="tabelaContainer"></div>
+  <button id="btnSalvar">Salvar no Firebase</button>
+
 </body>
 </html>
