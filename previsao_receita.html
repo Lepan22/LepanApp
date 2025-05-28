@@ -1,181 +1,64 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Previsão Receita</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Previsão Receita - Simples</title>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"/>
-
-  <style>
-    .form-area { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; max-width: 800px; }
-    .layout { display: flex; min-height: 100vh; }
-    .sidebar { width: 220px; background-color: #ff7f00; color: white; padding: 20px 10px; }
-    .main-content { flex-grow: 1; padding: 20px; }
-    table { font-size: 14px; }
-  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 </head>
-
 <body>
-<div class="layout">
-  <aside class="sidebar">
-    <h4 class="text-center">Le PanApp</h4>
-    <a href="index.html">Home</a>
-    <a href="Cadastro.html">Cadastros</a>
-    <a href="clientes.html">Clientes</a>
-    <a href="eventos.html">Eventos</a>
-    <a href="relatorio.html">Relatórios</a>
-    <button onclick="history.back()" class="btn btn-light mt-3">Voltar</button>
-  </aside>
 
-  <main class="main-content">
-    <h1>Previsão Receita</h1>
+<div class="container my-4">
+  <h1>Previsão de Receita - Simples</h1>
 
-    <div class="mb-3">
-      <button class="btn btn-secondary" onclick="alterarMes(-1)">Mês Anterior</button>
-      <span id="mesAtual" class="mx-3"></span>
-      <button class="btn btn-secondary" onclick="alterarMes(1)">Mês Seguinte</button>
-      <button id="atualizarPrevisaoBtn" class="btn btn-warning ms-3">Atualizar Previsão Financeira</button>
+  <div class="row g-2 mb-3">
+    <div class="col-auto">
+      <label for="anoSelect" class="form-label">Ano:</label>
+      <select id="anoSelect" class="form-select">
+        <option value="2025">2025</option>
+        <option value="2026">2026</option>
+        <option value="2027">2027</option>
+      </select>
     </div>
 
-    <div class="form-area">
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>Data</th>
-            <th>Evento</th>
-            <th>Cliente</th>
-            <th>Média PDV</th>
-            <th>Total Previsto</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaPrevisao"></tbody>
-        <tfoot>
-          <tr>
-            <td colspan="4"><strong>Total Geral:</strong></td>
-            <td><strong id="totalGeral">R$ 0,00</strong></td>
-          </tr>
-        </tfoot>
-      </table>
+    <div class="col-auto">
+      <label for="mesSelect" class="form-label">Mês:</label>
+      <select id="mesSelect" class="form-select">
+        <option value="01">Janeiro</option>
+        <option value="02">Fevereiro</option>
+        <option value="03">Março</option>
+        <option value="04">Abril</option>
+        <option value="05">Maio</option>
+        <option value="06">Junho</option>
+        <option value="07">Julho</option>
+        <option value="08">Agosto</option>
+        <option value="09">Setembro</option>
+        <option value="10">Outubro</option>
+        <option value="11">Novembro</option>
+        <option value="12">Dezembro</option>
+      </select>
     </div>
-  </main>
+
+    <div class="col-auto d-flex align-items-end">
+      <button id="gerarBtn" class="btn btn-primary">Gerar</button>
+    </div>
+  </div>
+
+  <table class="table table-bordered">
+    <thead>
+      <tr>
+        <th>Nome do Evento</th>
+        <th>Data</th>
+        <th>Valor Médio</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaPrevisao"></tbody>
+  </table>
 </div>
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-    authDomain: "lepanapp.firebaseapp.com",
-    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-    projectId: "lepanapp",
-    storageBucket: "lepanapp.appspot.com",
-    messagingSenderId: "542989944344",
-    appId: "1:542989944344:web:576e28199960fd5440a56d"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  let mesReferencia = new Date();
-  const tabelaPrevisao = document.getElementById('tabelaPrevisao');
-  const totalGeralEl = document.getElementById('totalGeral');
-
-  document.getElementById('atualizarPrevisaoBtn').addEventListener('click', atualizarPrevisao);
-
-  function atualizarMesTexto() {
-    const mes = mesReferencia.getMonth() + 1;
-    const ano = mesReferencia.getFullYear();
-    document.getElementById('mesAtual').innerText = `${ano}-${mes.toString().padStart(2, '0')}`;
-  }
-
-  function alterarMes(delta) {
-    mesReferencia.setMonth(mesReferencia.getMonth() + delta);
-    carregarPrevisao();
-  }
-
-  function carregarPrevisao() {
-    atualizarMesTexto();
-    const anoMes = `${mesReferencia.getFullYear()}_${(mesReferencia.getMonth()+1).toString().padStart(2, '0')}`;
-
-    Promise.all([
-      db.ref(`projecao_eventos/${anoMes}`).once('value'),
-      db.ref('media_cliente').once('value')
-    ]).then(([projecaoSnap, mediasSnap]) => {
-      const eventos = projecaoSnap.val() || {};
-      const medias = mediasSnap.val() || {};
-
-      tabelaPrevisao.innerHTML = '';
-      let totalGeral = 0;
-
-      Object.values(eventos).forEach(ev => {
-        const clienteId = ev.clienteId;
-        const media = medias[clienteId] || 0;
-        const totalPrevisto = media;
-
-        totalGeral += totalPrevisto;
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${ev.data}</td>
-          <td>${ev.nomeEvento}</td>
-          <td>${clienteId}</td>
-          <td>R$ ${media.toFixed(2)}</td>
-          <td>R$ ${totalPrevisto.toFixed(2)}</td>
-        `;
-        tabelaPrevisao.appendChild(tr);
-      });
-
-      totalGeralEl.innerText = `R$ ${totalGeral.toFixed(2)}`;
-    });
-  }
-
-  function atualizarPrevisao() {
-    if (!confirm('Tem certeza que deseja atualizar a previsão financeira deste mês?')) return;
-
-    const anoMes = `${mesReferencia.getFullYear()}_${(mesReferencia.getMonth()+1).toString().padStart(2, '0')}`;
-
-    db.ref(`projecao_eventos/${anoMes}`).once('value').then(projecaoSnap => {
-      const eventos = projecaoSnap.val() || {};
-
-      db.ref('media_cliente').once('value').then(mediasSnap => {
-        const medias = mediasSnap.val() || {};
-
-        const updates = {};
-        let totalGeral = 0;
-
-        Object.values(eventos).forEach(ev => {
-          const clienteId = ev.clienteId;
-          const media = medias[clienteId] || 0;
-          const totalPrevisto = media;
-
-          const eventoId = `${clienteId}_${ev.data.replace(/\//g, '')}`;
-
-          updates[eventoId] = {
-            nomeEvento: ev.nomeEvento,
-            data: ev.data,
-            clienteId,
-            media,
-            totalPrevisto
-          };
-
-          totalGeral += totalPrevisto;
-        });
-
-        updates['total'] = totalGeral;
-
-        db.ref(`previsao_receita/${anoMes}`).remove().then(() => {
-          db.ref(`previsao_receita/${anoMes}`).set(updates).then(() => {
-            alert('Previsão financeira atualizada com sucesso!');
-            carregarPrevisao();
-          });
-        });
-      });
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', carregarPrevisao);
-</script>
+<script src="assets/previsao_receita.js"></script>
 </body>
 </html>
