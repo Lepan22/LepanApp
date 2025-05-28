@@ -18,6 +18,19 @@ let eventosReais = [];
 let indisponibilidades = [];
 let eventosProjetados = [];
 
+function normalizeDate(dateStr) {
+  return new Date(dateStr).toISOString().split('T')[0];
+}
+
+function reforcarValidacaoIndisponibilidade(dataStr) {
+  const dataNorm = normalizeDate(dataStr);
+  return indisponibilidades.some(i => {
+    if (i.data) return normalizeDate(i.data) === dataNorm;
+    if (i.inicio && i.fim) return dataNorm >= normalizeDate(i.inicio) && dataNorm <= normalizeDate(i.fim);
+    return false;
+  });
+}
+
 function carregarDados() {
   const ano = document.getElementById('anoSelect').value;
   const mes = document.getElementById('mesSelect').value;
@@ -81,7 +94,7 @@ function gerarProjecoes(ano, mes) {
     }
 
     datas.forEach(data => {
-      const dataStr = data.toISOString().split('T')[0];
+      const dataStr = normalizeDate(data);
       if (existeEventoReal(nomeEvento, dataStr) || reforcarValidacaoIndisponibilidade(dataStr)) return;
 
       eventosProjetados.push({
@@ -102,18 +115,35 @@ function diaSemanaTexto(num) {
 }
 
 function existeEventoReal(nome, data) {
-  return eventosReais.some(e => e.nomeEvento === nome && e.data === data);
+  return eventosReais.some(e => e.nomeEvento === nome && normalizeDate(e.data) === data);
 }
 
 function exibirProjetados() {
   const tbody = document.getElementById('tabelaProjetados');
   tbody.innerHTML = '';
 
-  eventosProjetados.forEach(ev => {
+  eventosProjetados.forEach((ev, index) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${ev.nomeEvento}</td><td>${ev.data}</td><td>${ev.frequencia}</td><td>${ev.status}</td>`;
+    tr.innerHTML = `
+      <td>${ev.nomeEvento}</td>
+      <td contenteditable="true" onblur="editarData(${index}, this.innerText)">${ev.data}</td>
+      <td>${ev.frequencia}</td>
+      <td>
+        ${ev.status} <button class='btn btn-sm btn-danger' onclick='excluirEvento(${index})'>Excluir</button>
+      </td>
+    `;
     tbody.appendChild(tr);
   });
+}
+
+function editarData(index, novaData) {
+  eventosProjetados[index].data = normalizeDate(novaData);
+  exibirProjetados();
+}
+
+function excluirEvento(index) {
+  eventosProjetados.splice(index, 1);
+  exibirProjetados();
 }
 
 document.getElementById('carregarBtn').addEventListener('click', carregarDados);
