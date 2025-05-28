@@ -148,6 +148,45 @@
   transition: margin-left 0.3s;
 }
 
+/* Estilo para os cards do dashboard */
+.card-dashboard {
+  background-color: white;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: var(--sombra-padrao);
+}
+
+.card-dashboard h4 {
+  margin-top: 0;
+  color: var(--cor-primaria);
+  font-size: 1.1rem;
+}
+
+.card-dashboard ul {
+  padding-left: 20px;
+}
+
+.card-dashboard li {
+  margin-bottom: 5px;
+  font-size: 0.9rem;
+}
+
+.card-dashboard button {
+  background-color: var(--cor-primaria);
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-top: 10px;
+}
+
+.card-dashboard button:hover {
+  opacity: 0.9;
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
   .sidebar {
