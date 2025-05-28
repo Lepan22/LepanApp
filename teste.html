@@ -1,61 +1,96 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Le Pan pan - Dashboard</title>
-  <link rel="stylesheet" href="menu-styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Importar Eventos - LePanApp</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+    h1 { color: #ff7f00; }
+    input[type="file"] { margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #ff7f00; color: white; }
+    button { padding: 10px 20px; background: #ff7f00; color: white; border: none; cursor: pointer; margin-top: 20px; }
+    button:hover { background: #e56f00; }
+  </style>
 </head>
 <body>
-  <div class="layout">
-    <!-- Menu lateral será carregado via JavaScript -->
-    <aside class="sidebar" id="menuLateral"></aside>
-    
-    <main class="main-content">
-      <div class="page-header">
-        <h1>Dashboard</h1>
-      </div>
 
-      <div class="card-dashboard">
-        <h4>Total de Eventos no Mês</h4>
-        <p><strong>12</strong> eventos realizados</p>
-      </div>
+  <h1>Importar Eventos (Excel)</h1>
+  <input type="file" id="excelFile" accept=".xlsx" />
+  <div id="tabelaContainer"></div>
+  <button onclick="exportarJSON()">Exportar JSON</button>
 
-      <div class="card-dashboard">
-        <h4>Faturamento Total</h4>
-        <p>R$ <strong>25.000,00</strong></p>
-      </div>
+  <script>
+    let eventosImportados = [];
 
-      <div class="card-dashboard">
-        <h4>Produtos Mais Vendidos</h4>
-        <ul>
-          <li>Pão de Queijo</li>
-          <li>Coxinha</li>
-          <li>Pastel</li>
-        </ul>
-      </div>
+    document.getElementById('excelFile').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
 
-      <div class="card-dashboard">
-        <h4>Clientes Mais Ativos</h4>
-        <ul>
-          <li>Condomínio Alpha</li>
-          <li>Escola Beta</li>
-          <li>Empresa Gama</li>
-        </ul>
-      </div>
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
 
-      <div class="card-dashboard">
-        <h4>Próximos Eventos</h4>
-        <ul>
-          <li>25/05 - Evento A - Aberto</li>
-          <li>27/05 - Evento B - Confirmado</li>
-          <li>29/05 - Evento C - Aberto</li>
-        </ul>
-        <button onclick="location.href='eventos.html'">Ver Todos</button>
-      </div>
-    </main>
-  </div>
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
 
-  <script src="menu.js"></script>
+        eventosImportados = jsonData.map(row => ({
+          nomeEvento: row.nomeEvento || row.NomeEvento || row.Nome || "",
+          data: formatarData(row.data || row.Data || ""),
+          vendaPDV: parseFloat(row.vendaPDV || row.Valor || 0),
+          status: "Finalizado"
+        })).filter(ev => ev.nomeEvento && ev.data && ev.vendaPDV);
+
+        mostrarTabela(eventosImportados);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    function formatarData(data) {
+      if (!data) return "";
+      const d = new Date(data);
+      const pad = v => v.toString().padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function mostrarTabela(eventos) {
+      const container = document.getElementById('tabelaContainer');
+      if (eventos.length === 0) {
+        container.innerHTML = "<p>Nenhum evento válido encontrado.</p>";
+        return;
+      }
+
+      let html = `<table><thead><tr><th>Nome do Evento</th><th>Data</th><th>Venda PDV</th><th>Status</th></tr></thead><tbody>`;
+      eventos.forEach(ev => {
+        html += `<tr>
+          <td>${ev.nomeEvento}</td>
+          <td>${ev.data}</td>
+          <td>R$ ${ev.vendaPDV.toFixed(2).replace(".", ",")}</td>
+          <td>${ev.status}</td>
+        </tr>`;
+      });
+      html += "</tbody></table>";
+      container.innerHTML = html;
+    }
+
+    function exportarJSON() {
+      if (eventosImportados.length === 0) {
+        alert("Nenhum evento importado.");
+        return;
+      }
+
+      const blob = new Blob([JSON.stringify(eventosImportados, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "eventos_simulados.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
 </body>
 </html>
