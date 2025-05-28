@@ -77,6 +77,16 @@
   </div>
 </div>
 
+<script>
+  function reforcarValidacaoIndisponibilidade(dataStr) {
+    return indisponibilidades.some(i => {
+      if (i.data) return i.data.trim() === dataStr.trim();
+      if (i.inicio && i.fim) return dataStr >= i.inicio.trim() && dataStr <= i.fim.trim();
+      return false;
+    });
+  }
+</script>
+
 <script src="assets/projecao_eventos.js"></script>
 </body>
 
