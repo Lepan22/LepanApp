@@ -14,7 +14,7 @@ const db = firebase.database();
 document.getElementById('gerarBtn').addEventListener('click', gerarPrevisao);
 document.getElementById('salvarBtn').addEventListener('click', salvarPrevisao);
 
-let dadosPrevisao = []; // Armazena temporariamente
+let dadosPrevisao = [];
 
 function gerarPrevisao() {
   const ano = document.getElementById('anoSelect').value;
@@ -27,20 +27,32 @@ function gerarPrevisao() {
 
   Promise.all([
     db.ref(`projecao_eventos/${anoMes}`).once('value'),
-    db.ref('media_cliente').once('value')
-  ]).then(([projecaoSnap, mediaSnap]) => {
+    db.ref('media_cliente').once('value'),
+    db.ref('clientes').once('value')
+  ]).then(([projecaoSnap, mediaSnap, clientesSnap]) => {
     const eventos = projecaoSnap.val() || {};
     const medias = mediaSnap.val() || {};
+    const clientes = clientesSnap.val() || {};
 
     Object.values(eventos).forEach(ev => {
-      const clienteId = (ev.clienteId || '').trim();
-      const media = clienteId && medias[clienteId] ? medias[clienteId] : 0;
-      const nome = ev.nomeEvento || 'Sem nome';
+      const nomeEvento = ev.nomeEvento || 'Sem nome';
       const data = ev.data || 'Sem data';
+
+      // Encontrar o cliente correspondente
+      let clienteId = '';
+      for (let id in clientes) {
+        const cli = clientes[id];
+        if (cli.clienteAtivo && cli.clienteAtivo.nomeEvento === nomeEvento) {
+          clienteId = id;
+          break;
+        }
+      }
+
+      const media = clienteId && medias[clienteId] ? medias[clienteId] : 0;
 
       dadosPrevisao.push({
         clienteId,
-        nomeEvento: nome,
+        nomeEvento,
         data,
         media,
         total: media
@@ -48,7 +60,7 @@ function gerarPrevisao() {
 
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${nome}</td>
+        <td>${nomeEvento}</td>
         <td>${data}</td>
         <td>R$ ${media.toFixed(2)}</td>
       `;
