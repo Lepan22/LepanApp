@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LepanApp - Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+  <title>Le Pan pan - Dashboard</title>
+  <link rel="stylesheet" href="menu-styles.css">
 </head>
 <body>
   <div class="layout">
+    <!-- Menu lateral será carregado via JavaScript -->
     <aside class="sidebar" id="menuLateral"></aside>
+    
     <main class="main-content">
-      <h1>Dashboard</h1>
+      <div class="page-header">
+        <h1>Dashboard</h1>
+      </div>
 
       <div class="card-dashboard">
         <h4>Total de Eventos no Mês</h4>
@@ -49,10 +53,9 @@
         </ul>
         <button onclick="location.href='eventos.html'">Ver Todos</button>
       </div>
-
     </main>
   </div>
 
-  <script src="incluir-menu.js"></script>
+  <script src="menu.js"></script>
 </body>
 </html>
