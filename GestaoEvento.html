@@ -9,33 +9,9 @@
     :root { --cor-primaria: #ff7f00; --cor-secundaria: #f9f9f9; }
     body { margin: 0; font-family: 'Segoe UI', sans-serif; }
     .layout { display: flex; min-height: 100vh; }
-    .sidebar {
-      width: 220px;
-      background-color: var(--cor-primaria);
-      color: white;
-      padding: 20px 10px;
-      font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .sidebar a, .sidebar button {
-      display: block;
-      width: 100%;
-      margin-bottom: 10px;
-      text-decoration: none;
-      font-weight: bold;
-      border: 1px solid white;
-      color: white;
-      background: transparent;
-      padding: 5px;
-      text-align: center;
-      border-radius: 4px;
-    }
-    .sidebar a:hover, .sidebar button:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-      text-decoration: none;
-    }
+    .sidebar { width: 220px; background-color: var(--cor-primaria); color: white; padding: 20px 10px; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; justify-content: space-between; }
+    .sidebar a, .sidebar button { display: block; width: 100%; margin-bottom: 10px; text-decoration: none; font-weight: bold; border: 1px solid white; color: white; background: transparent; padding: 5px; text-align: center; border-radius: 4px; }
+    .sidebar a:hover, .sidebar button:hover { background-color: rgba(255, 255, 255, 0.1); text-decoration: none; }
     .menu-top { margin-bottom: 20px; }
     .submenu { margin-bottom: 20px; }
     hr { border-top: 1px solid rgba(255, 255, 255, 0.3); margin: 10px 0; }
@@ -57,7 +33,6 @@
   <div class="sidebar">
     <div>
       <h4 class="text-center">Le PanApp</h4>
-
       <div class="menu-top">
         <a href="index.html">Home</a>
         <a href="Cadastro.html">Cadastros</a>
@@ -65,9 +40,7 @@
         <a href="eventos.html">Eventos</a>
         <a href="relatorio.html">Relatórios</a>
       </div>
-
       <hr>
-
       <div class="submenu">
         <a href="GestaoEvento.html">Criar</a>
         <a href="compra_evento.html">Compras</a>
@@ -77,13 +50,11 @@
         <a href="relatorio/equipe_relatorio.html">Visão por Equipe</a>
       </div>
     </div>
-
     <button onclick="history.back()">Voltar</button>
   </div>
 
   <div class="main-content">
     <h1>Gestão de Evento</h1>
-
     <form id="formGestaoEvento" class="form-area">
       <div class="row">
         <div class="col-md-3 mb-2">
@@ -115,7 +86,7 @@
         </div>
         <div class="col-md-4 mb-2">
           <label class="form-label">CMV Real</label>
-          <input type="number" id="cmvReal" class="form-control form-control-sm" step="0.01" oninput="calcularTotais()">
+          <input type="number" id="cmvReal" class="form-control form-control-sm" step="0.01" disabled>
         </div>
         <div class="col-md-4 mb-2">
           <label class="form-label">Estimativa de Venda</label>
@@ -176,7 +147,6 @@
 </div>
 
 <datalist id="produtosList"></datalist>
-
 <script src="GestaoEvento.js"></script>
 </body>
 </html>
