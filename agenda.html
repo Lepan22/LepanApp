@@ -2,9 +2,9 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Agenda - LePanApp</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Le Pan pan - Agenda</title>
+  <link rel="stylesheet" href="menu-styles.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
@@ -26,279 +26,282 @@
     th { background-color: #f2f2f2; }
     .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; }
     .evento-dia-projetado { font-size: 7px; margin-top: 2px; background: #ccc; color: #333; border-radius: 3px; padding: 1px; border: 1px dashed #999; }
+    
+    /* Estilos para os cards no formato do dashboard */
+    .card-dashboard {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .page-header {
+      margin-bottom: 20px;
+    }
   </style>
 </head>
 <body>
+  <div class="layout">
+    <!-- Menu lateral será carregado via JavaScript -->
+    <aside class="sidebar" id="menuLateral"></aside>
+    
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Agenda</h1>
+      </div>
 
-<div class="layout">
-  <aside class="sidebar" id="menuLateral">
-    <h4>LePanApp</h4>
-    <a href="home.html">Home</a>
-    <a href="cadastro.html">Cadastros</a>
-    <a href="clientes.html">Clientes</a>
-    <a href="eventos.html">Eventos</a>
-    <a href="relatorios.html">Relatórios</a>
-    <a href="criar.html">Criar</a>
-    <a href="compra_evento.html">Compras</a>
-    <a href="etapas.html">Etapas</a>
-    <a href="media_produto.html">Média Produto</a>
-    <a href="visao_cliente.html">Visão por Cliente</a>
-    <a href="visao_equipe.html">Visão por Equipe</a>
-    <a href="index.html">Voltar</a>
-  </aside>
+      <div class="card-dashboard">
+        <div class="kpis">
+          <div class="kpi">Capacidade de Eventos no Mês: <span id="capacidadeEventosMes">0</span></div>
+          <div class="kpi">Previsão de Receita no Mês: <span id="previsaoReceitaMes">R$ 0,00</span></div>
+        </div>
 
-  <main class="main-content">
-    <h1>Agenda</h1>
+        <div>
+          <button class="btn-navegar" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
+          <span id="mesAtual">Maio 2025</span>
+          <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
+        </div>
 
-    <div class="kpis">
-      <div class="kpi">Capacidade de Eventos no Mês: <span id="capacidadeEventosMes">0</span></div>
-      <div class="kpi">Previsão de Receita no Mês: <span id="previsaoReceitaMes">R$ 0,00</span></div>
-    </div>
+        <div class="calendario" id="calendario"></div>
+      </div>
 
-    <div>
-      <button class="btn-navegar" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
-      <span id="mesAtual">Maio 2025</span>
-      <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
-    </div>
+      <div class="card-dashboard">
+        <h4>Clientes Ativos</h4>
+        <table>
+          <thead>
+            <tr><th>Cliente</th><th>Nome do Evento</th><th>Frequência</th><th>Farol</th></tr>
+          </thead>
+          <tbody id="tabelaClientesAtivos"></tbody>
+        </table>
+      </div>
 
-    <div class="calendario" id="calendario"></div>
+      <div class="card-dashboard">
+        <h4>Eventos</h4>
+        <table>
+          <thead>
+            <tr><th>Nome do Evento</th><th>Data</th><th>Status</th><th>Tipo</th></tr>
+          </thead>
+          <tbody id="tabelaEventos"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
 
-    <div class="lista-clientes">
-      <h2>Clientes Ativos</h2>
-      <table>
-        <thead>
-          <tr><th>Cliente</th><th>Nome do Evento</th><th>Frequência</th><th>Farol</th></tr>
-        </thead>
-        <tbody id="tabelaClientesAtivos"></tbody>
-      </table>
-    </div>
+  <script src="menu.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d"
+    };
 
-    <div class="lista-eventos">
-      <h2>Eventos</h2>
-      <table>
-        <thead>
-          <tr><th>Nome do Evento</th><th>Data</th><th>Status</th><th>Tipo</th></tr>
-        </thead>
-        <tbody id="tabelaEventos"></tbody>
-      </table>
-    </div>
-  </main>
-</div>
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-    authDomain: "lepanapp.firebaseapp.com",
-    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-    projectId: "lepanapp",
-    storageBucket: "lepanapp.appspot.com",
-    messagingSenderId: "542989944344",
-    appId: "1:542989944344:web:576e28199960fd5440a56d"
-  };
+    let mesAtual = new Date();
+    let clientes = [];
+    let capacidadeEventos = 0;
+    let previsaoReceita = 0;
+    let eventos = [];
+    let eventosProjecao = [];
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+    function mudarMes(delta) {
+      mesAtual.setMonth(mesAtual.getMonth() + delta);
+      atualizarInterface();
+    }
 
-  let mesAtual = new Date();
-  let clientes = [];
-  let capacidadeEventos = 0;
-  let previsaoReceita = 0;
-  let eventos = [];
-  let eventosProjecao = [];
+    async function carregarDados() {
+      const clientesSnap = await db.ref('clientes').once('value');
+      clientes = [];
+      clientesSnap.forEach(child => {
+        const cliente = child.val();
+        if (cliente.clienteAtivo && cliente.clienteAtivo.status === "Ativo") {
+          cliente.id = child.key;
+          clientes.push(cliente);
+        }
+      });
 
-  function mudarMes(delta) {
-    mesAtual.setMonth(mesAtual.getMonth() + delta);
-    atualizarInterface();
-  }
+      const configSnap = await db.ref('configuracao/capacidadeEventos').once('value');
+      capacidadeEventos = configSnap.val() || 0;
 
-  async function carregarDados() {
-    const clientesSnap = await db.ref('clientes').once('value');
-    clientes = [];
-    clientesSnap.forEach(child => {
-      const cliente = child.val();
-      if (cliente.clienteAtivo && cliente.clienteAtivo.status === "Ativo") {
-        cliente.id = child.key;
-        clientes.push(cliente);
-      }
-    });
+      const mesAno = mesAtual.toISOString().slice(0,7).replace('-', '_');
+      const previsaoSnap = await db.ref(`previsao_receita/${mesAno}/total`).once('value');
+      previsaoReceita = previsaoSnap.val() || 0;
 
-    const configSnap = await db.ref('configuracao/capacidadeEventos').once('value');
-    capacidadeEventos = configSnap.val() || 0;
+      const eventosSnap = await db.ref('eventos').once('value');
+      eventos = [];
+      eventosSnap.forEach(child => {
+        const evento = child.val();
+        evento.id = child.key;
+        eventos.push(evento);
+      });
 
-    const mesAno = mesAtual.toISOString().slice(0,7).replace('-', '_');
-    const previsaoSnap = await db.ref(`previsao_receita/${mesAno}/total`).once('value');
-    previsaoReceita = previsaoSnap.val() || 0;
+      gerarEventosProjecao();
+      atualizarInterface();
+    }
 
-    const eventosSnap = await db.ref('eventos').once('value');
-    eventos = [];
-    eventosSnap.forEach(child => {
-      const evento = child.val();
-      evento.id = child.key;
-      eventos.push(evento);
-    });
+    function gerarEventosProjecao() {
+      eventosProjecao = [];
+      const eventosReaisMap = new Set(eventos.map(e => `${e.nomeEvento}_${e.data}`));
 
-    gerarEventosProjecao();
-    atualizarInterface();
-  }
+      clientes.forEach(c => {
+        const nomeEvento = c.clienteAtivo.nomeEvento;
+        const freq = c.clienteAtivo.frequencia;
+        const diasSemana = Array.isArray(c.clienteAtivo.diasSemana) ? c.clienteAtivo.diasSemana : [c.clienteAtivo.diaSemana];
+        const ano = mesAtual.getFullYear();
+        const mes = mesAtual.getMonth();
 
-  function gerarEventosProjecao() {
-    eventosProjecao = [];
-    const eventosReaisMap = new Set(eventos.map(e => `${e.nomeEvento}_${e.data}`));
+        for (let dia = 1; dia <= 31; dia++) {
+          const data = new Date(ano, mes, dia);
+          if (data.getMonth() !== mes) break;
+          const diaSemanaTexto = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][data.getDay()];
 
-    clientes.forEach(c => {
-      const nomeEvento = c.clienteAtivo.nomeEvento;
-      const freq = c.clienteAtivo.frequencia;
-      const diasSemana = Array.isArray(c.clienteAtivo.diasSemana) ? c.clienteAtivo.diasSemana : [c.clienteAtivo.diaSemana];
+          if (!diasSemana.includes(diaSemanaTexto)) continue;
+
+          let incluir = false;
+
+          if (freq === 'Semanal') incluir = true;
+          if (freq === 'Quinzenal' && Math.floor((dia - 1) / 7) % 2 === 0) incluir = true;
+          if (freq === 'Mensal' && dia <= 7) incluir = true;
+
+          const dataStr = data.toISOString().split('T')[0];
+          const chave = `${nomeEvento}_${dataStr}`;
+
+          if (incluir && !eventosReaisMap.has(chave)) {
+            eventosProjecao.push({ nomeEvento, data: dataStr, status: 'Projetado', tipo: 'Projeção' });
+          }
+        }
+      });
+    }
+
+    function atualizarInterface() {
+      document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+      atualizarKPIs();
+      renderizarCalendario();
+      listarClientesAtivos();
+      listarEventos();
+    }
+
+    function atualizarKPIs() {
+      document.getElementById('capacidadeEventosMes').textContent = capacidadeEventos;
+      document.getElementById('previsaoReceitaMes').textContent = 'R$ ' + previsaoReceita.toFixed(2).replace('.', ',');
+    }
+
+    function renderizarCalendario() {
+      const calendario = document.getElementById('calendario');
+      calendario.innerHTML = '';
+
+      const cabecalho = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+      cabecalho.forEach(dia => {
+        const div = document.createElement('div');
+        div.classList.add('dia', 'cabecalho');
+        div.textContent = dia;
+        calendario.appendChild(div);
+      });
+
       const ano = mesAtual.getFullYear();
       const mes = mesAtual.getMonth();
+      const primeiroDia = new Date(ano, mes, 1);
+      const ultimoDia = new Date(ano, mes + 1, 0);
+      const diaSemanaInicio = primeiroDia.getDay();
 
-      for (let dia = 1; dia <= 31; dia++) {
+      for (let i = 0; i < diaSemanaInicio; i++) {
+        calendario.appendChild(document.createElement('div'));
+      }
+
+      const semanaAtual = getSemanaAtual();
+
+      for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
         const data = new Date(ano, mes, dia);
-        if (data.getMonth() !== mes) break;
-        const diaSemanaTexto = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][data.getDay()];
-
-        if (!diasSemana.includes(diaSemanaTexto)) continue;
-
-        let incluir = false;
-
-        if (freq === 'Semanal') incluir = true;
-        if (freq === 'Quinzenal' && Math.floor((dia - 1) / 7) % 2 === 0) incluir = true;
-        if (freq === 'Mensal' && dia <= 7) incluir = true;
-
         const dataStr = data.toISOString().split('T')[0];
-        const chave = `${nomeEvento}_${dataStr}`;
 
-        if (incluir && !eventosReaisMap.has(chave)) {
-          eventosProjecao.push({ nomeEvento, data: dataStr, status: 'Projetado', tipo: 'Projeção' });
+        const divDia = document.createElement('div');
+        divDia.classList.add('dia');
+
+        if (semanaAtual.includes(dataStr)) {
+          divDia.classList.add('semana-atual');
         }
+
+        const numeroDia = document.createElement('div');
+        numeroDia.textContent = dia;
+        divDia.appendChild(numeroDia);
+
+        eventos.filter(ev => ev.data === dataStr).forEach(ev => {
+          const eventoDiv = document.createElement('div');
+          eventoDiv.classList.add('evento-dia');
+          eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
+          divDia.appendChild(eventoDiv);
+        });
+
+        eventosProjecao.filter(ev => ev.data === dataStr).forEach(ev => {
+          const eventoDiv = document.createElement('div');
+          eventoDiv.classList.add('evento-dia-projetado');
+          eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
+          divDia.appendChild(eventoDiv);
+        });
+
+        calendario.appendChild(divDia);
       }
-    });
-  }
-
-  function atualizarInterface() {
-    document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
-    atualizarKPIs();
-    renderizarCalendario();
-    listarClientesAtivos();
-    listarEventos();
-  }
-
-  function atualizarKPIs() {
-    document.getElementById('capacidadeEventosMes').textContent = capacidadeEventos;
-    document.getElementById('previsaoReceitaMes').textContent = 'R$ ' + previsaoReceita.toFixed(2).replace('.', ',');
-  }
-
-  function renderizarCalendario() {
-    const calendario = document.getElementById('calendario');
-    calendario.innerHTML = '';
-
-    const cabecalho = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-    cabecalho.forEach(dia => {
-      const div = document.createElement('div');
-      div.classList.add('dia', 'cabecalho');
-      div.textContent = dia;
-      calendario.appendChild(div);
-    });
-
-    const ano = mesAtual.getFullYear();
-    const mes = mesAtual.getMonth();
-    const primeiroDia = new Date(ano, mes, 1);
-    const ultimoDia = new Date(ano, mes + 1, 0);
-    const diaSemanaInicio = primeiroDia.getDay();
-
-    for (let i = 0; i < diaSemanaInicio; i++) {
-      calendario.appendChild(document.createElement('div'));
     }
 
-    const semanaAtual = getSemanaAtual();
+    function getSemanaAtual() {
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const inicio = new Date(hoje);
+      inicio.setDate(hoje.getDate() - diaSemana + 1);
+      const datas = [];
 
-    for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
-      const data = new Date(ano, mes, dia);
-      const dataStr = data.toISOString().split('T')[0];
-
-      const divDia = document.createElement('div');
-      divDia.classList.add('dia');
-
-      if (semanaAtual.includes(dataStr)) {
-        divDia.classList.add('semana-atual');
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(inicio);
+        d.setDate(inicio.getDate() + i);
+        datas.push(d.toISOString().split('T')[0]);
       }
 
-      const numeroDia = document.createElement('div');
-      numeroDia.textContent = dia;
-      divDia.appendChild(numeroDia);
-
-      eventos.filter(ev => ev.data === dataStr).forEach(ev => {
-        const eventoDiv = document.createElement('div');
-        eventoDiv.classList.add('evento-dia');
-        eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
-        divDia.appendChild(eventoDiv);
-      });
-
-      eventosProjecao.filter(ev => ev.data === dataStr).forEach(ev => {
-        const eventoDiv = document.createElement('div');
-        eventoDiv.classList.add('evento-dia-projetado');
-        eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
-        divDia.appendChild(eventoDiv);
-      });
-
-      calendario.appendChild(divDia);
-    }
-  }
-
-  function getSemanaAtual() {
-    const hoje = new Date();
-    const diaSemana = hoje.getDay();
-    const inicio = new Date(hoje);
-    inicio.setDate(hoje.getDate() - diaSemana + 1);
-    const datas = [];
-
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(inicio);
-      d.setDate(inicio.getDate() + i);
-      datas.push(d.toISOString().split('T')[0]);
+      return datas;
     }
 
-    return datas;
-  }
+    function listarClientesAtivos() {
+      const tbody = document.getElementById('tabelaClientesAtivos');
+      tbody.innerHTML = '';
 
-  function listarClientesAtivos() {
-    const tbody = document.getElementById('tabelaClientesAtivos');
-    tbody.innerHTML = '';
+      clientes.forEach(c => {
+        const freq = c.clienteAtivo.frequencia;
+        const farol = getFarol(c);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${c.nome}</td><td>${c.clienteAtivo.nomeEvento}</td><td>${freq}</td><td><span class="farol ${farol}"></span></td>`;
+        tbody.appendChild(tr);
+      });
+    }
 
-    clientes.forEach(c => {
-      const freq = c.clienteAtivo.frequencia;
-      const farol = getFarol(c);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${c.nome}</td><td>${c.clienteAtivo.nomeEvento}</td><td>${freq}</td><td><span class="farol ${farol}"></span></td>`;
-      tbody.appendChild(tr);
-    });
-  }
+    function getFarol(cliente) {
+      const freq = cliente.clienteAtivo.frequencia;
+      if (freq === "Esporadico") return 'farol-cinza';
+      return 'farol-vermelho';
+    }
 
-  function getFarol(cliente) {
-    const freq = cliente.clienteAtivo.frequencia;
-    if (freq === "Esporadico") return 'farol-cinza';
-    return 'farol-vermelho';
-  }
+    function listarEventos() {
+      const tbody = document.getElementById('tabelaEventos');
+      tbody.innerHTML = '';
 
-  function listarEventos() {
-    const tbody = document.getElementById('tabelaEventos');
-    tbody.innerHTML = '';
+      eventos.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td><td>Real</td>`;
+        tbody.appendChild(tr);
+      });
 
-    eventos.forEach(e => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td><td>Real</td>`;
-      tbody.appendChild(tr);
-    });
+      eventosProjecao.forEach(e => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status}</td><td>Projeção</td>`;
+        tbody.appendChild(tr);
+      });
+    }
 
-    eventosProjecao.forEach(e => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status}</td><td>Projeção</td>`;
-      tbody.appendChild(tr);
-    });
-  }
-
-  document.addEventListener('DOMContentLoaded', carregarDados);
-</script>
-
+    document.addEventListener('DOMContentLoaded', carregarDados);
+  </script>
 </body>
 </html>
