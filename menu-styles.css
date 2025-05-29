@@ -10,13 +10,11 @@
   --sombra-padrao: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
-/* Layout */
 .layout {
   display: flex;
   min-height: 100vh;
 }
 
-/* Sidebar */
 .sidebar {
   width: var(--largura-menu);
   background-color: var(--cor-primaria);
@@ -28,7 +26,6 @@
   box-shadow: var(--sombra-padrao);
 }
 
-/* Logo */
 .logo-area {
   height: var(--altura-logo);
   display: flex;
@@ -45,7 +42,6 @@
   margin: 0;
 }
 
-/* Accordion (Menu) */
 .accordion {
   margin-top: 10px;
 }
@@ -117,18 +113,18 @@
   background-color: var(--cor-submenu-hover);
 }
 
-/* Corrige links do submenu e marca o ativo */
-.sidebar a.active {
-  background-color: var(--cor-hover) !important;
-  color: var(--cor-texto-menu) !important;
-  font-weight: bold;
-}
-
-/* CORREÇÃO FINAL: força o item principal ativo (ex: Cliente) a não ficar azul */
+/* MARCA o link ativo como laranja translúcido */
 .sidebar .accordion-button:not(.collapsed) {
   background-color: var(--cor-hover) !important;
   color: var(--cor-texto-menu) !important;
   font-weight: bold !important;
+}
+
+/* Links de submenu ativos */
+.sidebar a.active {
+  background-color: var(--cor-hover) !important;
+  color: var(--cor-texto-menu) !important;
+  font-weight: bold;
 }
 
 /* Botão voltar */
@@ -150,7 +146,6 @@
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Conteúdo principal */
 .main-content {
   flex: 1;
   margin-left: var(--largura-menu);
@@ -158,7 +153,6 @@
   transition: margin-left 0.3s;
 }
 
-/* Responsividade */
 @media (max-width: 768px) {
   .sidebar {
     width: 0;
