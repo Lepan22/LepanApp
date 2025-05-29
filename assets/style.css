@@ -1,69 +1,95 @@
 :root {
   --cor-primaria: #ff7f00;
   --cor-secundaria: #f9f9f9;
-  --cor-texto: #333;
+  --cor-hover: rgba(255, 255, 255, 0.15);
+  --cor-texto-menu: white;
+  --cor-borda: #ddd;
 }
 
 body {
+  font-family: Arial, sans-serif;
+  background-color: #f3f3f3;
   margin: 0;
-  font-family: "Segoe UI", sans-serif;
-  background-color: #fff;
-  color: var(--cor-texto);
+  padding: 0;
 }
 
-.layout {
-  display: flex;
-  min-height: 100vh;
+h1, h2, h3 {
+  font-weight: bold;
+  color: #333;
 }
 
-.sidebar {
-  width: 220px;
+form {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+button, .btn {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+input, select, textarea {
+  font-size: 14px;
+}
+
+.table th {
   background-color: var(--cor-primaria);
   color: white;
-  padding: 20px 10px;
+  font-size: 0.85rem;
 }
 
-.sidebar h2 {
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
+.table td {
+  font-size: 0.85rem;
+  padding: 4px 6px;
+  vertical-align: middle;
 }
 
-.sidebar h3 {
-  font-size: 0.9rem;
-  margin-top: 1rem;
+.table-hover tbody tr:hover {
+  background-color: #f0f0f0;
 }
 
-.sidebar button {
-  display: block;
-  width: 100%;
-  margin-bottom: 0.5rem;
-  background: white;
-  color: var(--cor-primaria);
-  border: none;
-  padding: 8px;
-  border-radius: 6px;
-  font-weight: 500;
-  text-align: left;
-  cursor: pointer;
+.section-title {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-top: 20px;
+  margin-bottom: 10px;
 }
 
-.sidebar button:hover {
-  background-color: rgba(255, 255, 255, 0.8);
-}
-
-.main-content {
-  flex-grow: 1;
-  padding: 20px;
-}
-
-.card-dashboard {
-  background: var(--cor-secundaria);
+.form-area {
+  background-color: var(--cor-secundaria);
   padding: 15px;
   border-radius: 8px;
-  margin-bottom: 15px;
-  box-shadow: 0 0 5px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
 }
 
-.card-dashboard h4 {
-  margin: 0 0 10px;
+.text-end {
+  text-align: end;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-2 { margin-top: 0.5rem !important; }
+.mt-3 { margin-top: 1rem !important; }
+.mt-4 { margin-top: 1.5rem !important; }
+
+.mb-2 { margin-bottom: 0.5rem !important; }
+.mb-3 { margin-bottom: 1rem !important; }
+.mb-4 { margin-bottom: 1.5rem !important; }
+
+.p-2 { padding: 0.5rem !important; }
+.p-3 { padding: 1rem !important; }
+
+.gap-2 { gap: 0.5rem !important; }
+.gap-3 { gap: 1rem !important; }
+
+textarea {
+  resize: vertical;
+}
+
+.form-check-label {
+  margin-left: 4px;
 }
