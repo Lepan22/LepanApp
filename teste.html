@@ -2,13 +2,13 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Cadastro de Clientes</title>
+  <title>Menu Teste</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- Bootstrap primeiro -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  <!-- Depois seu CSS -->
+  <!-- Menu CSS depois -->
   <link rel="stylesheet" href="menu-styles.css">
 </head>
 <body>
@@ -16,146 +16,11 @@
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <h2 class="mb-4">Cadastro de Clientes</h2>
-
-      <form id="clienteForm" class="form-area">
-        <div class="row">
-          <div class="col-md-4">
-            <label class="form-label">Nome do condomínio/local</label>
-            <input type="text" id="nome" class="form-control" />
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Data de cadastro</label>
-            <input type="date" id="dataCadastro" class="form-control" />
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Tipo de cliente</label>
-            <input type="text" id="tipoCliente" class="form-control" />
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Indicado por</label>
-            <input type="text" id="indicadoPor" class="form-control" />
-          </div>
-        </div>
-
-        <div class="mt-3">
-          <h6>👥 Contatos</h6>
-          <div id="contatosContainer"></div>
-          <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="adicionarContato()">+ Adicionar contato</button>
-        </div>
-
-        <div class="mt-3 row">
-          <div class="col-md-3">
-            <label class="form-label">Perfil econômico</label>
-            <input type="text" id="perfilEconomico" class="form-control" />
-          </div>
-          <div class="col-md-2">
-            <label class="form-label">Tamanho</label>
-            <input type="text" id="tamanho" class="form-control" />
-          </div>
-          <div class="col-md-4">
-            <label class="form-label">Endereço completo</label>
-            <input type="text" id="endereco" class="form-control" />
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Região</label>
-            <input type="text" id="regiao" class="form-control" />
-          </div>
-        </div>
-
-        <div class="row mt-2">
-          <div class="col-md-3">
-            <label class="form-label">Data do último contato</label>
-            <input type="date" id="ultimoContato" class="form-control" />
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Observações</label>
-            <input type="text" id="observacoes" class="form-control" />
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Status</label>
-            <select id="status" class="form-select" onchange="toggleClienteAtivo()">
-              <option>Aberto</option>
-              <option>Fechado</option>
-              <option>Frio</option>
-              <option>Quente</option>
-              <option>Encerrado</option>
-            </select>
-          </div>
-        </div>
-
-        <div id="clientesAtivos" style="display:none;" class="mt-3">
-          <h6>✅ Cliente Ativo</h6>
-          <div class="row">
-            <div class="col-md-4">
-              <label class="form-label">Nome do evento</label>
-              <input type="text" id="nomeEvento" class="form-control" />
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Frequência</label>
-              <select id="frequencia" class="form-select">
-                <option>Semanal</option>
-                <option>Quinzenal</option>
-                <option>Mensal</option>
-                <option>Esporádico</option>
-                <option>A Definir</option>
-              </select>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Data 1º evento</label>
-              <input type="date" id="dataPrimeiroEvento" class="form-control" />
-            </div>
-            <div class="col-md-2">
-              <label class="form-label">Status</label>
-              <select id="statusEvento" class="form-select">
-                <option>Ativo</option>
-                <option>Inativo</option>
-                <option>Pausado</option>
-              </select>
-            </div>
-          </div>
-          <div class="mt-2">
-            <label class="form-label">Dias da semana</label><br />
-            <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" id="seg"><label class="form-check-label">Seg</label></div>
-            <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" id="ter"><label class="form-check-label">Ter</label></div>
-            <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" id="qua"><label class="form-check-label">Qua</label></div>
-            <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" id="qui"><label class="form-check-label">Qui</label></div>
-            <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" id="sex"><label class="form-check-label">Sex</label></div>
-            <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" id="sab"><label class="form-check-label">Sab</label></div>
-            <div class="form-check form-check-inline"><input type="checkbox" class="form-check-input" id="dom"><label class="form-check-label">Dom</label></div>
-          </div>
-          <div class="mt-2">
-            <label class="form-label">Observações do evento</label>
-            <textarea id="obsEvento" class="form-control"></textarea>
-          </div>
-        </div>
-
-        <div class="text-end mt-3">
-          <button type="submit" class="btn btn-primary">Salvar Cliente</button>
-        </div>
-      </form>
-
-      <div class="mt-4">
-        <h5>📋 Lista de Clientes</h5>
-        <table class="table table-bordered table-hover" id="clientesTable">
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Status</th>
-              <th>Tipo</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+      <h2>Área principal (vazia)</h2>
+      <p>Este é apenas um teste do menu lateral.</p>
     </main>
   </div>
 
-  <!-- Firebase + Menu + JS -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="menu.js"></script>
-  <script src="clientes.js"></script>
 </body>
 </html>
