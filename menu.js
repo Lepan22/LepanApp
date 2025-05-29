@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
       <div class="accordion" id="menuAccordion">
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <a class="accordion-button" href="index.html">Home</a>
+            <a class="accordion-button" href="/LepanApp/index.html">Home</a>
           </h2>
         </div>
 
@@ -19,9 +19,9 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="eventos" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <a href="compra_evento.html">Gerar Compra</a>
-              <a href="controle_etapas.html">Gestão Etapa</a>
-              <a href="eventos.html">Eventos</a>
+              <a href="/LepanApp/compra_evento.html">Gerar Compra</a>
+              <a href="/LepanApp/controle_etapas.html">Gestão Etapa</a>
+              <a href="/LepanApp/eventos.html">Eventos</a>
             </div>
           </div>
         </div>
@@ -32,8 +32,8 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="clientes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <a href="clientes.html">Cadastrar Cliente</a>
-              <a href="gestao_Cliente.html">Gestão de Cliente</a>
+              <a href="/LepanApp/clientes.html">Cadastrar Cliente</a>
+              <a href="/LepanApp/gestao_Cliente.html">Gestão de Cliente</a>
             </div>
           </div>
         </div>
@@ -55,10 +55,10 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="relatorios" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <a href="relatorio/custos_eventos_relatorio.html">Relatório Custo Evento</a>
-              <a href="relatorio/equipe_relatorio.html">Análise por Equipe</a>
-              <a href="relatorio/eventos_relatorio.html">Análise por Cliente</a>
-              <a href="relatorio/perda_prod_relatorio.html">Relatório Perda Produto</a>
+              <a href="/LepanApp/relatorio/custos_eventos_relatorio.html">Relatório Custo Evento</a>
+              <a href="/LepanApp/relatorio/equipe_relatorio.html">Análise por Equipe</a>
+              <a href="/LepanApp/relatorio/eventos_relatorio.html">Análise por Cliente</a>
+              <a href="/LepanApp/relatorio/perda_prod_relatorio.html">Relatório Perda Produto</a>
             </div>
           </div>
         </div>
@@ -69,15 +69,15 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="configuracoes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <a href="equipe.html">Cadastrar Equipe</a>
-              <a href="logistica.html">Cadastrar Logística</a>
-              <a href="produto.html">Cadastro Produtos</a>
-              <a href="projecao_eventos.html">Gerar Previsão Eventos</a>
-              <a href="previsao_receita.html">Gerar Previsão Receita</a>
-              <a href="gestao_agenda.html">Gestão da Agenda</a>
-              <a href="configuracao.html">Parâmetros Gerais</a>
-              <a href="media_cliente.html">Gerar Média PDV</a>
-              <a href="media_produtos.html">Gerar Média Produto</a>
+              <a href="/LepanApp/equipe.html">Cadastrar Equipe</a>
+              <a href="/LepanApp/logistica.html">Cadastrar Logística</a>
+              <a href="/LepanApp/produto.html">Cadastro Produtos</a>
+              <a href="/LepanApp/projecao_eventos.html">Gerar Previsão Eventos</a>
+              <a href="/LepanApp/previsao_receita.html">Gerar Previsão Receita</a>
+              <a href="/LepanApp/gestao_agenda.html">Gestão da Agenda</a>
+              <a href="/LepanApp/configuracao.html">Parâmetros Gerais</a>
+              <a href="/LepanApp/media_cliente.html">Gerar Média PDV</a>
+              <a href="/LepanApp/media_produtos.html">Gerar Média Produto</a>
             </div>
           </div>
         </div>
@@ -123,11 +123,11 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // Marcar ativo
-  const currentPage = window.location.pathname.split('/').pop();
+  const currentPage = window.location.pathname;
   const menuLinks = document.querySelectorAll('.sidebar a');
   menuLinks.forEach(link => {
-    const linkHref = link.getAttribute('href');
-    if (linkHref === currentPage) {
+    const href = link.getAttribute('href');
+    if (href && currentPage.endsWith(href.replace('/LepanApp/', ''))) {
       link.classList.add('active');
       const parentCollapse = link.closest('.accordion-collapse');
       if (parentCollapse) {
