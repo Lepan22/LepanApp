@@ -1,12 +1,11 @@
-document.addEventListener('DOMContentLoaded', function() {
-  // Carregar o menu
+document.addEventListener('DOMContentLoaded', function () {
   const menuContainer = document.getElementById('menuLateral');
   if (menuContainer) {
     menuContainer.innerHTML = `
       <div class="logo-area">
         <h1>Le Pan</h1>
       </div>
-      
+
       <div class="accordion" id="menuAccordion">
         <div class="accordion-item">
           <h2 class="accordion-header">
@@ -16,83 +15,70 @@ document.addEventListener('DOMContentLoaded', function() {
 
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <a class="accordion-button collapsed" href="cadastros.html" data-bs-toggle="collapse" data-bs-target="#cadastros">Cadastros</a>
-          </h2>
-          <div id="cadastros" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-            <div class="accordion-body">
-              <a href="produto.html">Produtos</a>
-              <a href="clientes.html">Clientes</a>
-              <a href="equipe.html">Equipe</a>
-              <a href="logistica.html">Logística</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="accordion-item">
-          <h2 class="accordion-header">
-            <a class="accordion-button collapsed" href="eventos.html" data-bs-toggle="collapse" data-bs-target="#eventos">Eventos</a>
+            <a class="accordion-button collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#eventos">Evento</a>
           </h2>
           <div id="eventos" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <a href="eventos.html">Lista de Eventos</a>
-              <a href="GestaoEvento.html">Gestão de Evento</a>
-              <a href="compra_evento.html">Compras</a>
-              <a href="controle_etapas.html">Controle de Etapas</a>
-              <a href="visualizar_evento.html">Visualizar Evento</a>
+              <a href="compra_evento.html">Gerar Compra</a>
+              <a href="controle_etapas.html">Gestão Etapa</a>
+              <a href="eventos.html">Eventos</a>
             </div>
           </div>
         </div>
 
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <a class="accordion-button collapsed" href="agenda.html" data-bs-toggle="collapse" data-bs-target="#agenda">Agenda</a>
+            <a class="accordion-button collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#clientes">Cliente</a>
           </h2>
-          <div id="agenda" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+          <div id="clientes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <a href="agenda.html">Agenda de Eventos</a>
-              <a href="gestao_agenda.html">Gestão da Agenda</a>
-              <a href="projecao_eventos.html">Projeção de Eventos</a>
-              <a href="previsao_receita.html">Previsão de Receita</a>
+              <a href="clientes.html">Cadastrar Cliente</a>
+              <a href="gestao_Cliente.html">Gestão de Cliente</a>
             </div>
           </div>
         </div>
 
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <a class="accordion-button collapsed" href="relatorios.html" data-bs-toggle="collapse" data-bs-target="#relatorios">Relatórios</a>
-          </h2>
-          <div id="relatorios" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
-            <div class="accordion-body">
-              <a href="relatorio/eventos_relatorio.html">Eventos por Cliente</a>
-              <a href="relatorio/equipe_relatorio.html">Equipe</a>
-              <a href="relatorio/custos_eventos_relatorio.html">Custos dos Eventos</a>
-              <a href="relatorio/perda_prod_relatorio.html">Perdas de Produtos</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="accordion-item">
-          <h2 class="accordion-header">
-            <a class="accordion-button collapsed" href="financeiro.html" data-bs-toggle="collapse" data-bs-target="#financeiro">Financeiro</a>
+            <a class="accordion-button collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#financeiro">Financeiro</a>
           </h2>
           <div id="financeiro" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <a href="financeiro_lancamentos.html">Lançamentos</a>
-              <a href="financeiro_fluxo_caixa.html">Fluxo de Caixa</a>
-              <a href="financeiro_contas_pagar.html">Contas a Pagar</a>
-              <a href="financeiro_contas_receber.html">Contas a Receber</a>
-              <a href="financeiro_relatorios.html">Relatórios</a>
+              <!-- Placeholder vazio -->
+              <span style="padding: 10px 15px; display: block; color: #ccc;">Em construção</span>
             </div>
           </div>
         </div>
 
         <div class="accordion-item">
           <h2 class="accordion-header">
-            <a class="accordion-button collapsed" href="configuracao.html" data-bs-toggle="collapse" data-bs-target="#configuracoes">Configurações</a>
+            <a class="accordion-button collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#relatorios">Relatório</a>
+          </h2>
+          <div id="relatorios" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
+            <div class="accordion-body">
+              <a href="relatorio/custos_eventos_relatorio.html">Relatório Custo Evento</a>
+              <a href="relatorio/equipe_relatorio.html">Análise por Equipe</a>
+              <a href="relatorio/eventos_relatorio.html">Análise por Cliente</a>
+              <a href="relatorio/perda_prod_relatorio.html">Relatório Perda Produto</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <a class="accordion-button collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#configuracoes">Configuração</a>
           </h2>
           <div id="configuracoes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
+              <a href="equipe.html">Cadastrar Equipe</a>
+              <a href="logistica.html">Cadastrar Logística</a>
+              <a href="produto.html">Cadastro Produtos</a>
+              <a href="projecao_eventos.html">Gerar Previsão Eventos</a>
+              <a href="previsao_receita.html">Gerar Previsão Receita</a>
+              <a href="gestao_agenda.html">Gestão da Agenda</a>
               <a href="configuracao.html">Parâmetros Gerais</a>
+              <a href="media_cliente.html">Gerar Média PDV</a>
+              <a href="media_produtos.html">Gerar Média Produto</a>
             </div>
           </div>
         </div>
@@ -102,27 +88,24 @@ document.addEventListener('DOMContentLoaded', function() {
     `;
   }
 
-  // Adicionar botão de toggle para dispositivos móveis
+  // Botão mobile
   const body = document.body;
   const menuToggle = document.createElement('button');
   menuToggle.className = 'menu-toggle';
   menuToggle.innerHTML = '☰';
-  menuToggle.addEventListener('click', function() {
+  menuToggle.addEventListener('click', function () {
     const sidebar = document.querySelector('.sidebar');
     sidebar.classList.toggle('open');
   });
   body.appendChild(menuToggle);
 
-  // Funcionalidade do acordeão
+  // Acordeão e item ativo
   const accordionButtons = document.querySelectorAll('.accordion-button[data-bs-toggle="collapse"]');
   accordionButtons.forEach(button => {
-    button.addEventListener('click', function(e) {
+    button.addEventListener('click', function (e) {
       e.preventDefault();
-      
       const target = document.querySelector(this.getAttribute('data-bs-target'));
       const isCollapsed = this.classList.contains('collapsed');
-      
-      // Fechar todos os outros itens
       document.querySelectorAll('.accordion-collapse.show').forEach(item => {
         if (item !== target) {
           item.classList.remove('show');
@@ -130,8 +113,6 @@ document.addEventListener('DOMContentLoaded', function() {
           if (btn) btn.classList.add('collapsed');
         }
       });
-      
-      // Alternar o estado do item atual
       if (isCollapsed) {
         target.classList.add('show');
         this.classList.remove('collapsed');
@@ -142,23 +123,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Destacar item ativo do menu
+  // Marcar ativo
   const currentPage = window.location.pathname.split('/').pop();
   const menuLinks = document.querySelectorAll('.sidebar a');
-  
   menuLinks.forEach(link => {
     const linkHref = link.getAttribute('href');
     if (linkHref === currentPage) {
       link.classList.add('active');
-      
-      // Se for um submenu, abrir o acordeão pai
       const parentCollapse = link.closest('.accordion-collapse');
       if (parentCollapse) {
         parentCollapse.classList.add('show');
         const parentButton = document.querySelector(`[data-bs-target="#${parentCollapse.id}"]`);
-        if (parentButton) {
-          parentButton.classList.remove('collapsed');
-        }
+        if (parentButton) parentButton.classList.remove('collapsed');
       }
     }
   });
