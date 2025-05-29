@@ -44,7 +44,6 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="financeiro" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <!-- Placeholder vazio -->
               <span style="padding: 10px 15px; display: block; color: #ccc;">Em construção</span>
             </div>
           </div>
