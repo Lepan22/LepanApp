@@ -78,10 +78,6 @@
   background-color: var(--cor-hover);
 }
 
-.accordion-button.active {
-  background-color: var(--cor-hover);
-}
-
 .accordion-button::after {
   content: '\25BC';
   font-size: 0.8rem;
@@ -121,11 +117,18 @@
   background-color: var(--cor-submenu-hover);
 }
 
-/* Correção: link ativo do menu */
+/* Corrige links do submenu e marca o ativo */
 .sidebar a.active {
   background-color: var(--cor-hover) !important;
   color: var(--cor-texto-menu) !important;
   font-weight: bold;
+}
+
+/* CORREÇÃO FINAL: força o item principal ativo (ex: Cliente) a não ficar azul */
+.sidebar .accordion-button:not(.collapsed) {
+  background-color: var(--cor-hover) !important;
+  color: var(--cor-texto-menu) !important;
+  font-weight: bold !important;
 }
 
 /* Botão voltar */
