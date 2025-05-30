@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Cliente2s</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="assets/menu-styles.css">
-  <link rel="stylesheet" href="assets/base.css">
+  <meta charset="UTF-8" />
+  <title>Clientes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
@@ -19,38 +19,38 @@
 
       <form id="clienteForm">
         <label>Nome do condomínio/local</label>
-        <input type="text" id="nome">
+        <input type="text" id="nome" />
 
         <label>Data de cadastro</label>
-        <input type="date" id="dataCadastro">
+        <input type="date" id="dataCadastro" />
 
         <label>Tipo de cliente</label>
-        <input type="text" id="tipoCliente">
+        <input type="text" id="tipoCliente" />
 
         <label>Indicado por</label>
-        <input type="text" id="indicadoPor">
+        <input type="text" id="indicadoPor" />
 
         <h4>Contatos</h4>
         <div id="contatosContainer"></div>
         <button type="button" onclick="adicionarContato()">+ Adicionar contato</button>
 
         <label>Perfil econômico</label>
-        <input type="text" id="perfilEconomico">
+        <input type="text" id="perfilEconomico" />
 
         <label>Tamanho</label>
-        <input type="text" id="tamanho">
+        <input type="text" id="tamanho" />
 
         <label>Endereço</label>
-        <input type="text" id="endereco">
+        <input type="text" id="endereco" />
 
         <label>Região</label>
-        <input type="text" id="regiao">
+        <input type="text" id="regiao" />
 
         <label>Data do último contato</label>
-        <input type="date" id="ultimoContato">
+        <input type="date" id="ultimoContato" />
 
         <label>Observações</label>
-        <input type="text" id="observacoes">
+        <input type="text" id="observacoes" />
 
         <label>Status</label>
         <select id="status" onchange="toggleClienteAtivo()">
@@ -65,7 +65,7 @@
           <h4>Cliente Ativo</h4>
 
           <label>Nome do evento</label>
-          <input type="text" id="nomeEvento">
+          <input type="text" id="nomeEvento" />
 
           <label>Frequência</label>
           <select id="frequencia">
@@ -77,7 +77,7 @@
           </select>
 
           <label>Data do primeiro evento</label>
-          <input type="date" id="dataPrimeiroEvento">
+          <input type="date" id="dataPrimeiroEvento" />
 
           <label>Status do evento</label>
           <select id="statusEvento">
@@ -86,14 +86,14 @@
             <option>Pausado</option>
           </select>
 
-          <label>Dias da semana:</label><br>
-          <label><input type="checkbox" id="seg"> Seg</label>
-          <label><input type="checkbox" id="ter"> Ter</label>
-          <label><input type="checkbox" id="qua"> Qua</label>
-          <label><input type="checkbox" id="qui"> Qui</label>
-          <label><input type="checkbox" id="sex"> Sex</label>
-          <label><input type="checkbox" id="sab"> Sáb</label>
-          <label><input type="checkbox" id="dom"> Dom</label>
+          <label>Dias da semana:</label><br />
+          <label><input type="checkbox" id="seg" /> Seg</label>
+          <label><input type="checkbox" id="ter" /> Ter</label>
+          <label><input type="checkbox" id="qua" /> Qua</label>
+          <label><input type="checkbox" id="qui" /> Qui</label>
+          <label><input type="checkbox" id="sex" /> Sex</label>
+          <label><input type="checkbox" id="sab" /> Sáb</label>
+          <label><input type="checkbox" id="dom" /> Dom</label>
 
           <label>Observações do evento</label>
           <textarea id="obsEvento"></textarea>
@@ -102,7 +102,7 @@
         <button type="submit">Salvar Cliente</button>
       </form>
 
-      <hr>
+      <hr />
 
       <h3>Lista de Clientes</h3>
       <table id="clientesTable">
