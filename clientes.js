@@ -4,7 +4,7 @@ const firebaseConfig = {
   authDomain: "lepanapp.firebaseapp.com",
   databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
   projectId: "lepanapp",
-  storageBucket: "lepanapp.firebasestorage.app",
+  storageBucket: "lepanapp.appspot.com",
   messagingSenderId: "542989944344",
   appId: "1:542989944344:web:576e28199960fd5440a56d"
 };
@@ -14,20 +14,42 @@ const db = firebase.database().ref("clientes");
 
 let clienteEditando = null;
 
-// Adiciona um contato dinâmico
+// Adiciona um contato dinâmico (sem classes visuais)
 function adicionarContato(data = {}) {
   const container = document.getElementById("contatosContainer");
   const div = document.createElement("div");
-  div.className = "mb-2 row gx-2";
-  div.innerHTML = `
-    <div class="col-md-3"><input type="text" class="form-control" placeholder="Nome" value="${data.nome || ""}"></div>
-    <div class="col-md-3"><input type="text" class="form-control" placeholder="Telefone" value="${data.telefone || ""}"></div>
-    <div class="col-md-3"><input type="email" class="form-control" placeholder="Email" value="${data.email || ""}"></div>
-    <div class="col-md-2"><input type="text" class="form-control" placeholder="Cargo/Função" value="${data.cargo || ""}"></div>
-    <div class="col-md-1 d-grid">
-      <button type="button" class="btn btn-danger" onclick="this.parentElement.parentElement.remove()">🗑️</button>
-    </div>
-  `;
+
+  const nome = document.createElement("input");
+  nome.type = "text";
+  nome.placeholder = "Nome";
+  nome.value = data.nome || "";
+
+  const tel = document.createElement("input");
+  tel.type = "text";
+  tel.placeholder = "Telefone";
+  tel.value = data.telefone || "";
+
+  const email = document.createElement("input");
+  email.type = "email";
+  email.placeholder = "Email";
+  email.value = data.email || "";
+
+  const cargo = document.createElement("input");
+  cargo.type = "text";
+  cargo.placeholder = "Cargo/Função";
+  cargo.value = data.cargo || "";
+
+  const btnExcluir = document.createElement("button");
+  btnExcluir.type = "button";
+  btnExcluir.textContent = "Excluir";
+  btnExcluir.onclick = () => div.remove();
+
+  div.appendChild(nome);
+  div.appendChild(tel);
+  div.appendChild(email);
+  div.appendChild(cargo);
+  div.appendChild(btnExcluir);
+
   container.appendChild(div);
 }
 
@@ -57,7 +79,7 @@ document.getElementById("clienteForm").addEventListener("submit", function (e) {
     clienteAtivo: {}
   };
 
-  // Coletar contatos
+  // Contatos
   const contatos = document.querySelectorAll("#contatosContainer > div");
   contatos.forEach(div => {
     const inputs = div.querySelectorAll("input");
@@ -69,7 +91,7 @@ document.getElementById("clienteForm").addEventListener("submit", function (e) {
     });
   });
 
-  // Cliente Ativo, se status = Fechado
+  // Cliente Ativo
   if (cliente.status === "Fechado") {
     cliente.clienteAtivo = {
       nomeEvento: document.getElementById("nomeEvento").value,
@@ -82,7 +104,6 @@ document.getElementById("clienteForm").addEventListener("submit", function (e) {
     };
   }
 
-  // Atualizar ou criar
   if (clienteEditando) {
     db.child(clienteEditando).set(cliente);
     clienteEditando = null;
@@ -102,15 +123,31 @@ db.on("value", snapshot => {
   snapshot.forEach(child => {
     const c = child.val();
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${c.nome}</td>
-      <td>${c.status}</td>
-      <td>${c.tipoCliente}</td>
-      <td>
-        <button class="btn btn-sm btn-warning" onclick="editarCliente('${child.key}')">Editar</button>
-        <button class="btn btn-sm btn-danger" onclick="excluirCliente('${child.key}')">Excluir</button>
-      </td>
-    `;
+    const tdNome = document.createElement("td");
+    tdNome.textContent = c.nome;
+
+    const tdStatus = document.createElement("td");
+    tdStatus.textContent = c.status;
+
+    const tdTipo = document.createElement("td");
+    tdTipo.textContent = c.tipoCliente;
+
+    const tdAcoes = document.createElement("td");
+    const btnEditar = document.createElement("button");
+    btnEditar.textContent = "Editar";
+    btnEditar.onclick = () => editarCliente(child.key);
+
+    const btnExcluir = document.createElement("button");
+    btnExcluir.textContent = "Excluir";
+    btnExcluir.onclick = () => excluirCliente(child.key);
+
+    tdAcoes.appendChild(btnEditar);
+    tdAcoes.appendChild(btnExcluir);
+
+    tr.appendChild(tdNome);
+    tr.appendChild(tdStatus);
+    tr.appendChild(tdTipo);
+    tr.appendChild(tdAcoes);
     tabela.appendChild(tr);
   });
 });
@@ -141,11 +178,9 @@ function editarCliente(id) {
     document.getElementById("status").value = c.status || "";
     toggleClienteAtivo();
 
-    // Contatos
     document.getElementById("contatosContainer").innerHTML = "";
     (c.contatos || []).forEach(contato => adicionarContato(contato));
 
-    // Cliente Ativo
     if (c.status === "Fechado" && c.clienteAtivo) {
       document.getElementById("nomeEvento").value = c.clienteAtivo.nomeEvento || "";
       const dias = c.clienteAtivo.diasSemana || [];
