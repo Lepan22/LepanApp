@@ -151,7 +151,7 @@
           <input type="number" id="estimativaVenda" placeholder="Estimativa Venda" step="0.01" oninput="calcularTotais()">
         </div>
 
-        <h4 class="section-title">📊 Totais do Evento</h4>
+        <h4 class="section-title">Totais do Evento</h4>
         <div class="totais-resumo">
           <span>Qtd Vendida: <strong><span id="totalVendida">0</span></strong></span>
           <span>Venda Sistema: <strong>R$ <span id="vendaSistema">0.00</span></strong></span>
@@ -181,8 +181,7 @@
 
         <h4 class="section-title">Produtos</h4>
         <div class="grupo-inline">
-          <input list="produtosList" id="produtoInput" placeholder="Digite o nome e pressione Enter" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarProduto();}">
-          <button type="button" onclick="adicionarProduto()" class="btn-cinza">+ Adicionar Produto</button>
+             <button type="button" onclick="adicionarProduto()" class="btn-cinza">+ Adicionar Produto</button>
         </div>
 
         <table>
