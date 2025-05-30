@@ -9,57 +9,6 @@
   <link rel="stylesheet" href="assets/base.css" />
 
   <style>
-    body {
-      font-size: 14px;
-    }
-
-    input, select, textarea, button {
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-
-    button {
-      background-color: #198754;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    button:hover {
-      background-color: #157347;
-    }
-
-    .totais-resumo {
-      background: #f9f9f9;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      padding: 10px;
-      margin: 10px 0;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 6px;
-      font-size: 13px;
-    }
-
-    .totais-resumo span {
-      display: block;
-    }
-
-    .grupo-flex {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      align-items: flex-start;
-    }
-
-    .grupo-flex > div {
-      flex: 1;
-      min-width: 300px;
-    }
-
     .section-title {
       font-weight: bold;
       font-size: 15px;
@@ -71,15 +20,7 @@
       font-size: 12px;
       padding: 2px 4px;
       height: 26px;
-    }
-
-    #tabelaProdutos td:nth-child(n+2):not(:last-child) {
-      width: 50px;
-    }
-
-    #tabelaProdutos td:nth-child(8),
-    #tabelaProdutos td:nth-child(9) {
-      width: 80px;
+      width: 60px;
     }
 
     #tabelaProdutos td:first-child input {
@@ -87,45 +28,72 @@
       width: 200px;
     }
 
-    #tabelaProdutos button {
-      background: transparent;
-      border: none;
-      cursor: pointer;
-    }
-
-    #tabelaProdutos button:hover {
-      background: #ffdddd;
-    }
-
-    .btn-outline {
-      background-color: white;
-      color: #0d6efd;
-      border: 1px solid #0d6efd;
-    }
-
-    .btn-outline:hover {
-      background-color: #e6f0ff;
+    #tabelaProdutos td {
+      padding: 2px;
     }
 
     table {
-      background: white;
-      border: 1px solid #ddd;
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13px;
     }
 
     th {
       background-color: #ff7f00;
       color: white;
-      padding: 8px;
+      padding: 6px;
     }
 
     td {
-      padding: 4px;
+      border: 1px solid #ddd;
     }
 
-    .form-area > div {
+    button {
+      background-color: #198754;
+      color: white;
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #146c43;
+    }
+
+    .btn-small {
+      padding: 3px 6px;
+      font-size: 12px;
+    }
+
+    .totais-resumo {
       display: flex;
-      gap: 10px;
       flex-wrap: wrap;
+      gap: 12px;
+      font-size: 13px;
+      padding: 10px;
+      background: #f5f5f5;
+      border-radius: 4px;
+    }
+
+    .totais-resumo span {
+      min-width: 180px;
+    }
+
+    .grupo-flex {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .grupo-flex > div {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    datalist {
+      display: none;
     }
   </style>
 
@@ -140,22 +108,22 @@
   <main class="main-content">
     <h2>Gestão de Evento</h2>
 
-    <form id="formGestaoEvento" class="form-area" style="display: flex; flex-direction: column; gap: 12px;">
-      <div>
-        <select id="nomeEvento" required></select>
-        <input type="date" id="data" required>
-        <select id="responsavel" required></select>
-        <select id="status" required>
+    <form id="formGestaoEvento" style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <select id="nomeEvento" required style="flex: 1;"></select>
+        <input type="date" id="data" required style="flex: 1;">
+        <select id="responsavel" required style="flex: 1;"></select>
+        <select id="status" required style="flex: 1;">
           <option value="Aberto">Aberto</option>
           <option value="Finalizado">Finalizado</option>
           <option value="Fechado">Fechado</option>
         </select>
       </div>
 
-      <div>
-        <input type="number" id="vendaPDV" placeholder="Venda PDV" step="0.01" oninput="calcularTotais()">
-        <input type="number" id="cmvReal" placeholder="CMV Real" step="0.01" disabled>
-        <input type="number" id="estimativaVenda" placeholder="Estimativa Venda" step="0.01" oninput="calcularTotais()">
+      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <input type="number" id="vendaPDV" placeholder="Venda PDV" step="0.01" oninput="calcularTotais()" style="flex: 1;">
+        <input type="number" id="cmvReal" placeholder="CMV Real" step="0.01" disabled style="flex: 1;">
+        <input type="number" id="estimativaVenda" placeholder="Estimativa Venda" step="0.01" oninput="calcularTotais()" style="flex: 1;">
       </div>
 
       <div class="totais-resumo">
@@ -174,31 +142,32 @@
         <div>
           <h4 class="section-title">Equipe</h4>
           <div id="equipeContainer"></div>
-          <button type="button" id="btnEquipe" onclick="adicionarEquipe()" class="btn-outline" disabled>+ Adicionar Equipe</button>
+          <button type="button" id="btnEquipe" onclick="adicionarEquipe()" class="btn-small" disabled>+ Adicionar Equipe</button>
         </div>
 
         <div>
           <h4 class="section-title">Logística</h4>
           <div id="logisticaContainer"></div>
-          <button type="button" id="btnLogistica" onclick="adicionarLogistica()" class="btn-outline" disabled>+ Adicionar Logística</button>
+          <button type="button" id="btnLogistica" onclick="adicionarLogistica()" class="btn-small" disabled>+ Adicionar Logística</button>
         </div>
       </div>
 
       <h4 class="section-title">Produtos</h4>
-      <button type="button" onclick="adicionarProduto()" class="btn-outline">+ Adicionar Produto</button>
+      <input list="produtosList" id="produtoInput" placeholder="Adicionar Produto" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarProduto();}">
+      <button type="button" onclick="adicionarProduto()" class="btn-small">+ Adicionar Produto</button>
 
       <table>
         <thead>
           <tr>
             <th>Produto</th>
-            <th>Qtd</th>
+            <th>Qtd Enviada</th>
             <th>Média</th>
             <th>Congelado</th>
             <th>Assado</th>
             <th>Perda</th>
-            <th>Vendida</th>
-            <th>Venda</th>
-            <th>Perda R$</th>
+            <th>Qtd Vendida</th>
+            <th>Valor Venda</th>
+            <th>Valor Perda</th>
             <th>Ações</th>
           </tr>
         </thead>
