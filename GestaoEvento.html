@@ -1,100 +1,42 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gestão de Evento</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-  <style>
-    :root { --cor-primaria: #ff7f00; --cor-secundaria: #f9f9f9; }
-    body { margin: 0; font-family: 'Segoe UI', sans-serif; }
-    .layout { display: flex; min-height: 100vh; }
-    .sidebar { width: 220px; background-color: var(--cor-primaria); color: white; padding: 20px 10px; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; justify-content: space-between; }
-    .sidebar a, .sidebar button { display: block; width: 100%; margin-bottom: 10px; text-decoration: none; font-weight: bold; border: 1px solid white; color: white; background: transparent; padding: 5px; text-align: center; border-radius: 4px; }
-    .sidebar a:hover, .sidebar button:hover { background-color: rgba(255, 255, 255, 0.1); text-decoration: none; }
-    .menu-top { margin-bottom: 20px; }
-    .submenu { margin-bottom: 20px; }
-    hr { border-top: 1px solid rgba(255, 255, 255, 0.3); margin: 10px 0; }
-    .main-content { flex-grow: 1; padding: 20px; }
-    .form-area { background: var(--cor-secundaria); padding: 10px; border-radius: 8px; margin-bottom: 15px; }
-    .section-title { margin-top: 10px; font-weight: bold; font-size: 1rem; }
-    .table th { background-color: var(--cor-primaria); color: white; font-size: 0.75rem; padding: 4px; }
-    .table td { font-size: 0.75rem; padding: 2px 4px; vertical-align: middle; }
-    .totais-resumo span { display: inline-block; margin-right: 10px; font-size: 0.75rem; }
-    .equipe-logistica { display: flex; gap: 20px; align-items: start; flex-wrap: wrap; }
-    .equipe-logistica > div { flex: 1; }
-  </style>
+
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
 </head>
 <body>
-
 <div class="layout">
-  <div class="sidebar">
-    <div>
-      <h4 class="text-center">Le PanApp</h4>
-      <div class="menu-top">
-        <a href="index.html">Home</a>
-        <a href="Cadastro.html">Cadastros</a>
-        <a href="clientes.html">Clientes</a>
-        <a href="eventos.html">Eventos</a>
-        <a href="relatorio.html">Relatórios</a>
-      </div>
-      <hr>
-      <div class="submenu">
-        <a href="GestaoEvento.html">Criar</a>
-        <a href="compra_evento.html">Compras</a>
-        <a href="controle_etapas.html">Etapas</a>
-        <a href="media_produtos.html">Média Produto</a>
-        <a href="relatorio/eventos_relatorio.html">Visão por Cliente</a>
-        <a href="relatorio/equipe_relatorio.html">Visão por Equipe</a>
-      </div>
-    </div>
-    <button onclick="history.back()">Voltar</button>
-  </div>
+  <aside class="sidebar" id="menuLateral"></aside>
 
-  <div class="main-content">
-    <h1>Gestão de Evento</h1>
-    <form id="formGestaoEvento" class="form-area">
-      <div class="row">
-        <div class="col-md-3 mb-2">
-          <label class="form-label">Nome do Evento</label>
-          <select id="nomeEvento" class="form-select form-select-sm" required></select>
-        </div>
-        <div class="col-md-3 mb-2">
-          <label class="form-label">Data</label>
-          <input type="date" id="data" class="form-control form-control-sm" required>
-        </div>
-        <div class="col-md-3 mb-2">
-          <label class="form-label">Responsável</label>
-          <select id="responsavel" class="form-select form-select-sm" required></select>
-        </div>
-        <div class="col-md-3 mb-2">
-          <label class="form-label">Status</label>
-          <select id="status" class="form-select form-select-sm" required>
-            <option value="Aberto">Aberto</option>
-            <option value="Finalizado">Finalizado</option>
-            <option value="Fechado">Fechado</option>
-          </select>
-        </div>
+  <main class="main-content">
+    <h2>Gestão de Evento</h2>
+
+    <form id="formGestaoEvento" class="form-area" style="display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <select id="nomeEvento" required style="flex: 1;"><option>Nome do Evento</option></select>
+        <input type="date" id="data" required style="flex: 1;">
+        <select id="responsavel" required style="flex: 1;"><option>Responsável</option></select>
+        <select id="status" required style="flex: 1;">
+          <option value="Aberto">Aberto</option>
+          <option value="Finalizado">Finalizado</option>
+          <option value="Fechado">Fechado</option>
+        </select>
       </div>
 
-      <div class="row">
-        <div class="col-md-4 mb-2">
-          <label class="form-label">Venda (PDV)</label>
-          <input type="number" id="vendaPDV" class="form-control form-control-sm" step="0.01" oninput="calcularTotais()">
-        </div>
-        <div class="col-md-4 mb-2">
-          <label class="form-label">CMV Real</label>
-          <input type="number" id="cmvReal" class="form-control form-control-sm" step="0.01" disabled>
-        </div>
-        <div class="col-md-4 mb-2">
-          <label class="form-label">Estimativa de Venda</label>
-          <input type="number" id="estimativaVenda" class="form-control form-control-sm" step="0.01" oninput="calcularTotais()">
-        </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <input type="number" id="vendaPDV" placeholder="Venda PDV" step="0.01" oninput="calcularTotais()" style="flex: 1;">
+        <input type="number" id="cmvReal" placeholder="CMV Real" step="0.01" disabled style="flex: 1;">
+        <input type="number" id="estimativaVenda" placeholder="Estimativa Venda" step="0.01" oninput="calcularTotais()" style="flex: 1;">
       </div>
 
-      <h4 class="section-title">📊 Totais do Evento</h4>
       <div class="totais-resumo">
         <span>Qtd Vendida: <strong><span id="totalVendida">0</span></strong></span>
         <span>Venda Sistema: <strong>R$ <span id="vendaSistema">0.00</span></strong></span>
@@ -108,22 +50,18 @@
         <span>Potencial Venda: <strong>R$ <span id="potencialVenda">0.00</span></strong></span>
       </div>
 
-      <h4 class="section-title">👥 Equipe e 🚚 Logística</h4>
-      <div class="equipe-logistica">
-        <div>
-          <div id="equipeContainer"></div>
-          <button type="button" id="btnEquipe" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarEquipe()" disabled>+ Adicionar Equipe</button>
-        </div>
-        <div>
-          <div id="logisticaContainer"></div>
-          <button type="button" id="btnLogistica" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarLogistica()" disabled>+ Adicionar Logística</button>
-        </div>
-      </div>
+      <h4 class="section-title">Equipe</h4>
+      <div id="equipeContainer"></div>
+      <button type="button" id="btnEquipe" onclick="adicionarEquipe()" disabled>+ Adicionar Equipe</button>
 
-      <h4 class="section-title">📦 Produtos</h4>
-      <button type="button" class="btn btn-sm btn-outline-primary my-2" onclick="adicionarProduto()">+ Adicionar Produto</button>
+      <h4 class="section-title">Logística</h4>
+      <div id="logisticaContainer"></div>
+      <button type="button" id="btnLogistica" onclick="adicionarLogistica()" disabled>+ Adicionar Logística</button>
 
-      <table class="table table-bordered">
+      <h4 class="section-title">Produtos</h4>
+      <button type="button" onclick="adicionarProduto()">+ Adicionar Produto</button>
+
+      <table>
         <thead>
           <tr>
             <th>Produto</th>
@@ -141,12 +79,13 @@
         <tbody id="tabelaProdutos"></tbody>
       </table>
 
-      <button type="submit" class="btn btn-success mt-2">Salvar Evento</button>
+      <button type="submit">Salvar Evento</button>
     </form>
-  </div>
+
+    <datalist id="produtosList"></datalist>
+  </main>
 </div>
 
-<datalist id="produtosList"></datalist>
 <script src="GestaoEvento.js"></script>
 </body>
 </html>
