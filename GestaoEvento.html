@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gestão de Evento</title>
+  <title>Gestão Evento</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -62,12 +62,19 @@
       display: flex;
       gap: 20px;
       flex-wrap: wrap;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
     }
 
     .grupo-flex > div {
       flex: 1;
       min-width: 300px;
+    }
+
+    .grupo-inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
     }
 
     #tabelaProdutos input {
@@ -106,7 +113,7 @@
     .section-title {
       font-weight: bold;
       font-size: 15px;
-      margin-top: 12px;
+      margin-top: 10px;
       margin-bottom: 4px;
     }
 
@@ -126,7 +133,7 @@
     <main class="main-content">
       <h2>Gestão de Evento</h2>
 
-      <form id="formGestaoEvento" style="display: flex; flex-direction: column; gap: 10px;">
+      <form id="formGestaoEvento" style="display: flex; flex-direction: column; gap: 8px;">
         <div>
           <select id="nomeEvento" required></select>
           <input type="date" id="data" required>
@@ -173,8 +180,10 @@
         </div>
 
         <h4 class="section-title">Produtos</h4>
-        <input list="produtosList" id="produtoInput" placeholder="Digite o nome e pressione Enter" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarProduto();}">
-        <button type="button" onclick="adicionarProduto()" class="btn-cinza">+ Adicionar Produto</button>
+        <div class="grupo-inline">
+          <input list="produtosList" id="produtoInput" placeholder="Digite o nome e pressione Enter" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarProduto();}">
+          <button type="button" onclick="adicionarProduto()" class="btn-cinza">+ Adicionar Produto</button>
+        </div>
 
         <table>
           <thead>
