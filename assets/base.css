@@ -1,7 +1,8 @@
-/* base.css — versão compacta e enxuta */
+/* base.css — versão compacta com fonte 12px e layout otimizado */
 
 body {
   font-family: "Segoe UI", sans-serif;
+  font-size: 12px;
   margin: 0;
   padding: 0;
   color: #333;
@@ -22,7 +23,7 @@ body {
 form#clienteForm {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px 12px;
   margin-bottom: 20px;
   align-items: flex-end;
 }
@@ -31,8 +32,8 @@ form#clienteForm input,
 form#clienteForm select,
 form#clienteForm textarea,
 form#clienteForm button {
-  padding: 6px 10px;
-  font-size: 14px;
+  padding: 4px 8px;
+  font-size: 12px;
   border-radius: 4px;
   border: 1px solid #ccc;
   box-sizing: border-box;
@@ -41,12 +42,12 @@ form#clienteForm button {
 form#clienteForm input,
 form#clienteForm select,
 form#clienteForm textarea {
-  width: 220px;
+  width: 160px;
 }
 
 form#clienteForm textarea {
   resize: vertical;
-  height: 60px;
+  height: 50px;
 }
 
 form#clienteForm button {
@@ -55,7 +56,7 @@ form#clienteForm button {
   border: none;
   cursor: pointer;
   font-weight: 500;
-  height: 34px;
+  height: 28px;
 }
 
 form#clienteForm button:hover {
@@ -65,7 +66,7 @@ form#clienteForm button:hover {
 form#clienteForm label {
   width: 100%;
   font-weight: 500;
-  margin-top: 10px;
+  margin-top: 4px;
 }
 
 #clientesAtivos {
@@ -81,29 +82,26 @@ form#clienteForm label {
 }
 
 #contatosContainer input {
-  width: 180px;
+  width: 150px;
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
   margin-top: 10px;
+  font-size: 12px;
 }
 
 table th {
   background-color: #ff7f00;
   color: white;
   text-align: left;
-  padding: 8px;
+  padding: 4px;
 }
 
 table td {
   border: 1px solid #ddd;
-  padding: 8px;
-}
-
-button {
-  border-radius: 4px;
+  padding: 4px;
 }
 
 hr {
