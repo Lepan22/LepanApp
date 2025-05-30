@@ -16,42 +16,43 @@
 
     <div class="main-content">
       <h2>Cadastro de Clientes</h2>
+
       <form id="clienteForm">
-        <label for="nome">Nome do condomínio/local</label>
+        <label>Nome do condomínio/local</label>
         <input type="text" id="nome">
 
-        <label for="dataCadastro">Data de cadastro</label>
+        <label>Data de cadastro</label>
         <input type="date" id="dataCadastro">
 
-        <label for="tipoCliente">Tipo de cliente</label>
+        <label>Tipo de cliente</label>
         <input type="text" id="tipoCliente">
 
-        <label for="indicadoPor">Indicado por</label>
+        <label>Indicado por</label>
         <input type="text" id="indicadoPor">
 
         <h4>Contatos</h4>
         <div id="contatosContainer"></div>
         <button type="button" onclick="adicionarContato()">+ Adicionar contato</button>
 
-        <label for="perfilEconomico">Perfil econômico</label>
+        <label>Perfil econômico</label>
         <input type="text" id="perfilEconomico">
 
-        <label for="tamanho">Tamanho</label>
+        <label>Tamanho</label>
         <input type="text" id="tamanho">
 
-        <label for="endereco">Endereço</label>
+        <label>Endereço</label>
         <input type="text" id="endereco">
 
-        <label for="regiao">Região</label>
+        <label>Região</label>
         <input type="text" id="regiao">
 
-        <label for="ultimoContato">Data do último contato</label>
+        <label>Data do último contato</label>
         <input type="date" id="ultimoContato">
 
-        <label for="observacoes">Observações</label>
+        <label>Observações</label>
         <input type="text" id="observacoes">
 
-        <label for="status">Status</label>
+        <label>Status</label>
         <select id="status" onchange="toggleClienteAtivo()">
           <option>Aberto</option>
           <option>Fechado</option>
@@ -63,10 +64,10 @@
         <div id="clientesAtivos" style="display:none;">
           <h4>Cliente Ativo</h4>
 
-          <label for="nomeEvento">Nome do evento</label>
+          <label>Nome do evento</label>
           <input type="text" id="nomeEvento">
 
-          <label for="frequencia">Frequência</label>
+          <label>Frequência</label>
           <select id="frequencia">
             <option>Semanal</option>
             <option>Quinzenal</option>
@@ -75,10 +76,10 @@
             <option>A Definir</option>
           </select>
 
-          <label for="dataPrimeiroEvento">Data do primeiro evento</label>
+          <label>Data do primeiro evento</label>
           <input type="date" id="dataPrimeiroEvento">
 
-          <label for="statusEvento">Status do evento</label>
+          <label>Status do evento</label>
           <select id="statusEvento">
             <option>Ativo</option>
             <option>Inativo</option>
@@ -94,7 +95,7 @@
           <label><input type="checkbox" id="sab"> Sáb</label>
           <label><input type="checkbox" id="dom"> Dom</label>
 
-          <label for="obsEvento">Observações do evento</label>
+          <label>Observações do evento</label>
           <textarea id="obsEvento"></textarea>
         </div>
 
