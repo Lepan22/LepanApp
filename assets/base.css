@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Clientes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="menu-styles.css">
+  <link rel="stylesheet" href="base.css">
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="menu.js" defer></script>
+</head>
+<body>
+  <div class="layout">
+    <div id="menuLateral" class="sidebar"></div>
+
+    <div class="main-content">
+      <h2>Cadastro de Clientes</h2>
+      <form id="clienteForm">
+        <label for="nome">Nome do condomínio/local</label>
+        <input type="text" id="nome">
+
+        <label for="dataCadastro">Data de cadastro</label>
+        <input type="date" id="dataCadastro">
+
+        <label for="tipoCliente">Tipo de cliente</label>
+        <input type="text" id="tipoCliente">
+
+        <label for="indicadoPor">Indicado por</label>
+        <input type="text" id="indicadoPor">
+
+        <h4>Contatos</h4>
+        <div id="contatosContainer"></div>
+        <button type="button" onclick="adicionarContato()">+ Adicionar contato</button>
+
+        <label for="perfilEconomico">Perfil econômico</label>
+        <input type="text" id="perfilEconomico">
+
+        <label for="tamanho">Tamanho</label>
+        <input type="text" id="tamanho">
+
+        <label for="endereco">Endereço</label>
+        <input type="text" id="endereco">
+
+        <label for="regiao">Região</label>
+        <input type="text" id="regiao">
+
+        <label for="ultimoContato">Data do último contato</label>
+        <input type="date" id="ultimoContato">
+
+        <label for="observacoes">Observações</label>
+        <input type="text" id="observacoes">
+
+        <label for="status">Status</label>
+        <select id="status" onchange="toggleClienteAtivo()">
+          <option>Aberto</option>
+          <option>Fechado</option>
+          <option>Frio</option>
+          <option>Quente</option>
+          <option>Encerrado</option>
+        </select>
+
+        <div id="clientesAtivos" style="display:none;">
+          <h4>Cliente Ativo</h4>
+
+          <label for="nomeEvento">Nome do evento</label>
+          <input type="text" id="nomeEvento">
+
+          <label for="frequencia">Frequência</label>
+          <select id="frequencia">
+            <option>Semanal</option>
+            <option>Quinzenal</option>
+            <option>Mensal</option>
+            <option>Esporádico</option>
+            <option>A Definir</option>
+          </select>
+
+          <label for="dataPrimeiroEvento">Data do primeiro evento</label>
+          <input type="date" id="dataPrimeiroEvento">
+
+          <label for="statusEvento">Status do evento</label>
+          <select id="statusEvento">
+            <option>Ativo</option>
+            <option>Inativo</option>
+            <option>Pausado</option>
+          </select>
+
+          <label>Dias da semana:</label><br>
+          <label><input type="checkbox" id="seg"> Seg</label>
+          <label><input type="checkbox" id="ter"> Ter</label>
+          <label><input type="checkbox" id="qua"> Qua</label>
+          <label><input type="checkbox" id="qui"> Qui</label>
+          <label><input type="checkbox" id="sex"> Sex</label>
+          <label><input type="checkbox" id="sab"> Sáb</label>
+          <label><input type="checkbox" id="dom"> Dom</label>
+
+          <label for="obsEvento">Observações do evento</label>
+          <textarea id="obsEvento"></textarea>
+        </div>
+
+        <button type="submit">Salvar Cliente</button>
+      </form>
+
+      <hr>
+
+      <h3>Lista de Clientes</h3>
+      <table id="clientesTable">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Status</th>
+            <th>Tipo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="clientes.js"></script>
+</body>
+</html>
