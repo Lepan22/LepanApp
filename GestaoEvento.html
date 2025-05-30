@@ -8,6 +8,31 @@
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
 
+  <style>
+    /* Estilo específico da tabela de produtos */
+    #tabelaProdutos input {
+      text-align: right;
+      font-size: 12px;
+      padding: 2px 4px;
+    }
+
+    #tabelaProdutos td:nth-child(n+2):not(:last-child) {
+      width: 50px;
+      max-width: 60px;
+    }
+
+    #tabelaProdutos td:nth-child(8),
+    #tabelaProdutos td:nth-child(9) {
+      width: 80px;
+      max-width: 90px;
+    }
+
+    #tabelaProdutos td:first-child input {
+      text-align: left;
+      width: 220px;
+    }
+  </style>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
