@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Clientes</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-  <link rel="stylesheet" href="assets/base.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="assets/menu-styles.css">
+  <link rel="stylesheet" href="assets/base.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
@@ -15,97 +15,66 @@
     <div id="menuLateral" class="sidebar"></div>
 
     <div class="main-content">
-      <h2>Cadastro de Clientes</h2>
-
       <form id="clienteForm">
-        <label>Nome do condomínio/local</label>
-        <input type="text" id="nome" />
+        <input type="text" id="nome" placeholder="Nome do condomínio/local"><br>
+        <input type="date" id="dataCadastro"><br>
+        <input type="text" id="tipoCliente" placeholder="Tipo de cliente"><br>
+        <input type="text" id="indicadoPor" placeholder="Indicado por"><br><br>
 
-        <label>Data de cadastro</label>
-        <input type="date" id="dataCadastro" />
-
-        <label>Tipo de cliente</label>
-        <input type="text" id="tipoCliente" />
-
-        <label>Indicado por</label>
-        <input type="text" id="indicadoPor" />
-
-        <h4>Contatos</h4>
+        <label>Contatos:</label>
         <div id="contatosContainer"></div>
-        <button type="button" onclick="adicionarContato()">+ Adicionar contato</button>
+        <button type="button" onclick="adicionarContato()">Adicionar contato</button><br><br>
 
-        <label>Perfil econômico</label>
-        <input type="text" id="perfilEconomico" />
+        <input type="text" id="perfilEconomico" placeholder="Perfil econômico"><br>
+        <input type="text" id="tamanho" placeholder="Tamanho"><br>
+        <input type="text" id="endereco" placeholder="Endereço"><br>
+        <input type="text" id="regiao" placeholder="Região"><br>
+        <input type="date" id="ultimoContato"><br>
+        <input type="text" id="observacoes" placeholder="Observações"><br>
 
-        <label>Tamanho</label>
-        <input type="text" id="tamanho" />
-
-        <label>Endereço</label>
-        <input type="text" id="endereco" />
-
-        <label>Região</label>
-        <input type="text" id="regiao" />
-
-        <label>Data do último contato</label>
-        <input type="date" id="ultimoContato" />
-
-        <label>Observações</label>
-        <input type="text" id="observacoes" />
-
-        <label>Status</label>
+        <label>Status:</label>
         <select id="status" onchange="toggleClienteAtivo()">
           <option>Aberto</option>
           <option>Fechado</option>
           <option>Frio</option>
           <option>Quente</option>
           <option>Encerrado</option>
-        </select>
+        </select><br><br>
 
         <div id="clientesAtivos" style="display:none;">
-          <h4>Cliente Ativo</h4>
-
-          <label>Nome do evento</label>
-          <input type="text" id="nomeEvento" />
-
-          <label>Frequência</label>
+          <input type="text" id="nomeEvento" placeholder="Nome do evento"><br>
           <select id="frequencia">
             <option>Semanal</option>
             <option>Quinzenal</option>
             <option>Mensal</option>
             <option>Esporádico</option>
             <option>A Definir</option>
-          </select>
-
-          <label>Data do primeiro evento</label>
-          <input type="date" id="dataPrimeiroEvento" />
-
-          <label>Status do evento</label>
+          </select><br>
+          <input type="date" id="dataPrimeiroEvento"><br>
           <select id="statusEvento">
             <option>Ativo</option>
             <option>Inativo</option>
             <option>Pausado</option>
-          </select>
+          </select><br>
 
-          <label>Dias da semana:</label><br />
-          <label><input type="checkbox" id="seg" /> Seg</label>
-          <label><input type="checkbox" id="ter" /> Ter</label>
-          <label><input type="checkbox" id="qua" /> Qua</label>
-          <label><input type="checkbox" id="qui" /> Qui</label>
-          <label><input type="checkbox" id="sex" /> Sex</label>
-          <label><input type="checkbox" id="sab" /> Sáb</label>
-          <label><input type="checkbox" id="dom" /> Dom</label>
+          <label>Dias da semana:</label><br>
+          <label><input type="checkbox" id="seg">Seg</label>
+          <label><input type="checkbox" id="ter">Ter</label>
+          <label><input type="checkbox" id="qua">Qua</label>
+          <label><input type="checkbox" id="qui">Qui</label>
+          <label><input type="checkbox" id="sex">Sex</label>
+          <label><input type="checkbox" id="sab">Sab</label>
+          <label><input type="checkbox" id="dom">Dom</label><br>
 
-          <label>Observações do evento</label>
-          <textarea id="obsEvento"></textarea>
+          <textarea id="obsEvento" placeholder="Observações do evento"></textarea><br>
         </div>
 
         <button type="submit">Salvar Cliente</button>
       </form>
 
-      <hr />
+      <hr>
 
-      <h3>Lista de Clientes</h3>
-      <table id="clientesTable">
+      <table id="clientesTable" border="1" cellspacing="0" cellpadding="4">
         <thead>
           <tr>
             <th>Nome</th>
