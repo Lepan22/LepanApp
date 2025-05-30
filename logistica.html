@@ -2,125 +2,52 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Logística</title>
+
+  <link rel="stylesheet" href="assets/menu-styles.css">
+  <link rel="stylesheet" href="assets/base.css">
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
-
-  <style>
-    :root {
-      --cor-primaria: #ff7f00;
-      --cor-secundaria: #f9f9f9;
-    }
-
-    body {
-      margin: 0;
-      font-family: "Segoe UI", sans-serif;
-    }
-
-    .layout {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      width: 220px;
-      background-color: var(--cor-primaria);
-      color: white;
-      padding: 20px 10px;
-    }
-
-    .main-content {
-      flex-grow: 1;
-      padding: 20px;
-    }
-
-    .form-area {
-      background: var(--cor-secundaria);
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-
-    .frete-item {
-      margin-bottom: 10px;
-      border: 1px solid #ddd;
-      padding: 10px;
-      border-radius: 6px;
-      background: #fff;
-    }
-
-    .table th {
-      background-color: var(--cor-primaria);
-      color: white;
-      font-size: 0.85rem;
-    }
-
-    .table td {
-      font-size: 0.85rem;
-      padding: 4px 6px;
-      vertical-align: middle;
-    }
-  </style>
+  <script src="assets/menu.js" defer></script>
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <h1>Logística</h1>
+      <h2>Cadastro de Prestadores</h2>
 
-      <form id="formLogistica" class="row g-2 form-area">
+      <form id="formLogistica" style="display: flex; flex-wrap: wrap; gap: 10px;">
         <input type="hidden" id="logisticaId" />
+        <input type="text" id="nome" placeholder="Nome" required />
+        <input type="text" id="tipo" placeholder="Tipo de Serviço" />
+        <input type="text" id="documento" placeholder="RG/CPF" />
+        <input type="text" id="telefone" placeholder="Telefone" />
+        <input type="text" id="classificacao" placeholder="Classificação" />
 
-        <div class="col-md-4">
-          <label class="form-label">Nome</label>
-          <input type="text" class="form-control" id="nome" required />
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Tipo de Serviço</label>
-          <input type="text" class="form-control" id="tipo" />
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">RG/CPF</label>
-          <input type="text" class="form-control" id="documento" />
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Telefone</label>
-          <input type="text" class="form-control" id="telefone" />
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Classificação</label>
-          <input type="text" class="form-control" id="classificacao" />
-        </div>
+        <label style="width: 100%;">Fretes:</label>
+        <div id="fretesContainer" style="width: 100%; display: flex; flex-direction: column; gap: 6px;"></div>
+        <button type="button" id="btnAddFrete">+ Adicionar Frete</button>
 
-        <div class="col-12">
-          <label class="form-label">Fretes</label>
-          <div id="fretesContainer"></div>
-          <button type="button" class="btn btn-sm btn-outline-primary mt-1" id="btnAddFrete">+ Adicionar Frete</button>
-        </div>
+        <textarea id="observacoes" placeholder="Observações" style="width: 100%; height: 50px;"></textarea>
 
-        <div class="col-12">
-          <label class="form-label">Observações</label>
-          <textarea class="form-control" id="observacoes" rows="2"></textarea>
-        </div>
-
-        <div class="col-12 d-flex gap-2 mt-2">
-          <button type="submit" class="btn btn-primary">Salvar</button>
-          <button type="reset" class="btn btn-secondary">Limpar</button>
+        <div style="width: 100%; display: flex; gap: 10px;">
+          <button type="submit">Salvar</button>
+          <button type="reset">Limpar</button>
         </div>
       </form>
 
-      <h2 class="mb-2">Prestadores Cadastrados</h2>
-      <table class="table table-bordered table-striped">
+      <hr>
+
+      <h2>Prestadores Cadastrados</h2>
+      <table>
         <thead>
           <tr>
             <th>Nome</th>
             <th>RG/CPF</th>
-            <th style="width: 100px;">Ações</th>
+            <th>Ações</th>
           </tr>
         </thead>
         <tbody id="tabelaLogistica"></tbody>
@@ -128,14 +55,13 @@
     </main>
   </div>
 
-  <script src="incluir-menu.js"></script>
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
       projectId: "lepanapp",
-      storageBucket: "lepanapp.firebasestorage.app",
+      storageBucket: "lepanapp.appspot.com",
       messagingSenderId: "542989944344",
       appId: "1:542989944344:web:576e28199960fd5440a56d"
     };
@@ -150,19 +76,12 @@
 
     btnAddFrete.addEventListener('click', () => {
       const freteDiv = document.createElement('div');
-      freteDiv.className = 'row g-2 frete-item';
+      freteDiv.style.display = 'flex';
+      freteDiv.style.gap = '10px';
       freteDiv.innerHTML = `
-        <div class="col-md-6">
-          <label class="form-label">Nome do Evento</label>
-          <input type="text" class="form-control frete-evento" placeholder="Nome do Evento">
-        </div>
-        <div class="col-md-4">
-          <label class="form-label">Valor</label>
-          <input type="number" class="form-control frete-valor" step="0.01">
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button type="button" class="btn btn-sm btn-danger btn-remove-frete w-100">Remover</button>
-        </div>
+        <input type="text" class="frete-evento" placeholder="Nome do Evento" style="width: 200px;">
+        <input type="number" class="frete-valor" step="0.01" placeholder="Valor" style="width: 100px;">
+        <button type="button" class="btn-remove-frete">Remover</button>
       `;
       freteDiv.querySelector('.btn-remove-frete').addEventListener('click', () => freteDiv.remove());
       fretesContainer.appendChild(freteDiv);
@@ -172,7 +91,7 @@
       e.preventDefault();
       const id = document.getElementById('logisticaId').value || db.ref('logistica').push().key;
 
-      const fretes = Array.from(document.querySelectorAll('.frete-item')).map(item => ({
+      const fretes = Array.from(document.querySelectorAll('#fretesContainer > div')).map(item => ({
         evento: item.querySelector('.frete-evento').value,
         valor: parseFloat(item.querySelector('.frete-valor').value)
       }));
@@ -204,8 +123,8 @@
             <td>${p.nome}</td>
             <td>${p.documento}</td>
             <td>
-              <button class="btn btn-sm btn-warning" onclick="editarLogistica('${id}')">Editar</button>
-              <button class="btn btn-sm btn-danger" onclick="excluirLogistica('${id}')">Excluir</button>
+              <button onclick="editarLogistica('${id}')">Editar</button>
+              <button onclick="excluirLogistica('${id}')">Excluir</button>
             </td>
           </tr>`;
           tabela.insertAdjacentHTML('beforeend', row);
@@ -227,19 +146,12 @@
         fretesContainer.innerHTML = '';
         (p.fretes || []).forEach(f => {
           const freteDiv = document.createElement('div');
-          freteDiv.className = 'row g-2 frete-item';
+          freteDiv.style.display = 'flex';
+          freteDiv.style.gap = '10px';
           freteDiv.innerHTML = `
-            <div class="col-md-6">
-              <label class="form-label">Nome do Evento</label>
-              <input type="text" class="form-control frete-evento" value="${f.evento}">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Valor</label>
-              <input type="number" class="form-control frete-valor" value="${f.valor}">
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-              <button type="button" class="btn btn-sm btn-danger btn-remove-frete w-100">Remover</button>
-            </div>
+            <input type="text" class="frete-evento" value="${f.evento}" style="width: 200px;">
+            <input type="number" class="frete-valor" value="${f.valor}" style="width: 100px;">
+            <button type="button" class="btn-remove-frete">Remover</button>
           `;
           freteDiv.querySelector('.btn-remove-frete').addEventListener('click', () => freteDiv.remove());
           fretesContainer.appendChild(freteDiv);
