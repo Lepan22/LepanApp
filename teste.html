@@ -4,75 +4,88 @@
   <meta charset="UTF-8">
   <title>Clientes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="menu-styles.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="menu.js" defer></script>
 </head>
 <body>
-  <form id="clienteForm">
-    <input type="text" id="nome" placeholder="Nome do condomínio/local" />
-    <input type="date" id="dataCadastro" />
-    <input type="text" id="tipoCliente" placeholder="Tipo de cliente" />
-    <input type="text" id="indicadoPor" placeholder="Indicado por" />
+  <div class="layout">
+    <div id="menuLateral" class="sidebar"></div>
 
-    <div id="contatosContainer"></div>
-    <button type="button" onclick="adicionarContato()">Adicionar contato</button>
+    <div class="main-content">
+      <form id="clienteForm">
+        <input type="text" id="nome" placeholder="Nome do condomínio/local"><br>
+        <input type="date" id="dataCadastro"><br>
+        <input type="text" id="tipoCliente" placeholder="Tipo de cliente"><br>
+        <input type="text" id="indicadoPor" placeholder="Indicado por"><br><br>
 
-    <input type="text" id="perfilEconomico" placeholder="Perfil econômico" />
-    <input type="text" id="tamanho" placeholder="Tamanho" />
-    <input type="text" id="endereco" placeholder="Endereço" />
-    <input type="text" id="regiao" placeholder="Região" />
-    <input type="date" id="ultimoContato" />
-    <input type="text" id="observacoes" placeholder="Observações" />
+        <label>Contatos:</label>
+        <div id="contatosContainer"></div>
+        <button type="button" onclick="adicionarContato()">Adicionar contato</button><br><br>
 
-    <select id="status" onchange="toggleClienteAtivo()">
-      <option>Aberto</option>
-      <option>Fechado</option>
-      <option>Frio</option>
-      <option>Quente</option>
-      <option>Encerrado</option>
-    </select>
+        <input type="text" id="perfilEconomico" placeholder="Perfil econômico"><br>
+        <input type="text" id="tamanho" placeholder="Tamanho"><br>
+        <input type="text" id="endereco" placeholder="Endereço"><br>
+        <input type="text" id="regiao" placeholder="Região"><br>
+        <input type="date" id="ultimoContato"><br>
+        <input type="text" id="observacoes" placeholder="Observações"><br>
 
-    <div id="clientesAtivos" style="display:none;">
-      <input type="text" id="nomeEvento" placeholder="Nome do evento" />
-      <select id="frequencia">
-        <option>Semanal</option>
-        <option>Quinzenal</option>
-        <option>Mensal</option>
-        <option>Esporádico</option>
-        <option>A Definir</option>
-      </select>
-      <input type="date" id="dataPrimeiroEvento" />
-      <select id="statusEvento">
-        <option>Ativo</option>
-        <option>Inativo</option>
-        <option>Pausado</option>
-      </select>
+        <label>Status:</label>
+        <select id="status" onchange="toggleClienteAtivo()">
+          <option>Aberto</option>
+          <option>Fechado</option>
+          <option>Frio</option>
+          <option>Quente</option>
+          <option>Encerrado</option>
+        </select><br><br>
 
-      <label><input type="checkbox" id="seg">Seg</label>
-      <label><input type="checkbox" id="ter">Ter</label>
-      <label><input type="checkbox" id="qua">Qua</label>
-      <label><input type="checkbox" id="qui">Qui</label>
-      <label><input type="checkbox" id="sex">Sex</label>
-      <label><input type="checkbox" id="sab">Sab</label>
-      <label><input type="checkbox" id="dom">Dom</label>
+        <div id="clientesAtivos" style="display:none;">
+          <input type="text" id="nomeEvento" placeholder="Nome do evento"><br>
+          <select id="frequencia">
+            <option>Semanal</option>
+            <option>Quinzenal</option>
+            <option>Mensal</option>
+            <option>Esporádico</option>
+            <option>A Definir</option>
+          </select><br>
+          <input type="date" id="dataPrimeiroEvento"><br>
+          <select id="statusEvento">
+            <option>Ativo</option>
+            <option>Inativo</option>
+            <option>Pausado</option>
+          </select><br>
 
-      <textarea id="obsEvento" placeholder="Observações do evento"></textarea>
+          <label>Dias da semana:</label><br>
+          <label><input type="checkbox" id="seg">Seg</label>
+          <label><input type="checkbox" id="ter">Ter</label>
+          <label><input type="checkbox" id="qua">Qua</label>
+          <label><input type="checkbox" id="qui">Qui</label>
+          <label><input type="checkbox" id="sex">Sex</label>
+          <label><input type="checkbox" id="sab">Sab</label>
+          <label><input type="checkbox" id="dom">Dom</label><br>
+
+          <textarea id="obsEvento" placeholder="Observações do evento"></textarea><br>
+        </div>
+
+        <button type="submit">Salvar Cliente</button>
+      </form>
+
+      <hr>
+
+      <table id="clientesTable" border="1" cellspacing="0" cellpadding="4">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Status</th>
+            <th>Tipo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
-
-    <button type="submit">Salvar Cliente</button>
-  </form>
-
-  <table id="clientesTable">
-    <thead>
-      <tr>
-        <th>Nome</th>
-        <th>Status</th>
-        <th>Tipo</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  </div>
 
   <script src="clientes.js"></script>
 </body>
