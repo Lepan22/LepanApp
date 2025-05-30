@@ -9,27 +9,116 @@
   <link rel="stylesheet" href="assets/base.css" />
 
   <style>
-    /* Estilo específico da tabela de produtos */
+    body {
+      font-size: 14px;
+    }
+
+    input, select, textarea, button {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      background-color: #198754;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #157347;
+    }
+
+    .section-title {
+      margin-top: 20px;
+      margin-bottom: 8px;
+      font-weight: bold;
+      font-size: 16px;
+    }
+
+    .totais-resumo {
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      font-size: 13px;
+    }
+
+    .totais-resumo span {
+      min-width: 160px;
+    }
+
     #tabelaProdutos input {
       text-align: right;
-      font-size: 12px;
-      padding: 2px 4px;
+      font-size: 13px;
+      height: 30px;
     }
 
     #tabelaProdutos td:nth-child(n+2):not(:last-child) {
-      width: 50px;
-      max-width: 60px;
+      width: 60px;
     }
 
     #tabelaProdutos td:nth-child(8),
     #tabelaProdutos td:nth-child(9) {
-      width: 80px;
-      max-width: 90px;
+      width: 90px;
     }
 
     #tabelaProdutos td:first-child input {
       text-align: left;
       width: 220px;
+    }
+
+    #tabelaProdutos button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+
+    #tabelaProdutos button:hover {
+      background: #ffdddd;
+    }
+
+    .btn-outline {
+      background-color: white;
+      color: #0d6efd;
+      border: 1px solid #0d6efd;
+    }
+
+    .btn-outline:hover {
+      background-color: #e6f0ff;
+    }
+
+    .layout .main-content {
+      padding: 20px;
+    }
+
+    table {
+      background: white;
+      border: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #ff7f00;
+      color: white;
+      text-align: left;
+      padding: 8px;
+    }
+
+    td {
+      padding: 4px;
+    }
+
+    .form-area > div {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
     }
   </style>
 
@@ -44,22 +133,22 @@
   <main class="main-content">
     <h2>Gestão de Evento</h2>
 
-    <form id="formGestaoEvento" class="form-area" style="display: flex; flex-direction: column; gap: 10px;">
-      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-        <select id="nomeEvento" required style="flex: 1;"><option>Nome do Evento</option></select>
-        <input type="date" id="data" required style="flex: 1;">
-        <select id="responsavel" required style="flex: 1;"><option>Responsável</option></select>
-        <select id="status" required style="flex: 1;">
+    <form id="formGestaoEvento" class="form-area" style="display: flex; flex-direction: column; gap: 12px;">
+      <div>
+        <select id="nomeEvento" required></select>
+        <input type="date" id="data" required>
+        <select id="responsavel" required></select>
+        <select id="status" required>
           <option value="Aberto">Aberto</option>
           <option value="Finalizado">Finalizado</option>
           <option value="Fechado">Fechado</option>
         </select>
       </div>
 
-      <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-        <input type="number" id="vendaPDV" placeholder="Venda PDV" step="0.01" oninput="calcularTotais()" style="flex: 1;">
-        <input type="number" id="cmvReal" placeholder="CMV Real" step="0.01" disabled style="flex: 1;">
-        <input type="number" id="estimativaVenda" placeholder="Estimativa Venda" step="0.01" oninput="calcularTotais()" style="flex: 1;">
+      <div>
+        <input type="number" id="vendaPDV" placeholder="Venda PDV" step="0.01" oninput="calcularTotais()">
+        <input type="number" id="cmvReal" placeholder="CMV Real" step="0.01" disabled>
+        <input type="number" id="estimativaVenda" placeholder="Estimativa Venda" step="0.01" oninput="calcularTotais()">
       </div>
 
       <div class="totais-resumo">
@@ -75,16 +164,15 @@
         <span>Potencial Venda: <strong>R$ <span id="potencialVenda">0.00</span></strong></span>
       </div>
 
-      <h4 class="section-title">Equipe</h4>
+      <h4 class="section-title">Equipe e 🚚 Logística</h4>
       <div id="equipeContainer"></div>
-      <button type="button" id="btnEquipe" onclick="adicionarEquipe()" disabled>+ Adicionar Equipe</button>
+      <button type="button" id="btnEquipe" onclick="adicionarEquipe()" class="btn-outline" disabled>+ Adicionar Equipe</button>
 
-      <h4 class="section-title">Logística</h4>
       <div id="logisticaContainer"></div>
-      <button type="button" id="btnLogistica" onclick="adicionarLogistica()" disabled>+ Adicionar Logística</button>
+      <button type="button" id="btnLogistica" onclick="adicionarLogistica()" class="btn-outline" disabled>+ Adicionar Logística</button>
 
-      <h4 class="section-title">Produtos</h4>
-      <button type="button" onclick="adicionarProduto()">+ Adicionar Produto</button>
+      <h4 class="section-title">📦 Produtos</h4>
+      <button type="button" onclick="adicionarProduto()" class="btn-outline">+ Adicionar Produto</button>
 
       <table>
         <thead>
