@@ -2,26 +2,78 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Teste de Menu</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Bootstrap primeiro -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-  <!-- Menu CSS depois -->
-  <link rel="stylesheet" href="menu-styles.css">
+  <title>Clientes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
+  <form id="clienteForm">
+    <input type="text" id="nome" placeholder="Nome do condomínio/local" />
+    <input type="date" id="dataCadastro" />
+    <input type="text" id="tipoCliente" placeholder="Tipo de cliente" />
+    <input type="text" id="indicadoPor" placeholder="Indicado por" />
 
-    <main class="main-content">
-      <h2>Menu funcionando</h2>
-      <p>Esta página serve apenas para testar o menu lateral padrão.</p>
-    </main>
-  </div>
+    <div id="contatosContainer"></div>
+    <button type="button" onclick="adicionarContato()">Adicionar contato</button>
 
-  <!-- Menu dinâmico -->
-  <script src="menu.js"></script>
+    <input type="text" id="perfilEconomico" placeholder="Perfil econômico" />
+    <input type="text" id="tamanho" placeholder="Tamanho" />
+    <input type="text" id="endereco" placeholder="Endereço" />
+    <input type="text" id="regiao" placeholder="Região" />
+    <input type="date" id="ultimoContato" />
+    <input type="text" id="observacoes" placeholder="Observações" />
+
+    <select id="status" onchange="toggleClienteAtivo()">
+      <option>Aberto</option>
+      <option>Fechado</option>
+      <option>Frio</option>
+      <option>Quente</option>
+      <option>Encerrado</option>
+    </select>
+
+    <div id="clientesAtivos" style="display:none;">
+      <input type="text" id="nomeEvento" placeholder="Nome do evento" />
+      <select id="frequencia">
+        <option>Semanal</option>
+        <option>Quinzenal</option>
+        <option>Mensal</option>
+        <option>Esporádico</option>
+        <option>A Definir</option>
+      </select>
+      <input type="date" id="dataPrimeiroEvento" />
+      <select id="statusEvento">
+        <option>Ativo</option>
+        <option>Inativo</option>
+        <option>Pausado</option>
+      </select>
+
+      <label><input type="checkbox" id="seg">Seg</label>
+      <label><input type="checkbox" id="ter">Ter</label>
+      <label><input type="checkbox" id="qua">Qua</label>
+      <label><input type="checkbox" id="qui">Qui</label>
+      <label><input type="checkbox" id="sex">Sex</label>
+      <label><input type="checkbox" id="sab">Sab</label>
+      <label><input type="checkbox" id="dom">Dom</label>
+
+      <textarea id="obsEvento" placeholder="Observações do evento"></textarea>
+    </div>
+
+    <button type="submit">Salvar Cliente</button>
+  </form>
+
+  <table id="clientesTable">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Status</th>
+        <th>Tipo</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="clientes.js"></script>
 </body>
 </html>
