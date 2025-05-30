@@ -1,5 +1,3 @@
-/* base.css — versão compacta com fonte 12px e layout otimizado */
-
 body {
   font-family: "Segoe UI", sans-serif;
   font-size: 12px;
@@ -69,6 +67,25 @@ form#clienteForm label {
   margin-top: 4px;
 }
 
+/* CLIENTE ATIVO - aplica mesmo estilo */
+#clientesAtivos input,
+#clientesAtivos select,
+#clientesAtivos textarea {
+  width: 160px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+#clientesAtivos label {
+  font-weight: 500;
+  margin-top: 6px;
+}
+
+#clientesAtivos textarea {
+  resize: vertical;
+  height: 50px;
+}
+
 #clientesAtivos {
   width: 100%;
   margin-top: 10px;
@@ -85,6 +102,7 @@ form#clienteForm label {
   width: 150px;
 }
 
+/* TABELA COMPACTA */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -96,12 +114,15 @@ table th {
   background-color: #ff7f00;
   color: white;
   text-align: left;
-  padding: 4px;
+  padding: 2px 6px;
+  line-height: 1.2;
 }
 
 table td {
   border: 1px solid #ddd;
-  padding: 4px;
+  padding: 2px 6px;
+  line-height: 1.2;
+  vertical-align: middle;
 }
 
 hr {
