@@ -61,7 +61,7 @@
         <label for="filtroDataFim">Data Fim:</label>
         <input type="date" id="filtroDataFim" />
 
-        <label class="destaque-compras"><input type="checkbox" id="compraGlobal" onchange="marcarTodasCompras(this.checked)"> Fazer Compras</label>
+        <label class="destaque-compras"><input type="checkbox" id="compraGlobal" onchange="marcarTodasCompras(this.checked)"> Marcar Compras</label>
       </form>
 
       <table>
@@ -109,15 +109,8 @@
     }
 
     function carregarEventos() {
-      Promise.all([
-        db.ref('eventos').once('value'),
-        db.ref('equipe').once('value'),
-        db.ref('logistica').once('value')
-      ]).then(([eventosSnap, equipeSnap, logSnap]) => {
-        const eventos = eventosSnap.val() || {};
-        const equipeDB = equipeSnap.val() || {};
-        const logisticaDB = logSnap.val() || {};
-
+      db.ref('eventos').once('value').then(snapshot => {
+        const eventos = snapshot.val() || {};
         const tabela = document.getElementById('tabelaEventos');
         const blocoListas = document.getElementById('listasEquipeLogistica');
         tabela.innerHTML = '';
@@ -136,7 +129,6 @@
           const etapas = evento.etapas || {};
           eventosCarregados.push({ id, etapas });
 
-          // Tabela principal
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${evento.nomeEvento || id}</td>
@@ -150,28 +142,26 @@
           `;
           tabela.appendChild(row);
 
-          // Lista Equipe e Logística
+          // Equipe e Logística (usando nome e rg diretamente)
           const nomesUnicos = new Set();
           const nomes = [];
 
           (evento.equipe || []).forEach(eq => {
-            const dados = eq.membroId && equipeDB[eq.membroId];
-            if (dados && dados.nomeCompleto && dados.rgCpf) {
-              const str = `${dados.nomeCompleto} - ${dados.rgCpf}`;
-              if (!nomesUnicos.has(str)) {
-                nomesUnicos.add(str);
-                nomes.push(str);
+            if (eq.nome && eq.rg) {
+              const chave = `${eq.nome} - ${eq.rg}`;
+              if (!nomesUnicos.has(chave)) {
+                nomesUnicos.add(chave);
+                nomes.push(chave);
               }
             }
           });
 
           (evento.logistica || []).forEach(log => {
-            const dados = log.prestadorId && logisticaDB[log.prestadorId];
-            if (dados && dados.nome && dados.rgCpf) {
-              const str = `${dados.nome} - ${dados.rgCpf}`;
-              if (!nomesUnicos.has(str)) {
-                nomesUnicos.add(str);
-                nomes.push(str);
+            if (log.nome && log.rg) {
+              const chave = `${log.nome} - ${log.rg}`;
+              if (!nomesUnicos.has(chave)) {
+                nomesUnicos.add(chave);
+                nomes.push(chave);
               }
             }
           });
