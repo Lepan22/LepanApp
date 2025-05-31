@@ -32,6 +32,8 @@
 
         <label for="filtroDataFim">Data Fim:</label>
         <input type="date" id="filtroDataFim" />
+
+        <label><input type="checkbox" id="compraGlobal" onchange="marcarTodasCompras(this.checked)"> Marcar Compras</label>
       </form>
 
       <table>
@@ -44,7 +46,6 @@
             <th>Logística</th>
             <th>Cliente</th>
             <th>Divulgação</th>
-            <th>Compra</th>
             <th>Gestão</th>
           </tr>
         </thead>
@@ -66,6 +67,7 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    let eventosCarregados = [];
 
     function formatDateBR(dataISO) {
       if (!dataISO) return '';
@@ -83,6 +85,7 @@
       db.ref('eventos').once('value').then(snapshot => {
         const tabela = document.getElementById('tabelaEventos');
         tabela.innerHTML = '';
+        eventosCarregados = [];
 
         const statusFiltro = document.getElementById('filtroStatus').value;
         const dataInicio = document.getElementById('filtroDataInicio').value;
@@ -104,6 +107,8 @@
             compraInsumos: false
           };
 
+          eventosCarregados.push({ id, etapas });
+
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${evento.nomeEvento || id}</td>
@@ -113,7 +118,6 @@
             <td><input type="checkbox" ${etapas.logisticaDefinida ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'logisticaDefinida', this.checked)"></td>
             <td><input type="checkbox" ${etapas.clienteConfirmado ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'clienteConfirmado', this.checked)"></td>
             <td><input type="checkbox" ${etapas.divulgacaoRealizada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'divulgacaoRealizada', this.checked)"></td>
-            <td><input type="checkbox" ${etapas.compraInsumos ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'compraInsumos', this.checked)"></td>
             <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
           `;
           tabela.appendChild(row);
@@ -131,20 +135,26 @@
       window.location.href = `GestaoEvento.html?id=${id}`;
     }
 
+    function marcarTodasCompras(valor) {
+      eventosCarregados.forEach(ev => {
+        atualizarEtapa(ev.id, 'compraInsumos', valor);
+      });
+    }
+
     document.getElementById('filtroStatus').addEventListener('change', carregarEventos);
     document.getElementById('filtroDataInicio').addEventListener('change', carregarEventos);
     document.getElementById('filtroDataFim').addEventListener('change', carregarEventos);
 
     document.addEventListener('DOMContentLoaded', () => {
       const hoje = new Date();
-      const dia = hoje.getDay();
-      const inicio = new Date(hoje);
-      inicio.setDate(hoje.getDate() - dia);
-      const fim = new Date(inicio);
-      fim.setDate(inicio.getDate() + 6);
+      const diaSemana = hoje.getDay();
+      const segunda = new Date(hoje);
+      segunda.setDate(hoje.getDate() - ((diaSemana + 6) % 7));
+      const dataFim = new Date(segunda);
+      dataFim.setDate(segunda.getDate() + 8);
 
-      document.getElementById('filtroDataInicio').value = inicio.toISOString().split('T')[0];
-      document.getElementById('filtroDataFim').value = fim.toISOString().split('T')[0];
+      document.getElementById('filtroDataInicio').value = segunda.toISOString().split('T')[0];
+      document.getElementById('filtroDataFim').value = dataFim.toISOString().split('T')[0];
 
       carregarEventos();
     });
