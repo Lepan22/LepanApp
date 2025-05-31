@@ -3,13 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Controle Etapas</title>
+  <title>Controle de Etapas</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
+  <style>
+    .destaque-compras {
+      background-color: #ffcc80;
+      border: 2px solid #ff9800;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .bloco-lista {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+    }
+    .titulo-evento {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .copiar-btn {
+      background: #ff9800;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -33,7 +61,7 @@
         <label for="filtroDataFim">Data Fim:</label>
         <input type="date" id="filtroDataFim" />
 
-        <label><input type="checkbox" id="compraGlobal" onchange="marcarTodasCompras(this.checked)"> Marcar Compras</label>
+        <label class="destaque-compras"><input type="checkbox" id="compraGlobal" onchange="marcarTodasCompras(this.checked)"> Marcar Compras</label>
       </form>
 
       <table>
@@ -51,6 +79,8 @@
         </thead>
         <tbody id="tabelaEventos"></tbody>
       </table>
+
+      <div id="listasEquipeLogistica" class="bloco-lista"></div>
     </main>
   </div>
 
@@ -84,7 +114,9 @@
     function carregarEventos() {
       db.ref('eventos').once('value').then(snapshot => {
         const tabela = document.getElementById('tabelaEventos');
+        const blocoListas = document.getElementById('listasEquipeLogistica');
         tabela.innerHTML = '';
+        blocoListas.innerHTML = '';
         eventosCarregados = [];
 
         const statusFiltro = document.getElementById('filtroStatus').value;
@@ -98,17 +130,10 @@
           if (statusFiltro !== 'Todos' && evento.status !== statusFiltro) return;
           if (!isWithinRange(evento.data, dataInicio, dataFim)) return;
 
-          const etapas = evento.etapas || {
-            produtosDefinidos: false,
-            equipeConfirmada: false,
-            logisticaDefinida: false,
-            clienteConfirmado: false,
-            divulgacaoRealizada: false,
-            compraInsumos: false
-          };
-
+          const etapas = evento.etapas || {};
           eventosCarregados.push({ id, etapas });
 
+          // Tabela
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${evento.nomeEvento || id}</td>
@@ -121,6 +146,41 @@
             <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
           `;
           tabela.appendChild(row);
+
+          // Equipe + Logística
+          const listaEquipe = new Set();
+          const listaLog = new Set();
+          const nomes = [];
+
+          (evento.equipe || []).forEach(p => {
+            if (p.nome && p.rg) {
+              const chave = `${p.nome} - ${p.rg}`;
+              if (!listaEquipe.has(chave)) {
+                listaEquipe.add(chave);
+                nomes.push(chave);
+              }
+            }
+          });
+          (evento.logistica || []).forEach(p => {
+            if (p.nome && p.rg) {
+              const chave = `${p.nome} - ${p.rg}`;
+              if (!listaLog.has(chave) && !listaEquipe.has(chave)) {
+                listaLog.add(chave);
+                nomes.push(chave);
+              }
+            }
+          });
+
+          if (nomes.length > 0) {
+            const div = document.createElement('div');
+            const texto = nomes.join('\n');
+            div.innerHTML = `
+              <div class="titulo-evento">${evento.nomeEvento || id} (${formatDateBR(evento.data)})</div>
+              <pre>${texto}</pre>
+              <button class="copiar-btn" onclick="copiarTexto(\`${texto.replace(/\n/g, '\\n')}\`)">Copiar</button>
+            `;
+            blocoListas.appendChild(div);
+          }
         });
       });
     }
@@ -139,6 +199,12 @@
       eventosCarregados.forEach(ev => {
         atualizarEtapa(ev.id, 'compraInsumos', valor);
       });
+    }
+
+    function copiarTexto(texto) {
+      navigator.clipboard.writeText(texto)
+        .then(() => alert('Lista copiada com sucesso!'))
+        .catch(err => alert('Erro ao copiar.'));
     }
 
     document.getElementById('filtroStatus').addEventListener('change', carregarEventos);
