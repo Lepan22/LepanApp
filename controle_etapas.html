@@ -89,10 +89,7 @@
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d"
+      projectId: "lepanapp"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -112,7 +109,15 @@
     }
 
     function carregarEventos() {
-      db.ref('eventos').once('value').then(snapshot => {
+      Promise.all([
+        db.ref('eventos').once('value'),
+        db.ref('equipe').once('value'),
+        db.ref('logistica').once('value')
+      ]).then(([eventosSnap, equipeSnap, logSnap]) => {
+        const eventos = eventosSnap.val() || {};
+        const equipeDB = equipeSnap.val() || {};
+        const logisticaDB = logSnap.val() || {};
+
         const tabela = document.getElementById('tabelaEventos');
         const blocoListas = document.getElementById('listasEquipeLogistica');
         tabela.innerHTML = '';
@@ -123,17 +128,15 @@
         const dataInicio = document.getElementById('filtroDataInicio').value;
         const dataFim = document.getElementById('filtroDataFim').value;
 
-        snapshot.forEach(child => {
-          const evento = child.val();
-          const id = child.key;
-
-          if (statusFiltro !== 'Todos' && evento.status !== statusFiltro) return;
-          if (!isWithinRange(evento.data, dataInicio, dataFim)) return;
+        for (let id in eventos) {
+          const evento = eventos[id];
+          if (statusFiltro !== 'Todos' && evento.status !== statusFiltro) continue;
+          if (!isWithinRange(evento.data, dataInicio, dataFim)) continue;
 
           const etapas = evento.etapas || {};
           eventosCarregados.push({ id, etapas });
 
-          // Tabela
+          // Tabela principal
           const row = document.createElement('tr');
           row.innerHTML = `
             <td>${evento.nomeEvento || id}</td>
@@ -147,26 +150,28 @@
           `;
           tabela.appendChild(row);
 
-          // Equipe + Logística
-          const listaEquipe = new Set();
-          const listaLog = new Set();
+          // Lista Equipe e Logística
+          const nomesUnicos = new Set();
           const nomes = [];
 
-          (evento.equipe || []).forEach(p => {
-            if (p.nome && p.rg) {
-              const chave = `${p.nome} - ${p.rg}`;
-              if (!listaEquipe.has(chave)) {
-                listaEquipe.add(chave);
-                nomes.push(chave);
+          (evento.equipe || []).forEach(eq => {
+            const dados = eq.membroId && equipeDB[eq.membroId];
+            if (dados && dados.nomeCompleto && dados.rgCpf) {
+              const str = `${dados.nomeCompleto} - ${dados.rgCpf}`;
+              if (!nomesUnicos.has(str)) {
+                nomesUnicos.add(str);
+                nomes.push(str);
               }
             }
           });
-          (evento.logistica || []).forEach(p => {
-            if (p.nome && p.rg) {
-              const chave = `${p.nome} - ${p.rg}`;
-              if (!listaLog.has(chave) && !listaEquipe.has(chave)) {
-                listaLog.add(chave);
-                nomes.push(chave);
+
+          (evento.logistica || []).forEach(log => {
+            const dados = log.prestadorId && logisticaDB[log.prestadorId];
+            if (dados && dados.nome && dados.rgCpf) {
+              const str = `${dados.nome} - ${dados.rgCpf}`;
+              if (!nomesUnicos.has(str)) {
+                nomesUnicos.add(str);
+                nomes.push(str);
               }
             }
           });
@@ -181,7 +186,7 @@
             `;
             blocoListas.appendChild(div);
           }
-        });
+        }
       });
     }
 
