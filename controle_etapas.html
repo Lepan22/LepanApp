@@ -1,3 +1,4 @@
+<!-- controle_etapas.html - Atualizado com listagem real de equipe e logística -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -108,76 +109,84 @@
       return (!inicio || data >= new Date(inicio)) && (!fim || data <= new Date(fim));
     }
 
-    function carregarEventos() {
-      db.ref('eventos').once('value').then(snapshot => {
-        const eventos = snapshot.val() || {};
-        const tabela = document.getElementById('tabelaEventos');
-        const blocoListas = document.getElementById('listasEquipeLogistica');
-        tabela.innerHTML = '';
-        blocoListas.innerHTML = '';
-        eventosCarregados = [];
+    async function carregarEventos() {
+      const [snapshotEventos, snapshotEquipe, snapshotLogistica] = await Promise.all([
+        db.ref('eventos').once('value'),
+        db.ref('equipe').once('value'),
+        db.ref('logistica').once('value')
+      ]);
 
-        const statusFiltro = document.getElementById('filtroStatus').value;
-        const dataInicio = document.getElementById('filtroDataInicio').value;
-        const dataFim = document.getElementById('filtroDataFim').value;
+      const eventos = snapshotEventos.val() || {};
+      const equipeDB = snapshotEquipe.val() || {};
+      const logisticaDB = snapshotLogistica.val() || {};
 
-        for (let id in eventos) {
-          const evento = eventos[id];
-          if (statusFiltro !== 'Todos' && evento.status !== statusFiltro) continue;
-          if (!isWithinRange(evento.data, dataInicio, dataFim)) continue;
+      const tabela = document.getElementById('tabelaEventos');
+      const blocoListas = document.getElementById('listasEquipeLogistica');
+      tabela.innerHTML = '';
+      blocoListas.innerHTML = '';
+      eventosCarregados = [];
 
-          const etapas = evento.etapas || {};
-          eventosCarregados.push({ id, etapas });
+      const statusFiltro = document.getElementById('filtroStatus').value;
+      const dataInicio = document.getElementById('filtroDataInicio').value;
+      const dataFim = document.getElementById('filtroDataFim').value;
 
-          const row = document.createElement('tr');
-          row.innerHTML = `
-            <td>${evento.nomeEvento || id}</td>
-            <td>${evento.data ? formatDateBR(evento.data) : '-'}</td>
-            <td><input type="checkbox" ${etapas.produtosDefinidos ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'produtosDefinidos', this.checked)"></td>
-            <td><input type="checkbox" ${etapas.equipeConfirmada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'equipeConfirmada', this.checked)"></td>
-            <td><input type="checkbox" ${etapas.logisticaDefinida ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'logisticaDefinida', this.checked)"></td>
-            <td><input type="checkbox" ${etapas.clienteConfirmado ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'clienteConfirmado', this.checked)"></td>
-            <td><input type="checkbox" ${etapas.divulgacaoRealizada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'divulgacaoRealizada', this.checked)"></td>
-            <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
-          `;
-          tabela.appendChild(row);
+      for (let id in eventos) {
+        const evento = eventos[id];
+        if (statusFiltro !== 'Todos' && evento.status !== statusFiltro) continue;
+        if (!isWithinRange(evento.data, dataInicio, dataFim)) continue;
 
-          // Equipe e Logística (usando nome e rg diretamente)
-          const nomesUnicos = new Set();
-          const nomes = [];
+        const etapas = evento.etapas || {};
+        eventosCarregados.push({ id, etapas });
 
-          (evento.equipe || []).forEach(eq => {
-            if (eq.nome && eq.rg) {
-              const chave = `${eq.nome} - ${eq.rg}`;
-              if (!nomesUnicos.has(chave)) {
-                nomesUnicos.add(chave);
-                nomes.push(chave);
-              }
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${evento.nomeEvento || id}</td>
+          <td>${evento.data ? formatDateBR(evento.data) : '-'}</td>
+          <td><input type="checkbox" ${etapas.produtosDefinidos ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'produtosDefinidos', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.equipeConfirmada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'equipeConfirmada', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.logisticaDefinida ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'logisticaDefinida', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.clienteConfirmado ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'clienteConfirmado', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.divulgacaoRealizada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'divulgacaoRealizada', this.checked)"></td>
+          <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
+        `;
+        tabela.appendChild(row);
+
+        const nomesUnicos = new Set();
+        const nomes = [];
+
+        (evento.equipe || []).forEach(eq => {
+          const dados = equipeDB[eq.membroId];
+          if (dados?.nomeCompleto && dados?.documento) {
+            const chave = `${dados.nomeCompleto} - ${dados.documento}`;
+            if (!nomesUnicos.has(chave)) {
+              nomesUnicos.add(chave);
+              nomes.push(chave);
             }
-          });
-
-          (evento.logistica || []).forEach(log => {
-            if (log.nome && log.rg) {
-              const chave = `${log.nome} - ${log.rg}`;
-              if (!nomesUnicos.has(chave)) {
-                nomesUnicos.add(chave);
-                nomes.push(chave);
-              }
-            }
-          });
-
-          if (nomes.length > 0) {
-            const div = document.createElement('div');
-            const texto = nomes.join('\n');
-            div.innerHTML = `
-              <div class="titulo-evento">${evento.nomeEvento || id} (${formatDateBR(evento.data)})</div>
-              <pre>${texto}</pre>
-              <button class="copiar-btn" onclick="copiarTexto(\`${texto.replace(/\n/g, '\\n')}\`)">Copiar</button>
-            `;
-            blocoListas.appendChild(div);
           }
+        });
+
+        (evento.logistica || []).forEach(log => {
+          const dados = logisticaDB[log.prestadorId];
+          if (dados?.nome && dados?.documento) {
+            const chave = `${dados.nome} - ${dados.documento}`;
+            if (!nomesUnicos.has(chave)) {
+              nomesUnicos.add(chave);
+              nomes.push(chave);
+            }
+          }
+        });
+
+        if (nomes.length > 0) {
+          const div = document.createElement('div');
+          const texto = nomes.join('\n');
+          div.innerHTML = `
+            <div class="titulo-evento">${evento.nomeEvento || id} (${formatDateBR(evento.data)})</div>
+            <pre>${texto}</pre>
+            <button class="copiar-btn" onclick="copiarTexto(\`${texto.replace(/\n/g, '\\n')}\`)">Copiar</button>
+          `;
+          blocoListas.appendChild(div);
         }
-      });
+      }
     }
 
     function atualizarEtapa(eventoId, etapa, valor) {
