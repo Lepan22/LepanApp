@@ -1,215 +1,247 @@
+<!-- controle_etapas.html - Atualizado com botão "Copiar Endereço" -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gestão de Evento</title>
+  <title>Controle Etapas</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
-
-  <style>
-    body {
-      font-size: 14px;
-      margin-top: 10px;
-    }
-
-    input, select, textarea, button {
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-
-    button {
-      background-color: #198754;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    button:hover {
-      background-color: #146c43;
-    }
-
-    .btn-cinza {
-      background-color: #eee;
-      color: #333;
-      border: 1px solid #ccc;
-    }
-
-    .btn-cinza:hover {
-      background-color: #ddd;
-    }
-
-    .totais-resumo {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      font-size: 13px;
-      padding: 8px;
-      background: #f5f5f5;
-      border-radius: 4px;
-      margin-bottom: 8px;
-    }
-
-    .totais-resumo span {
-      min-width: 180px;
-    }
-
-    .grupo-flex {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
-    .grupo-flex > div {
-      flex: 1;
-      min-width: 300px;
-    }
-
-    .grupo-inline {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    #tabelaProdutos input {
-      text-align: right;
-      font-size: 12px;
-      padding: 2px 4px;
-      height: 26px;
-      width: 60px;
-    }
-
-    #tabelaProdutos td:first-child input {
-      text-align: left;
-      width: 200px;
-    }
-
-    #tabelaProdutos td {
-      padding: 2px;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 13px;
-    }
-
-    th {
-      background-color: #ff7f00;
-      color: white;
-      padding: 6px;
-    }
-
-    td {
-      border: 1px solid #ddd;
-    }
-
-    .section-title {
-      font-weight: bold;
-      font-size: 15px;
-      margin-top: 10px;
-      margin-bottom: 4px;
-    }
-
-    datalist {
-      display: none;
-    }
-  </style>
-
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
+  <style>
+    .destaque-compras {
+      background-color: #ffcc80;
+      border: 2px solid #ff9800;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .bloco-lista {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+    }
+    .titulo-evento {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    .copiar-btn {
+      background: #ff9800;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      margin-left: 5px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <h2>Gestão de Evento</h2>
+      <h2>Controle de Etapas dos Eventos</h2>
 
-      <form id="formGestaoEvento" style="display: flex; flex-direction: column; gap: 8px;">
-        <div>
-          <select id="nomeEvento" required></select>
-          <input type="date" id="data" required>
-          <select id="responsavel" required></select>
-          <select id="status" required>
-            <option value="Aberto">Aberto</option>
-            <option value="Finalizado">Finalizado</option>
-            <option value="Fechado">Fechado</option>
-          </select>
-        </div>
+      <form id="filtros" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px;">
+        <label for="filtroStatus">Status:</label>
+        <select id="filtroStatus">
+          <option value="Todos">Todos</option>
+          <option value="Aberto" selected>Aberto</option>
+          <option value="Fechado">Fechado</option>
+          <option value="Finalizado">Finalizado</option>
+        </select>
 
-        <div>
-          <input type="number" id="vendaPDV" placeholder="Venda PDV" step="0.01" oninput="calcularTotais()">
-          <input type="number" id="cmvReal" placeholder="CMV Real" step="0.01" disabled>
-          <input type="number" id="estimativaVenda" placeholder="Estimativa Venda" step="0.01" oninput="calcularTotais()">
-        </div>
+        <label for="filtroDataInicio">Data Início:</label>
+        <input type="date" id="filtroDataInicio" />
 
-        <h4 class="section-title">📊 Totais do Evento</h4>
-        <div class="totais-resumo">
-          <span>Qtd Vendida: <strong><span id="totalVendida">0</span></strong></span>
-          <span>Venda Sistema: <strong>R$ <span id="vendaSistema">0.00</span></strong></span>
-          <span>Diferença PDV - Sistema: <strong>R$ <span id="diferencaVenda">0.00</span></strong></span>
-          <span>CMV: <strong>R$ <span id="cmvCalculado">0.00</span></strong></span>
-          <span>Lucro Final: <strong>R$ <span id="lucroFinal">0.00</span></strong></span>
-          <span>Custo Perda: <strong>R$ <span id="custoPerda">0.00</span></strong></span>
-          <span>Valor Assados: <strong>R$ <span id="valorAssados">0.00</span></strong></span>
-          <span>Custo Logística: <strong>R$ <span id="custoLogistica">0.00</span></strong></span>
-          <span>Custo Equipe: <strong>R$ <span id="custoEquipe">0.00</span></strong></span>
-          <span>Potencial Venda: <strong>R$ <span id="potencialVenda">0.00</span></strong></span>
-        </div>
+        <label for="filtroDataFim">Data Fim:</label>
+        <input type="date" id="filtroDataFim" />
 
-        <div class="grupo-flex">
-          <div>
-            <h4 class="section-title">Equipe</h4>
-            <div id="equipeContainer"></div>
-            <button type="button" id="btnEquipe" onclick="adicionarEquipe()" class="btn-cinza" disabled>+ Adicionar Equipe</button>
-          </div>
-
-          <div>
-            <h4 class="section-title">Logística</h4>
-            <div id="logisticaContainer"></div>
-            <button type="button" id="btnLogistica" onclick="adicionarLogistica()" class="btn-cinza" disabled>+ Adicionar Logística</button>
-          </div>
-        </div>
-
-        <h4 class="section-title">Produtos</h4>
-        <div class="grupo-inline">
-          <input list="produtosList" id="produtoInput" placeholder="Digite o nome e pressione Enter" onkeydown="if(event.key==='Enter'){event.preventDefault(); adicionarProduto();}">
-          <button type="button" onclick="adicionarProduto()" class="btn-cinza">+ Adicionar Produto</button>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th>Qtd Enviada</th>
-              <th>Média</th>
-              <th>Congelado</th>
-              <th>Assado</th>
-              <th>Perda</th>
-              <th>Qtd Vendida</th>
-              <th>Valor Venda</th>
-              <th>Valor Perda</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tabelaProdutos"></tbody>
-        </table>
-
-        <button type="submit">Salvar Evento</button>
+        <label class="destaque-compras"><input type="checkbox" id="compraGlobal" onchange="marcarTodasCompras(this.checked)"> Marcar Compras</label>
       </form>
 
-      <datalist id="produtosList"></datalist>
+      <table>
+        <thead>
+          <tr>
+            <th>Evento</th>
+            <th>Data</th>
+            <th>Produtos</th>
+            <th>Equipe</th>
+            <th>Logística</th>
+            <th>Cliente</th>
+            <th>Divulgação</th>
+            <th>Gestão</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaEventos"></tbody>
+      </table>
+
+      <div id="listasEquipeLogistica" class="bloco-lista"></div>
     </main>
   </div>
 
-  <script src="GestaoEvento.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let eventosCarregados = [];
+
+    function formatDateBR(dataISO) {
+      if (!dataISO) return '';
+      const [ano, mes, dia] = dataISO.split("-");
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    function isWithinRange(dataStr, inicio, fim) {
+      if (!dataStr) return false;
+      const data = new Date(dataStr);
+      return (!inicio || data >= new Date(inicio)) && (!fim || data <= new Date(fim));
+    }
+
+    async function carregarEventos() {
+      const [snapshotEventos, snapshotEquipe, snapshotLogistica] = await Promise.all([
+        db.ref('eventos').once('value'),
+        db.ref('equipe').once('value'),
+        db.ref('logistica').once('value')
+      ]);
+
+      const eventos = snapshotEventos.val() || {};
+      const equipeDB = snapshotEquipe.val() || {};
+      const logisticaDB = snapshotLogistica.val() || {};
+
+      const tabela = document.getElementById('tabelaEventos');
+      const blocoListas = document.getElementById('listasEquipeLogistica');
+      tabela.innerHTML = '';
+      blocoListas.innerHTML = '';
+      eventosCarregados = [];
+
+      const statusFiltro = document.getElementById('filtroStatus').value;
+      const dataInicio = document.getElementById('filtroDataInicio').value;
+      const dataFim = document.getElementById('filtroDataFim').value;
+
+      for (let id in eventos) {
+        const evento = eventos[id];
+        if (statusFiltro !== 'Todos' && evento.status !== statusFiltro) continue;
+        if (!isWithinRange(evento.data, dataInicio, dataFim)) continue;
+
+        const etapas = evento.etapas || {};
+        eventosCarregados.push({ id, etapas });
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${evento.nomeEvento || id}</td>
+          <td>${evento.data ? formatDateBR(evento.data) : '-'}</td>
+          <td><input type="checkbox" ${etapas.produtosDefinidos ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'produtosDefinidos', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.equipeConfirmada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'equipeConfirmada', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.logisticaDefinida ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'logisticaDefinida', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.clienteConfirmado ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'clienteConfirmado', this.checked)"></td>
+          <td><input type="checkbox" ${etapas.divulgacaoRealizada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'divulgacaoRealizada', this.checked)"></td>
+          <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
+          <td><button class="copiar-btn" onclick="copiarEndereco('${id}', '${evento.clienteId || ''}')">Copiar Endereço</button></td>
+        `;
+        tabela.appendChild(row);
+
+        const nomesUnicos = new Set();
+        const nomes = [];
+
+        (evento.equipe || []).forEach(eq => {
+          const dados = equipeDB[eq.membroId];
+          if (dados?.nomeCompleto && dados?.documento) {
+            const chave = `${dados.nomeCompleto} - ${dados.documento}`;
+            if (!nomesUnicos.has(chave)) {
+              nomesUnicos.add(chave);
+              nomes.push(chave);
+            }
+          }
+        });
+
+        (evento.logistica || []).forEach(log => {
+          const dados = logisticaDB[log.prestadorId];
+          if (dados?.nome && dados?.documento) {
+            const chave = `${dados.nome} - ${dados.documento}`;
+            if (!nomesUnicos.has(chave)) {
+              nomesUnicos.add(chave);
+              nomes.push(chave);
+            }
+          }
+        });
+
+        if (nomes.length > 0) {
+          const div = document.createElement('div');
+          const texto = nomes.join('\n');
+          div.innerHTML = `
+            <div class="titulo-evento">${evento.nomeEvento || id} (${formatDateBR(evento.data)})</div>
+            <pre>${texto}</pre>
+            <button class="copiar-btn" onclick="copiarTexto(\`${texto.replace(/\n/g, '\\n')}\`)">Copiar</button>
+          `;
+          blocoListas.appendChild(div);
+        }
+      }
+    }
+
+    function copiarEndereco(eventoId, clienteId) {
+      if (!clienteId) return alert('Cliente não definido no evento.');
+
+      db.ref(`clientes/${clienteId}`).once('value').then(snapshot => {
+        const cliente = snapshot.val();
+        const texto = `${cliente?.nome || ''}\n${cliente?.enderecoCompleto || ''}`;
+        navigator.clipboard.writeText(texto)
+          .then(() => alert('Endereço copiado!'))
+          .catch(() => alert('Erro ao copiar endereço.'));
+      });
+    }
+
+    function atualizarEtapa(eventoId, etapa, valor) {
+      db.ref(`eventos/${eventoId}/etapas`).update({ [etapa]: valor })
+        .then(() => console.log(`Etapa ${etapa} atualizada para ${valor}`))
+        .catch(err => console.error('Erro ao atualizar:', err));
+    }
+
+    function gestaoEvento(id) {
+      window.location.href = `GestaoEvento.html?id=${id}`;
+    }
+
+    function marcarTodasCompras(valor) {
+      eventosCarregados.forEach(ev => {
+        atualizarEtapa(ev.id, 'compraInsumos', valor);
+      });
+    }
+
+    function copiarTexto(texto) {
+      navigator.clipboard.writeText(texto)
+        .then(() => alert('Lista copiada com sucesso!'))
+        .catch(err => alert('Erro ao copiar.'));
+    }
+
+    document.getElementById('filtroStatus').addEventListener('change', carregarEventos);
+    document.getElementById('filtroDataInicio').addEventListener('change', carregarEventos);
+    document.getElementById('filtroDataFim').addEventListener('change', carregarEventos);
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const segunda = new Date(hoje);
+      segunda.setDate(hoje.getDate() - ((diaSemana + 6) % 7));
+      const dataFim = new Date(segunda);
+      dataFim.setDate(segunda.getDate() + 8);
+
+      document.getElementById('filtroDataInicio').value = segunda.toISOString().split('T')[0];
+      document.getElementById('filtroDataFim').value = dataFim.toISOString().split('T')[0];
+
+      carregarEventos();
+    });
+  </script>
 </body>
 </html>
