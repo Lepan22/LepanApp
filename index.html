@@ -70,8 +70,8 @@
       <!-- KPIs de Eventos e Vendas -->
       <div class="kpi-linha" style="margin-top: 4px;">
         <div class="kpi">
-          <h2>Eventos Estimados no Mês</h2>
-          <p id="kpi-estimado">0</p>
+          <h2>Total de Eventos no Ano</h2>
+          <p id="kpi-eventos-ano">0</p>
         </div>
         <div class="kpi">
           <h2>Eventos Realizados no Mês</h2>
@@ -85,8 +85,8 @@
 
       <div class="kpi-linha" style="margin-top: 4px;">
         <div class="kpi">
-          <h2>Estimativa Venda Mês</h2>
-          <p id="kpi-estimativa-mes">R$ 0,00</p>
+          <h2>Total de Venda no Ano</h2>
+          <p id="kpi-venda-ano">R$ 0,00</p>
         </div>
         <div class="kpi">
           <h2>Venda Real Mês</h2>
@@ -141,19 +141,14 @@
     }
 
     async function carregarKPIs() {
-      let estimado = 0, realizado = 0, semana = 0;
-      let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
+      let eventosAno = 0, realizadoMes = 0, semana = 0;
+      let vendaAno = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
       let clientesAtivos = 0, clientesNovos = 0, clientesQuentes = 0, clientesPerdidos = 0;
 
-      const [projSnap, previsaoSnap, eventosSnap, clientesSnap] = await Promise.all([
-        db.ref('projecao_eventos/' + currentMonthPath).once('value'),
-        db.ref('previsao_receita/' + currentMonthPath + '/total').once('value'),
+      const [eventosSnap, clientesSnap] = await Promise.all([
         db.ref('eventos').once('value'),
         db.ref('clientes').once('value')
       ]);
-
-      if (projSnap.exists()) estimado = Object.keys(projSnap.val()).length;
-      estimativaMes = previsaoSnap.val() || 0;
 
       const eventos = eventosSnap.val();
       if (eventos) {
@@ -161,10 +156,7 @@
           if (!evento.data) return;
           const dataEvento = formatDateBR(evento.data);
           const status = (evento.status || '').toLowerCase();
-
-          const dentroDoMes = dataEvento.getFullYear() === now.getFullYear() &&
-                              dataEvento.getMonth() === now.getMonth();
-          const dentroDaSemana = dataEvento >= weekStart && dataEvento <= weekEnd;
+          const finalizado = (status === "fechado" || status === "finalizado");
 
           const vendaPDV = Number(evento.vendaPDV || 0);
           const cmvReal = Number(evento.cmvReal || 0);
@@ -172,13 +164,18 @@
           const custoLogistica = (evento.logistica || []).reduce((s, l) => s + (Number(l.valor) || 0), 0);
           const lucroCalculado = vendaPDV - cmvReal - custoLogistica - custoEquipe;
 
-          if (dentroDoMes && (status === "fechado" || status === "finalizado")) {
-            realizado++;
+          if (dataEvento.getFullYear() === currentYear && finalizado) {
+            eventosAno++;
+            vendaAno += vendaPDV;
+          }
+
+          if (dataEvento.getFullYear() === now.getFullYear() && dataEvento.getMonth() === now.getMonth() && finalizado) {
+            realizadoMes++;
             vendaMes += vendaPDV;
             lucroMes += lucroCalculado;
           }
 
-          if (dentroDaSemana) {
+          if (dataEvento >= weekStart && dataEvento <= weekEnd) {
             estimativaSemana += Number(evento.estimativaVenda || 0);
             semana++;
           }
@@ -202,15 +199,17 @@
         });
       }
 
+      // Clientes
       document.getElementById('kpi-clientes-ativos').innerText = clientesAtivos;
       document.getElementById('kpi-clientes-novos').innerText = clientesNovos;
       document.getElementById('kpi-clientes-quentes').innerText = clientesQuentes;
       document.getElementById('kpi-clientes-perdidos').innerText = clientesPerdidos;
 
-      document.getElementById('kpi-estimado').innerText = estimado;
-      document.getElementById('kpi-realizado').innerText = realizado;
+      // Eventos e Vendas
+      document.getElementById('kpi-eventos-ano').innerText = eventosAno;
+      document.getElementById('kpi-realizado').innerText = realizadoMes;
       document.getElementById('kpi-semana').innerText = semana;
-      document.getElementById('kpi-estimativa-mes').innerText = formatCurrency(estimativaMes);
+      document.getElementById('kpi-venda-ano').innerText = formatCurrency(vendaAno);
       document.getElementById('kpi-venda-mes').innerText = formatCurrency(vendaMes);
       document.getElementById('kpi-estimativa-semana').innerText = formatCurrency(estimativaSemana);
       document.getElementById('kpi-lucro-mes').innerText = formatCurrency(lucroMes);
