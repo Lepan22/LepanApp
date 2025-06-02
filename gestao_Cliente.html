@@ -1,38 +1,29 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Clientes Ativos</title>
-  <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
   <script type="module" src="assets/gestao_cliente.js"></script>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
-    
-    <main class="main-content">
-      <div class="page-header">
-        <h1>Clientes Ativos</h1>
-      </div>
+  <main class="container">
+    <h1>Clientes Ativos</h1>
 
-      <div class="card">
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Data 1º Evento</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="listaClientesAtivos">
-            <tr><td colspan="4">Carregando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </main>
-  </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Data 1º Evento</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="listaClientesAtivos">
+        <tr><td colspan="4">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </main>
 </body>
 </html>
