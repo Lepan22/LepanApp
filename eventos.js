@@ -89,9 +89,9 @@ function calcularKPIs() {
   const hoje = new Date();
   const currentMonthPath = `${hoje.getFullYear()}_${String(hoje.getMonth() + 1).padStart(2, '0')}`;
   const semanaInicio = new Date(hoje);
-  semanaInicio.setDate(semanaInicio.getDate() - semanaInicio.getDay());
+  semanaInicio.setDate(semanaInicio.getDate() - semanaInicio.getDay() +1);
   const semanaFim = new Date(semanaInicio);
-  semanaFim.setDate(semanaFim.getDate() + 6);
+  semanaFim.setDate(semanaFim.getDate() + 7);
 
   let estimado = 0, realizado = 0, semana = 0;
   let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
