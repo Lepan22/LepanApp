@@ -1,128 +1,67 @@
+// Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
   authDomain: "lepanapp.firebaseapp.com",
   databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-  projectId: "lepanapp"
+  projectId: "lepanapp",
+  storageBucket: "lepanapp.appspot.com",
+  messagingSenderId: "542989944344",
+  appId: "1:542989944344:web:576e28199960fd5440a56d"
 };
 
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const db = firebase.database().ref("clientes");
 
-const tabela = document.querySelector("#clientesTable tbody");
-const filtroInput = document.getElementById("filtroNome");
-let clientes = [];
+let clienteEditando = null;
 
-function carregarClientes() {
-  db.ref("clientes").once("value").then(snapshot => {
-    clientes = [];
-    snapshot.forEach(child => {
-      const cliente = child.val();
-      cliente.id = child.key;
-      clientes.push(cliente);
-    });
-
-    // Ordenar por nome
-    clientes.sort((a, b) => (a.nome || "").localeCompare(b.nome || ""));
-
-    exibirClientes(clientes);
-  });
-}
-
-function exibirClientes(lista) {
-  tabela.innerHTML = "";
-  lista.forEach(cliente => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${cliente.nome || ""}</td>
-      <td>${cliente.status || ""}</td>
-      <td>${cliente.tipoCliente || ""}</td>
-      <td>
-        <button onclick="editarCliente('${cliente.id}')">Editar</button>
-        <button onclick="excluirCliente('${cliente.id}')">Excluir</button>
-      </td>
-    `;
-    tabela.appendChild(tr);
-  });
-}
-
-function editarCliente(id) {
-  db.ref("clientes/" + id).once("value").then(snapshot => {
-    const cliente = snapshot.val();
-    document.getElementById("nome").value = cliente.nome || "";
-    document.getElementById("dataCadastro").value = cliente.dataCadastro || "";
-    document.getElementById("tipoCliente").value = cliente.tipoCliente || "";
-    document.getElementById("indicadoPor").value = cliente.indicadoPor || "";
-    document.getElementById("perfilEconomico").value = cliente.perfilEconomico || "";
-    document.getElementById("tamanho").value = cliente.tamanho || "";
-    document.getElementById("endereco").value = cliente.endereco || "";
-    document.getElementById("regiao").value = cliente.regiao || "";
-    document.getElementById("ultimoContato").value = cliente.ultimoContato || "";
-    document.getElementById("observacoes").value = cliente.observacoes || "";
-    document.getElementById("status").value = cliente.status || "Aberto";
-
-    if (cliente.status === "Fechado") {
-      toggleClienteAtivo(true);
-      document.getElementById("nomeEvento").value = cliente.nomeEvento || "";
-      document.getElementById("frequencia").value = cliente.frequencia || "";
-      document.getElementById("dataPrimeiroEvento").value = cliente.dataPrimeiroEvento || "";
-      document.getElementById("statusEvento").value = cliente.statusEvento || "";
-      document.getElementById("obsEvento").value = cliente.obsEvento || "";
-
-      const dias = cliente.diasSemana || [];
-      document.getElementById("seg").checked = dias.includes("Seg");
-      document.getElementById("ter").checked = dias.includes("Ter");
-      document.getElementById("qua").checked = dias.includes("Qua");
-      document.getElementById("qui").checked = dias.includes("Qui");
-      document.getElementById("sex").checked = dias.includes("Sex");
-      document.getElementById("sab").checked = dias.includes("Sab");
-      document.getElementById("dom").checked = dias.includes("Dom");
-    } else {
-      toggleClienteAtivo(false);
-    }
-
-    document.getElementById("clienteForm").dataset.id = id;
-  });
-}
-
-function excluirCliente(id) {
-  if (confirm("Deseja excluir este cliente?")) {
-    db.ref("clientes/" + id).remove().then(() => {
-      carregarClientes();
-    });
-  }
-}
-
-function toggleClienteAtivo(forceShow = null) {
-  const status = document.getElementById("status").value;
-  const divAtivos = document.getElementById("clientesAtivos");
-  if (forceShow !== null) {
-    divAtivos.style.display = forceShow ? "block" : "none";
-    return;
-  }
-  divAtivos.style.display = status === "Fechado" ? "block" : "none";
-}
-
-function adicionarContato() {
+// Adiciona um contato dinâmico (sem classes visuais)
+function adicionarContato(data = {}) {
   const container = document.getElementById("contatosContainer");
-  const input = document.createElement("input");
-  input.type = "text";
-  input.placeholder = "Nome, Telefone, Email, Cargo";
-  container.appendChild(input);
-  container.appendChild(document.createElement("br"));
+  const div = document.createElement("div");
+
+  const nome = document.createElement("input");
+  nome.type = "text";
+  nome.placeholder = "Nome";
+  nome.value = data.nome || "";
+
+  const tel = document.createElement("input");
+  tel.type = "text";
+  tel.placeholder = "Telefone";
+  tel.value = data.telefone || "";
+
+  const email = document.createElement("input");
+  email.type = "email";
+  email.placeholder = "Email";
+  email.value = data.email || "";
+
+  const cargo = document.createElement("input");
+  cargo.type = "text";
+  cargo.placeholder = "Cargo/Função";
+  cargo.value = data.cargo || "";
+
+  const btnExcluir = document.createElement("button");
+  btnExcluir.type = "button";
+  btnExcluir.textContent = "Excluir";
+  btnExcluir.onclick = () => div.remove();
+
+  div.appendChild(nome);
+  div.appendChild(tel);
+  div.appendChild(email);
+  div.appendChild(cargo);
+  div.appendChild(btnExcluir);
+
+  container.appendChild(div);
 }
 
+// Mostrar/ocultar bloco de Clientes Ativos
+function toggleClienteAtivo() {
+  const status = document.getElementById("status").value;
+  document.getElementById("clientesAtivos").style.display = (status === "Fechado") ? "block" : "none";
+}
+
+// Salvar cliente (novo ou edição)
 document.getElementById("clienteForm").addEventListener("submit", function (e) {
   e.preventDefault();
-
-  const id = this.dataset.id || db.ref("clientes").push().key;
-  const diasSemana = [];
-  if (document.getElementById("seg").checked) diasSemana.push("Seg");
-  if (document.getElementById("ter").checked) diasSemana.push("Ter");
-  if (document.getElementById("qua").checked) diasSemana.push("Qua");
-  if (document.getElementById("qui").checked) diasSemana.push("Qui");
-  if (document.getElementById("sex").checked) diasSemana.push("Sex");
-  if (document.getElementById("sab").checked) diasSemana.push("Sab");
-  if (document.getElementById("dom").checked) diasSemana.push("Dom");
 
   const cliente = {
     nome: document.getElementById("nome").value,
@@ -136,35 +75,123 @@ document.getElementById("clienteForm").addEventListener("submit", function (e) {
     ultimoContato: document.getElementById("ultimoContato").value,
     observacoes: document.getElementById("observacoes").value,
     status: document.getElementById("status").value,
+    contatos: [],
+    clienteAtivo: {}
   };
 
+  // Contatos
+  const contatos = document.querySelectorAll("#contatosContainer > div");
+  contatos.forEach(div => {
+    const inputs = div.querySelectorAll("input");
+    cliente.contatos.push({
+      nome: inputs[0].value,
+      telefone: inputs[1].value,
+      email: inputs[2].value,
+      cargo: inputs[3].value
+    });
+  });
+
+  // Cliente Ativo
   if (cliente.status === "Fechado") {
-    cliente.nomeEvento = document.getElementById("nomeEvento").value;
-    cliente.frequencia = document.getElementById("frequencia").value;
-    cliente.dataPrimeiroEvento = document.getElementById("dataPrimeiroEvento").value;
-    cliente.statusEvento = document.getElementById("statusEvento").value;
-    cliente.obsEvento = document.getElementById("obsEvento").value;
-    cliente.diasSemana = diasSemana;
+    cliente.clienteAtivo = {
+      nomeEvento: document.getElementById("nomeEvento").value,
+      diasSemana: ["seg", "ter", "qua", "qui", "sex", "sab", "dom"]
+        .filter(dia => document.getElementById(dia)?.checked),
+      frequencia: document.getElementById("frequencia").value,
+      dataPrimeiroEvento: document.getElementById("dataPrimeiroEvento").value,
+      statusEvento: document.getElementById("statusEvento").value,
+      obsEvento: document.getElementById("obsEvento").value
+    };
   }
 
-  db.ref("clientes/" + id).set(cliente).then(() => {
-    this.reset();
-    toggleClienteAtivo(false);
-    delete this.dataset.id;
-    carregarClientes();
+  if (clienteEditando) {
+    db.child(clienteEditando).set(cliente);
+    clienteEditando = null;
+  } else {
+    db.push(cliente);
+  }
+
+  this.reset();
+  document.getElementById("contatosContainer").innerHTML = "";
+  document.getElementById("clientesAtivos").style.display = "none";
+});
+
+// Listar clientes
+db.on("value", snapshot => {
+  const tabela = document.querySelector("#clientesTable tbody");
+  tabela.innerHTML = "";
+  snapshot.forEach(child => {
+    const c = child.val();
+    const tr = document.createElement("tr");
+    const tdNome = document.createElement("td");
+    tdNome.textContent = c.nome;
+
+    const tdStatus = document.createElement("td");
+    tdStatus.textContent = c.status;
+
+    const tdTipo = document.createElement("td");
+    tdTipo.textContent = c.tipoCliente;
+
+    const tdAcoes = document.createElement("td");
+    const btnEditar = document.createElement("button");
+    btnEditar.textContent = "Editar";
+    btnEditar.onclick = () => editarCliente(child.key);
+
+    const btnExcluir = document.createElement("button");
+    btnExcluir.textContent = "Excluir";
+    btnExcluir.onclick = () => excluirCliente(child.key);
+
+    tdAcoes.appendChild(btnEditar);
+    tdAcoes.appendChild(btnExcluir);
+
+    tr.appendChild(tdNome);
+    tr.appendChild(tdStatus);
+    tr.appendChild(tdTipo);
+    tr.appendChild(tdAcoes);
+    tabela.appendChild(tr);
   });
 });
 
-// Filtro por nome
-if (filtroInput) {
-  filtroInput.addEventListener("input", () => {
-    const termo = filtroInput.value.toLowerCase();
-    const linhas = document.querySelectorAll("#clientesTable tbody tr");
-    linhas.forEach(linha => {
-      const nome = linha.cells[0].textContent.toLowerCase();
-      linha.style.display = nome.includes(termo) ? "" : "none";
-    });
-  });
+// Excluir cliente
+function excluirCliente(id) {
+  if (confirm("Deseja excluir este cliente?")) {
+    db.child(id).remove();
+  }
 }
 
-window.onload = carregarClientes;
+// Editar cliente
+function editarCliente(id) {
+  db.child(id).once("value", snapshot => {
+    const c = snapshot.val();
+    clienteEditando = id;
+
+    document.getElementById("nome").value = c.nome || "";
+    document.getElementById("dataCadastro").value = c.dataCadastro || "";
+    document.getElementById("tipoCliente").value = c.tipoCliente || "";
+    document.getElementById("indicadoPor").value = c.indicadoPor || "";
+    document.getElementById("perfilEconomico").value = c.perfilEconomico || "";
+    document.getElementById("tamanho").value = c.tamanho || "";
+    document.getElementById("endereco").value = c.endereco || "";
+    document.getElementById("regiao").value = c.regiao || "";
+    document.getElementById("ultimoContato").value = c.ultimoContato || "";
+    document.getElementById("observacoes").value = c.observacoes || "";
+    document.getElementById("status").value = c.status || "";
+    toggleClienteAtivo();
+
+    document.getElementById("contatosContainer").innerHTML = "";
+    (c.contatos || []).forEach(contato => adicionarContato(contato));
+
+    if (c.status === "Fechado" && c.clienteAtivo) {
+      document.getElementById("nomeEvento").value = c.clienteAtivo.nomeEvento || "";
+      const dias = c.clienteAtivo.diasSemana || [];
+      ["seg", "ter", "qua", "qui", "sex", "sab", "dom"].forEach(dia => {
+        const checkbox = document.getElementById(dia);
+        if (checkbox) checkbox.checked = dias.includes(dia);
+      });
+      document.getElementById("frequencia").value = c.clienteAtivo.frequencia || "";
+      document.getElementById("dataPrimeiroEvento").value = c.clienteAtivo.dataPrimeiroEvento || "";
+      document.getElementById("statusEvento").value = c.clienteAtivo.statusEvento || "";
+      document.getElementById("obsEvento").value = c.clienteAtivo.obsEvento || "";
+    }
+  });
+}
