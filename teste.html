@@ -1,194 +1,61 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Le Pan pan - Dash</title>
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-  <link rel="stylesheet" href="assets/base.css" />
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="assets/menu.js" defer></script>
-  <style>
-    .kpi-linha {
-      display: flex;
-      gap: 16px;
-      padding: 0 20px;
-      margin-bottom: 2px;
-      flex-wrap: wrap;
-    }
-    .kpi {
-      background-color: #fff3e0;
-      border-left: 4px solid #ff9800;
-      padding: 6px 10px;
-      border-radius: 6px;
-      min-width: 180px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      height: 60px;
-    }
-    .kpi h2 {
-      margin: 0 0 2px;
-      font-size: 12px;
-      color: #333;
-    }
-    .kpi p {
-      font-size: 16px;
-      margin: 0;
-      font-weight: bold;
-      color: #ff9800;
-    }
-    .graficos-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      padding: 20px;
-    }
-    .grafico {
-      width: 48%;
-      min-width: 300px;
-    }
-    canvas {
-      background-color: white;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 10px;
-    }
-  </style>
+  <link rel="stylesheet" href="assets/menu-styles.css">
 </head>
 <body>
   <div class="layout">
+    <!-- Menu lateral será carregado via JavaScript -->
     <aside class="sidebar" id="menuLateral"></aside>
+    
     <main class="main-content">
+      <div class="page-header">
+        <h1>Dashboard</h1>
+      </div>
 
-      <!-- [KPIs mantidos aqui, igual versão anterior] -->
+      <div class="card-dashboard">
+        <h4>Total de Eventos no Mês</h4>
+        <p><strong>12</strong> eventos realizados</p>
+      </div>
 
-      <!-- Gráficos -->
-      <div class="graficos-container">
-        <div class="grafico">
-          <canvas id="graficoVenda"></canvas>
-        </div>
-        <div class="grafico">
-          <canvas id="graficoLucro"></canvas>
-        </div>
-        <div class="grafico">
-          <canvas id="graficoPerdaAssado"></canvas>
-        </div>
-        <div class="grafico">
-          <canvas id="graficoEventos"></canvas>
-        </div>
+      <div class="card-dashboard">
+        <h4>Faturamento Total</h4>
+        <p>R$ <strong>25.000,00</strong></p>
+      </div>
+
+      <div class="card-dashboard">
+        <h4>Produtos Mais Vendidos</h4>
+        <ul>
+          <li>Pão de Queijo</li>
+          <li>Coxinha</li>
+          <li>Pastel</li>
+        </ul>
+      </div>
+
+      <div class="card-dashboard">
+        <h4>Clientes Mais Ativos</h4>
+        <ul>
+          <li>Condomínio Alpha</li>
+          <li>Escola Beta</li>
+          <li>Empresa Gama</li>
+        </ul>
+      </div>
+
+      <div class="card-dashboard">
+        <h4>Próximos Eventos</h4>
+        <ul>
+          <li>25/05 - Evento A - Aberto</li>
+          <li>27/05 - Evento B - Confirmado</li>
+          <li>29/05 - Evento C - Aberto</li>
+        </ul>
+        <button onclick="location.href='eventos.html'">Ver Todos</button>
       </div>
     </main>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const currentYear = new Date().getFullYear();
-    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-
-    const dadosMes = Array.from({ length: 12 }, (_, i) => ({
-      mes: meses[i],
-      venda: 0,
-      perda: 0,
-      assado: 0,
-      eventos: 0
-    }));
-
-    db.ref('eventos').once('value').then(snapshot => {
-      const eventos = snapshot.val();
-      if (!eventos) return;
-
-      Object.values(eventos).forEach(e => {
-        if (!e.data) return;
-        const data = new Date(e.data);
-        if (data.getFullYear() !== currentYear) return;
-        const m = data.getMonth();
-        dadosMes[m].venda += Number(e.vendaPDV || 0);
-        dadosMes[m].perda += Number(e.produtos?.reduce((s, p) => s + (Number(p.perda || 0)), 0) || 0);
-        dadosMes[m].assado += Number(e.produtos?.reduce((s, p) => s + (Number(p.assado || 0)), 0) || 0);
-        dadosMes[m].eventos += 1;
-      });
-
-      desenharGraficos(dadosMes);
-    });
-
-    function desenharGraficos(data) {
-      new Chart(document.getElementById('graficoVenda'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{
-            label: 'Venda PDV',
-            data: data.map(d => d.venda),
-            borderWidth: 2,
-            fill: false,
-            tension: 0.2
-          }]
-        }
-      });
-
-      new Chart(document.getElementById('graficoLucro'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{
-            label: 'Lucro (em breve)',
-            data: [],
-            borderWidth: 2,
-            borderDash: [5, 5],
-            fill: false
-          }]
-        }
-      });
-
-      new Chart(document.getElementById('graficoPerdaAssado'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [
-            {
-              label: 'Perda',
-              data: data.map(d => d.perda),
-              borderWidth: 2,
-              fill: false,
-              tension: 0.2
-            },
-            {
-              label: 'Assado',
-              data: data.map(d => d.assado),
-              borderWidth: 2,
-              fill: false,
-              tension: 0.2
-            }
-          ]
-        }
-      });
-
-      new Chart(document.getElementById('graficoEventos'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{
-            label: 'Eventos',
-            data: data.map(d => d.eventos),
-            borderWidth: 2,
-            fill: false,
-            tension: 0.2
-          }]
-        }
-      });
-    }
-  </script>
+  <script src="assets/menu.js"></script>
 </body>
 </html>
