@@ -1,4 +1,3 @@
-// Firebase já está inicializado no HTML
 const db = firebase.database();
 const anoAtual = new Date().getFullYear();
 
@@ -6,6 +5,7 @@ function carregarClientes() {
   db.ref('clientes').once('value').then(snapshot => {
     const listaAtivos = document.getElementById('listaClientesAtivos');
     const listaQuentes = document.getElementById('listaClientesQuentes');
+
     let kpiAtivos = 0;
     let kpiQuentes = 0;
     let kpiNovosAno = 0;
@@ -14,58 +14,67 @@ function carregarClientes() {
     listaAtivos.innerHTML = '';
     listaQuentes.innerHTML = '';
 
+    if (!snapshot.exists()) {
+      listaAtivos.innerHTML = '<tr><td colspan="4">Nenhum cliente encontrado.</td></tr>';
+      listaQuentes.innerHTML = '<tr><td colspan="3">Nenhum cliente encontrado.</td></tr>';
+      return;
+    }
+
     snapshot.forEach(child => {
       const cliente = child.val();
       const id = child.key;
 
-      const status = (cliente.clienteAtivo && cliente.clienteAtivo.status) || cliente.status || '';
       const nome = cliente.nome || 'Sem nome';
+      const statusPrincipal = cliente.status || '';
+      const statusAtivo = cliente.clienteAtivo?.status || '';
       const dataPrimeiroEvento = cliente.clienteAtivo?.dataPrimeiroEvento || '';
       const dataUltimoContato = cliente.dataUltimoContato || '';
 
-      const isAtivo = status.toLowerCase() === 'ativo';
-      const isQuente = status.toLowerCase() === 'quente';
-
-      // KPI: Clientes Ativos
-      if (isAtivo) {
+      // Cliente Ativo
+      if (statusAtivo.toLowerCase() === 'ativo') {
         kpiAtivos++;
         listaAtivos.innerHTML += `
           <tr>
             <td>${nome}</td>
             <td>${formatarData(dataPrimeiroEvento)}</td>
-            <td>${status}</td>
+            <td>${statusAtivo}</td>
             <td><button onclick="editarCliente('${id}')">Editar</button></td>
           </tr>
         `;
       }
 
-      // KPI: Clientes Quentes
-      if (isQuente) {
+      // Cliente Quente
+      if (statusPrincipal.toLowerCase() === 'quente') {
         kpiQuentes++;
         listaQuentes.innerHTML += `
           <tr>
             <td>${nome}</td>
-            <td>${status}</td>
+            <td>${statusPrincipal}</td>
             <td><button onclick="editarCliente('${id}')">Editar</button></td>
           </tr>
         `;
       }
 
-      // KPI: Novos Clientes no Ano
+      // Novos Clientes no Ano
       if (dataPrimeiroEvento && new Date(dataPrimeiroEvento).getFullYear() === anoAtual) {
         kpiNovosAno++;
       }
 
-      // KPI: Clientes Perdidos no Ano
+      // Clientes Perdidos no Ano
       if (dataUltimoContato && new Date(dataUltimoContato).getFullYear() === anoAtual) {
         kpiPerdidos++;
       }
     });
 
+    // Atualiza KPIs
     document.getElementById('kpiAtivos').innerText = kpiAtivos;
     document.getElementById('kpiQuentes').innerText = kpiQuentes;
     document.getElementById('kpiNovosAno').innerText = kpiNovosAno;
     document.getElementById('kpiPerdidos').innerText = kpiPerdidos;
+  }).catch(error => {
+    console.error('Erro ao carregar clientes:', error);
+    document.getElementById('listaClientesAtivos').innerHTML = '<tr><td colspan="4">Erro ao carregar dados.</td></tr>';
+    document.getElementById('listaClientesQuentes').innerHTML = '<tr><td colspan="3">Erro ao carregar dados.</td></tr>';
   });
 }
 
