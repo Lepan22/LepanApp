@@ -1,192 +1,119 @@
-<!-- controle_etapas.html - Corrigido: botão "Copiar Endereço" sem copiar o HTML -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Controle Etapas</title>
-
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-  <link rel="stylesheet" href="assets/base.css" />
+  <meta charset="UTF-8">
+  <title>Clientes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="assets/menu-styles.css">
+  <link rel="stylesheet" href="assets/base.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
-  <style>
-    .destaque-compras {
-      background-color: #ffcc80;
-      border: 2px solid #ff9800;
-      padding: 5px 10px;
-      border-radius: 6px;
-      font-weight: bold;
-    }
-    .copiar-btn {
-      background: #ff9800;
-      color: white;
-      padding: 5px 10px;
-      border: none;
-      border-radius: 4px;
-      margin-left: 5px;
-      cursor: pointer;
-    }
-  </style>
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
+    <div id="menuLateral" class="sidebar"></div>
 
-    <main class="main-content">
-      <h2>Controle de Etapas dos Eventos</h2>
+    <div class="main-content">
+      <form id="clienteForm">
+        <label for="nome">Nome do condomínio/local:</label><br>
+        <input type="text" id="nome"><br>
 
-      <form id="filtros" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px;">
-        <label for="filtroStatus">Status:</label>
-        <select id="filtroStatus">
-          <option value="Todos">Todos</option>
-          <option value="Aberto" selected>Aberto</option>
-          <option value="Fechado">Fechado</option>
-          <option value="Finalizado">Finalizado</option>
-        </select>
+        <label for="dataCadastro">Data de cadastro:</label><br>
+        <input type="date" id="dataCadastro"><br>
 
-        <label for="filtroDataInicio">Data Início:</label>
-        <input type="date" id="filtroDataInicio" />
+        <label for="tipoCliente">Tipo de cliente:</label><br>
+        <input type="text" id="tipoCliente"><br>
 
-        <label for="filtroDataFim">Data Fim:</label>
-        <input type="date" id="filtroDataFim" />
+        <label for="indicadoPor">Indicado por:</label><br>
+        <input type="text" id="indicadoPor"><br><br>
 
-        <label class="destaque-compras">
-          <input type="checkbox" id="compraGlobal" onchange="marcarTodasCompras(this.checked)"> Marcar Compras
-        </label>
+        <label>Contatos:</label>
+        <div id="contatosContainer"></div>
+        <button type="button" onclick="adicionarContato()">Adicionar contato</button><br><br>
+
+        <label for="perfilEconomico">Perfil econômico:</label><br>
+        <input type="text" id="perfilEconomico"><br>
+
+        <label for="tamanho">Tamanho:</label><br>
+        <input type="text" id="tamanho"><br>
+
+        <label for="endereco">Endereço:</label><br>
+        <input type="text" id="endereco"><br>
+
+        <label for="regiao">Região:</label><br>
+        <input type="text" id="regiao"><br>
+
+        <label for="ultimoContato">Data do último contato:</label><br>
+        <input type="date" id="ultimoContato"><br>
+
+        <label for="observacoes">Observações:</label><br>
+        <input type="text" id="observacoes"><br>
+
+        <label for="status">Status:</label><br>
+        <select id="status" onchange="toggleClienteAtivo()">
+          <option>Aberto</option>
+          <option>Fechado</option>
+          <option>Frio</option>
+          <option>Quente</option>
+          <option>Encerrado</option>
+        </select><br><br>
+
+        <div id="clientesAtivos" style="display:none;">
+          <label for="nomeEvento">Nome do evento:</label><br>
+          <input type="text" id="nomeEvento"><br>
+
+          <label for="frequencia">Frequência:</label><br>
+          <select id="frequencia">
+            <option>Semanal</option>
+            <option>Quinzenal</option>
+            <option>Mensal</option>
+            <option>Esporádico</option>
+            <option>A Definir</option>
+          </select><br>
+
+          <label for="dataPrimeiroEvento">Data do primeiro evento:</label><br>
+          <input type="date" id="dataPrimeiroEvento"><br>
+
+          <label for="statusEvento">Status do evento:</label><br>
+          <select id="statusEvento">
+            <option>Ativo</option>
+            <option>Inativo</option>
+            <option>Pausado</option>
+          </select><br>
+
+          <label>Dias da semana:</label><br>
+          <label><input type="checkbox" id="seg">Seg</label>
+          <label><input type="checkbox" id="ter">Ter</label>
+          <label><input type="checkbox" id="qua">Qua</label>
+          <label><input type="checkbox" id="qui">Qui</label>
+          <label><input type="checkbox" id="sex">Sex</label>
+          <label><input type="checkbox" id="sab">Sab</label>
+          <label><input type="checkbox" id="dom">Dom</label><br>
+
+          <label for="obsEvento">Observações do evento:</label><br>
+          <textarea id="obsEvento"></textarea><br>
+        </div>
+
+        <button type="submit">Salvar Cliente</button>
       </form>
 
-      <table>
+      <hr>
+
+      <table id="clientesTable" border="1" cellspacing="0" cellpadding="4">
         <thead>
           <tr>
-            <th>Evento</th>
-            <th>Data</th>
-            <th>Produtos</th>
-            <th>Equipe</th>
-            <th>Logística</th>
-            <th>Cliente</th>
-            <th>Divulgação</th>
-            <th>Gestão</th>
+            <th>Nome</th>
+            <th>Status</th>
+            <th>Tipo</th>
             <th>Ações</th>
           </tr>
         </thead>
-        <tbody id="tabelaEventos"></tbody>
+        <tbody></tbody>
       </table>
-    </main>
+    </div>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    let eventosCarregados = [];
-
-    function formatDateBR(dataISO) {
-      if (!dataISO) return '';
-      const [ano, mes, dia] = dataISO.split("-");
-      return `${dia}/${mes}/${ano}`;
-    }
-
-    function isWithinRange(dataStr, inicio, fim) {
-      if (!dataStr) return false;
-      const data = new Date(dataStr);
-      return (!inicio || data >= new Date(inicio)) && (!fim || data <= new Date(fim));
-    }
-
-    async function carregarEventos() {
-      const [snapshotEventos] = await Promise.all([
-        db.ref('eventos').once('value')
-      ]);
-
-      const eventos = snapshotEventos.val() || {};
-      const tabela = document.getElementById('tabelaEventos');
-      tabela.innerHTML = '';
-      eventosCarregados = [];
-
-      const statusFiltro = document.getElementById('filtroStatus').value;
-      const dataInicio = document.getElementById('filtroDataInicio').value;
-      const dataFim = document.getElementById('filtroDataFim').value;
-
-      for (let id in eventos) {
-        const evento = eventos[id];
-        if (statusFiltro !== 'Todos' && evento.status !== statusFiltro) continue;
-        if (!isWithinRange(evento.data, dataInicio, dataFim)) continue;
-
-        const etapas = evento.etapas || {};
-        eventosCarregados.push({ id, etapas });
-
-        const clienteId = evento.clienteId || '';
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${evento.nomeEvento || id}</td>
-          <td>${evento.data ? formatDateBR(evento.data) : '-'}</td>
-          <td><input type="checkbox" ${etapas.produtosDefinidos ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'produtosDefinidos', this.checked)"></td>
-          <td><input type="checkbox" ${etapas.equipeConfirmada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'equipeConfirmada', this.checked)"></td>
-          <td><input type="checkbox" ${etapas.logisticaDefinida ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'logisticaDefinida', this.checked)"></td>
-          <td><input type="checkbox" ${etapas.clienteConfirmado ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'clienteConfirmado', this.checked)"></td>
-          <td><input type="checkbox" ${etapas.divulgacaoRealizada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'divulgacaoRealizada', this.checked)"></td>
-          <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
-          <td><button class="copiar-btn" onclick="copiarEndereco('${clienteId}')">Copiar Endereço</button></td>
-        `;
-        tabela.appendChild(row);
-      }
-    }
-
-    function copiarEndereco(clienteId) {
-      if (!clienteId) return alert('Cliente não definido no evento.');
-
-      db.ref(`clientes/${clienteId}`).once('value').then(snapshot => {
-        const cliente = snapshot.val();
-        const nome = cliente?.nome || '';
-        const endereco = cliente?.enderecoCompleto || '';
-        const texto = `${nome}\n${endereco}`;
-        navigator.clipboard.writeText(texto)
-          .then(() => alert('Endereço copiado:\n\n' + texto))
-          .catch(() => alert('Erro ao copiar endereço.'));
-      });
-    }
-
-    function atualizarEtapa(eventoId, etapa, valor) {
-      db.ref(`eventos/${eventoId}/etapas`).update({ [etapa]: valor })
-        .then(() => console.log(`Etapa ${etapa} atualizada para ${valor}`))
-        .catch(err => console.error('Erro ao atualizar:', err));
-    }
-
-    function gestaoEvento(id) {
-      window.location.href = `GestaoEvento.html?id=${id}`;
-    }
-
-    function marcarTodasCompras(valor) {
-      eventosCarregados.forEach(ev => {
-        atualizarEtapa(ev.id, 'compraInsumos', valor);
-      });
-    }
-
-    document.getElementById('filtroStatus').addEventListener('change', carregarEventos);
-    document.getElementById('filtroDataInicio').addEventListener('change', carregarEventos);
-    document.getElementById('filtroDataFim').addEventListener('change', carregarEventos);
-
-    document.addEventListener('DOMContentLoaded', () => {
-      const hoje = new Date();
-      const diaSemana = hoje.getDay();
-      const segunda = new Date(hoje);
-      segunda.setDate(hoje.getDate() - ((diaSemana + 6) % 7));
-      const dataFim = new Date(segunda);
-      dataFim.setDate(segunda.getDate() + 8);
-
-      document.getElementById('filtroDataInicio').value = segunda.toISOString().split('T')[0];
-      document.getElementById('filtroDataFim').value = dataFim.toISOString().split('T')[0];
-
-      carregarEventos();
-    });
-  </script>
+  <script src="clientes.js"></script>
 </body>
 </html>
