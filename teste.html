@@ -2,13 +2,31 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Clientes</title>
+  <title>Cliente</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
+  <style>
+    .form-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+    }
+    .form-grid > div {
+      display: flex;
+      flex-direction: column;
+    }
+    .form-grid input, .form-grid select {
+      min-width: 160px;
+    }
+    .form-full {
+      flex: 1 1 100%;
+    }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -16,86 +34,108 @@
 
     <div class="main-content">
       <form id="clienteForm">
-        <label for="nome">Nome do condomínio/local:</label><br>
-        <input type="text" id="nome"><br>
+        <div class="form-grid">
+          <div>
+            <label for="nome">Nome do condomínio/local:</label>
+            <input type="text" id="nome" placeholder="Nome do condomínio/local">
+          </div>
+          <div>
+            <label for="dataCadastro">Data de cadastro:</label>
+            <input type="date" id="dataCadastro">
+          </div>
+          <div>
+            <label for="tipoCliente">Tipo de cliente:</label>
+            <input type="text" id="tipoCliente" placeholder="Tipo de cliente">
+          </div>
+          <div>
+            <label for="indicadoPor">Indicado por:</label>
+            <input type="text" id="indicadoPor" placeholder="Indicado por">
+          </div>
+          <div>
+            <label for="perfilEconomico">Perfil econômico:</label>
+            <input type="text" id="perfilEconomico" placeholder="Perfil econômico">
+          </div>
+          <div>
+            <label for="tamanho">Tamanho:</label>
+            <input type="text" id="tamanho" placeholder="Tamanho">
+          </div>
+          <div>
+            <label for="endereco">Endereço:</label>
+            <input type="text" id="endereco" placeholder="Endereço">
+          </div>
+          <div>
+            <label for="regiao">Região:</label>
+            <input type="text" id="regiao" placeholder="Região">
+          </div>
+          <div>
+            <label for="ultimoContato">Data do último contato:</label>
+            <input type="date" id="ultimoContato">
+          </div>
+          <div class="form-full">
+            <label for="observacoes">Observações:</label>
+            <input type="text" id="observacoes" placeholder="Observações">
+          </div>
+          <div class="form-full">
+            <label for="status">Status:</label>
+            <select id="status" onchange="toggleClienteAtivo()">
+              <option>Aberto</option>
+              <option>Fechado</option>
+              <option>Frio</option>
+              <option>Quente</option>
+              <option>Encerrado</option>
+            </select>
+            <button type="submit">Salvar Cliente</button>
+          </div>
+        </div>
 
-        <label for="dataCadastro">Data de cadastro:</label><br>
-        <input type="date" id="dataCadastro"><br>
-
-        <label for="tipoCliente">Tipo de cliente:</label><br>
-        <input type="text" id="tipoCliente"><br>
-
-        <label for="indicadoPor">Indicado por:</label><br>
-        <input type="text" id="indicadoPor"><br><br>
-
-        <label>Contatos:</label>
+        <br><label>Contatos:</label>
         <div id="contatosContainer"></div>
         <button type="button" onclick="adicionarContato()">Adicionar contato</button><br><br>
 
-        <label for="perfilEconomico">Perfil econômico:</label><br>
-        <input type="text" id="perfilEconomico"><br>
-
-        <label for="tamanho">Tamanho:</label><br>
-        <input type="text" id="tamanho"><br>
-
-        <label for="endereco">Endereço:</label><br>
-        <input type="text" id="endereco"><br>
-
-        <label for="regiao">Região:</label><br>
-        <input type="text" id="regiao"><br>
-
-        <label for="ultimoContato">Data do último contato:</label><br>
-        <input type="date" id="ultimoContato"><br>
-
-        <label for="observacoes">Observações:</label><br>
-        <input type="text" id="observacoes"><br>
-
-        <label for="status">Status:</label><br>
-        <select id="status" onchange="toggleClienteAtivo()">
-          <option>Aberto</option>
-          <option>Fechado</option>
-          <option>Frio</option>
-          <option>Quente</option>
-          <option>Encerrado</option>
-        </select><br><br>
-
         <div id="clientesAtivos" style="display:none;">
-          <label for="nomeEvento">Nome do evento:</label><br>
-          <input type="text" id="nomeEvento"><br>
-
-          <label for="frequencia">Frequência:</label><br>
-          <select id="frequencia">
-            <option>Semanal</option>
-            <option>Quinzenal</option>
-            <option>Mensal</option>
-            <option>Esporádico</option>
-            <option>A Definir</option>
-          </select><br>
-
-          <label for="dataPrimeiroEvento">Data do primeiro evento:</label><br>
-          <input type="date" id="dataPrimeiroEvento"><br>
-
-          <label for="statusEvento">Status do evento:</label><br>
-          <select id="statusEvento">
-            <option>Ativo</option>
-            <option>Inativo</option>
-            <option>Pausado</option>
-          </select><br>
-
-          <label>Dias da semana:</label><br>
-          <label><input type="checkbox" id="seg">Seg</label>
-          <label><input type="checkbox" id="ter">Ter</label>
-          <label><input type="checkbox" id="qua">Qua</label>
-          <label><input type="checkbox" id="qui">Qui</label>
-          <label><input type="checkbox" id="sex">Sex</label>
-          <label><input type="checkbox" id="sab">Sab</label>
-          <label><input type="checkbox" id="dom">Dom</label><br>
-
-          <label for="obsEvento">Observações do evento:</label><br>
-          <textarea id="obsEvento"></textarea><br>
+          <div class="form-grid">
+            <div>
+              <label for="nomeEvento">Nome do evento:</label>
+              <input type="text" id="nomeEvento" placeholder="Nome do evento">
+            </div>
+            <div>
+              <label for="frequencia">Frequência:</label>
+              <select id="frequencia">
+                <option>Semanal</option>
+                <option>Quinzenal</option>
+                <option>Mensal</option>
+                <option>Esporádico</option>
+                <option>A Definir</option>
+              </select>
+            </div>
+            <div>
+              <label for="dataPrimeiroEvento">Data do primeiro evento:</label>
+              <input type="date" id="dataPrimeiroEvento">
+            </div>
+            <div>
+              <label for="statusEvento">Status do evento:</label>
+              <select id="statusEvento">
+                <option>Ativo</option>
+                <option>Inativo</option>
+                <option>Pausado</option>
+              </select>
+            </div>
+            <div class="form-full">
+              <label>Dias da semana:</label>
+              <label><input type="checkbox" id="seg">Seg</label>
+              <label><input type="checkbox" id="ter">Ter</label>
+              <label><input type="checkbox" id="qua">Qua</label>
+              <label><input type="checkbox" id="qui">Qui</label>
+              <label><input type="checkbox" id="sex">Sex</label>
+              <label><input type="checkbox" id="sab">Sab</label>
+              <label><input type="checkbox" id="dom">Dom</label>
+            </div>
+            <div class="form-full">
+              <label for="obsEvento">Observações do evento:</label>
+              <textarea id="obsEvento" placeholder="Observações do evento" rows="2"></textarea>
+            </div>
+          </div>
         </div>
-
-        <button type="submit">Salvar Cliente</button>
       </form>
 
       <hr>
