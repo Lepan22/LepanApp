@@ -2,16 +2,28 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>CClientes</title>
+  <title>Clientes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
   <style>
+    .linha {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .campo {
+      flex: 1;
+      min-width: 200px;
+    }
     label {
       display: block;
       font-size: 13px;
       margin: 0;
-      padding: 0;
+    }
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -24,82 +36,117 @@
 
     <div class="main-content">
       <form id="clienteForm">
-        <label for="nome">Nome do condomínio/local:</label>
-        <input type="text" id="nome">
 
-        <label for="dataCadastro">Data de cadastro:</label>
-        <input type="date" id="dataCadastro">
+        <div class="linha">
+          <div class="campo">
+            <label>Nome do condomínio/local:</label>
+            <input type="text" id="nome">
+          </div>
+          <div class="campo">
+            <label>Data de cadastro:</label>
+            <input type="date" id="dataCadastro">
+          </div>
+          <div class="campo">
+            <label>Tipo de cliente:</label>
+            <input type="text" id="tipoCliente">
+          </div>
+        </div>
 
-        <label for="tipoCliente">Tipo de cliente:</label>
-        <input type="text" id="tipoCliente">
+        <div class="linha">
+          <div class="campo">
+            <label>Indicado por:</label>
+            <input type="text" id="indicadoPor">
+          </div>
+          <div class="campo">
+            <label>Perfil econômico:</label>
+            <input type="text" id="perfilEconomico">
+          </div>
+          <div class="campo">
+            <label>Tamanho:</label>
+            <input type="text" id="tamanho">
+          </div>
+        </div>
 
-        <label for="indicadoPor">Indicado por:</label>
-        <input type="text" id="indicadoPor">
+        <div class="linha">
+          <div class="campo">
+            <label>Endereço:</label>
+            <input type="text" id="endereco">
+          </div>
+          <div class="campo">
+            <label>Região:</label>
+            <input type="text" id="regiao">
+          </div>
+          <div class="campo">
+            <label>Data do último contato:</label>
+            <input type="date" id="ultimoContato">
+          </div>
+        </div>
+
+        <div class="linha">
+          <div class="campo">
+            <label>Observações:</label>
+            <input type="text" id="observacoes">
+          </div>
+          <div class="campo">
+            <label>Status:</label>
+            <select id="status" onchange="toggleClienteAtivo()">
+              <option>Aberto</option>
+              <option>Fechado</option>
+              <option>Frio</option>
+              <option>Quente</option>
+              <option>Encerrado</option>
+            </select>
+          </div>
+        </div>
 
         <label>Contatos:</label>
         <div id="contatosContainer"></div>
         <button type="button" onclick="adicionarContato()">Adicionar contato</button>
 
-        <label for="perfilEconomico">Perfil econômico:</label>
-        <input type="text" id="perfilEconomico">
+        <div id="clientesAtivos" style="display:none; margin-top: 10px;">
+          <div class="linha">
+            <div class="campo">
+              <label>Nome do evento:</label>
+              <input type="text" id="nomeEvento">
+            </div>
+            <div class="campo">
+              <label>Frequência:</label>
+              <select id="frequencia">
+                <option>Semanal</option>
+                <option>Quinzenal</option>
+                <option>Mensal</option>
+                <option>Esporádico</option>
+                <option>A Definir</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>Data do primeiro evento:</label>
+              <input type="date" id="dataPrimeiroEvento">
+            </div>
+          </div>
 
-        <label for="tamanho">Tamanho:</label>
-        <input type="text" id="tamanho">
+          <div class="linha">
+            <div class="campo">
+              <label>Status do evento:</label>
+              <select id="statusEvento">
+                <option>Ativo</option>
+                <option>Inativo</option>
+                <option>Pausado</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>Dias da semana:</label><br>
+              <label><input type="checkbox" id="seg">Seg</label>
+              <label><input type="checkbox" id="ter">Ter</label>
+              <label><input type="checkbox" id="qua">Qua</label>
+              <label><input type="checkbox" id="qui">Qui</label>
+              <label><input type="checkbox" id="sex">Sex</label>
+              <label><input type="checkbox" id="sab">Sab</label>
+              <label><input type="checkbox" id="dom">Dom</label>
+            </div>
+          </div>
 
-        <label for="endereco">Endereço:</label>
-        <input type="text" id="endereco">
-
-        <label for="regiao">Região:</label>
-        <input type="text" id="regiao">
-
-        <label for="ultimoContato">Data do último contato:</label>
-        <input type="date" id="ultimoContato">
-
-        <label for="observacoes">Observações:</label>
-        <input type="text" id="observacoes">
-
-        <label for="status">Status:</label>
-        <select id="status" onchange="toggleClienteAtivo()">
-          <option>Aberto</option>
-          <option>Fechado</option>
-          <option>Frio</option>
-          <option>Quente</option>
-          <option>Encerrado</option>
-        </select>
-
-        <div id="clientesAtivos" style="display:none;">
-          <label for="nomeEvento">Nome do evento:</label>
-          <input type="text" id="nomeEvento">
-
-          <label for="frequencia">Frequência:</label>
-          <select id="frequencia">
-            <option>Semanal</option>
-            <option>Quinzenal</option>
-            <option>Mensal</option>
-            <option>Esporádico</option>
-            <option>A Definir</option>
-          </select>
-
-          <label for="dataPrimeiroEvento">Data do primeiro evento:</label>
-          <input type="date" id="dataPrimeiroEvento">
-
-          <label for="statusEvento">Status do evento:</label>
-          <select id="statusEvento">
-            <option>Ativo</option>
-            <option>Inativo</option>
-            <option>Pausado</option>
-          </select>
-
-          <label>Dias da semana:</label>
-          <label><input type="checkbox" id="seg">Seg</label>
-          <label><input type="checkbox" id="ter">Ter</label>
-          <label><input type="checkbox" id="qua">Qua</label>
-          <label><input type="checkbox" id="qui">Qui</label>
-          <label><input type="checkbox" id="sex">Sex</label>
-          <label><input type="checkbox" id="sab">Sab</label>
-          <label><input type="checkbox" id="dom">Dom</label>
-
-          <label for="obsEvento">Observações do evento:</label>
+          <label>Observações do evento:</label>
           <textarea id="obsEvento" placeholder="Observações do evento"></textarea>
         </div>
 
