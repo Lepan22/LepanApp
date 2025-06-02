@@ -1,10 +1,10 @@
-<!-- controle_etapas.html - Correção definitiva no botão "Copiar Endereço" -->
+<!-- controle_etapas.html - Corrigido: botão "Copiar Endereço" sem copiar o HTML -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Controle de Etapas</title>
+  <title>Controle Etapas</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -25,18 +25,8 @@
       padding: 5px 10px;
       border: none;
       border-radius: 4px;
-      margin: 4px 2px;
+      margin-left: 5px;
       cursor: pointer;
-    }
-    .bloco-lista {
-      margin-top: 20px;
-      padding: 10px;
-      border: 1px solid #ccc;
-      background: #f9f9f9;
-    }
-    .titulo-evento {
-      font-weight: bold;
-      margin-top: 10px;
     }
   </style>
 </head>
@@ -83,8 +73,6 @@
         </thead>
         <tbody id="tabelaEventos"></tbody>
       </table>
-
-      <div id="listasEquipeLogistica" class="bloco-lista"></div>
     </main>
   </div>
 
@@ -103,7 +91,7 @@
     function formatDateBR(dataISO) {
       if (!dataISO) return '';
       const [ano, mes, dia] = dataISO.split("-");
-      return `${dia}/${mes}/${ano}`;
+      return ${dia}/${mes}/${ano};
     }
 
     function isWithinRange(dataStr, inicio, fim) {
@@ -113,20 +101,13 @@
     }
 
     async function carregarEventos() {
-      const [snapshotEventos, snapshotEquipe, snapshotLogistica] = await Promise.all([
-        db.ref('eventos').once('value'),
-        db.ref('equipe').once('value'),
-        db.ref('logistica').once('value')
+      const [snapshotEventos] = await Promise.all([
+        db.ref('eventos').once('value')
       ]);
 
       const eventos = snapshotEventos.val() || {};
-      const equipeDB = snapshotEquipe.val() || {};
-      const logisticaDB = snapshotLogistica.val() || {};
-
       const tabela = document.getElementById('tabelaEventos');
-      const blocoListas = document.getElementById('listasEquipeLogistica');
       tabela.innerHTML = '';
-      blocoListas.innerHTML = '';
       eventosCarregados = [];
 
       const statusFiltro = document.getElementById('filtroStatus').value;
@@ -139,12 +120,12 @@
         if (!isWithinRange(evento.data, dataInicio, dataFim)) continue;
 
         const etapas = evento.etapas || {};
-        const clienteId = evento.clienteId || '';
-
         eventosCarregados.push({ id, etapas });
 
+        const clienteId = evento.clienteId || '';
+
         const row = document.createElement('tr');
-        row.innerHTML = `
+        row.innerHTML = 
           <td>${evento.nomeEvento || id}</td>
           <td>${evento.data ? formatDateBR(evento.data) : '-'}</td>
           <td><input type="checkbox" ${etapas.produtosDefinidos ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'produtosDefinidos', this.checked)"></td>
@@ -153,80 +134,34 @@
           <td><input type="checkbox" ${etapas.clienteConfirmado ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'clienteConfirmado', this.checked)"></td>
           <td><input type="checkbox" ${etapas.divulgacaoRealizada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'divulgacaoRealizada', this.checked)"></td>
           <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
-          <td><button class="copiar-btn" data-clienteid="${clienteId}" onclick="copiarEnderecoPorElemento(this)">Copiar Endereço</button></td>
-        `;
+          <td><button class="copiar-btn" onclick="copiarEndereco('${clienteId}')">Copiar Endereço</button></td>
+        ;
         tabela.appendChild(row);
-
-        const nomesUnicos = new Set();
-        const nomes = [];
-
-        (evento.equipe || []).forEach(eq => {
-          const dados = equipeDB[eq.membroId];
-          if (dados?.nomeCompleto && dados?.documento) {
-            const chave = `${dados.nomeCompleto} - ${dados.documento}`;
-            if (!nomesUnicos.has(chave)) {
-              nomesUnicos.add(chave);
-              nomes.push(chave);
-            }
-          }
-        });
-
-        (evento.logistica || []).forEach(log => {
-          const dados = logisticaDB[log.prestadorId];
-          if (dados?.nome && dados?.documento) {
-            const chave = `${dados.nome} - ${dados.documento}`;
-            if (!nomesUnicos.has(chave)) {
-              nomesUnicos.add(chave);
-              nomes.push(chave);
-            }
-          }
-        });
-
-        if (nomes.length > 0) {
-          const div = document.createElement('div');
-          const texto = nomes.join('\n');
-          const nomeEvento = evento.nomeEvento || id;
-          const dataFormatada = formatDateBR(evento.data);
-          div.innerHTML = `
-            <div class="titulo-evento">${nomeEvento} (${dataFormatada})</div>
-            <pre>${texto}</pre>
-            <button class="copiar-btn" onclick="copiarTextoEquipeLogistica(\`${texto.replace(/`/g, "\\`").replace(/\n/g, '\\n')}\`)">Copiar</button>
-          `;
-          blocoListas.appendChild(div);
-        }
       }
-    }
-
-    function copiarEnderecoPorElemento(botao) {
-      const clienteId = botao.dataset.clienteid;
-      copiarEndereco(clienteId);
     }
 
     function copiarEndereco(clienteId) {
       if (!clienteId) return alert('Cliente não definido no evento.');
-      db.ref(`clientes/${clienteId}`).once('value').then(snapshot => {
+
+      db.ref(clientes/${clienteId}).once('value').then(snapshot => {
         const cliente = snapshot.val();
         const nome = cliente?.nome || '';
         const endereco = cliente?.enderecoCompleto || '';
-        const texto = `${nome}\n${endereco}`;
+        const texto = ${nome}\n${endereco};
         navigator.clipboard.writeText(texto)
           .then(() => alert('Endereço copiado:\n\n' + texto))
           .catch(() => alert('Erro ao copiar endereço.'));
       });
     }
 
-    function copiarTextoEquipeLogistica(texto) {
-      navigator.clipboard.writeText(texto)
-        .then(() => alert('Lista copiada com sucesso!'))
-        .catch(() => alert('Erro ao copiar lista.'));
-    }
-
     function atualizarEtapa(eventoId, etapa, valor) {
-      db.ref(`eventos/${eventoId}/etapas`).update({ [etapa]: valor });
+      db.ref(eventos/${eventoId}/etapas).update({ [etapa]: valor })
+        .then(() => console.log(Etapa ${etapa} atualizada para ${valor}))
+        .catch(err => console.error('Erro ao atualizar:', err));
     }
 
     function gestaoEvento(id) {
-      window.location.href = `GestaoEvento.html?id=${id}`;
+      window.location.href = GestaoEvento.html?id=${id};
     }
 
     function marcarTodasCompras(valor) {
