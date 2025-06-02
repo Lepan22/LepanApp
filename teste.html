@@ -1,4 +1,4 @@
-<!-- controle_etapas.html - Endereço corrigido + Lista de Equipe/Logística -->
+<!-- controle_etapas.html - Correção definitiva no botão "Copiar Endereço" -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -62,7 +62,9 @@
         <label for="filtroDataFim">Data Fim:</label>
         <input type="date" id="filtroDataFim" />
 
-        <label class="destaque-compras"><input type="checkbox" id="compraGlobal" onchange="marcarTodasCompras(this.checked)"> Marcar Compras</label>
+        <label class="destaque-compras">
+          <input type="checkbox" id="compraGlobal" onchange="marcarTodasCompras(this.checked)"> Marcar Compras
+        </label>
       </form>
 
       <table>
@@ -151,7 +153,7 @@
           <td><input type="checkbox" ${etapas.clienteConfirmado ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'clienteConfirmado', this.checked)"></td>
           <td><input type="checkbox" ${etapas.divulgacaoRealizada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'divulgacaoRealizada', this.checked)"></td>
           <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
-          <td><button class="copiar-btn" onclick="copiarEndereco('${clienteId}')">Copiar Endereço</button></td>
+          <td><button class="copiar-btn" data-clienteid="${clienteId}" onclick="copiarEnderecoPorElemento(this)">Copiar Endereço</button></td>
         `;
         tabela.appendChild(row);
 
@@ -193,6 +195,11 @@
           blocoListas.appendChild(div);
         }
       }
+    }
+
+    function copiarEnderecoPorElemento(botao) {
+      const clienteId = botao.dataset.clienteid;
+      copiarEndereco(clienteId);
     }
 
     function copiarEndereco(clienteId) {
