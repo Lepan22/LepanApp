@@ -1,4 +1,4 @@
-<!-- controle_etapas.html - Corrigido: botão "Copiar Endereço" funcional + lista de equipe/logística -->
+<!-- controle_etapas.html - Endereço corrigido + Lista de Equipe/Logística -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -138,6 +138,7 @@
 
         const etapas = evento.etapas || {};
         const clienteId = evento.clienteId || '';
+
         eventosCarregados.push({ id, etapas });
 
         const row = document.createElement('tr');
@@ -154,7 +155,6 @@
         `;
         tabela.appendChild(row);
 
-        // LISTA EQUIPE / LOGÍSTICA
         const nomesUnicos = new Set();
         const nomes = [];
 
@@ -196,25 +196,15 @@
     }
 
     function copiarEndereco(clienteId) {
-      if (!clienteId) {
-        alert('Cliente não definido no evento.');
-        return;
-      }
-
+      if (!clienteId) return alert('Cliente não definido no evento.');
       db.ref(`clientes/${clienteId}`).once('value').then(snapshot => {
         const cliente = snapshot.val();
         const nome = cliente?.nome || '';
         const endereco = cliente?.enderecoCompleto || '';
         const texto = `${nome}\n${endereco}`;
-        if (!nome && !endereco) {
-          alert('Endereço não encontrado para este cliente.');
-        } else {
-          navigator.clipboard.writeText(texto)
-            .then(() => alert('Endereço copiado:\n\n' + texto))
-            .catch(() => alert('Erro ao copiar endereço.'));
-        }
-      }).catch(() => {
-        alert('Erro ao acessar dados do cliente.');
+        navigator.clipboard.writeText(texto)
+          .then(() => alert('Endereço copiado:\n\n' + texto))
+          .catch(() => alert('Erro ao copiar endereço.'));
       });
     }
 
