@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>KPIs - Teste</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evento</title>
+
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
+
   <style>
     .kpi-linha {
       display: flex;
@@ -43,136 +46,92 @@
   </style>
 </head>
 <body>
-  <div id="menu-container"></div>
-  <main>
-    <div class="kpi-linha" style="margin-top: 20px;">
-      <div class="kpi">
-        <h2>Eventos Estimados no Mês</h2>
-        <p id="kpi-estimado">0</p>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+
+    <main class="main-content">
+      <h2>Eventos</h2>
+
+      <div class="kpi-linha" style="margin-top: 20px;">
+        <div class="kpi">
+          <h2>Eventos Estimados no Mês</h2>
+          <p id="kpi-estimado">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Eventos Realizados no Mês</h2>
+          <p id="kpi-realizado">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Eventos desta Semana</h2>
+          <p id="kpi-semana">0</p>
+        </div>
       </div>
-      <div class="kpi">
-        <h2>Eventos Realizados no Mês</h2>
-        <p id="kpi-realizado">0</p>
+
+      <div class="kpi-linha" style="margin-top: 4px;">
+        <div class="kpi">
+          <h2>Estimativa Venda Mês</h2>
+          <p id="kpi-estimativa-mes">R$ 0,00</p>
+        </div>
+        <div class="kpi">
+          <h2>Venda Real Mês</h2>
+          <p id="kpi-venda-mes">R$ 0,00</p>
+        </div>
+        <div class="kpi">
+          <h2>Estimativa Venda Semana</h2>
+          <p id="kpi-estimativa-semana">R$ 0,00</p>
+        </div>
+        <div class="kpi">
+          <h2>Lucro no Mês</h2>
+          <p id="kpi-lucro-mes">R$ 0,00</p>
+        </div>
       </div>
-      <div class="kpi">
-        <h2>Eventos desta Semana</h2>
-        <p id="kpi-semana">0</p>
-      </div>
-    </div>
 
-    <div class="kpi-linha" style="margin-top: 4px;">
-      <div class="kpi">
-        <h2>Estimativa Venda Mês</h2>
-        <p id="kpi-estimativa-mes">R$ 0,00</p>
-      </div>
-      <div class="kpi">
-        <h2>Venda Real Mês</h2>
-        <p id="kpi-venda-mes">R$ 0,00</p>
-      </div>
-      <div class="kpi">
-        <h2>Estimativa Venda Semana</h2>
-        <p id="kpi-estimativa-semana">R$ 0,00</p>
-      </div>
-      <div class="kpi">
-        <h2>Lucro no Mês</h2>
-        <p id="kpi-lucro-mes">R$ 0,00</p>
-      </div>
-    </div>
-  </main>
+      <form id="filtrosForm" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 10px;">
+        <div style="display: flex; flex-direction: column;">
+          <label for="filtroStatus">Status</label>
+          <select id="filtroStatus">
+            <option value="Todos">Todos</option>
+            <option value="Aberto">Aberto</option>
+            <option value="Finalizado">Finalizado</option>
+            <option value="Fechado">Fechado</option>
+          </select>
+        </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp"
-    };
+        <div style="display: flex; flex-direction: column;">
+          <label for="filtroNome">Nome do Evento</label>
+          <input type="text" id="filtroNome" />
+        </div>
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+        <div style="display: flex; flex-direction: column;">
+          <label for="filtroDataInicio">Data Início</label>
+          <input type="date" id="filtroDataInicio" />
+        </div>
 
-    const now = new Date();
-    const currentMonthPath = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+        <div style="display: flex; flex-direction: column;">
+          <label for="filtroDataFim">Data Fim</label>
+          <input type="date" id="filtroDataFim" />
+        </div>
 
-    const getMonday = (date) => {
-      const d = new Date(date);
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      return new Date(d.setDate(diff));
-    };
+        <button type="submit">Aplicar</button>
+        <button type="button" onclick="limparFiltros()">Limpar</button>
+      </form>
 
-    const monday = getMonday(new Date());
-    const weekStart = new Date(monday);
-    const weekEnd = new Date(monday);
-    weekEnd.setDate(weekEnd.getDate() + 6);
+      <table>
+        <thead>
+          <tr>
+            <th>Nome do Evento</th>
+            <th>Data</th>
+            <th>Status</th>
+            <th>Média Venda</th>
+            <th>Estimativa</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaEventos"></tbody>
+      </table>
+    </main>
+  </div>
 
-    function formatDateBR(dateStr) {
-      const [year, month, day] = dateStr.split('-');
-      return new Date(`${year}-${month}-${day}T00:00:00`);
-    }
-
-    function formatCurrency(valor) {
-      return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    async function carregarKPIs() {
-      let estimado = 0, realizado = 0, semana = 0;
-      let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
-
-      const projEventosRef = db.ref('projecao_eventos/' + currentMonthPath);
-      const previsaoRef = db.ref('previsao_receita/' + currentMonthPath + '/total');
-      const eventosRef = db.ref('eventos');
-
-      const projSnap = await projEventosRef.once('value');
-      if (projSnap.exists()) estimado = Object.keys(projSnap.val()).length;
-
-      const previsaoSnap = await previsaoRef.once('value');
-      estimativaMes = previsaoSnap.val() || 0;
-
-      const eventosSnap = await eventosRef.once('value');
-      const eventos = eventosSnap.val();
-
-      if (eventos) {
-        Object.values(eventos).forEach(evento => {
-          if (!evento.data) return;
-          const dataEvento = formatDateBR(evento.data);
-          const status = (evento.status || '').toLowerCase();
-
-          const dentroDoMes = dataEvento.getFullYear() === now.getFullYear() &&
-                              dataEvento.getMonth() === now.getMonth();
-
-          const dentroDaSemana = dataEvento >= weekStart && dataEvento <= weekEnd;
-
-          const vendaPDV = Number(evento.vendaPDV || 0);
-          const cmvReal = Number(evento.cmvReal || 0);
-
-          const custoEquipe = (evento.equipe || []).reduce((s, e) => s + (Number(e.valor) || 0), 0);
-          const custoLogistica = (evento.logistica || []).reduce((s, l) => s + (Number(l.valor) || 0), 0);
-          const lucroCalculado = vendaPDV - cmvReal - custoLogistica - custoEquipe;
-
-          if (dentroDoMes && (status === "fechado" || status === "finalizado")) {
-            realizado++;
-            vendaMes += vendaPDV;
-            lucroMes += lucroCalculado;
-          }
-
-          if (dentroDaSemana) {
-            estimativaSemana += Number(evento.estimativaVenda || 0);
-            semana++;
-          }
-        });
-      }
-
-      document.getElementById('kpi-estimado').innerText = estimado;
-      document.getElementById('kpi-realizado').innerText = realizado;
-      document.getElementById('kpi-semana').innerText = semana;
-      document.getElementById('kpi-estimativa-mes').innerText = formatCurrency(estimativaMes);
-      document.getElementById('kpi-venda-mes').innerText = formatCurrency(vendaMes);
-      document.getElementById('kpi-estimativa-semana').innerText = formatCurrency(estimativaSemana);
-      document.getElementById('kpi-lucro-mes').innerText = formatCurrency(lucroMes);
-    }
-
-    carregarKPIs();
-  </script>
+  <script src="eventos.js"></script>
 </body>
 </html>
