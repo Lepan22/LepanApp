@@ -104,7 +104,7 @@ function calcularKPIs() {
   // Estimativa total de eventos no mês
   db.ref(`/projecao_eventos/${mesAno}`).once('value').then(snapshot => {
     const dados = snapshot.val() || {};
-    const totalEstimado = Object.values(dados).reduce((soma, val) => soma + 1, 0);
+    const totalEstimado = Object.keys(dados).length;
     document.getElementById('kpiEstimativaEventos').innerText = totalEstimado;
   });
 }
