@@ -91,7 +91,7 @@
     function formatDateBR(dataISO) {
       if (!dataISO) return '';
       const [ano, mes, dia] = dataISO.split("-");
-      return ${dia}/${mes}/${ano};
+      return `${dia}/${mes}/${ano}`;
     }
 
     function isWithinRange(dataStr, inicio, fim) {
@@ -125,7 +125,7 @@
         const clienteId = evento.clienteId || '';
 
         const row = document.createElement('tr');
-        row.innerHTML = 
+        row.innerHTML = `
           <td>${evento.nomeEvento || id}</td>
           <td>${evento.data ? formatDateBR(evento.data) : '-'}</td>
           <td><input type="checkbox" ${etapas.produtosDefinidos ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'produtosDefinidos', this.checked)"></td>
@@ -135,7 +135,7 @@
           <td><input type="checkbox" ${etapas.divulgacaoRealizada ? 'checked' : ''} onchange="atualizarEtapa('${id}', 'divulgacaoRealizada', this.checked)"></td>
           <td><button class="btn" onclick="gestaoEvento('${id}')">Gestão</button></td>
           <td><button class="copiar-btn" onclick="copiarEndereco('${clienteId}')">Copiar Endereço</button></td>
-        ;
+        `;
         tabela.appendChild(row);
       }
     }
@@ -143,11 +143,11 @@
     function copiarEndereco(clienteId) {
       if (!clienteId) return alert('Cliente não definido no evento.');
 
-      db.ref(clientes/${clienteId}).once('value').then(snapshot => {
+      db.ref(`clientes/${clienteId}`).once('value').then(snapshot => {
         const cliente = snapshot.val();
         const nome = cliente?.nome || '';
         const endereco = cliente?.enderecoCompleto || '';
-        const texto = ${nome}\n${endereco};
+        const texto = `${nome}\n${endereco}`;
         navigator.clipboard.writeText(texto)
           .then(() => alert('Endereço copiado:\n\n' + texto))
           .catch(() => alert('Erro ao copiar endereço.'));
@@ -155,13 +155,13 @@
     }
 
     function atualizarEtapa(eventoId, etapa, valor) {
-      db.ref(eventos/${eventoId}/etapas).update({ [etapa]: valor })
-        .then(() => console.log(Etapa ${etapa} atualizada para ${valor}))
+      db.ref(`eventos/${eventoId}/etapas`).update({ [etapa]: valor })
+        .then(() => console.log(`Etapa ${etapa} atualizada para ${valor}`))
         .catch(err => console.error('Erro ao atualizar:', err));
     }
 
     function gestaoEvento(id) {
-      window.location.href = GestaoEvento.html?id=${id};
+      window.location.href = `GestaoEvento.html?id=${id}`;
     }
 
     function marcarTodasCompras(valor) {
