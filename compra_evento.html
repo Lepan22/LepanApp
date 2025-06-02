@@ -74,17 +74,17 @@
       projectId: "lepanapp"
     };
     firebase.initializeApp(firebaseConfig);
-
     const db = firebase.database();
 
     function isWithinRangeData(dataStr) {
       if (!dataStr) return false;
 
-      const data = new Date(dataStr);
+      const [dia, mes, ano] = dataStr.split("/");
+      const data = new Date(`${ano}-${mes}-${dia}`);
+      if (isNaN(data)) return false;
+
       const inicioStr = document.getElementById("dataInicio").value;
       const fimStr = document.getElementById("dataFim").value;
-
-      if (!inicioStr && !fimStr) return true;
 
       const inicio = inicioStr ? new Date(inicioStr) : null;
       const fim = fimStr ? new Date(fimStr) : null;
