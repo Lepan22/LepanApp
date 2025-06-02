@@ -19,21 +19,24 @@ function carregarClientesAtivos() {
       snapshot.forEach(child => {
         const cliente = child.val();
         const id = child.key;
-        const nome = cliente.nome || 'Sem nome';
-        const statusEvento = cliente.clienteAtivo?.status || '';
-        const dataPrimeiroEvento = cliente.clienteAtivo?.dataPrimeiroEvento || '';
 
-        if (statusEvento.toLowerCase() === 'ativo') {
-          encontrou = true;
-          corpoTabela.innerHTML += `
-            <tr>
-              <td>${nome}</td>
-              <td>${formatarData(dataPrimeiroEvento)}</td>
-              <td>${statusEvento}</td>
-              <td><button onclick="editarCliente('${id}')">Editar</button></td>
-            </tr>
-          `;
+        if (!cliente.clienteAtivo || cliente.clienteAtivo.status?.toLowerCase() !== 'ativo') {
+          return; // ignora quem não for ativo
         }
+
+        const nome = cliente.nome || 'Sem nome';
+        const statusEvento = cliente.clienteAtivo.status;
+        const dataPrimeiroEvento = cliente.clienteAtivo.dataPrimeiroEvento || '';
+
+        corpoTabela.innerHTML += `
+          <tr>
+            <td>${nome}</td>
+            <td>${formatarData(dataPrimeiroEvento)}</td>
+            <td>${statusEvento}</td>
+            <td><button onclick="editarCliente('${id}')">Editar</button></td>
+          </tr>
+        `;
+        encontrou = true;
       });
 
       if (!encontrou) {
