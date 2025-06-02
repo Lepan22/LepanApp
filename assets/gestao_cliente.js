@@ -1,8 +1,6 @@
 import { db } from './firebase-config.js';
 import { ref, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-const anoAtual = new Date().getFullYear();
-
 function carregarClientesAtivos() {
   const corpoTabela = document.getElementById('listaClientesAtivos');
   corpoTabela.innerHTML = '';
@@ -22,16 +20,16 @@ function carregarClientesAtivos() {
         const cliente = child.val();
         const id = child.key;
         const nome = cliente.nome || 'Sem nome';
-        const statusAtivo = cliente.clienteAtivo?.status || '';
+        const statusEvento = cliente.clienteAtivo?.status || '';
         const dataPrimeiroEvento = cliente.clienteAtivo?.dataPrimeiroEvento || '';
 
-        if (statusAtivo.toLowerCase() === 'ativo') {
+        if (statusEvento.toLowerCase() === 'ativo') {
           encontrou = true;
           corpoTabela.innerHTML += `
             <tr>
               <td>${nome}</td>
               <td>${formatarData(dataPrimeiroEvento)}</td>
-              <td>${statusAtivo}</td>
+              <td>${statusEvento}</td>
               <td><button onclick="editarCliente('${id}')">Editar</button></td>
             </tr>
           `;
