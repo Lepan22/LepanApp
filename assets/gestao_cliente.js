@@ -70,7 +70,7 @@ function atualizarKPIs(clientes) {
   let ativos = 0, novos = 0, quentes = 0, perdidos = 0;
 
   clientes.forEach(c => {
-    if (c.clienteAtivo?.status === "Ativo") ativos++;
+    if (c.clienteAtivo?.statusEvento === "Ativo") ativos++;
     if (c.clienteAtivo?.dataPrimeiroEvento && new Date(c.clienteAtivo.dataPrimeiroEvento).getFullYear() === anoAtual) novos++;
     if (c.status === "Quente") quentes++;
     if (c.ultimoContato && new Date(c.ultimoContato).getFullYear() === anoAtual) perdidos++;
