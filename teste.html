@@ -13,28 +13,29 @@
     .kpi-linha {
       display: flex;
       gap: 16px;
-      padding: 10px 20px;
-      margin-bottom: 5px;
+      padding: 0 20px;
+      margin-bottom: 2px;
       flex-wrap: wrap;
     }
     .kpi {
       background-color: #fff3e0;
       border-left: 4px solid #ff9800;
-      padding: 10px 14px;
+      padding: 6px 10px;
       border-radius: 6px;
       min-width: 180px;
       flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: center;
+      height: 60px;
     }
     .kpi h2 {
-      margin: 0 0 4px;
-      font-size: 13px;
+      margin: 0 0 2px;
+      font-size: 12px;
       color: #333;
     }
     .kpi p {
-      font-size: 18px;
+      font-size: 16px;
       margin: 0;
       font-weight: bold;
       color: #ff9800;
@@ -44,8 +45,6 @@
 <body>
   <div id="menu-container"></div>
   <main>
-    <h1 style="padding: 16px 20px 8px;">KPIs de Eventos</h1>
-    
     <div class="kpi-linha">
       <div class="kpi">
         <h2>Eventos Estimados no Mês</h2>
@@ -61,7 +60,7 @@
       </div>
     </div>
 
-    <div class="kpi-linha">
+    <div class="kpi-linha" style="margin-top: 4px;">
       <div class="kpi">
         <h2>Estimativa Venda Mês</h2>
         <p id="kpi-estimativa-mes">R$ 0,00</p>
