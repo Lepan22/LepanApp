@@ -1,58 +1,41 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Gestão de Clientes</title>
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-  <link rel="stylesheet" href="assets/base.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clientes Ativos</title>
+  <link rel="stylesheet" href="assets/menu-styles.css">
+  <link rel="stylesheet" href="assets/base.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
-  <script src="assets/gestao_cliente.js" defer></script>
+  <script src="assets/clientes_ativos.js" defer></script>
 </head>
 <body>
-  <div id="menu"></div>
-  <main class="container">
-    <h1>Gestão de Clientes</h1>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+    
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Clientes Ativos</h1>
+      </div>
 
-    <section class="kpis" style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
-      <div class="card"><strong>Clientes Ativos:</strong> <span id="kpiAtivos">0</span></div>
-      <div class="card"><strong>Novos Clientes no Ano:</strong> <span id="kpiNovosAno">0</span></div>
-      <div class="card"><strong>Clientes Quentes:</strong> <span id="kpiQuentes">0</span></div>
-      <div class="card"><strong>Clientes Perdidos no Ano:</strong> <span id="kpiPerdidos">0</span></div>
-    </section>
-
-    <button onclick="window.location.href='cadastro_cliente.html'" style="margin-bottom: 20px;">Cadastrar Cliente</button>
-
-    <h2>Clientes Ativos</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Data 1º Evento</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="listaClientesAtivos">
-        <!-- Conteúdo gerado dinamicamente -->
-      </tbody>
-    </table>
-
-    <h2 style="margin-top: 40px;">Clientes Quentes</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Nome</th>
-          <th>Status</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="listaClientesQuentes">
-        <!-- Conteúdo gerado dinamicamente -->
-      </tbody>
-    </table>
-  </main>
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Data 1º Evento</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="listaClientesAtivos">
+            <tr><td colspan="4">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
 </body>
 </html>
