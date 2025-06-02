@@ -8,6 +8,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database().ref("clientes");
 
+const anoAtual = new Date().getFullYear();
+
 function aplicarFiltros(lista) {
   const nomeFiltro = document.getElementById("filtroNome").value.toLowerCase();
   const statusFiltro = document.getElementById("filtroStatus").value;
@@ -64,6 +66,22 @@ function renderizarTabela(clientes) {
   });
 }
 
+function atualizarKPIs(clientes) {
+  let ativos = 0, novos = 0, quentes = 0, perdidos = 0;
+
+  clientes.forEach(c => {
+    if (c.clienteAtivo?.status === "Ativo") ativos++;
+    if (c.clienteAtivo?.dataPrimeiroEvento && new Date(c.clienteAtivo.dataPrimeiroEvento).getFullYear() === anoAtual) novos++;
+    if (c.status === "Quente") quentes++;
+    if (c.ultimoContato && new Date(c.ultimoContato).getFullYear() === anoAtual) perdidos++;
+  });
+
+  document.getElementById("kpiAtivos").textContent = ativos;
+  document.getElementById("kpiNovos").textContent = novos;
+  document.getElementById("kpiQuentes").textContent = quentes;
+  document.getElementById("kpiPerdidos").textContent = perdidos;
+}
+
 function carregarClientes() {
   db.once("value").then(snapshot => {
     const lista = [];
@@ -74,6 +92,7 @@ function carregarClientes() {
     });
 
     const filtrados = aplicarFiltros(lista);
+    atualizarKPIs(lista);
     renderizarTabela(filtrados);
   });
 }
