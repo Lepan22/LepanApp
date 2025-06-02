@@ -1,40 +1,174 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
   <title>Gestão de Clientes</title>
-  <link rel="stylesheet" href="assets/base.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="assets/menu-styles.css">
+  <link rel="stylesheet" href="assets/base.css">
+  <style>
+    .linha {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .campo {
+      flex: 1;
+      min-width: 200px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin: 0;
+    }
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
+    <div id="menuLateral" class="sidebar"></div>
 
-    <main class="main-content">
-      <div class="page-header">
-        <h1>Clientes Ativos</h1>
-      </div>
+    <div class="main-content">
+      <form id="clienteForm">
 
-      <div class="card">
-        <table>
-          <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Data 1º Evento</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="listaClientesAtivos">
-            <tr><td colspan="4">Carregando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </main>
+        <div class="linha">
+          <div class="campo">
+            <label>Nome do condomínio/local:</label>
+            <input type="text" id="nome">
+          </div>
+          <div class="campo">
+            <label>Data de cadastro:</label>
+            <input type="date" id="dataCadastro">
+          </div>
+          <div class="campo">
+            <label>Tipo de cliente:</label>
+            <input type="text" id="tipoCliente">
+          </div>
+        </div>
+
+        <div class="linha">
+          <div class="campo">
+            <label>Indicado por:</label>
+            <input type="text" id="indicadoPor">
+          </div>
+          <div class="campo">
+            <label>Perfil econômico:</label>
+            <input type="text" id="perfilEconomico">
+          </div>
+          <div class="campo">
+            <label>Tamanho:</label>
+            <input type="text" id="tamanho">
+          </div>
+        </div>
+
+        <div class="linha">
+          <div class="campo">
+            <label>Endereço:</label>
+            <input type="text" id="endereco">
+          </div>
+          <div class="campo">
+            <label>Região:</label>
+            <input type="text" id="regiao">
+          </div>
+          <div class="campo">
+            <label>Data do último contato:</label>
+            <input type="date" id="ultimoContato">
+          </div>
+        </div>
+
+        <div class="linha">
+          <div class="campo">
+            <label>Observações:</label>
+            <input type="text" id="observacoes">
+          </div>
+          <div class="campo">
+            <label>Status:</label>
+            <select id="status" onchange="toggleClienteAtivo()">
+              <option>Aberto</option>
+              <option>Fechado</option>
+              <option>Frio</option>
+              <option>Quente</option>
+              <option>Encerrado</option>
+            </select>
+          </div>
+        </div>
+
+        <label>Contatos:</label>
+        <div id="contatosContainer"></div>
+        <button type="button" onclick="adicionarContato()">Adicionar contato</button>
+
+        <div id="clientesAtivos" style="display:none; margin-top: 10px;">
+          <div class="linha">
+            <div class="campo">
+              <label>Nome do evento:</label>
+              <input type="text" id="nomeEvento">
+            </div>
+            <div class="campo">
+              <label>Frequência:</label>
+              <select id="frequencia">
+                <option>Semanal</option>
+                <option>Quinzenal</option>
+                <option>Mensal</option>
+                <option>Esporádico</option>
+                <option>A Definir</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>Data do primeiro evento:</label>
+              <input type="date" id="dataPrimeiroEvento">
+            </div>
+          </div>
+
+          <div class="linha">
+            <div class="campo">
+              <label>Status do evento:</label>
+              <select id="statusEvento">
+                <option>Ativo</option>
+                <option>Inativo</option>
+                <option>Pausado</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label>Dias da semana:</label><br>
+              <label><input type="checkbox" id="seg">Seg</label>
+              <label><input type="checkbox" id="ter">Ter</label>
+              <label><input type="checkbox" id="qua">Qua</label>
+              <label><input type="checkbox" id="qui">Qui</label>
+              <label><input type="checkbox" id="sex">Sex</label>
+              <label><input type="checkbox" id="sab">Sab</label>
+              <label><input type="checkbox" id="dom">Dom</label>
+            </div>
+          </div>
+
+          <label>Observações do evento:</label>
+          <textarea id="obsEvento" placeholder="Observações do evento"></textarea>
+        </div>
+
+        <button type="submit">Salvar Cliente</button>
+      </form>
+
+      <hr>
+
+      <table id="clientesTable" border="1" cellspacing="0" cellpadding="4">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Status</th>
+            <th>Tipo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
-  <script type="module" src="assets/gestao_cliente.js"></script>
-  <script src="assets/menu.js"></script>
+  <script src="assets/gestao_cliente.js"></script>
 </body>
 </html>
