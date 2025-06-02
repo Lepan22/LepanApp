@@ -108,6 +108,13 @@
       return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
+    function safeGet(obj, ...keys) {
+      for (let key of keys) {
+        if (obj[key] !== undefined) return Number(obj[key]) || 0;
+      }
+      return 0;
+    }
+
     async function carregarKPIs() {
       let estimado = 0, realizado = 0, semana = 0;
       let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
@@ -143,12 +150,12 @@
 
           if (dentroDoMes && (status === "fechado" || status === "finalizado")) {
             realizado++;
-            vendaMes += Number(evento.valorVendaPDV || 0);
-            lucroMes += Number(evento.lucro || 0);
+            vendaMes += safeGet(evento, "valorVendaPDV", "valorvendapdv", "valorPDV");
+            lucroMes += safeGet(evento, "lucro", "lucroFinal", "valorLucro");
           }
 
           if (dentroDaSemana) {
-            estimativaSemana += Number(evento.estimativaVenda || 0);
+            estimativaSemana += safeGet(evento, "estimativaVenda");
             semana++;
           }
         });
