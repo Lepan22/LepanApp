@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Clients</title>
+  <title>Clientes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
@@ -16,41 +16,41 @@
 
     <div class="main-content">
       <form id="clienteForm">
-        <label for="nome">Nome do condomínio/local:</label>
+        <label style="font-weight: 500;">Nome do condomínio/local:</label>
         <input type="text" id="nome">
 
-        <label for="dataCadastro">Data de cadastro:</label>
+        <label style="font-weight: 500;">Data de cadastro:</label>
         <input type="date" id="dataCadastro">
 
-        <label for="tipoCliente">Tipo de cliente:</label>
+        <label style="font-weight: 500;">Tipo de cliente:</label>
         <input type="text" id="tipoCliente">
 
-        <label for="indicadoPor">Indicado por:</label>
+        <label style="font-weight: 500;">Indicado por:</label>
         <input type="text" id="indicadoPor">
 
-        <label>Contatos:</label>
+        <label style="font-weight: 500;">Contatos:</label>
         <div id="contatosContainer"></div>
         <button type="button" onclick="adicionarContato()">Adicionar contato</button>
 
-        <label for="perfilEconomico">Perfil econômico:</label>
+        <label style="font-weight: 500;">Perfil econômico:</label>
         <input type="text" id="perfilEconomico">
 
-        <label for="tamanho">Tamanho:</label>
+        <label style="font-weight: 500;">Tamanho:</label>
         <input type="text" id="tamanho">
 
-        <label for="endereco">Endereço:</label>
+        <label style="font-weight: 500;">Endereço:</label>
         <input type="text" id="endereco">
 
-        <label for="regiao">Região:</label>
+        <label style="font-weight: 500;">Região:</label>
         <input type="text" id="regiao">
 
-        <label for="ultimoContato">Data do último contato:</label>
+        <label style="font-weight: 500;">Data do último contato:</label>
         <input type="date" id="ultimoContato">
 
-        <label for="observacoes">Observações:</label>
+        <label style="font-weight: 500;">Observações:</label>
         <input type="text" id="observacoes">
 
-        <label for="status">Status:</label>
+        <label style="font-weight: 500;">Status:</label>
         <select id="status" onchange="toggleClienteAtivo()">
           <option>Aberto</option>
           <option>Fechado</option>
@@ -60,10 +60,10 @@
         </select>
 
         <div id="clientesAtivos" style="display:none;">
-          <label for="nomeEvento">Nome do evento:</label>
+          <label style="font-weight: 500;">Nome do evento:</label>
           <input type="text" id="nomeEvento">
 
-          <label for="frequencia">Frequência:</label>
+          <label style="font-weight: 500;">Frequência:</label>
           <select id="frequencia">
             <option>Semanal</option>
             <option>Quinzenal</option>
@@ -72,17 +72,17 @@
             <option>A Definir</option>
           </select>
 
-          <label for="dataPrimeiroEvento">Data do primeiro evento:</label>
+          <label style="font-weight: 500;">Data do primeiro evento:</label>
           <input type="date" id="dataPrimeiroEvento">
 
-          <label for="statusEvento">Status do evento:</label>
+          <label style="font-weight: 500;">Status do evento:</label>
           <select id="statusEvento">
             <option>Ativo</option>
             <option>Inativo</option>
             <option>Pausado</option>
           </select>
 
-          <label>Dias da semana:</label>
+          <label style="font-weight: 500;">Dias da semana:</label><br>
           <label><input type="checkbox" id="seg">Seg</label>
           <label><input type="checkbox" id="ter">Ter</label>
           <label><input type="checkbox" id="qua">Qua</label>
@@ -91,7 +91,7 @@
           <label><input type="checkbox" id="sab">Sab</label>
           <label><input type="checkbox" id="dom">Dom</label>
 
-          <label for="obsEvento">Observações do evento:</label>
+          <label style="font-weight: 500;">Observações do evento:</label>
           <textarea id="obsEvento" placeholder="Observações do evento"></textarea>
         </div>
 
