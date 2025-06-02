@@ -46,7 +46,29 @@
   <div class="layout">
     <aside class="sidebar" id="menuLateral"></aside>
     <main class="main-content">
+
+      <!-- KPIs de Clientes -->
       <div class="kpi-linha" style="margin-top: 20px;">
+        <div class="kpi">
+          <h2>Clientes Ativos</h2>
+          <p id="kpi-clientes-ativos">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Clientes Novos no Ano</h2>
+          <p id="kpi-clientes-novos">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Clientes Quentes</h2>
+          <p id="kpi-clientes-quentes">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Clientes Perdidos</h2>
+          <p id="kpi-clientes-perdidos">0</p>
+        </div>
+      </div>
+
+      <!-- KPIs de Eventos e Vendas -->
+      <div class="kpi-linha" style="margin-top: 4px;">
         <div class="kpi">
           <h2>Eventos Estimados no Mês</h2>
           <p id="kpi-estimado">0</p>
@@ -95,6 +117,7 @@
 
     const now = new Date();
     const currentMonthPath = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentYear = now.getFullYear();
 
     const getMonday = (date) => {
       const d = new Date(date);
@@ -106,7 +129,7 @@
     const monday = getMonday(new Date());
     const weekStart = new Date(monday);
     const weekEnd = new Date(monday);
-    weekEnd.setDate(weekEnd.getDate() + 7); // segunda até domingo
+    weekEnd.setDate(weekEnd.getDate() + 7);
 
     function formatDateBR(dateStr) {
       const [year, month, day] = dateStr.split('-');
@@ -120,20 +143,19 @@
     async function carregarKPIs() {
       let estimado = 0, realizado = 0, semana = 0;
       let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
+      let clientesAtivos = 0, clientesNovos = 0, clientesQuentes = 0, clientesPerdidos = 0;
 
-      const projEventosRef = db.ref('projecao_eventos/' + currentMonthPath);
-      const previsaoRef = db.ref('previsao_receita/' + currentMonthPath + '/total');
-      const eventosRef = db.ref('eventos');
+      const [projSnap, previsaoSnap, eventosSnap, clientesSnap] = await Promise.all([
+        db.ref('projecao_eventos/' + currentMonthPath).once('value'),
+        db.ref('previsao_receita/' + currentMonthPath + '/total').once('value'),
+        db.ref('eventos').once('value'),
+        db.ref('clientes').once('value')
+      ]);
 
-      const projSnap = await projEventosRef.once('value');
       if (projSnap.exists()) estimado = Object.keys(projSnap.val()).length;
-
-      const previsaoSnap = await previsaoRef.once('value');
       estimativaMes = previsaoSnap.val() || 0;
 
-      const eventosSnap = await eventosRef.once('value');
       const eventos = eventosSnap.val();
-
       if (eventos) {
         Object.values(eventos).forEach(evento => {
           if (!evento.data) return;
@@ -142,15 +164,13 @@
 
           const dentroDoMes = dataEvento.getFullYear() === now.getFullYear() &&
                               dataEvento.getMonth() === now.getMonth();
-
           const dentroDaSemana = dataEvento >= weekStart && dataEvento <= weekEnd;
 
           const vendaPDV = Number(evento.vendaPDV || 0);
           const cmvReal = Number(evento.cmvReal || 0);
-
           const custoEquipe = (evento.equipe || []).reduce((s, e) => s + (Number(e.valor) || 0), 0);
           const custoLogistica = (evento.logistica || []).reduce((s, l) => s + (Number(l.valor) || 0), 0);
-          const lucroCalculado = vendaPDV - cmvReal - custoLogistica - custoEquipe;
+          const lucroCalculado = vendaPDV - cmvReal - custoEquipe - custoLogistica;
 
           if (dentroDoMes && (status === "fechado" || status === "finalizado")) {
             realizado++;
@@ -165,6 +185,30 @@
         });
       }
 
+      const clientes = clientesSnap.val();
+      if (clientes) {
+        Object.values(clientes).forEach(cli => {
+          const status = (cli.status || '').toLowerCase();
+          const statusEvento = cli.clienteAtivo?.statusEvento;
+
+          if (status === 'quente') clientesQuentes++;
+          if (status === 'encerrado') clientesPerdidos++;
+          if (statusEvento) clientesAtivos++;
+
+          if (cli.dataCadastro) {
+            const ano = new Date(cli.dataCadastro).getFullYear();
+            if (ano === currentYear) clientesNovos++;
+          }
+        });
+      }
+
+      // KPIs Clientes
+      document.getElementById('kpi-clientes-ativos').innerText = clientesAtivos;
+      document.getElementById('kpi-clientes-novos').innerText = clientesNovos;
+      document.getElementById('kpi-clientes-quentes').innerText = clientesQuentes;
+      document.getElementById('kpi-clientes-perdidos').innerText = clientesPerdidos;
+
+      // KPIs Eventos e Vendas
       document.getElementById('kpi-estimado').innerText = estimado;
       document.getElementById('kpi-realizado').innerText = realizado;
       document.getElementById('kpi-semana').innerText = semana;
