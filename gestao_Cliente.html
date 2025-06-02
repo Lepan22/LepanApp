@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Gestão  Clientes</title>
+  <title>Gestão Clientes</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
@@ -10,15 +10,24 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 10px;
     }
     th, td {
       padding: 6px 8px;
       border: 1px solid #ccc;
       text-align: left;
     }
-    button {
-      margin-right: 5px;
+    .filtros {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .filtros label {
+      font-weight: bold;
+    }
+    .filtros input, .filtros select {
+      padding: 4px;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -28,16 +37,42 @@
 <body>
   <div class="layout">
     <div id="menuLateral" class="sidebar"></div>
-
     <div class="main-content">
       <h2>Gestão de Clientes</h2>
+
+      <div class="filtros">
+        <div>
+          <label>Nome:</label><br>
+          <input type="text" id="filtroNome">
+        </div>
+        <div>
+          <label>Status Evento:</label><br>
+          <select id="filtroStatusEvento">
+            <option>Ativo</option>
+            <option>Inativo</option>
+            <option>Pausado</option>
+            <option>TODOS</option>
+          </select>
+        </div>
+        <div>
+          <label>Status:</label><br>
+          <select id="filtroStatus">
+            <option>TODOS</option>
+            <option>Aberto</option>
+            <option>Fechado</option>
+            <option>Frio</option>
+            <option>Quente</option>
+            <option>Encerrado</option>
+          </select>
+        </div>
+      </div>
 
       <table id="clientesTable">
         <thead>
           <tr>
             <th>Nome</th>
             <th>Status</th>
-            <th>Tipo</th>
+            <th>Status Evento</th>
             <th>Ações</th>
           </tr>
         </thead>
