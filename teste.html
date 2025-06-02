@@ -1,159 +1,140 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Cliente</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="assets/menu-styles.css">
-  <link rel="stylesheet" href="assets/base.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KPIs - Teste</title>
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
   <style>
-    .form-grid {
+    .kpi-container {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      align-items: flex-end;
+      gap: 20px;
+      padding: 20px;
     }
-    .form-grid > div {
-      display: flex;
-      flex-direction: column;
+    .kpi {
+      background-color: #fff3e0;
+      border-left: 5px solid #ff9800;
+      padding: 15px 20px;
+      border-radius: 8px;
+      min-width: 200px;
+      flex: 1;
     }
-    .form-grid input, .form-grid select {
-      min-width: 160px;
+    .kpi h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      color: #333;
     }
-    .form-full {
-      flex: 1 1 100%;
+    .kpi p {
+      font-size: 24px;
+      margin: 0;
+      font-weight: bold;
+      color: #ff9800;
     }
   </style>
 </head>
 <body>
-  <div class="layout">
-    <div id="menuLateral" class="sidebar"></div>
-
-    <div class="main-content">
-      <form id="clienteForm">
-        <div class="form-grid">
-          <div>
-            <label for="nome">Nome do condomínio/local:</label>
-            <input type="text" id="nome" placeholder="Nome do condomínio/local">
-          </div>
-          <div>
-            <label for="dataCadastro">Data de cadastro:</label>
-            <input type="date" id="dataCadastro">
-          </div>
-          <div>
-            <label for="tipoCliente">Tipo de cliente:</label>
-            <input type="text" id="tipoCliente" placeholder="Tipo de cliente">
-          </div>
-          <div>
-            <label for="indicadoPor">Indicado por:</label>
-            <input type="text" id="indicadoPor" placeholder="Indicado por">
-          </div>
-          <div>
-            <label for="perfilEconomico">Perfil econômico:</label>
-            <input type="text" id="perfilEconomico" placeholder="Perfil econômico">
-          </div>
-          <div>
-            <label for="tamanho">Tamanho:</label>
-            <input type="text" id="tamanho" placeholder="Tamanho">
-          </div>
-          <div>
-            <label for="endereco">Endereço:</label>
-            <input type="text" id="endereco" placeholder="Endereço">
-          </div>
-          <div>
-            <label for="regiao">Região:</label>
-            <input type="text" id="regiao" placeholder="Região">
-          </div>
-          <div>
-            <label for="ultimoContato">Data do último contato:</label>
-            <input type="date" id="ultimoContato">
-          </div>
-          <div class="form-full">
-            <label for="observacoes">Observações:</label>
-            <input type="text" id="observacoes" placeholder="Observações">
-          </div>
-          <div class="form-full">
-            <label for="status">Status:</label>
-            <select id="status" onchange="toggleClienteAtivo()">
-              <option>Aberto</option>
-              <option>Fechado</option>
-              <option>Frio</option>
-              <option>Quente</option>
-              <option>Encerrado</option>
-            </select>
-            <button type="submit">Salvar Cliente</button>
-          </div>
-        </div>
-
-        <br><label>Contatos:</label>
-        <div id="contatosContainer"></div>
-        <button type="button" onclick="adicionarContato()">Adicionar contato</button><br><br>
-
-        <div id="clientesAtivos" style="display:none;">
-          <div class="form-grid">
-            <div>
-              <label for="nomeEvento">Nome do evento:</label>
-              <input type="text" id="nomeEvento" placeholder="Nome do evento">
-            </div>
-            <div>
-              <label for="frequencia">Frequência:</label>
-              <select id="frequencia">
-                <option>Semanal</option>
-                <option>Quinzenal</option>
-                <option>Mensal</option>
-                <option>Esporádico</option>
-                <option>A Definir</option>
-              </select>
-            </div>
-            <div>
-              <label for="dataPrimeiroEvento">Data do primeiro evento:</label>
-              <input type="date" id="dataPrimeiroEvento">
-            </div>
-            <div>
-              <label for="statusEvento">Status do evento:</label>
-              <select id="statusEvento">
-                <option>Ativo</option>
-                <option>Inativo</option>
-                <option>Pausado</option>
-              </select>
-            </div>
-            <div class="form-full">
-              <label>Dias da semana:</label>
-              <label><input type="checkbox" id="seg">Seg</label>
-              <label><input type="checkbox" id="ter">Ter</label>
-              <label><input type="checkbox" id="qua">Qua</label>
-              <label><input type="checkbox" id="qui">Qui</label>
-              <label><input type="checkbox" id="sex">Sex</label>
-              <label><input type="checkbox" id="sab">Sab</label>
-              <label><input type="checkbox" id="dom">Dom</label>
-            </div>
-            <div class="form-full">
-              <label for="obsEvento">Observações do evento:</label>
-              <textarea id="obsEvento" placeholder="Observações do evento" rows="2"></textarea>
-            </div>
-          </div>
-        </div>
-      </form>
-
-      <hr>
-
-      <table id="clientesTable" border="1" cellspacing="0" cellpadding="4">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Status</th>
-            <th>Tipo</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+  <div id="menu-container"></div>
+  <main>
+    <h1 style="padding: 20px;">KPIs de Eventos</h1>
+    <div class="kpi-container">
+      <div class="kpi">
+        <h2>Eventos Estimados no Mês</h2>
+        <p id="kpi-estimado">0</p>
+      </div>
+      <div class="kpi">
+        <h2>Eventos Realizados no Mês</h2>
+        <p id="kpi-realizado">0</p>
+      </div>
+      <div class="kpi">
+        <h2>Eventos desta Semana</h2>
+        <p id="kpi-semana">0</p>
+      </div>
     </div>
-  </div>
+  </main>
 
-  <script src="clientes.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    const getMonday = (date) => {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      return new Date(d.setDate(diff));
+    };
+
+    const monday = getMonday(new Date());
+    const weekStart = new Date(monday);
+    const weekEnd = new Date(monday);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    function formatDateBR(dateStr) {
+      const [year, month, day] = dateStr.split('-');
+      return new Date(`${year}-${month}-${day}T00:00:00`);
+    }
+
+    async function carregarKPIs() {
+      let estimado = 0;
+      let realizado = 0;
+      let semana = 0;
+
+      const projRef = db.ref('projecao_eventos/' + currentMonth);
+      const eventosRef = db.ref('eventos');
+
+      // KPIs estimados
+      const projSnap = await projRef.once('value');
+      const projData = projSnap.val();
+      if (projData) {
+        estimado = Object.keys(projData).length;
+      }
+
+      // KPIs realizados e semana
+      const eventosSnap = await eventosRef.once('value');
+      const eventos = eventosSnap.val();
+
+      if (eventos) {
+        Object.values(eventos).forEach(evento => {
+          if (!evento.data) return;
+          const dataEvento = formatDateBR(evento.data);
+
+          // Realizado no mês atual
+          if (
+            evento.status &&
+            (evento.status.toLowerCase() === "fechado" || evento.status.toLowerCase() === "finalizado") &&
+            dataEvento.getFullYear() === now.getFullYear() &&
+            dataEvento.getMonth() === now.getMonth()
+          ) {
+            realizado++;
+          }
+
+          // Dentro da semana atual (segunda a domingo)
+          if (dataEvento >= weekStart && dataEvento <= weekEnd) {
+            semana++;
+          }
+        });
+      }
+
+      document.getElementById('kpi-estimado').innerText = estimado;
+      document.getElementById('kpi-realizado').innerText = realizado;
+      document.getElementById('kpi-semana').innerText = semana;
+    }
+
+    carregarKPIs();
+  </script>
 </body>
 </html>
