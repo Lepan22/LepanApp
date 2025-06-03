@@ -81,6 +81,10 @@
           <h2>Eventos desta Semana</h2>
           <p id="kpi-semana">0</p>
         </div>
+        <div class="kpi">
+          <h2>Lucro Total no Ano</h2>
+          <p id="kpi-lucro-ano">R$ 0,00</p>
+        </div>
       </div>
 
       <div class="kpi-linha" style="margin-top: 4px;">
@@ -116,7 +120,6 @@
     const db = firebase.database();
 
     const now = new Date();
-    const currentMonthPath = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
     const currentYear = now.getFullYear();
 
     const getMonday = (date) => {
@@ -142,7 +145,7 @@
 
     async function carregarKPIs() {
       let eventosAno = 0, realizadoMes = 0, semana = 0;
-      let vendaAno = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
+      let vendaAno = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0, lucroAno = 0;
       let clientesAtivos = 0, clientesNovos = 0, clientesQuentes = 0, clientesPerdidos = 0;
 
       const [eventosSnap, clientesSnap] = await Promise.all([
@@ -159,20 +162,22 @@
           const finalizado = (status === "fechado" || status === "finalizado");
 
           const vendaPDV = Number(evento.vendaPDV || 0);
-          const cmvReal = Number(evento.cmvReal || 0);
-          const custoEquipe = (evento.equipe || []).reduce((s, e) => s + (Number(e.valor) || 0), 0);
-          const custoLogistica = (evento.logistica || []).reduce((s, l) => s + (Number(l.valor) || 0), 0);
-          const lucroCalculado = vendaPDV - cmvReal - custoLogistica - custoEquipe;
+          const lucroFinal = Number(evento.lucroFinal || 0);
 
           if (dataEvento.getFullYear() === currentYear && finalizado) {
             eventosAno++;
             vendaAno += vendaPDV;
+            lucroAno += lucroFinal;
           }
 
-          if (dataEvento.getFullYear() === now.getFullYear() && dataEvento.getMonth() === now.getMonth() && finalizado) {
+          if (
+            dataEvento.getFullYear() === now.getFullYear() &&
+            dataEvento.getMonth() === now.getMonth() &&
+            finalizado
+          ) {
             realizadoMes++;
             vendaMes += vendaPDV;
-            lucroMes += lucroCalculado;
+            lucroMes += lucroFinal;
           }
 
           if (dataEvento >= weekStart && dataEvento <= weekEnd) {
@@ -199,13 +204,11 @@
         });
       }
 
-      // Clientes
       document.getElementById('kpi-clientes-ativos').innerText = clientesAtivos;
       document.getElementById('kpi-clientes-novos').innerText = clientesNovos;
       document.getElementById('kpi-clientes-quentes').innerText = clientesQuentes;
       document.getElementById('kpi-clientes-perdidos').innerText = clientesPerdidos;
 
-      // Eventos e Vendas
       document.getElementById('kpi-eventos-ano').innerText = eventosAno;
       document.getElementById('kpi-realizado').innerText = realizadoMes;
       document.getElementById('kpi-semana').innerText = semana;
@@ -213,6 +216,7 @@
       document.getElementById('kpi-venda-mes').innerText = formatCurrency(vendaMes);
       document.getElementById('kpi-estimativa-semana').innerText = formatCurrency(estimativaSemana);
       document.getElementById('kpi-lucro-mes').innerText = formatCurrency(lucroMes);
+      document.getElementById('kpi-lucro-ano').innerText = formatCurrency(lucroAno);
     }
 
     carregarKPIs();
