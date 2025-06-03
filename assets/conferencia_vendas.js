@@ -10,20 +10,10 @@ const totalDiferenca = document.getElementById("totalDiferenca");
 const salvarBtn = document.getElementById("salvarBtn");
 
 let eventos = [];
-let produtosDB = {};
 let eventoSelecionadoId = null;
 
 function formatar(valor) {
   return `R$ ${valor.toFixed(2).replace('.', ',')}`;
-}
-
-function carregarProdutosDB() {
-  return get(ref(db, 'produtos')).then(snapshot => {
-    produtosDB = {};
-    snapshot.forEach(child => {
-      produtosDB[child.key] = child.val();
-    });
-  });
 }
 
 function carregarEventos() {
@@ -67,7 +57,7 @@ nomeEventoSelect.addEventListener("change", () => {
 dataEventoSelect.addEventListener("change", () => {
   eventoSelecionadoId = dataEventoSelect.value;
   if (!eventoSelecionadoId) return;
-  carregarProdutosDB().then(() => exibirProdutos(eventoSelecionadoId));
+  exibirProdutos(eventoSelecionadoId);
 });
 
 function exibirProdutos(idEvento) {
@@ -77,12 +67,9 @@ function exibirProdutos(idEvento) {
 
     let totalCalc = 0, totalReal = 0;
 
-    for (const [produtoId, info] of Object.entries(evento.produtos || {})) {
-      const produto = produtosDB[produtoId];
-      if (!produto) continue;
-
-      const nome = produto.nome || produtoId;
-      const valorUnitario = parseFloat(produto.valorVenda || 0);
+    for (const [_, info] of Object.entries(evento.produtos || {})) {
+      const nome = info.nome || 'Produto';
+      const valorUnitario = parseFloat(info.valorVenda || 0);
       const qtdSistema = (parseFloat(info.quantidade || 0) -
                          parseFloat(info.congelado || 0) -
                          parseFloat(info.assado || 0) -
