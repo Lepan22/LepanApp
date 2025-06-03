@@ -126,61 +126,40 @@ function renderizarEquipe() {
   container.innerHTML = '';
   equipeAlocada.forEach((item, i) => {
     const div = document.createElement('div');
-    div.className = 'row mb-2 align-items-center'; // Added align-items-center for better button alignment
+    div.className = 'row mb-2';
     div.innerHTML = `
       <div class="col"><select class="form-select form-select-sm">${equipeDisponivel.map(m => `<option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>`).join('')}</select></div>
       <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
-      <div class="col-auto"><button type="button" class="btn btn-sm btn-outline-danger">🗑️</button></div>
     `;
     container.appendChild(div);
     div.querySelector('select').onchange = e => { item.membroId = e.target.value; calcularTotais(); };
     div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
-    // Add event listener for the delete button
-    div.querySelector('button').onclick = () => {
-      equipeAlocada.splice(i, 1); // Remove item from array
-      renderizarEquipe(); // Re-render the list
-      calcularTotais(); // Recalculate totals
-    };
   });
 }
 
 function adicionarLogistica() {
   logisticaAlocada.push({ prestadorId: '', valor: 0 });
-  renderizarLfunction renderizarLogistica() {
-  const container = document.getElementById("logisticaContainer");
-  container.innerHTML = "";
+  renderizarLogistica();
+}
+
+function renderizarLogistica() {
+  const container = document.getElementById('logisticaContainer');
+  container.innerHTML = '';
   logisticaAlocada.forEach((item, i) => {
-    const div = document.createElement("div");
-    div.className = "row mb-2 align-items-center"; // Added align-items-center
+    const div = document.createElement('div');
+    div.className = 'row mb-2';
     div.innerHTML = `
-      <div class="col"><select class="form-select form-select-sm">${logisticaDisponivel
-        .map(
-          (l) =>
-            `<option value="${l.id}" ${l.id === item.prestadorId ? "selected" : ""}>${
-              l.nome
-            }</option>`
-        )
-        .join("")}</select></div>
+      <div class="col"><select class="form-select form-select-sm">${logisticaDisponivel.map(l => `<option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>`).join('')}</select></div>
       <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
-      <div class="col-auto"><button type="button" class="btn btn-sm btn-outline-danger">🗑️</button></div>
     `;
     container.appendChild(div);
-    div.querySelector("select").onchange = (e) => {
-      item.prestadorId = e.target.value;
-      calcularTotais();
-    };
-    div.querySelector("input").oninput = (e) => {
-      item.valor = parseFloat(e.target.value) || 0;
-      calcularTotais();
-    };
-    // Add event listener for the delete button
-    div.querySelector("button").onclick = () => {
-      logisticaAlocada.splice(i, 1); // Remove item from array
-      renderizarLogistica(); // Re-render the list
-      calcularTotais(); // Recalculate totals
-    };
+    div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; calcularTotais(); };
+    div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
   });
-} congelado: 0, assado: 0, perda: 0 });
+}
+
+function adicionarProduto() {
+  listaProdutos.push({ produtoId: '', produtoNome: '', quantidade: 0, congelado: 0, assado: 0, perda: 0 });
   renderizarProdutos();
 }
 
