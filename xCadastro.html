@@ -1,65 +1,207 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cadastro - LePanApp</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Le Pan pan - Dash</title>
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="assets/menu.js" defer></script>
   <style>
-    .btn-cadastro {
-      background-color: #ff7f00;
-      color: white;
-      padding: 8px 12px;
-      border: none;
-      cursor: pointer;
-      border-radius: 5px;
-      margin: 5px;
+    .kpi-linha {
+      display: flex;
+      gap: 16px;
+      padding: 0 20px;
+      margin-bottom: 2px;
+      flex-wrap: wrap;
+    }
+    .kpi {
+      background-color: #fff3e0;
+      border-left: 4px solid #ff9800;
+      padding: 6px 10px;
+      border-radius: 6px;
+      min-width: 180px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      height: 60px;
+    }
+    .kpi h2 {
+      margin: 0 0 2px;
       font-size: 12px;
-      display: inline-block;
-      text-decoration: none;
+      color: #333;
     }
-    .btn-cadastro:hover {
-      background-color: #e96f00;
-    }
-    h1 {
+    .kpi p {
       font-size: 16px;
-      margin-bottom: 10px;
+      margin: 0;
+      font-weight: bold;
+      color: #ff9800;
     }
-    .botoes-cadastro {
-      margin-top: 20px;
+    .graficos-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 20px;
+    }
+    .grafico {
+      width: 48%;
+      min-width: 300px;
+    }
+    canvas {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
     }
   </style>
 </head>
 <body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+    <main class="main-content">
 
-<div class="layout">
-  <aside class="sidebar" id="menuLateral">
-    <h4>Le PanApp</h4>
-    <a href="home.html">Home</a>
-    <a href="cadastro.html">Cadastros</a>
-    <a href="clientes.html">Clientes</a>
-    <a href="eventos.html">Eventos</a>
-    <a href="relatorios.html">Relatórios</a>
-    <a href="criar.html">Criar</a>
-    <a href="compra_evento.html">Compras</a>
-    <a href="etapas.html">Etapas</a>
-    <a href="media_produto.html">Média Produto</a>
-    <a href="visao_cliente.html">Visão por Cliente</a>
-    <a href="visao_equipe.html">Visão por Equipe</a>
-    <a href="index.html">Voltar</a>
-  </aside>
+      <!-- KPIs de Clientes -->
+      <div class="kpi-linha" style="margin-top: 20px;">
+        <div class="kpi"><h2>Clientes Ativos</h2><p id="kpi-clientes-ativos">0</p></div>
+        <div class="kpi"><h2>Clientes Novos no Ano</h2><p id="kpi-clientes-novos">0</p></div>
+        <div class="kpi"><h2>Clientes Quentes</h2><p id="kpi-clientes-quentes">0</p></div>
+        <div class="kpi"><h2>Clientes Perdidos</h2><p id="kpi-clientes-perdidos">0</p></div>
+      </div>
 
-  <main class="main-content">
-    <h1>Cadastro</h1>
+      <!-- KPIs de Quantidade de Eventos -->
+      <div class="kpi-linha">
+        <div class="kpi"><h2>Total de Eventos no Ano</h2><p id="kpi-eventos-ano">0</p></div>
+        <div class="kpi"><h2>Eventos Realizados no Mês</h2><p id="kpi-realizado">0</p></div>
+        <div class="kpi"><h2>Eventos desta Semana</h2><p id="kpi-semana">0</p></div>
+      </div>
 
-    <div class="botoes-cadastro">
-      <a class="btn-cadastro" href="produtos.html">Cadastro de Produto</a>
-      <a class="btn-cadastro" href="equipe.html">Cadastro de Equipe</a>
-      <a class="btn-cadastro" href="logistica.html">Cadastro de Logística</a>
-      <a class="btn-cadastro" href="configuracao.html">Configurações</a>
-    </div>
-  </main>
-</div>
+      <!-- KPIs de Venda -->
+      <div class="kpi-linha">
+        <div class="kpi"><h2>Total de Venda no Ano</h2><p id="kpi-venda-ano">R$ 0,00</p></div>
+        <div class="kpi"><h2>Venda Real Mês</h2><p id="kpi-venda-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Estimativa Venda Semana</h2><p id="kpi-estimativa-semana">R$ 0,00</p></div>
+      </div>
 
+      <!-- KPIs de Lucro -->
+      <div class="kpi-linha">
+        <div class="kpi"><h2>Lucro Total no Ano</h2><p id="kpi-lucro-ano">R$ 0,00</p></div>
+        <div class="kpi"><h2>Lucro no Mês</h2><p id="kpi-lucro-mes">R$ 0,00</p></div>
+      </div>
+
+      <!-- GRÁFICOS -->
+      <div class="graficos-container">
+        <div class="grafico"><canvas id="graficoVenda"></canvas></div>
+        <div class="grafico"><canvas id="graficoLucro"></canvas></div>
+        <div class="grafico"><canvas id="graficoPerdaAssado"></canvas></div>
+        <div class="grafico"><canvas id="graficoEventos"></canvas></div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const currentYear = new Date().getFullYear();
+    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    const dadosMes = Array.from({ length: 12 }, (_, i) => ({
+      mes: meses[i], venda: 0, perda: 0, assado: 0, eventos: 0
+    }));
+
+    db.ref('eventos').once('value').then(snapshot => {
+      const eventos = snapshot.val();
+      if (!eventos) return;
+      Object.values(eventos).forEach(e => {
+        if (!e.data) return;
+        const data = new Date(e.data);
+        if (data.getFullYear() !== currentYear) return;
+        const m = data.getMonth();
+        dadosMes[m].venda += Number(e.vendaPDV || 0);
+        dadosMes[m].perda += Number(e.produtos?.reduce((s, p) => s + (Number(p.perda || 0)), 0) || 0);
+        dadosMes[m].assado += Number(e.produtos?.reduce((s, p) => s + (Number(p.assado || 0)), 0) || 0);
+        dadosMes[m].eventos += 1;
+      });
+      desenharGraficos(dadosMes);
+    });
+
+    function desenharGraficos(data) {
+      new Chart(document.getElementById('graficoVenda'), {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.mes),
+          datasets: [{
+            label: 'Venda PDV',
+            data: data.map(d => d.venda),
+            borderColor: 'orange',
+            borderWidth: 2,
+            fill: false
+          }]
+        }
+      });
+
+      new Chart(document.getElementById('graficoLucro'), {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.mes),
+          datasets: [{
+            label: 'Lucro (placeholder)',
+            data: [],
+            borderColor: 'green',
+            borderDash: [5, 5],
+            borderWidth: 2,
+            fill: false
+          }]
+        }
+      });
+
+      new Chart(document.getElementById('graficoPerdaAssado'), {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.mes),
+          datasets: [
+            {
+              label: 'Perda',
+              data: data.map(d => d.perda),
+              borderColor: 'red',
+              borderWidth: 2,
+              fill: false
+            },
+            {
+              label: 'Assado',
+              data: data.map(d => d.assado),
+              borderColor: 'purple',
+              borderWidth: 2,
+              fill: false
+            }
+          ]
+        }
+      });
+
+      new Chart(document.getElementById('graficoEventos'), {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.mes),
+          datasets: [{
+            label: 'Eventos',
+            data: data.map(d => d.eventos),
+            borderColor: 'blue',
+            borderWidth: 2,
+            fill: false
+          }]
+        }
+      });
+    }
+  </script>
 </body>
 </html>
