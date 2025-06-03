@@ -1,0 +1,201 @@
+<!-- equipe_relatorio.html (versão em lista com botão de gráfico) -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Análise por Equipe</title>
+  <link rel="stylesheet" href="../assets/base.css" />
+  <link rel="stylesheet" href="../assets/menu-styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="../assets/menu.js"></script>
+  <style>
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    th { background-color: #ffcc80; }
+    .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; border-radius: 5px; font-size: 12px; cursor: pointer; margin-right: 5px; }
+    .btn-navegar:hover { background-color: #e96f00; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; align-items: flex-end; }
+    .form-row > div { display: flex; flex-direction: column; }
+    label, select, input { font-size: 12px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="menuLateral"></aside>
+  <main class="main-content">
+    <div class="page-header">
+      <h1>Análise por Equipe</h1>
+    </div>
+
+    <div class="card-dashboard">
+      <form id="filtrosForm">
+        <div class="form-row">
+          <div>
+            <label for="filtroResponsavel">Responsável</label>
+            <select id="filtroResponsavel" multiple></select>
+          </div>
+          <div>
+            <label for="filtroDataInicio">Data Início</label>
+            <input type="date" id="filtroDataInicio">
+          </div>
+          <div>
+            <label for="filtroDataFim">Data Fim</label>
+            <input type="date" id="filtroDataFim">
+          </div>
+          <div>
+            <label for="filtroStatus">Status</label>
+            <select id="filtroStatus">
+              <option value="Fechado" selected>Fechado</option>
+              <option value="Aberto">Aberto</option>
+              <option value="Finalizado">Finalizado</option>
+            </select>
+          </div>
+          <div>
+            <label for="filtroCondominio">Condomínio</label>
+            <select id="filtroCondominio" multiple></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <button type="submit" class="btn-navegar">Aplicar Filtros</button>
+          <button type="button" class="btn-navegar" onclick="limparFiltros()">Limpar Filtros</button>
+          <button type="button" class="btn-navegar" onclick="window.location.href='equipe_grafico.html'">Ver Gráfico</button>
+        </div>
+      </form>
+
+      <div id="tabelaResultado"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => carregarMenu('../'));
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  let eventos = [], produtos = {};
+
+  db.ref('produtos').once('value').then(snapshot => {
+    snapshot.forEach(child => produtos[child.key] = child.val());
+    carregarEventos();
+  });
+
+  function carregarEventos() {
+    db.ref('eventos').once('value').then(snapshot => {
+      eventos = [];
+      snapshot.forEach(child => {
+        const e = child.val();
+        e.id = child.key;
+        eventos.push(e);
+      });
+      popularFiltro('filtroCondominio', 'nomeEvento');
+      popularFiltro('filtroResponsavel', 'responsavel');
+      aplicarFiltros();
+    });
+  }
+
+  function popularFiltro(id, campo) {
+    const filtro = document.getElementById(id);
+    const nomes = [...new Set(eventos.map(e => e[campo]).filter(Boolean))];
+    filtro.innerHTML = '';
+    nomes.forEach(nome => {
+      const opt = document.createElement('option');
+      opt.value = nome;
+      opt.textContent = nome;
+      filtro.appendChild(opt);
+    });
+  }
+
+  document.getElementById('filtrosForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    aplicarFiltros();
+  });
+
+  function limparFiltros() {
+    document.querySelectorAll('#filtroResponsavel option, #filtroCondominio option').forEach(o => o.selected = false);
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroStatus').value = 'Fechado';
+    aplicarFiltros();
+  }
+
+  function aplicarFiltros() {
+    const responsaveis = [...document.getElementById('filtroResponsavel').selectedOptions].map(o => o.value);
+    const dataInicio = document.getElementById('filtroDataInicio').value;
+    const dataFim = document.getElementById('filtroDataFim').value;
+    const status = document.getElementById('filtroStatus').value;
+    const condominios = [...document.getElementById('filtroCondominio').selectedOptions].map(o => o.value);
+
+    const linhas = [];
+
+    eventos.filter(e => {
+      if (responsaveis.length && !responsaveis.includes(e.responsavel)) return false;
+      if (dataInicio && (!e.data || e.data < dataInicio)) return false;
+      if (dataFim && (!e.data || e.data > dataFim)) return false;
+      if (status && e.status !== status) return false;
+      if (condominios.length && !condominios.includes(e.nomeEvento)) return false;
+      return true;
+    }).forEach(e => {
+      const vendaPDV = parseFloat(e.vendaPDV) || 0;
+      const cmvReal = parseFloat(e.cmvReal) || 0;
+      const custoEquipe = (e.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
+      const custoLogistica = (e.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
+      let custoPerda = 0, custoAssado = 0;
+
+      (e.produtos || []).forEach(p => {
+        const prod = produtos[p.produtoId] || {};
+        const custo = parseFloat(prod.custo || 0);
+        custoPerda += (parseFloat(p.perda || 0)) * custo;
+        custoAssado += (parseFloat(p.assado || 0)) * custo;
+      });
+
+      const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
+      const diferenca = vendaPDV - lucro;
+
+      linhas.push({
+        responsavel: e.responsavel || '-',
+        vendaPDV, lucro, 
+        percLucro: vendaPDV ? (lucro / vendaPDV * 100).toFixed(1) : '0.0',
+        diferenca, 
+        percDif: vendaPDV ? (diferenca / vendaPDV * 100).toFixed(1) : '0.0',
+        perda: custoPerda, 
+        percPerda: vendaPDV ? (custoPerda / vendaPDV * 100).toFixed(1) : '0.0',
+        assado: custoAssado, 
+        percAssado: vendaPDV ? (custoAssado / vendaPDV * 100).toFixed(1) : '0.0'
+      });
+    });
+
+    exibirTabela(linhas);
+  }
+
+  function exibirTabela(linhas) {
+    let html = `<table><thead><tr>
+      <th>Responsável</th><th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
+      <th>Diferença</th><th>% Diferença</th><th>Perda</th><th>% Perda</th>
+      <th>Assado</th><th>% Assado</th></tr></thead><tbody>`;
+    linhas.forEach(l => {
+      html += `<tr><td>${l.responsavel}</td>
+      <td>R$ ${l.vendaPDV.toFixed(2)}</td>
+      <td>R$ ${l.lucro.toFixed(2)}</td>
+      <td>${l.percLucro}%</td>
+      <td>R$ ${l.diferenca.toFixed(2)}</td>
+      <td>${l.percDif}%</td>
+      <td>R$ ${l.perda.toFixed(2)}</td>
+      <td>${l.percPerda}%</td>
+      <td>R$ ${l.assado.toFixed(2)}</td>
+      <td>${l.percAssado}%</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('tabelaResultado').innerHTML = html;
+  }
+</script>
+</body>
+</html>
