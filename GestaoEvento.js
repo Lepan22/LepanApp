@@ -127,10 +127,10 @@ function renderizarEquipe() {
   equipeAlocada.forEach((item, i) => {
     const div = document.createElement('div');
     div.className = 'row mb-2';
-    div.innerHTML = 
-      <div class="col"><select class="form-select form-select-sm">${equipeDisponivel.map(m => <option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>).join('')}</select></div>
+    div.innerHTML = `
+      <div class="col"><select class="form-select form-select-sm">${equipeDisponivel.map(m => `<option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>`).join('')}</select></div>
       <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
-    ;
+    `;
     container.appendChild(div);
     div.querySelector('select').onchange = e => { item.membroId = e.target.value; calcularTotais(); };
     div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
@@ -148,10 +148,10 @@ function renderizarLogistica() {
   logisticaAlocada.forEach((item, i) => {
     const div = document.createElement('div');
     div.className = 'row mb-2';
-    div.innerHTML = 
-      <div class="col"><select class="form-select form-select-sm">${logisticaDisponivel.map(l => <option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>).join('')}</select></div>
+    div.innerHTML = `
+      <div class="col"><select class="form-select form-select-sm">${logisticaDisponivel.map(l => `<option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>`).join('')}</select></div>
       <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
-    ;
+    `;
     container.appendChild(div);
     div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; calcularTotais(); };
     div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
@@ -164,7 +164,7 @@ function adicionarProduto() {
 }
 
 async function buscarMediaProduto(nomeEvento, produtoId) {
-  const snap = await db.ref(media_evento/${nomeEvento}/${produtoId}).once('value');
+  const snap = await db.ref(`media_evento/${nomeEvento}/${produtoId}`).once('value');
   return snap.exists() ? snap.val().toFixed(1) : '0.0';
 }
 
@@ -185,7 +185,7 @@ async function renderizarProdutos() {
     const media = item.produtoId && nomeEvento ? await buscarMediaProduto(nomeEvento, item.produtoId) : '0.0';
 
     const row = document.createElement('tr');
-    row.innerHTML = 
+    row.innerHTML = `
       <td><input type="text" class="form-control form-control-sm" list="produtosList" value="${produto.nome}"></td>
       <td><input type="number" class="form-control form-control-sm" value="${item.quantidade}"></td>
       <td><input type="text" class="form-control form-control-sm" value="${media}" disabled></td>
@@ -196,7 +196,7 @@ async function renderizarProdutos() {
       <td><input type="text" class="form-control form-control-sm" value="R$ ${valorVenda.toFixed(2)}" disabled></td>
       <td><input type="text" class="form-control form-control-sm" value="R$ ${valorPerda.toFixed(2)}" disabled></td>
       <td><button class="btn btn-sm btn-outline-danger">🗑️</button></td>
-    ;
+    `;
     tabela.appendChild(row);
 
     const inputs = row.querySelectorAll('input');
@@ -275,7 +275,6 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     status: document.getElementById('status').value,
     vendaPDV: vendaPDV,
     cmvReal: cmvReal,
-    custoPerda: custoPerda,
     lucroFinal: lucroFinal,
     estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
     produtos: listaProdutos,
