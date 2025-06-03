@@ -275,7 +275,6 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     status: document.getElementById('status').value,
     vendaPDV: vendaPDV,
     cmvReal: cmvReal,
-    custoPerda: custoPerda
     lucroFinal: lucroFinal,
     estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
     produtos: listaProdutos,
