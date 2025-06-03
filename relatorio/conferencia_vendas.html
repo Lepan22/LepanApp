@@ -8,9 +8,11 @@
   <link rel="stylesheet" href="../assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script type="module">
-    import { carregarMenu } from '../assets/menu.js';
-    carregarMenu('../');
+  <script src="../assets/menu.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      carregarMenu('../');
+    });
   </script>
   <script type="module" src="../assets/conferencia_vendas.js" defer></script>
   <style>
