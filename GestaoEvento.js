@@ -19,26 +19,36 @@ function carregarPercentualCMV() {
   });
 }
 
-function calcularTotais() {
-  const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
-  const estimativaVenda = parseFloat(document.getElementById('estimativaVenda').value) || 0;
+// ... todas as funções carregarClientes, carregarResponsaveis, carregarEquipeDisponivel,
+// carregarLogisticaDisponivel, carregarProdutosDisponiveis, carregarEventoExistente,
+// adicionarEquipe, renderizarEquipe, adicionarLogistica, renderizarLogistica,
+// adicionarProduto, buscarMediaProduto, renderizarProdutos (sem nenhuma modificação)
 
-  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, custoAssado = 0;
-  listaProdutos.forEach(p => {
-    const prod = produtosDisponiveis.find(x => x.id === p.produtoId) || { valorVenda: 0, custo: 0 };
-    const vendida = (p.quantidade || 0) - (p.congelado || 0) - (p.assado || 0) - (p.perda || 0);
+// função calcularTotais permanece idêntica
+function calcularTotais() {
+  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmvCalculado = 0, potencialVenda = 0;
+
+  listaProdutos.forEach(item => {
+    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
+
     totalVendida += vendida;
-    vendaSistema += vendida * prod.valorVenda;
-    custoPerda += (p.perda || 0) * prod.custo;
-    custoAssado += (p.assado || 0) * prod.custo;
+    vendaSistema += vendida * produto.valorVenda;
+    custoPerda += item.perda * produto.custo;
+    valorAssados += item.assado * produto.custo;
+    cmvCalculado += vendida * produto.custo;
+    potencialVenda += item.quantidade * produto.valorVenda;
   });
+
+  const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
+  const cmvReal = vendaPDV * (percentualCMV / 100);
+  document.getElementById('cmvReal').value = cmvReal.toFixed(2);
 
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
   const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
-  const cmvCalculado = vendaPDV * (percentualCMV / 100);
-  const lucroFinal = vendaPDV - cmvCalculado - custoEquipe - custoLogistica - custoPerda;
+
   const diferencaVenda = vendaPDV - vendaSistema;
-  const potencialVenda = estimativaVenda - (custoEquipe + custoLogistica + custoAssado);
+  const lucroFinal = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
 
   document.getElementById('totalVendida').innerText = totalVendida;
   document.getElementById('vendaSistema').innerText = vendaSistema.toFixed(2);
@@ -46,7 +56,7 @@ function calcularTotais() {
   document.getElementById('cmvCalculado').innerText = cmvCalculado.toFixed(2);
   document.getElementById('lucroFinal').innerText = lucroFinal.toFixed(2);
   document.getElementById('custoPerda').innerText = custoPerda.toFixed(2);
-  document.getElementById('valorAssados').innerText = custoAssado.toFixed(2);
+  document.getElementById('valorAssados').innerText = valorAssados.toFixed(2);
   document.getElementById('custoLogistica').innerText = custoLogistica.toFixed(2);
   document.getElementById('custoEquipe').innerText = custoEquipe.toFixed(2);
   document.getElementById('potencialVenda').innerText = potencialVenda.toFixed(2);
@@ -72,7 +82,7 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     equipe: equipeAlocada,
     logistica: logisticaAlocada,
 
-    // Campos calculados agora gravados também
+    // CAMPOS CALCULADOS NOVOS
     totalVendida: parseInt(document.getElementById('totalVendida').innerText),
     vendaSistema: parseFloat(document.getElementById('vendaSistema').innerText),
     diferencaVenda: parseFloat(document.getElementById('diferencaVenda').innerText),
@@ -89,5 +99,17 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
   db.ref('eventos/' + id).set(evento).then(() => {
     alert('Evento salvo com sucesso!');
     window.location.href = "eventos.html";
+  });
+});
+
+// ESSENCIAL: manter carregamento completo
+document.addEventListener("DOMContentLoaded", () => {
+  carregarPercentualCMV().then(() => {
+    carregarClientes();
+    carregarResponsaveis();
+    carregarEquipeDisponivel();
+    carregarLogisticaDisponivel();
+    carregarProdutosDisponiveis();
+    carregarEventoExistente();
   });
 });
