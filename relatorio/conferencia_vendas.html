@@ -1,56 +1,46 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Conferência de Vendas</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="assets/menu-styles.css">
-  <link rel="stylesheet" href="assets/base.css">
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="assets/menu.js" defer></script>
-  <script src="conferencia_vendas.js" defer></script>
-  <style>
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
-    th { background-color: #f89c1c; color: #fff; }
-    tfoot td { font-weight: bold; }
-    input[type="number"] { width: 70px; }
-  </style>
+  <meta charset="UTF-8" />
+  <title>Conferência de Vendas por Evento</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script type="module" src="../assets/conferencia_vendas.js"></script>
+  <link rel="stylesheet" href="../assets/base.css" />
 </head>
 <body>
-  <main>
-    <h1>Conferência de Vendas por Evento</h1>
+  <h1>Conferência de Vendas por Evento</h1>
+  
+  <label for="selectEvento">Selecionar Evento:</label>
+  <select id="selectEvento">
+    <option value="">Carregando eventos...</option>
+  </select>
 
-    <label for="eventoSelect">Selecionar Evento:</label>
-    <select id="eventoSelect">
-      <option value="">Carregando eventos...</option>
-    </select>
+  <table>
+    <thead>
+      <tr style="background-color: orange; color: white;">
+        <th>Produto</th>
+        <th>Qtd Vendida (Sistema)</th>
+        <th>Valor Unitário</th>
+        <th>Qtd Real Vendida</th>
+        <th>Valor Calculado</th>
+        <th>Valor Real</th>
+        <th>Diferença</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaProdutos"></tbody>
+    <tfoot>
+      <tr>
+        <td><strong>Totais</strong></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td id="totalCalculado">R$ 0,00</td>
+        <td id="totalReal">R$ 0,00</td>
+        <td id="totalDiferenca">R$ 0,00</td>
+      </tr>
+    </tfoot>
+  </table>
 
-    <table id="tabelaProdutos">
-      <thead>
-        <tr>
-          <th>Produto</th>
-          <th>Qtd Vendida (Sistema)</th>
-          <th>Valor Unitário</th>
-          <th>Qtd Real Vendida</th>
-          <th>Valor Calculado</th>
-          <th>Valor Real</th>
-          <th>Diferença</th>
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Linhas preenchidas via JS -->
-      </tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4">Totais</td>
-          <td id="totalCalculado">R$ 0,00</td>
-          <td id="totalReal">R$ 0,00</td>
-          <td id="totalDiferenca">R$ 0,00</td>
-        </tr>
-      </tfoot>
-    </table>
-  </main>
+  <button id="salvarBtn">Salvar Conferência</button>
 </body>
 </html>
