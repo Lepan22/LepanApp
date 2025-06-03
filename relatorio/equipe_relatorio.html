@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Análise por Equipe</title>
 
   <link rel="stylesheet" href="../assets/base.css" />
@@ -15,6 +15,10 @@
       carregarMenu('../');
     });
   </script>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <style>
     .card-dashboard {
       background-color: white;
@@ -33,7 +37,7 @@
       margin-bottom: 10px;
       align-items: flex-end;
     }
-    .form-row div {
+    .form-row > div {
       display: flex;
       flex-direction: column;
     }
@@ -45,75 +49,242 @@
       border-radius: 5px;
       font-size: 12px;
       cursor: pointer;
+      margin-right: 5px;
     }
     .btn-navegar:hover {
       background-color: #e96f00;
     }
-    canvas {
-      margin-top: 20px;
-    }
     .form-check {
       margin: 5px 0;
+    }
+    canvas {
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
 
-    <main class="main-content">
-      <div class="page-header">
-        <h1>Análise por Equipe</h1>
-      </div>
+<div class="layout">
+  <aside class="sidebar" id="menuLateral"></aside>
 
-      <div class="card-dashboard">
-        <form id="filtrosForm">
-          <div class="form-row">
-            <div>
-              <label for="filtroResponsavel">Responsável</label>
-              <select id="filtroResponsavel" multiple></select>
-            </div>
-            <div>
-              <label for="filtroDataInicio">Data Início</label>
-              <input type="date" id="filtroDataInicio">
-            </div>
-            <div>
-              <label for="filtroDataFim">Data Fim</label>
-              <input type="date" id="filtroDataFim">
-            </div>
-            <div>
-              <label for="filtroStatus">Status</label>
-              <select id="filtroStatus">
-                <option value="Fechado" selected>Fechado</option>
-                <option value="Aberto">Aberto</option>
-                <option value="Finalizado">Finalizado</option>
-              </select>
-            </div>
-            <div>
-              <label for="filtroCondominio">Condomínio</label>
-              <select id="filtroCondominio" multiple></select>
-            </div>
-            <div>
-              <button type="submit" class="btn-navegar">Aplicar Filtros</button>
-              <button type="button" class="btn-navegar" onclick="limparFiltros()">Limpar Filtros</button>
-              <button type="button" class="btn-navegar" onclick="exportarXLSX()">Exportar XLSX</button>
-            </div>
+  <main class="main-content">
+    <div class="page-header">
+      <h1>Análise por Equipe</h1>
+    </div>
+
+    <div class="card-dashboard">
+      <form id="filtrosForm">
+        <div class="form-row">
+          <div>
+            <label for="filtroResponsavel">Responsável</label>
+            <select id="filtroResponsavel" multiple></select>
           </div>
-        </form>
+          <div>
+            <label for="filtroDataInicio">Data Início</label>
+            <input type="date" id="filtroDataInicio">
+          </div>
+          <div>
+            <label for="filtroDataFim">Data Fim</label>
+            <input type="date" id="filtroDataFim">
+          </div>
+          <div>
+            <label for="filtroStatus">Status</label>
+            <select id="filtroStatus">
+              <option value="Fechado" selected>Fechado</option>
+              <option value="Aberto">Aberto</option>
+              <option value="Finalizado">Finalizado</option>
+            </select>
+          </div>
+          <div>
+            <label for="filtroCondominio">Condomínio</label>
+            <select id="filtroCondominio" multiple></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <button type="submit" class="btn-navegar">Aplicar Filtros</button>
+          <button type="button" class="btn-navegar" onclick="limparFiltros()">Limpar Filtros</button>
+          <button type="button" class="btn-navegar" onclick="exportarXLSX()">Exportar XLSX</button>
+        </div>
+      </form>
 
-        <h4>Exibir no Gráfico:</h4>
-        <div class="form-check"><input class="form-check-input" type="checkbox" value="vendaPDV" id="chkVendaPDV" checked><label for="chkVendaPDV"> Venda PDV</label></div>
-        <div class="form-check"><input class="form-check-input" type="checkbox" value="lucro" id="chkLucro" checked><label for="chkLucro"> Lucro</label></div>
-        <div class="form-check"><input class="form-check-input" type="checkbox" value="custoPerda" id="chkCustoPerda" checked><label for="chkCustoPerda"> Custo Perda</label></div>
-        <div class="form-check"><input class="form-check-input" type="checkbox" value="custoAssado" id="chkCustoAssado" checked><label for="chkCustoAssado"> Custo Assado</label></div>
-        <div class="form-check"><input class="form-check-input" type="checkbox" value="custoLogistica" id="chkCustoLogistica" checked><label for="chkCustoLogistica"> Custo Logística</label></div>
+      <h4>Exibir no Gráfico:</h4>
+      <div class="form-check"><input class="form-check-input" type="checkbox" value="vendaPDV" id="chkVendaPDV" checked><label for="chkVendaPDV"> Venda PDV</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" value="lucro" id="chkLucro" checked><label for="chkLucro"> Lucro</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" value="custoPerda" id="chkCustoPerda" checked><label for="chkCustoPerda"> Custo Perda</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" value="custoAssado" id="chkCustoAssado" checked><label for="chkCustoAssado"> Custo Assado</label></div>
+      <div class="form-check"><input class="form-check-input" type="checkbox" value="custoLogistica" id="chkCustoLogistica" checked><label for="chkCustoLogistica"> Custo Logística</label></div>
 
-        <canvas id="graficoRelatorio" height="100"></canvas>
-      </div>
-    </main>
-  </div>
+      <canvas id="graficoRelatorio" height="100"></canvas>
+    </div>
+  </main>
+</div>
 
-  <!-- Script original mantido intacto -->
-  <script src="equipe_relatorio.js"></script>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "542989944344",
+    appId: "1:542989944344:web:576e28199960fd5440a56d"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  let eventos = [], produtos = {}, linhasRelatorio = [], chart = null;
+
+  db.ref('produtos').once('value').then(snapshot => {
+    snapshot.forEach(child => {
+      produtos[child.key] = child.val();
+    });
+    carregarEventos();
+  });
+
+  function carregarEventos() {
+    db.ref('eventos').once('value').then(snapshot => {
+      eventos = [];
+      snapshot.forEach(child => {
+        const e = child.val();
+        e.id = child.key;
+        eventos.push(e);
+      });
+      popularFiltroCondominio();
+      popularFiltroResponsavel();
+      aplicarFiltros();
+    });
+  }
+
+  function popularFiltroCondominio() {
+    const filtro = document.getElementById('filtroCondominio');
+    const nomes = [...new Set(eventos.map(e => e.nomeEvento))].filter(Boolean);
+    filtro.innerHTML = '';
+    nomes.forEach(nome => {
+      const opt = document.createElement('option');
+      opt.value = nome;
+      opt.textContent = nome;
+      filtro.appendChild(opt);
+    });
+  }
+
+  function popularFiltroResponsavel() {
+    const filtro = document.getElementById('filtroResponsavel');
+    const nomes = [...new Set(eventos.map(e => e.responsavel))].filter(Boolean);
+    filtro.innerHTML = '';
+    nomes.forEach(nome => {
+      const opt = document.createElement('option');
+      opt.value = nome;
+      opt.textContent = nome;
+      filtro.appendChild(opt);
+    });
+  }
+
+  document.getElementById('filtrosForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    aplicarFiltros();
+  });
+
+  document.querySelectorAll('.form-check-input').forEach(chk => {
+    chk.addEventListener('change', () => desenharGrafico());
+  });
+
+  function limparFiltros() {
+    [...document.getElementById('filtroResponsavel').options].forEach(o => o.selected = false);
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroStatus').value = 'Fechado';
+    [...document.getElementById('filtroCondominio').options].forEach(o => o.selected = false);
+    aplicarFiltros();
+  }
+
+  function aplicarFiltros() {
+    const responsaveisSelecionados = [...document.getElementById('filtroResponsavel').selectedOptions].map(o => o.value);
+    const dataInicio = document.getElementById('filtroDataInicio').value;
+    const dataFim = document.getElementById('filtroDataFim').value;
+    const statusFiltro = document.getElementById('filtroStatus').value;
+    const condominiosSelecionados = [...document.getElementById('filtroCondominio').selectedOptions].map(o => o.value);
+
+    linhasRelatorio = [];
+
+    const eventosFiltrados = eventos.filter(e => {
+      if (responsaveisSelecionados.length > 0 && !responsaveisSelecionados.includes(e.responsavel)) return false;
+      if (dataInicio && (!e.data || e.data < dataInicio)) return false;
+      if (dataFim && (!e.data || e.data > dataFim)) return false;
+      if (statusFiltro && (e.status !== statusFiltro)) return false;
+      if (condominiosSelecionados.length > 0 && !condominiosSelecionados.includes(e.nomeEvento)) return false;
+      return true;
+    });
+
+    eventosFiltrados.forEach(eAtual => {
+      const vendaPDV = parseFloat(eAtual.vendaPDV) || 0;
+      const cmvReal = parseFloat(eAtual.cmvReal) || 0;
+      const custoEquipe = (eAtual.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
+      const custoLogistica = (eAtual.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
+
+      let custoPerda = 0, custoAssado = 0;
+      if (eAtual.produtos) {
+        eAtual.produtos.forEach(p => {
+          const produtoId = p.produtoId;
+          const perda = parseFloat(p.perda || 0);
+          const assado = parseFloat(p.assado || 0);
+          const custo = produtos[produtoId] ? parseFloat(produtos[produtoId].custo || 0) : 0;
+          custoPerda += perda * custo;
+          custoAssado += assado * custo;
+        });
+      }
+      const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
+
+      linhasRelatorio.push({
+        responsavel: eAtual.responsavel || '-',
+        data: eAtual.data || '-',
+        vendaPDV, lucro, custoPerda, custoAssado, custoLogistica
+      });
+    });
+
+    desenharGrafico();
+  }
+
+  function desenharGrafico() {
+    const selectedIndicators = ['vendaPDV', 'lucro', 'custoPerda', 'custoAssado', 'custoLogistica']
+      .filter(id => document.getElementById('chk' + id.charAt(0).toUpperCase() + id.slice(1)).checked);
+
+    const datasUnicas = [...new Set(linhasRelatorio.map(e => e.data))].sort();
+    const responsaveis = [...new Set(linhasRelatorio.map(e => e.responsavel))];
+
+    const datasets = [];
+
+    responsaveis.forEach(responsavel => {
+      selectedIndicators.forEach(indicador => {
+        const data = datasUnicas.map(data => {
+          const item = linhasRelatorio.find(e => e.data === data && e.responsavel === responsavel);
+          return item ? item[indicador] : 0;
+        });
+        datasets.push({
+          label: `${responsavel} - ${indicador}`,
+          data, borderWidth: 2
+        });
+      });
+    });
+
+    if (chart) chart.destroy();
+    const ctx = document.getElementById('graficoRelatorio').getContext('2d');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: datasUnicas, datasets },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' }, title: { display: true, text: 'Resumo por Responsável' } }
+      }
+    });
+  }
+
+  function exportarXLSX() {
+    const ws = XLSX.utils.json_to_sheet(linhasRelatorio);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+    XLSX.writeFile(wb, "relatorio_equipe.xlsx");
+  }
+</script>
+
 </body>
 </html>
