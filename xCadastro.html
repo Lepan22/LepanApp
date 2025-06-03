@@ -92,7 +92,7 @@
         <div class="kpi"><h2>Lucro no Mês</h2><p id="kpi-lucro-mes">R$ 0,00</p></div>
       </div>
 
-      <!-- GRÁFICOS -->
+      <!-- Gráficos -->
       <div class="graficos-container">
         <div class="grafico"><canvas id="graficoVenda"></canvas></div>
         <div class="grafico"><canvas id="graficoLucro"></canvas></div>
@@ -110,98 +110,72 @@
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
       projectId: "lepanapp"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+
     const currentYear = new Date().getFullYear();
     const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
     const dadosMes = Array.from({ length: 12 }, (_, i) => ({
-      mes: meses[i], venda: 0, perda: 0, assado: 0, eventos: 0
+      mes: meses[i], venda: 0, perda: 0, assado: 0, eventos: 0, lucro: 0
     }));
 
-    db.ref('eventos').once('value').then(snapshot => {
+    const graficoVenda = new Chart(document.getElementById("graficoVenda"), {
+      type: "line",
+      data: { labels: meses, datasets: [{ label: "Venda PDV", data: [], borderColor: "orange", borderWidth: 2, fill: false }] },
+      options: { responsive: true }
+    });
+
+    const graficoLucro = new Chart(document.getElementById("graficoLucro"), {
+      type: "line",
+      data: { labels: meses, datasets: [{ label: "Lucro", data: [], borderColor: "green", borderWidth: 2, fill: false }] },
+      options: { responsive: true }
+    });
+
+    const graficoPerdaAssado = new Chart(document.getElementById("graficoPerdaAssado"), {
+      type: "line",
+      data: {
+        labels: meses,
+        datasets: [
+          { label: "Perda", data: [], borderColor: "red", borderWidth: 2, fill: false },
+          { label: "Assado", data: [], borderColor: "purple", borderWidth: 2, fill: false }
+        ]
+      },
+      options: { responsive: true }
+    });
+
+    const graficoEventos = new Chart(document.getElementById("graficoEventos"), {
+      type: "line",
+      data: { labels: meses, datasets: [{ label: "Eventos", data: [], borderColor: "blue", borderWidth: 2, fill: false }] },
+      options: { responsive: true }
+    });
+
+    db.ref("eventos").once("value").then(snapshot => {
       const eventos = snapshot.val();
       if (!eventos) return;
+
       Object.values(eventos).forEach(e => {
         if (!e.data) return;
         const data = new Date(e.data);
         if (data.getFullYear() !== currentYear) return;
         const m = data.getMonth();
         dadosMes[m].venda += Number(e.vendaPDV || 0);
+        dadosMes[m].lucro += Number(e.lucroFinal || 0);
         dadosMes[m].perda += Number(e.produtos?.reduce((s, p) => s + (Number(p.perda || 0)), 0) || 0);
         dadosMes[m].assado += Number(e.produtos?.reduce((s, p) => s + (Number(p.assado || 0)), 0) || 0);
-        dadosMes[m].eventos += 1;
+        dadosMes[m].eventos++;
       });
-      desenharGraficos(dadosMes);
+
+      graficoVenda.data.datasets[0].data = dadosMes.map(d => d.venda);
+      graficoLucro.data.datasets[0].data = dadosMes.map(d => d.lucro);
+      graficoPerdaAssado.data.datasets[0].data = dadosMes.map(d => d.perda);
+      graficoPerdaAssado.data.datasets[1].data = dadosMes.map(d => d.assado);
+      graficoEventos.data.datasets[0].data = dadosMes.map(d => d.eventos);
+
+      graficoVenda.update();
+      graficoLucro.update();
+      graficoPerdaAssado.update();
+      graficoEventos.update();
     });
-
-    function desenharGraficos(data) {
-      new Chart(document.getElementById('graficoVenda'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{
-            label: 'Venda PDV',
-            data: data.map(d => d.venda),
-            borderColor: 'orange',
-            borderWidth: 2,
-            fill: false
-          }]
-        }
-      });
-
-      new Chart(document.getElementById('graficoLucro'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{
-            label: 'Lucro (placeholder)',
-            data: [],
-            borderColor: 'green',
-            borderDash: [5, 5],
-            borderWidth: 2,
-            fill: false
-          }]
-        }
-      });
-
-      new Chart(document.getElementById('graficoPerdaAssado'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [
-            {
-              label: 'Perda',
-              data: data.map(d => d.perda),
-              borderColor: 'red',
-              borderWidth: 2,
-              fill: false
-            },
-            {
-              label: 'Assado',
-              data: data.map(d => d.assado),
-              borderColor: 'purple',
-              borderWidth: 2,
-              fill: false
-            }
-          ]
-        }
-      });
-
-      new Chart(document.getElementById('graficoEventos'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{
-            label: 'Eventos',
-            data: data.map(d => d.eventos),
-            borderColor: 'blue',
-            borderWidth: 2,
-            fill: false
-          }]
-        }
-      });
-    }
   </script>
 </body>
 </html>
