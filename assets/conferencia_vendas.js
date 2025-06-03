@@ -10,10 +10,19 @@ const totalDiferenca = document.getElementById("totalDiferenca");
 const salvarBtn = document.getElementById("salvarBtn");
 
 let eventos = [];
+let produtosDB = {};
 let eventoSelecionadoId = null;
 
 function formatar(valor) {
   return `R$ ${valor.toFixed(2).replace('.', ',')}`;
+}
+
+async function carregarProdutosDB() {
+  const snapshot = await get(ref(db, 'produtos'));
+  produtosDB = {};
+  snapshot.forEach(child => {
+    produtosDB[child.key] = child.val();
+  });
 }
 
 function carregarEventos() {
@@ -42,7 +51,7 @@ nomeEventoSelect.addEventListener("change", () => {
   const datas = eventos
     .filter(e => e.nome === nomeSelecionado)
     .map(e => ({ id: e.id, data: e.data }))
-    .sort((a, b) => a.data.localeCompare(b.data));
+    .sort((a, b) => b.data.localeCompare(a.data)); // ordem decrescente
 
   dataEventoSelect.innerHTML = `<option value="">Selecione</option>`;
   datas.forEach(item => {
@@ -51,12 +60,14 @@ nomeEventoSelect.addEventListener("change", () => {
     option.textContent = item.data;
     dataEventoSelect.appendChild(option);
   });
+
   tabelaProdutos.innerHTML = '';
 });
 
-dataEventoSelect.addEventListener("change", () => {
+dataEventoSelect.addEventListener("change", async () => {
   eventoSelecionadoId = dataEventoSelect.value;
   if (!eventoSelecionadoId) return;
+  await carregarProdutosDB();
   exibirProdutos(eventoSelecionadoId);
 });
 
@@ -67,8 +78,14 @@ function exibirProdutos(idEvento) {
 
     let totalCalc = 0, totalReal = 0;
 
-    for (const [_, info] of Object.entries(evento.produtos || {})) {
-      const nome = info.nome || 'Produto';
+    for (const [produtoId, info] of Object.entries(evento.produtos || {})) {
+      let nome = info.nome || '';
+      if (!nome && produtosDB[produtoId]) {
+        nome = produtosDB[produtoId].nome || produtoId;
+      }
+
+      if (!nome) nome = 'Produto';
+
       const valorUnitario = parseFloat(info.valorVenda || 0);
       const qtdSistema = (parseFloat(info.quantidade || 0) -
                          parseFloat(info.congelado || 0) -
