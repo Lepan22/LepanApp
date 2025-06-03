@@ -1,5 +1,5 @@
 import { db } from './firebase-config.js';
-import { ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { ref, get, set, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 const nomeEventoSelect = document.getElementById("nomeEventoSelect");
 const dataEventoSelect = document.getElementById("dataEventoSelect");
@@ -8,6 +8,7 @@ const totalCalculado = document.getElementById("totalCalculado");
 const totalReal = document.getElementById("totalReal");
 const totalDiferenca = document.getElementById("totalDiferenca");
 const salvarBtn = document.getElementById("salvarBtn");
+const corpoListaConferencias = document.getElementById("listaConferencias");
 
 let eventos = [];
 let produtosDB = {};
@@ -43,6 +44,8 @@ function carregarEventos() {
       option.textContent = nome;
       nomeEventoSelect.appendChild(option);
     });
+
+    carregarListaConferencias(); // carregar lista após eventos
   });
 }
 
@@ -51,7 +54,7 @@ nomeEventoSelect.addEventListener("change", () => {
   const datas = eventos
     .filter(e => e.nome === nomeSelecionado)
     .map(e => ({ id: e.id, data: e.data }))
-    .sort((a, b) => b.data.localeCompare(a.data)); // ordem decrescente
+    .sort((a, b) => b.data.localeCompare(a.data));
 
   dataEventoSelect.innerHTML = `<option value="">Selecione</option>`;
   datas.forEach(item => {
@@ -75,8 +78,6 @@ function exibirProdutos(idEvento) {
   get(ref(db, `eventos/${idEvento}`)).then(snapshot => {
     const evento = snapshot.val();
     tabelaProdutos.innerHTML = '';
-
-    let totalCalc = 0, totalReal = 0;
 
     for (const [_, info] of Object.entries(evento.produtos || {})) {
       const produtoId = info.produtoId;
@@ -168,7 +169,58 @@ salvarBtn.addEventListener("click", () => {
   set(ref(db, `conferencias/${eventoSelecionadoId}`), {
     dataHora: new Date().toISOString(),
     produtos: dados
-  }).then(() => alert("Conferência salva com sucesso."));
+  }).then(() => {
+    alert("Conferência salva com sucesso.");
+    carregarListaConferencias();
+  });
 });
+
+function carregarListaConferencias() {
+  Promise.all([
+    get(ref(db, 'conferencias')),
+    get(ref(db, 'eventos'))
+  ]).then(([confSnap, eventosSnap]) => {
+    const conferencias = confSnap.val() || {};
+    const eventos = eventosSnap.val() || {};
+    corpoListaConferencias.innerHTML = '';
+
+    Object.entries(conferencias).forEach(([idEvento, dados]) => {
+      const evento = eventos[idEvento] || {};
+      const nome = evento.nomeEvento || 'Evento';
+      const data = evento.data || '—';
+
+      let totalReal = 0;
+      let totalDiferenca = 0;
+
+      (dados.produtos || []).forEach(p => {
+        totalReal += parseFloat(p.valorReal || 0);
+        totalDiferenca += parseFloat(p.diferenca || 0);
+      });
+
+      const percentual = totalReal > 0 ? (totalDiferenca / totalReal * 100).toFixed(1) + '%' : '—';
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${nome}</td>
+        <td>${data}</td>
+        <td>${formatar(totalDiferenca)}</td>
+        <td>${percentual}</td>
+        <td>
+          <button onclick="location.href='conferencia_vendas.html?idEvento=${idEvento}'">Editar</button>
+          <button onclick="excluirConferencia('${idEvento}')">Excluir</button>
+        </td>
+      `;
+      corpoListaConferencias.appendChild(tr);
+    });
+  });
+}
+
+window.excluirConferencia = function (id) {
+  if (!confirm("Deseja realmente excluir esta conferência?")) return;
+  remove(ref(db, `conferencias/${id}`)).then(() => {
+    alert("Conferência excluída.");
+    carregarListaConferencias();
+  });
+};
 
 carregarEventos();
