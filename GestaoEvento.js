@@ -1,11 +1,10 @@
-// GestaoEvento.js COMPLETO com gravação dos totais no DB, mantendo toda a lógica original
-
 const firebaseConfig = {
   apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
   authDomain: "lepanapp.firebaseapp.com",
   databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
   projectId: "lepanapp"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -17,36 +16,6 @@ let percentualCMV = 0;
 function carregarPercentualCMV() {
   return db.ref('/configuracao/percentualCMV').once('value').then(snapshot => {
     percentualCMV = snapshot.val() || 0;
-  });
-}
-
-function carregarClientes() {
-  const selectEvento = document.getElementById('nomeEvento');
-  db.ref('clientes').once('value').then(snapshot => {
-    selectEvento.innerHTML = '<option value="">Selecione</option>';
-    snapshot.forEach(child => {
-      const cliente = child.val();
-      if (cliente.status === 'Fechado' && cliente.clienteAtivo?.nomeEvento) {
-        const opt = document.createElement('option');
-        opt.value = cliente.clienteAtivo.nomeEvento;
-        opt.textContent = cliente.clienteAtivo.nomeEvento;
-        selectEvento.appendChild(opt);
-      }
-    });
-  });
-}
-
-function carregarResponsaveis() {
-  const select = document.getElementById('responsavel');
-  db.ref('equipe').once('value').then(snapshot => {
-    select.innerHTML = '<option value="">Selecione</option>';
-    snapshot.forEach(child => {
-      const membro = child.val();
-      const opt = document.createElement('option');
-      opt.value = membro.apelido;
-      opt.textContent = membro.apelido;
-      select.appendChild(opt);
-    });
   });
 }
 
@@ -103,7 +72,7 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     equipe: equipeAlocada,
     logistica: logisticaAlocada,
 
-    // Novos campos calculados
+    // Campos calculados agora gravados também
     totalVendida: parseInt(document.getElementById('totalVendida').innerText),
     vendaSistema: parseFloat(document.getElementById('vendaSistema').innerText),
     diferencaVenda: parseFloat(document.getElementById('diferencaVenda').innerText),
