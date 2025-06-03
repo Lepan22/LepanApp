@@ -48,14 +48,23 @@
       padding: 20px;
     }
     .grafico {
-      width: 48%;
-      min-width: 300px;
+      width: 48%; /* Ajustado para caber dois por linha com gap */
+      min-width: 300px; /* Garante que não fiquem muito pequenos */
+      box-sizing: border-box; /* Inclui padding e border na largura total */
     }
     canvas {
       background-color: white;
       border: 1px solid #ddd;
       border-radius: 6px;
       padding: 10px;
+      width: 100% !important; /* Força o canvas a usar a largura do container */
+      height: auto !important; /* Mantém a proporção */
+    }
+    /* Media query para telas menores */
+    @media (max-width: 768px) {
+      .grafico {
+        width: 100%; /* Um gráfico por linha em telas menores */
+      }
     }
   </style>
 </head>
@@ -66,38 +75,82 @@
 
       <!-- KPIs de Clientes -->
       <div class="kpi-linha" style="margin-top: 20px;">
-        <div class="kpi"><h2>Clientes Ativos</h2><p id="kpi-clientes-ativos">0</p></div>
-        <div class="kpi"><h2>Clientes Novos no Ano</h2><p id="kpi-clientes-novos">0</p></div>
-        <div class="kpi"><h2>Clientes Quentes</h2><p id="kpi-clientes-quentes">0</p></div>
-        <div class="kpi"><h2>Clientes Perdidos</h2><p id="kpi-clientes-perdidos">0</p></div>
+        <div class="kpi">
+          <h2>Clientes Ativos</h2>
+          <p id="kpi-clientes-ativos">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Clientes Novos no Ano</h2>
+          <p id="kpi-clientes-novos">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Clientes Quentes</h2>
+          <p id="kpi-clientes-quentes">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Clientes Perdidos</h2>
+          <p id="kpi-clientes-perdidos">0</p>
+        </div>
       </div>
 
       <!-- KPIs de Quantidade de Eventos -->
-      <div class="kpi-linha">
-        <div class="kpi"><h2>Total de Eventos no Ano</h2><p id="kpi-eventos-ano">0</p></div>
-        <div class="kpi"><h2>Eventos Realizados no Mês</h2><p id="kpi-realizado">0</p></div>
-        <div class="kpi"><h2>Eventos desta Semana</h2><p id="kpi-semana">0</p></div>
+      <div class="kpi-linha" style="margin-top: 4px;">
+        <div class="kpi">
+          <h2>Total de Eventos no Ano</h2>
+          <p id="kpi-eventos-ano">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Eventos Realizados no Mês</h2>
+          <p id="kpi-realizado">0</p>
+        </div>
+        <div class="kpi">
+          <h2>Eventos desta Semana</h2>
+          <p id="kpi-semana">0</p>
+        </div>
       </div>
 
       <!-- KPIs de Venda -->
-      <div class="kpi-linha">
-        <div class="kpi"><h2>Total de Venda no Ano</h2><p id="kpi-venda-ano">R$ 0,00</p></div>
-        <div class="kpi"><h2>Venda Real Mês</h2><p id="kpi-venda-mes">R$ 0,00</p></div>
-        <div class="kpi"><h2>Estimativa Venda Semana</h2><p id="kpi-estimativa-semana">R$ 0,00</p></div>
+      <div class="kpi-linha" style="margin-top: 4px;">
+        <div class="kpi">
+          <h2>Total de Venda no Ano</h2>
+          <p id="kpi-venda-ano">R$ 0,00</p>
+        </div>
+        <div class="kpi">
+          <h2>Venda Real Mês</h2>
+          <p id="kpi-venda-mes">R$ 0,00</p>
+        </div>
+        <div class="kpi">
+          <h2>Estimativa Venda Semana</h2>
+          <p id="kpi-estimativa-semana">R$ 0,00</p>
+        </div>
       </div>
 
       <!-- KPIs de Lucro -->
-      <div class="kpi-linha">
-        <div class="kpi"><h2>Lucro Total no Ano</h2><p id="kpi-lucro-ano">R$ 0,00</p></div>
-        <div class="kpi"><h2>Lucro no Mês</h2><p id="kpi-lucro-mes">R$ 0,00</p></div>
+      <div class="kpi-linha" style="margin-top: 4px;">
+        <div class="kpi">
+          <h2>Lucro Total no Ano</h2>
+          <p id="kpi-lucro-ano">R$ 0,00</p>
+        </div>
+        <div class="kpi">
+          <h2>Lucro no Mês</h2>
+          <p id="kpi-lucro-mes">R$ 0,00</p>
+        </div>
       </div>
 
       <!-- Gráficos -->
       <div class="graficos-container">
-        <div class="grafico"><canvas id="graficoVenda"></canvas></div>
-        <div class="grafico"><canvas id="graficoLucro"></canvas></div>
-        <div class="grafico"><canvas id="graficoPerdaAssado"></canvas></div>
-        <div class="grafico"><canvas id="graficoEventos"></canvas></div>
+        <div class="grafico">
+          <canvas id="graficoVenda"></canvas>
+        </div>
+        <div class="grafico">
+          <canvas id="graficoLucro"></canvas>
+        </div>
+        <div class="grafico">
+          <canvas id="graficoPerdaAssado"></canvas>
+        </div>
+        <div class="grafico">
+          <canvas id="graficoEventos"></canvas>
+        </div>
       </div>
 
     </main>
@@ -105,77 +158,170 @@
 
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY", // Substitua pela sua chave de API
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
       projectId: "lepanapp"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
 
+    // Inicializa o Firebase (se já não estiver inicializado no script principal)
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    } else {
+      firebase.app(); // if already initialized, use that one
+    }
+    const db = firebase.database();
     const currentYear = new Date().getFullYear();
     const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-    const dadosMes = Array.from({ length: 12 }, (_, i) => ({
-      mes: meses[i], venda: 0, perda: 0, assado: 0, eventos: 0, lucro: 0
-    }));
 
-    const graficoVenda = new Chart(document.getElementById("graficoVenda"), {
-      type: "line",
-      data: { labels: meses, datasets: [{ label: "Venda PDV", data: [], borderColor: "orange", borderWidth: 2, fill: false }] },
-      options: { responsive: true }
-    });
+    // Função para buscar dados e desenhar gráficos (adaptada de teste.html)
+    function carregarDadosEDesenharGraficos() { // Nome da função corrigido
+      const dadosMes = Array.from({ length: 12 }, (_, i) => ({
+        mes: meses[i],
+        venda: 0,
+        perda: 0,
+        assado: 0,
+        eventos: 0
+      }));
 
-    const graficoLucro = new Chart(document.getElementById("graficoLucro"), {
-      type: "line",
-      data: { labels: meses, datasets: [{ label: "Lucro", data: [], borderColor: "green", borderWidth: 2, fill: false }] },
-      options: { responsive: true }
-    });
+      db.ref('eventos').once('value').then(snapshot => {
+        const eventos = snapshot.val();
+        if (!eventos) {
+          console.log("Nenhum evento encontrado no Firebase.");
+          desenharGraficos(dadosMes); // Desenha gráficos vazios ou com dados padrão
+          return;
+        }
 
-    const graficoPerdaAssado = new Chart(document.getElementById("graficoPerdaAssado"), {
-      type: "line",
-      data: {
-        labels: meses,
-        datasets: [
-          { label: "Perda", data: [], borderColor: "red", borderWidth: 2, fill: false },
-          { label: "Assado", data: [], borderColor: "purple", borderWidth: 2, fill: false }
-        ]
-      },
-      options: { responsive: true }
-    });
+        Object.values(eventos).forEach(e => {
+          if (!e.data) return;
+          const data = new Date(e.data);
+          if (data.getFullYear() !== currentYear) return;
+          const m = data.getMonth();
+          dadosMes[m].venda += Number(e.vendaPDV || 0);
+          // Certifique-se que a estrutura de 'produtos' existe antes de tentar acessá-la
+          if (e.produtos && Array.isArray(e.produtos)) {
+              dadosMes[m].perda += e.produtos.reduce((s, p) => s + (Number(p.perda || 0)), 0);
+              dadosMes[m].assado += e.produtos.reduce((s, p) => s + (Number(p.assado || 0)), 0);
+          } else {
+              // Se não houver produtos ou não for um array, não adiciona perda/assado
+              dadosMes[m].perda += 0;
+              dadosMes[m].assado += 0;
+          }
+          dadosMes[m].eventos += 1;
+        });
 
-    const graficoEventos = new Chart(document.getElementById("graficoEventos"), {
-      type: "line",
-      data: { labels: meses, datasets: [{ label: "Eventos", data: [], borderColor: "blue", borderWidth: 2, fill: false }] },
-      options: { responsive: true }
-    });
-
-    db.ref("eventos").once("value").then(snapshot => {
-      const eventos = snapshot.val();
-      if (!eventos) return;
-
-      Object.values(eventos).forEach(e => {
-        if (!e.data) return;
-        const data = new Date(e.data);
-        if (data.getFullYear() !== currentYear) return;
-        const m = data.getMonth();
-        dadosMes[m].venda += Number(e.vendaPDV || 0);
-        dadosMes[m].lucro += Number(e.lucroFinal || 0);
-        dadosMes[m].perda += Number(e.produtos?.reduce((s, p) => s + (Number(p.perda || 0)), 0) || 0);
-        dadosMes[m].assado += Number(e.produtos?.reduce((s, p) => s + (Number(p.assado || 0)), 0) || 0);
-        dadosMes[m].eventos++;
+        desenharGraficos(dadosMes);
+      }).catch(error => {
+        console.error("Erro ao buscar dados do Firebase: ", error);
+        // Opcional: Desenhar gráficos vazios em caso de erro
+        desenharGraficos(dadosMes);
       });
+    }
 
-      graficoVenda.data.datasets[0].data = dadosMes.map(d => d.venda);
-      graficoLucro.data.datasets[0].data = dadosMes.map(d => d.lucro);
-      graficoPerdaAssado.data.datasets[0].data = dadosMes.map(d => d.perda);
-      graficoPerdaAssado.data.datasets[1].data = dadosMes.map(d => d.assado);
-      graficoEventos.data.datasets[0].data = dadosMes.map(d => d.eventos);
+    // Função para desenhar os gráficos (adaptada de teste.html)
+    function desenharGraficos(data) {
+      // Garante que os elementos canvas existem antes de tentar desenhar
+      const ctxVenda = document.getElementById('graficoVenda');
+      const ctxLucro = document.getElementById('graficoLucro');
+      const ctxPerdaAssado = document.getElementById('graficoPerdaAssado');
+      const ctxEventos = document.getElementById('graficoEventos');
 
-      graficoVenda.update();
-      graficoLucro.update();
-      graficoPerdaAssado.update();
-      graficoEventos.update();
-    });
+      if (ctxVenda) {
+        new Chart(ctxVenda, {
+          type: 'line',
+          data: {
+            labels: data.map(d => d.mes),
+            datasets: [{
+              label: 'Venda PDV',
+              data: data.map(d => d.venda),
+              borderColor: 'rgb(255, 159, 64)',
+              backgroundColor: 'rgba(255, 159, 64, 0.2)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.2
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      }
+
+      if (ctxLucro) {
+        new Chart(ctxLucro, {
+          type: 'line',
+          data: {
+            labels: data.map(d => d.mes),
+            datasets: [{
+              label: 'Lucro (em breve)',
+              data: [], // Dados de lucro ainda não disponíveis
+              borderColor: 'rgb(75, 192, 192)',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              fill: false
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      }
+
+      if (ctxPerdaAssado) {
+        new Chart(ctxPerdaAssado, {
+          type: 'line',
+          data: {
+            labels: data.map(d => d.mes),
+            datasets: [
+              {
+                label: 'Perda',
+                data: data.map(d => d.perda),
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.2
+              },
+              {
+                label: 'Assado',
+                data: data.map(d => d.assado),
+                borderColor: 'rgb(153, 102, 255)',
+                backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.2
+              }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      }
+
+      if (ctxEventos) {
+        new Chart(ctxEventos, {
+          type: 'line',
+          data: {
+            labels: data.map(d => d.mes),
+            datasets: [{
+              label: 'Eventos',
+              data: data.map(d => d.eventos),
+              borderColor: 'rgb(54, 162, 235)',
+              backgroundColor: 'rgba(54, 162, 235, 0.2)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.2
+            }]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+      }
+    }
+
+    // Chama a função para carregar dados e desenhar gráficos quando o DOM estiver pronto
+    document.addEventListener('DOMContentLoaded', carregarDadosEDesenharGraficos);
+
+    // Aqui você pode adicionar o restante do seu script JS original de index.html
+    // que lida com os KPIs, menu, etc.
+    // Exemplo:
+    // function atualizarKPIs() { ... }
+    // document.addEventListener('DOMContentLoaded', atualizarKPIs);
+
   </script>
 </body>
 </html>
