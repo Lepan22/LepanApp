@@ -258,6 +258,7 @@ function calcularTotais() {
 document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
   e.preventDefault();
 
+  // --- Existing Calculations ---
   const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
   const cmvReal = vendaPDV * (percentualCMV / 100);
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
@@ -266,8 +267,23 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     const produto = produtosDisponiveis.find(prod => prod.id === p.produtoId) || { custo: 0 };
     return s + (p.perda * produto.custo);
   }, 0);
+
+  // --- New Calculations ---
+  const valorAssados = listaProdutos.reduce((s, p) => {
+    const produto = produtosDisponiveis.find(prod => prod.id === p.produtoId) || { custo: 0 };
+    return s + (p.assado * produto.custo);
+  }, 0);
+  const vendaSistema = listaProdutos.reduce((s, p) => {
+    const produto = produtosDisponiveis.find(prod => prod.id === p.produtoId) || { valorVenda: 0 };
+    const vendida = Math.max(0, p.quantidade - p.congelado - p.assado - p.perda);
+    return s + (vendida * produto.valorVenda);
+  }, 0);
+  const diferencaVenda = vendaPDV - vendaSistema;
+
+  // --- Recalculate lucroFinal (using already calculated custoPerda) ---
   const lucroFinal = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
 
+  // --- Updated Event Object ---
   const evento = {
     nomeEvento: document.getElementById('nomeEvento').value,
     data: document.getElementById('data').value,
@@ -276,6 +292,9 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     vendaPDV: vendaPDV,
     cmvReal: cmvReal,
     lucroFinal: lucroFinal,
+    custoPerda: custoPerda, // Added
+    valorAssados: valorAssados, // Added
+    diferencaVenda: diferencaVenda, // Added
     estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
     produtos: listaProdutos,
     equipe: equipeAlocada,
