@@ -45,7 +45,8 @@ function carregarEventos() {
       nomeEventoSelect.appendChild(option);
     });
 
-    carregarListaConferencias(); // carregar lista após eventos
+    carregarListaConferencias();
+    carregarEventoViaURL();
   });
 }
 
@@ -54,7 +55,7 @@ nomeEventoSelect.addEventListener("change", () => {
   const datas = eventos
     .filter(e => e.nome === nomeSelecionado)
     .map(e => ({ id: e.id, data: e.data }))
-    .sort((a, b) => b.data.localeCompare(a.data));
+    .sort((a, b) => b.data.localeCompare(a.data)).reverse();
 
   dataEventoSelect.innerHTML = `<option value="">Selecione</option>`;
   datas.forEach(item => {
@@ -206,7 +207,7 @@ function carregarListaConferencias() {
         <td>${formatar(totalDiferenca)}</td>
         <td>${percentual}</td>
         <td>
-          <button onclick="location.href='conferencia_vendas.html?idEvento=${idEvento}'">Editar</button>
+          <button onclick="window.location.href='conferencia_vendas.html?idEvento=${idEvento}'">Editar</button>
           <button onclick="excluirConferencia('${idEvento}')">Excluir</button>
         </td>
       `;
@@ -222,5 +223,20 @@ window.excluirConferencia = function (id) {
     carregarListaConferencias();
   });
 };
+
+function getIdEventoDaURL() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('idEvento') || null;
+}
+
+function carregarEventoViaURL() {
+  const idURL = getIdEventoDaURL();
+  if (idURL) {
+    eventoSelecionadoId = idURL;
+    carregarProdutosDB().then(() => {
+      exibirProdutos(idURL);
+    });
+  }
+}
 
 carregarEventos();
