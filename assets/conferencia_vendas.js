@@ -78,10 +78,12 @@ function exibirProdutos(idEvento) {
 
     let totalCalc = 0, totalReal = 0;
 
-    for (const [produtoId, info] of Object.entries(evento.produtos || {})) {
+    for (const [_, info] of Object.entries(evento.produtos || {})) {
+      const produtoId = info.produtoId;
       const produto = produtosDB[produtoId] || {};
       const nome = produto.nome || 'Produto';
       const valorUnitario = parseFloat(produto.valorVenda || 0);
+
       const qtdSistema = (parseFloat(info.quantidade || 0) -
                          parseFloat(info.congelado || 0) -
                          parseFloat(info.assado || 0) -
