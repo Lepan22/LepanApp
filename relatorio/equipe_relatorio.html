@@ -1,260 +1,284 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Análise por Equipe</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Le Pan pan - Análise por Equipe</title>
+
+  <link rel="stylesheet" href="../assets/base.css" />
+  <link rel="stylesheet" href="../assets/menu-styles.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="../menu.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      carregarMenu('../');
+    });
+  </script>
   <style>
-    :root { --cor-primaria: #ff7f00; --cor-secundaria: #f9f9f9; }
-    body { margin: 0; font-family: 'Segoe UI', sans-serif; }
-    .layout { display: flex; min-height: 100vh; }
-    .sidebar { width: 220px; background-color: var(--cor-primaria); color: white; padding: 20px 10px; display: flex; flex-direction: column; }
-    .sidebar h4 { margin-bottom: 20px; }
-    .sidebar hr { border-top: 1px solid rgba(255,255,255,0.3); margin: 10px 0; }
-    .sidebar .menu-title { font-size: 0.8rem; text-transform: uppercase; margin-top: 10px; margin-bottom: 5px; opacity: 0.7; }
-    .sidebar a { display: block; color: white; margin-bottom: 8px; text-decoration: none; font-weight: bold; font-size: 0.85rem; }
-    .sidebar a:hover { text-decoration: underline; }
-    .main-content { flex-grow: 1; padding: 20px; }
-    .table th { background-color: var(--cor-primaria); color: white; font-size: 0.75rem; padding: 4px; }
-    .table td { font-size: 0.75rem; padding: 2px 4px; vertical-align: middle; }
-    .form-label { font-size: 0.75rem; }
+    .card-dashboard {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    label, select, input {
+      font-size: 12px;
+    }
+    .form-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: flex-end;
+    }
+    .form-group div {
+      display: flex;
+      flex-direction: column;
+    }
+    .btn-navegar {
+      background-color: #ff7f00;
+      color: white;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .btn-navegar:hover {
+      background-color: #e96f00;
+    }
+    canvas {
+      margin-top: 20px;
+    }
   </style>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
 
-<div class="layout">
-  <div class="sidebar">
-    <h4>LePanApp</h4>
-    <div class="menu-title">Gestão</div>
-    <a href="../produtos.html">Produtos</a>
-    <a href="../equipe.html">Equipe</a>
-    <a href="../clientes.html">Clientes</a>
-    <a href="../eventos.html">Eventos</a>
-    <hr>
-    <div class="menu-title">Relatórios</div>
-    <a href="eventos_relatorio.html">Análise por Cliente</a>
-    <a href="equipe_relatorio.html">Análise por Equipe</a>
+    <main class="main-content">
+      <div class="page-header">
+        <h1>Análise por Equipe</h1>
+      </div>
+
+      <div class="card-dashboard">
+        <form id="filtrosForm">
+          <div class="form-group">
+            <div>
+              <label>Responsável</label>
+              <select id="filtroResponsavel" multiple></select>
+            </div>
+            <div>
+              <label>Data Início</label>
+              <input type="date" id="filtroDataInicio">
+            </div>
+            <div>
+              <label>Data Fim</label>
+              <input type="date" id="filtroDataFim">
+            </div>
+            <div>
+              <label>Status</label>
+              <select id="filtroStatus">
+                <option value="Fechado" selected>Fechado</option>
+                <option value="Aberto">Aberto</option>
+                <option value="Finalizado">Finalizado</option>
+              </select>
+            </div>
+            <div>
+              <label>Condomínio</label>
+              <select id="filtroCondominio" multiple></select>
+            </div>
+            <div>
+              <button type="submit" class="btn-navegar">Aplicar Filtros</button>
+              <button type="button" class="btn-navegar" onclick="limparFiltros()">Limpar</button>
+              <button type="button" class="btn-navegar" onclick="exportarXLSX()">Exportar XLSX</button>
+            </div>
+          </div>
+        </form>
+
+        <div>
+          <label>Exibir no Gráfico:</label><br>
+          <label><input type="checkbox" class="form-check-input" value="vendaPDV" id="chkVendaPDV" checked> Venda PDV</label><br>
+          <label><input type="checkbox" class="form-check-input" value="lucro" id="chkLucro" checked> Lucro</label><br>
+          <label><input type="checkbox" class="form-check-input" value="custoPerda" id="chkCustoPerda" checked> Custo Perda</label><br>
+          <label><input type="checkbox" class="form-check-input" value="custoAssado" id="chkCustoAssado" checked> Custo Assado</label><br>
+          <label><input type="checkbox" class="form-check-input" value="custoLogistica" id="chkCustoLogistica" checked> Custo Logística</label>
+        </div>
+
+        <canvas id="graficoRelatorio" height="100"></canvas>
+      </div>
+    </main>
   </div>
 
-  <div class="main-content">
-    <h1>Análise por Equipe</h1>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    <h4>Filtros</h4>
-    <form id="filtrosForm" class="row g-2 mb-3">
-      <div class="col-md-3">
-        <label class="form-label">Responsável</label>
-        <select id="filtroResponsavel" class="form-select form-select-sm" multiple></select>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Data Início</label>
-        <input type="date" id="filtroDataInicio" class="form-control form-control-sm">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Data Fim</label>
-        <input type="date" id="filtroDataFim" class="form-control form-control-sm">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Status</label>
-        <select id="filtroStatus" class="form-select form-select-sm">
-          <option value="Fechado" selected>Fechado</option>
-          <option value="Aberto">Aberto</option>
-          <option value="Finalizado">Finalizado</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label">Condomínio</label>
-        <select id="filtroCondominio" class="form-select form-select-sm" multiple></select>
-      </div>
-      <div class="col-12">
-        <button type="submit" class="btn btn-sm btn-outline-primary mt-2">Aplicar Filtros</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="limparFiltros()">Limpar Filtros</button>
-        <button type="button" class="btn btn-sm btn-outline-success mt-2" onclick="exportarXLSX()">Exportar XLSX</button>
-      </div>
-    </form>
+    let eventos = [], produtos = {}, linhasRelatorio = [], chart = null;
 
-    <h5>Exibir no Gráfico:</h5>
-    <div class="form-check"><input class="form-check-input" type="checkbox" value="vendaPDV" id="chkVendaPDV" checked><label class="form-check-label" for="chkVendaPDV">Venda PDV</label></div>
-    <div class="form-check"><input class="form-check-input" type="checkbox" value="lucro" id="chkLucro" checked><label class="form-check-label" for="chkLucro">Lucro</label></div>
-    <div class="form-check"><input class="form-check-input" type="checkbox" value="custoPerda" id="chkCustoPerda" checked><label class="form-check-label" for="chkCustoPerda">Custo Perda</label></div>
-    <div class="form-check"><input class="form-check-input" type="checkbox" value="custoAssado" id="chkCustoAssado" checked><label class="form-check-label" for="chkCustoAssado">Custo Assado</label></div>
-    <div class="form-check"><input class="form-check-input" type="checkbox" value="custoLogistica" id="chkCustoLogistica" checked><label class="form-check-label" for="chkCustoLogistica">Custo Logística</label></div>
-
-    <canvas id="graficoRelatorio" height="100"></canvas>
-  </div>
-</div>
-
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-    authDomain: "lepanapp.firebaseapp.com",
-    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-    projectId: "lepanapp",
-    storageBucket: "lepanapp.appspot.com",
-    messagingSenderId: "542989944344",
-    appId: "1:542989944344:web:576e28199960fd5440a56d"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  let eventos = [], produtos = {}, linhasRelatorio = [];
-  let chart = null;
-
-  db.ref('produtos').once('value').then(snapshot => {
-    snapshot.forEach(child => {
-      produtos[child.key] = child.val();
-    });
-    carregarEventos();
-  });
-
-  function carregarEventos() {
-    db.ref('eventos').once('value').then(snapshot => {
-      eventos = [];
+    db.ref('produtos').once('value').then(snapshot => {
       snapshot.forEach(child => {
-        const e = child.val();
-        e.id = child.key;
-        eventos.push(e);
+        produtos[child.key] = child.val();
       });
-      popularFiltroCondominio();
-      popularFiltroResponsavel();
+      carregarEventos();
+    });
+
+    function carregarEventos() {
+      db.ref('eventos').once('value').then(snapshot => {
+        eventos = [];
+        snapshot.forEach(child => {
+          const e = child.val();
+          e.id = child.key;
+          eventos.push(e);
+        });
+        popularFiltroCondominio();
+        popularFiltroResponsavel();
+        aplicarFiltros();
+      });
+    }
+
+    function popularFiltroCondominio() {
+      const filtro = document.getElementById('filtroCondominio');
+      const nomes = [...new Set(eventos.map(e => e.nomeEvento))].filter(Boolean);
+      filtro.innerHTML = '';
+      nomes.forEach(nome => {
+        const opt = document.createElement('option');
+        opt.value = nome;
+        opt.textContent = nome;
+        filtro.appendChild(opt);
+      });
+    }
+
+    function popularFiltroResponsavel() {
+      const filtro = document.getElementById('filtroResponsavel');
+      const nomes = [...new Set(eventos.map(e => e.responsavel))].filter(Boolean);
+      filtro.innerHTML = '';
+      nomes.forEach(nome => {
+        const opt = document.createElement('option');
+        opt.value = nome;
+        opt.textContent = nome;
+        filtro.appendChild(opt);
+      });
+    }
+
+    document.getElementById('filtrosForm').addEventListener('submit', function(e) {
+      e.preventDefault();
       aplicarFiltros();
     });
-  }
 
-  function popularFiltroCondominio() {
-    const filtro = document.getElementById('filtroCondominio');
-    const nomes = [...new Set(eventos.map(e => e.nomeEvento))].filter(Boolean);
-    filtro.innerHTML = '';
-    nomes.forEach(nome => {
-      const opt = document.createElement('option');
-      opt.value = nome;
-      opt.textContent = nome;
-      filtro.appendChild(opt);
-    });
-  }
-
-  function popularFiltroResponsavel() {
-    const filtro = document.getElementById('filtroResponsavel');
-    const nomes = [...new Set(eventos.map(e => e.responsavel))].filter(Boolean);
-    filtro.innerHTML = '';
-    nomes.forEach(nome => {
-      const opt = document.createElement('option');
-      opt.value = nome;
-      opt.textContent = nome;
-      filtro.appendChild(opt);
-    });
-  }
-
-  document.getElementById('filtrosForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    aplicarFiltros();
-  });
-
-  document.querySelectorAll('.form-check-input').forEach(chk => {
-    chk.addEventListener('change', () => desenharGrafico());
-  });
-
-  function limparFiltros() {
-    [...document.getElementById('filtroResponsavel').options].forEach(o => o.selected = false);
-    document.getElementById('filtroDataInicio').value = '';
-    document.getElementById('filtroDataFim').value = '';
-    document.getElementById('filtroStatus').value = 'Fechado';
-    [...document.getElementById('filtroCondominio').options].forEach(o => o.selected = false);
-    aplicarFiltros();
-  }
-
-  function aplicarFiltros() {
-    const responsaveisSelecionados = [...document.getElementById('filtroResponsavel').selectedOptions].map(o => o.value);
-    const dataInicio = document.getElementById('filtroDataInicio').value;
-    const dataFim = document.getElementById('filtroDataFim').value;
-    const statusFiltro = document.getElementById('filtroStatus').value;
-    const condominiosSelecionados = [...document.getElementById('filtroCondominio').selectedOptions].map(o => o.value);
-
-    linhasRelatorio = [];
-
-    const eventosFiltrados = eventos.filter(e => {
-      if (responsaveisSelecionados.length > 0 && !responsaveisSelecionados.includes(e.responsavel)) return false;
-      if (dataInicio && (!e.data || e.data < dataInicio)) return false;
-      if (dataFim && (!e.data || e.data > dataFim)) return false;
-      if (statusFiltro && (e.status !== statusFiltro)) return false;
-      if (condominiosSelecionados.length > 0 && !condominiosSelecionados.includes(e.nomeEvento)) return false;
-      return true;
+    document.querySelectorAll('.form-check-input').forEach(chk => {
+      chk.addEventListener('change', () => desenharGrafico());
     });
 
-    eventosFiltrados.forEach(eAtual => {
-      const vendaPDV = parseFloat(eAtual.vendaPDV) || 0;
-      const cmvReal = parseFloat(eAtual.cmvReal) || 0;
-      const custoEquipe = (eAtual.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
-      const custoLogistica = (eAtual.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
+    function limparFiltros() {
+      [...document.getElementById('filtroResponsavel').options].forEach(o => o.selected = false);
+      document.getElementById('filtroDataInicio').value = '';
+      document.getElementById('filtroDataFim').value = '';
+      document.getElementById('filtroStatus').value = 'Fechado';
+      [...document.getElementById('filtroCondominio').options].forEach(o => o.selected = false);
+      aplicarFiltros();
+    }
 
-      let custoPerda = 0, custoAssado = 0;
-      if (eAtual.produtos) {
-        eAtual.produtos.forEach(p => {
-          const produtoId = p.produtoId;
-          const perda = parseFloat(p.perda || 0);
-          const assado = parseFloat(p.assado || 0);
-          const custo = produtos[produtoId] ? parseFloat(produtos[produtoId].custo || 0) : 0;
-          custoPerda += perda * custo;
-          custoAssado += assado * custo;
-        });
-      }
-      const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
+    function aplicarFiltros() {
+      const responsaveisSelecionados = [...document.getElementById('filtroResponsavel').selectedOptions].map(o => o.value);
+      const dataInicio = document.getElementById('filtroDataInicio').value;
+      const dataFim = document.getElementById('filtroDataFim').value;
+      const statusFiltro = document.getElementById('filtroStatus').value;
+      const condominiosSelecionados = [...document.getElementById('filtroCondominio').selectedOptions].map(o => o.value);
 
-      linhasRelatorio.push({
-        responsavel: eAtual.responsavel || '-',
-        data: eAtual.data || '-',
-        vendaPDV, lucro, custoPerda, custoAssado, custoLogistica
+      linhasRelatorio = [];
+
+      const eventosFiltrados = eventos.filter(e => {
+        if (responsaveisSelecionados.length > 0 && !responsaveisSelecionados.includes(e.responsavel)) return false;
+        if (dataInicio && (!e.data || e.data < dataInicio)) return false;
+        if (dataFim && (!e.data || e.data > dataFim)) return false;
+        if (statusFiltro && (e.status !== statusFiltro)) return false;
+        if (condominiosSelecionados.length > 0 && !condominiosSelecionados.includes(e.nomeEvento)) return false;
+        return true;
       });
-    });
 
-    desenharGrafico();
-  }
+      eventosFiltrados.forEach(eAtual => {
+        const vendaPDV = parseFloat(eAtual.vendaPDV) || 0;
+        const cmvReal = parseFloat(eAtual.cmvReal) || 0;
+        const custoEquipe = (eAtual.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
+        const custoLogistica = (eAtual.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
 
-  function desenharGrafico() {
-    const selectedIndicators = ['vendaPDV', 'lucro', 'custoPerda', 'custoAssado', 'custoLogistica']
-      .filter(id => document.getElementById('chk' + id.charAt(0).toUpperCase() + id.slice(1)).checked);
+        let custoPerda = 0, custoAssado = 0;
+        if (eAtual.produtos) {
+          eAtual.produtos.forEach(p => {
+            const produtoId = p.produtoId;
+            const perda = parseFloat(p.perda || 0);
+            const assado = parseFloat(p.assado || 0);
+            const custo = produtos[produtoId] ? parseFloat(produtos[produtoId].custo || 0) : 0;
+            custoPerda += perda * custo;
+            custoAssado += assado * custo;
+          });
+        }
 
-    const datasUnicas = [...new Set(linhasRelatorio.map(e => e.data))].sort();
-    const responsaveis = [...new Set(linhasRelatorio.map(e => e.responsavel))];
+        const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
 
-    const datasets = [];
-
-    responsaveis.forEach(responsavel => {
-      selectedIndicators.forEach(indicador => {
-        const data = datasUnicas.map(data => {
-          const item = linhasRelatorio.find(e => e.data === data && e.responsavel === responsavel);
-          return item ? item[indicador] : 0;
-        });
-        datasets.push({
-          label: `${responsavel} - ${indicador}`,
-          data, borderWidth: 2
+        linhasRelatorio.push({
+          responsavel: eAtual.responsavel || '-',
+          data: eAtual.data || '-',
+          vendaPDV, lucro, custoPerda, custoAssado, custoLogistica
         });
       });
-    });
 
-    if (chart) chart.destroy();
-    const ctx = document.getElementById('graficoRelatorio').getContext('2d');
-    chart = new Chart(ctx, {
-      type: 'line',
-      data: { labels: datasUnicas, datasets },
-      options: {
-        responsive: true,
-        plugins: { legend: { position: 'top' }, title: { display: true, text: 'Resumo por Responsável' } }
-      }
-    });
-  }
+      desenharGrafico();
+    }
 
-  function exportarXLSX() {
-    const ws = XLSX.utils.json_to_sheet(linhasRelatorio);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Relatório");
-    XLSX.writeFile(wb, "relatorio_equipe.xlsx");
-  }
-</script>
+    function desenharGrafico() {
+      const selectedIndicators = ['vendaPDV', 'lucro', 'custoPerda', 'custoAssado', 'custoLogistica']
+        .filter(id => document.getElementById('chk' + id.charAt(0).toUpperCase() + id.slice(1)).checked);
 
+      const datasUnicas = [...new Set(linhasRelatorio.map(e => e.data))].sort();
+      const responsaveis = [...new Set(linhasRelatorio.map(e => e.responsavel))];
+
+      const datasets = [];
+
+      responsaveis.forEach(responsavel => {
+        selectedIndicators.forEach(indicador => {
+          const data = datasUnicas.map(data => {
+            const item = linhasRelatorio.find(e => e.data === data && e.responsavel === responsavel);
+            return item ? item[indicador] : 0;
+          });
+          datasets.push({
+            label: `${responsavel} - ${indicador}`,
+            data, borderWidth: 2
+          });
+        });
+      });
+
+      if (chart) chart.destroy();
+      const ctx = document.getElementById('graficoRelatorio').getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: { labels: datasUnicas, datasets },
+        options: {
+          responsive: true,
+          plugins: { legend: { position: 'top' }, title: { display: true, text: 'Resumo por Responsável' } }
+        }
+      });
+    }
+
+    function exportarXLSX() {
+      const ws = XLSX.utils.json_to_sheet(linhasRelatorio);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Relatório");
+      XLSX.writeFile(wb, "relatorio_equipe.xlsx");
+    }
+  </script>
 </body>
 </html>
