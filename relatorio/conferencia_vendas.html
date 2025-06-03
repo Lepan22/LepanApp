@@ -4,9 +4,12 @@
   <meta charset="UTF-8" />
   <title>Conferência de Vendas por Evento</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <script type="module" src="../assets/conferencia_vendas.js"></script>
   <link rel="stylesheet" href="../assets/base.css" />
   <link rel="stylesheet" href="../assets/menu-styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <script type="module" src="../assets/menu.js"></script>
+  <script type="module" src="../assets/conferencia_vendas.js" defer></script>
 </head>
 <body>
   <div class="menu-lateral" id="menuLateral"></div>
@@ -18,7 +21,7 @@
       <label for="nomeEventoSelect">Nome do Evento:</label>
       <select id="nomeEventoSelect"></select>
 
-      <label for="dataEventoSelect">Data:</label>
+      <label for="dataEventoSelect" style="margin-left: 20px;">Data:</label>
       <select id="dataEventoSelect"></select>
     </div>
 
