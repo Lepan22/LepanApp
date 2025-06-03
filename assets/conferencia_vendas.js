@@ -231,12 +231,18 @@ function getIdEventoDaURL() {
 
 function carregarEventoViaURL() {
   const idURL = getIdEventoDaURL();
-  if (idURL) {
-    eventoSelecionadoId = idURL;
-    carregarProdutosDB().then(() => {
-      exibirProdutos(idURL);
-    });
-  }
+  if (!idURL || !eventos.length) return;
+
+  const evento = eventos.find(e => e.id === idURL);
+  if (!evento) return;
+
+  nomeEventoSelect.value = evento.nome;
+  nomeEventoSelect.dispatchEvent(new Event('change'));
+
+  setTimeout(() => {
+    dataEventoSelect.value = idURL;
+    dataEventoSelect.dispatchEvent(new Event('change'));
+  }, 300);
 }
 
 carregarEventos();
