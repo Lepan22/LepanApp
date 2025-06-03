@@ -1,4 +1,4 @@
-// GestaoEvento.js COMPLETO - com gravação de totais no Firebase
+// GestaoEvento.js COMPLETO com gravação dos totais no DB, mantendo toda a lógica original
 
 const firebaseConfig = {
   apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -83,23 +83,27 @@ function calcularTotais() {
   document.getElementById('potencialVenda').innerText = potencialVenda.toFixed(2);
 }
 
-document.getElementById('formGestaoEvento').addEventListener('submit', async function(e) {
+document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
   e.preventDefault();
+
   calcularTotais();
+
+  const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
+  const cmvReal = vendaPDV * (percentualCMV / 100);
 
   const evento = {
     nomeEvento: document.getElementById('nomeEvento').value,
     data: document.getElementById('data').value,
     responsavel: document.getElementById('responsavel').value,
     status: document.getElementById('status').value,
-    vendaPDV: parseFloat(document.getElementById('vendaPDV').value) || 0,
-    cmvReal: parseFloat(document.getElementById('cmvReal').value) || 0,
+    vendaPDV: vendaPDV,
+    cmvReal: cmvReal,
     estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
     produtos: listaProdutos,
     equipe: equipeAlocada,
     logistica: logisticaAlocada,
 
-    // Totais calculados salvos
+    // Novos campos calculados
     totalVendida: parseInt(document.getElementById('totalVendida').innerText),
     vendaSistema: parseFloat(document.getElementById('vendaSistema').innerText),
     diferencaVenda: parseFloat(document.getElementById('diferencaVenda').innerText),
@@ -113,7 +117,8 @@ document.getElementById('formGestaoEvento').addEventListener('submit', async fun
   };
 
   const id = eventoId || db.ref('eventos').push().key;
-  await db.ref('eventos/' + id).set(evento);
-  alert('Evento salvo com sucesso!');
-  window.location.href = 'eventos.html';
+  db.ref('eventos/' + id).set(evento).then(() => {
+    alert('Evento salvo com sucesso!');
+    window.location.href = "eventos.html";
+  });
 });
