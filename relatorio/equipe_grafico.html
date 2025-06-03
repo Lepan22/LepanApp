@@ -1,4 +1,3 @@
-<!-- equipe_relatorio.html (versão em lista com botão de gráfico) -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -148,13 +147,16 @@
       const cmvReal = parseFloat(e.cmvReal) || 0;
       const custoEquipe = (e.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
       const custoLogistica = (e.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
-      let custoPerda = 0, custoAssado = 0;
 
+      let custoPerda = 0, custoAssado = 0;
       (e.produtos || []).forEach(p => {
-        const prod = produtos[p.produtoId] || {};
+        const produtoKey = p.produtoId || p.idProduto;
+        const prod = produtos[produtoKey] || {};
         const custo = parseFloat(prod.custo || 0);
-        custoPerda += (parseFloat(p.perda || 0)) * custo;
-        custoAssado += (parseFloat(p.assado || 0)) * custo;
+        const perda = parseFloat(p.perda || 0);
+        const assado = parseFloat(p.assado || 0);
+        custoPerda += perda * custo;
+        custoAssado += assado * custo;
       });
 
       const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
@@ -162,13 +164,13 @@
 
       linhas.push({
         responsavel: e.responsavel || '-',
-        vendaPDV, lucro, 
+        vendaPDV, lucro,
         percLucro: vendaPDV ? (lucro / vendaPDV * 100).toFixed(1) : '0.0',
-        diferenca, 
+        diferenca,
         percDif: vendaPDV ? (diferenca / vendaPDV * 100).toFixed(1) : '0.0',
-        perda: custoPerda, 
+        perda: custoPerda,
         percPerda: vendaPDV ? (custoPerda / vendaPDV * 100).toFixed(1) : '0.0',
-        assado: custoAssado, 
+        assado: custoAssado,
         percAssado: vendaPDV ? (custoAssado / vendaPDV * 100).toFixed(1) : '0.0'
       });
     });
