@@ -260,6 +260,13 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
 
   const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
   const cmvReal = vendaPDV * (percentualCMV / 100);
+  const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
+  const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
+  const custoPerda = listaProdutos.reduce((s, p) => {
+    const produto = produtosDisponiveis.find(prod => prod.id === p.produtoId) || { custo: 0 };
+    return s + (p.perda * produto.custo);
+  }, 0);
+  const lucroFinal = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
 
   const evento = {
     nomeEvento: document.getElementById('nomeEvento').value,
