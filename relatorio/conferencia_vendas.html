@@ -6,42 +6,63 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <script type="module" src="../assets/conferencia_vendas.js"></script>
   <link rel="stylesheet" href="../assets/base.css" />
+  <link rel="stylesheet" href="../assets/menu-styles.css" />
 </head>
 <body>
-  <h1>Conferência de Vendas por Evento</h1>
+  <div class="menu-lateral" id="menuLateral"></div>
 
-  <div style="margin-bottom: 10px;">
-    <label for="nomeEventoSelect">Nome do Evento:</label>
-    <select id="nomeEventoSelect"></select>
+  <main class="conteudo">
+    <h1>Conferência de Vendas por Evento</h1>
 
-    <label for="dataEventoSelect">Data:</label>
-    <select id="dataEventoSelect"></select>
-  </div>
+    <div style="margin-bottom: 10px;">
+      <label for="nomeEventoSelect">Nome do Evento:</label>
+      <select id="nomeEventoSelect"></select>
 
-  <table>
-    <thead>
-      <tr style="background-color: orange; color: white;">
-        <th>Produto</th>
-        <th>Qtd Vendida (Sistema)</th>
-        <th>Valor Unitário</th>
-        <th>Qtd Real Vendida</th>
-        <th>Valor Calculado</th>
-        <th>Valor Real</th>
-        <th>Diferença</th>
-      </tr>
-    </thead>
-    <tbody id="tabelaProdutos"></tbody>
-    <tfoot>
-      <tr>
-        <td><strong>Totais</strong></td>
-        <td colspan="3"></td>
-        <td id="totalCalculado">R$ 0,00</td>
-        <td id="totalReal">R$ 0,00</td>
-        <td id="totalDiferenca">R$ 0,00</td>
-      </tr>
-    </tfoot>
-  </table>
+      <label for="dataEventoSelect">Data:</label>
+      <select id="dataEventoSelect"></select>
+    </div>
 
-  <button id="salvarBtn" style="margin-top: 15px;">Salvar Conferência</button>
+    <table>
+      <thead>
+        <tr style="background-color: orange; color: white;">
+          <th>Produto</th>
+          <th>Qtd Vendida (Sistema)</th>
+          <th>Valor Unitário</th>
+          <th>Qtd Real Vendida</th>
+          <th>Valor Calculado</th>
+          <th>Valor Real</th>
+          <th>Diferença</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaProdutos"></tbody>
+      <tfoot>
+        <tr>
+          <td><strong>Totais</strong></td>
+          <td colspan="3"></td>
+          <td id="totalCalculado">R$ 0,00</td>
+          <td id="totalReal">R$ 0,00</td>
+          <td id="totalDiferenca">R$ 0,00</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <button id="salvarBtn" style="margin-top: 15px;">Salvar Conferência</button>
+
+    <hr style="margin: 40px 0;">
+
+    <h2>Conferências Existentes</h2>
+    <table>
+      <thead>
+        <tr style="background-color: #666; color: white;">
+          <th>Evento</th>
+          <th>Data</th>
+          <th>Diferença</th>
+          <th>% Venda Real</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="listaConferencias"></tbody>
+    </table>
+  </main>
 </body>
 </html>
