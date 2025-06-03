@@ -268,22 +268,13 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     status: document.getElementById('status').value,
     vendaPDV: vendaPDV,
     cmvReal: cmvReal,
+    lucroFinal: lucroFinal,
     estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
     produtos: listaProdutos,
     equipe: equipeAlocada,
     logistica: logisticaAlocada
   };
 
-    totalVendida: parseInt(document.getElementById('totalVendida').innerText),
-    vendaSistema: parseFloat(document.getElementById('vendaSistema').innerText),
-    diferencaVenda: parseFloat(document.getElementById('diferencaVenda').innerText),
-    cmvCalculado: parseFloat(document.getElementById('cmvCalculado').innerText),
-    lucroFinal: parseFloat(document.getElementById('lucroFinal').innerText),
-    custoPerda: parseFloat(document.getElementById('custoPerda').innerText),
-    valorAssados: parseFloat(document.getElementById('valorAssados').innerText),
-    custoLogistica: parseFloat(document.getElementById('custoLogistica').innerText),
-    custoEquipe: parseFloat(document.getElementById('custoEquipe').innerText),
-    potencialVenda: parseFloat(document.getElementById('potencialVenda').innerText),
   const id = eventoId || db.ref('eventos').push().key;
   db.ref('eventos/' + id).set(evento).then(() => {
     alert('Evento salvo com sucesso!');
