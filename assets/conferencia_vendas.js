@@ -1,150 +1,137 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-  authDomain: "lepanapp.firebaseapp.com",
-  databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-  projectId: "lepanapp"
-};
+import { db } from './firebase-config.js';
+import { ref, onValue, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+const selectEvento = document.getElementById("selectEvento");
+const tabelaProdutos = document.getElementById("tabelaProdutos");
+const totalCalculado = document.getElementById("totalCalculado");
+const totalReal = document.getElementById("totalReal");
+const totalDiferenca = document.getElementById("totalDiferenca");
+const salvarBtn = document.getElementById("salvarBtn");
 
-const eventoSelect = document.getElementById("eventoSelect");
-const tabelaProdutos = document.getElementById("tabelaProdutos").getElementsByTagName("tbody")[0];
-const totalCalculadoEl = document.getElementById("totalCalculado");
-const totalRealEl = document.getElementById("totalReal");
-const totalDiferencaEl = document.getElementById("totalDiferenca");
+let eventos = [];
 
-let produtosDB = {};
-let eventoSelecionado = null;
-
-function formatar(valor) {
+function formatarValor(valor) {
   return `R$ ${valor.toFixed(2).replace('.', ',')}`;
 }
 
-function carregarProdutos() {
-  return db.ref('produtos').once('value').then(snapshot => {
-    produtosDB = {};
-    snapshot.forEach(child => {
-      produtosDB[child.key] = child.val();
-    });
-  });
-}
-
 function carregarEventos() {
-  db.ref('eventos').once('value').then(snapshot => {
-    eventoSelect.innerHTML = '<option value="">Selecione</option>';
+  const eventosRef = ref(db, 'eventos');
+  onValue(eventosRef, (snapshot) => {
+    eventos = [];
+    selectEvento.innerHTML = `<option value="">Selecione...</option>`;
     snapshot.forEach(child => {
       const evento = child.val();
-      const nome = `${evento.nomeEvento} - ${evento.data || 'sem data'}`;
+      if (evento.nomeEvento && evento.data) {
+        eventos.push({ id: child.key, nome: evento.nomeEvento, data: evento.data });
+      }
+    });
+    eventos.sort((a, b) => a.nome.localeCompare(b.nome) || a.data.localeCompare(b.data));
+    eventos.forEach(ev => {
       const option = document.createElement("option");
-      option.value = child.key;
-      option.textContent = nome;
-      eventoSelect.appendChild(option);
+      option.value = ev.id;
+      option.textContent = `${ev.nome} - ${ev.data}`;
+      selectEvento.appendChild(option);
     });
   });
 }
 
-eventoSelect.addEventListener('change', () => {
-  const id = eventoSelect.value;
-  if (!id) return;
-  carregarProdutos().then(() => exibirProdutosDoEvento(id));
-});
-
-function exibirProdutosDoEvento(idEvento) {
-  db.ref(`eventos/${idEvento}`).once('value').then(snapshot => {
+function carregarProdutos(idEvento) {
+  const eventoRef = ref(db, `eventos/${idEvento}`);
+  onValue(eventoRef, (snapshot) => {
     const evento = snapshot.val();
-    eventoSelecionado = evento;
+    if (!evento || !evento.produtos) return;
+
     tabelaProdutos.innerHTML = '';
-    let totalCalculado = 0;
-    let totalReal = 0;
+    let somaCalculado = 0, somaReal = 0;
 
-    if (!evento.produtos || Object.keys(evento.produtos).length === 0) {
-      tabelaProdutos.innerHTML = `<tr><td colspan="7">Nenhum produto encontrado para este evento.</td></tr>`;
-      return;
-    }
-
-    Object.entries(evento.produtos).forEach(([produtoId, info]) => {
-      const produto = produtosDB[produtoId];
-      if (!produto) return;
-
-      const valorUnitario = parseFloat(produto.valorVenda || 0);
-      const enviado = parseFloat(info.quantidade || 0);
-      const congelado = parseFloat(info.congelado || 0);
-      const assado = parseFloat(info.assado || 0);
-      const perda = parseFloat(info.perda || 0);
-
-      const quantidadeVendida = enviado - congelado - assado - perda;
-      const valorCalculado = quantidadeVendida * valorUnitario;
+    evento.produtos.forEach((prod, i) => {
+      const vendidaSistema = (prod.enviado || 0) - ((prod.congelado || 0) + (prod.assado || 0) + (prod.perda || 0));
+      const valorUnitario = parseFloat(prod.valorVenda || 0);
+      const valorCalculado = vendidaSistema * valorUnitario;
 
       const tr = document.createElement("tr");
 
       const tdNome = document.createElement("td");
-      tdNome.textContent = produto.nome;
-      tr.appendChild(tdNome);
+      tdNome.textContent = prod.nome || '';
 
-      const tdQtdVendida = document.createElement("td");
-      tdQtdVendida.textContent = quantidadeVendida;
-      tr.appendChild(tdQtdVendida);
+      const tdSistema = document.createElement("td");
+      tdSistema.textContent = vendidaSistema;
 
-      const tdUnitario = document.createElement("td");
-      tdUnitario.textContent = formatar(valorUnitario);
-      tr.appendChild(tdUnitario);
+      const tdValorUnitario = document.createElement("td");
+      tdValorUnitario.textContent = formatarValor(valorUnitario);
 
-      const tdQtdReal = document.createElement("td");
+      const tdReal = document.createElement("td");
       const inputReal = document.createElement("input");
       inputReal.type = "number";
-      inputReal.min = 0;
-      inputReal.step = 1;
-      inputReal.value = quantidadeVendida;
-      tdQtdReal.appendChild(inputReal);
-      tr.appendChild(tdQtdReal);
+      inputReal.min = "0";
+      inputReal.value = vendidaSistema;
+      inputReal.style.width = "60px";
+      tdReal.appendChild(inputReal);
 
-      const tdValorCalculado = document.createElement("td");
-      tdValorCalculado.textContent = formatar(valorCalculado);
-      tr.appendChild(tdValorCalculado);
-
-      const tdValorReal = document.createElement("td");
+      const tdCalculado = document.createElement("td");
+      const tdRealTotal = document.createElement("td");
       const tdDiferenca = document.createElement("td");
-      tr.appendChild(tdValorReal);
-      tr.appendChild(tdDiferenca);
 
-      function atualizarValores() {
-        const qtdReal = parseFloat(inputReal.value) || 0;
-        const valorReal = qtdReal * valorUnitario;
+      const atualizarTotais = () => {
+        const realVendida = parseFloat(inputReal.value || 0);
+        const valorReal = realVendida * valorUnitario;
         const diferenca = valorReal - valorCalculado;
-        tdValorReal.textContent = formatar(valorReal);
-        tdDiferenca.textContent = formatar(diferenca);
-        recalcularTotais();
-      }
 
-      inputReal.addEventListener('input', atualizarValores);
+        tdCalculado.textContent = formatarValor(valorCalculado);
+        tdRealTotal.textContent = formatarValor(valorReal);
+        tdDiferenca.textContent = formatarValor(diferenca);
+      };
 
-      tr.dataset.valorUnitario = valorUnitario;
-      tr.dataset.valorCalculado = valorCalculado;
-      tr.dataset.inputId = produtoId;
+      inputReal.addEventListener("input", atualizarTotais);
+      atualizarTotais();
 
+      somaCalculado += valorCalculado;
+      somaReal += parseFloat(inputReal.value || 0) * valorUnitario;
+
+      tr.append(tdNome, tdSistema, tdValorUnitario, tdReal, tdCalculado, tdRealTotal, tdDiferenca);
       tabelaProdutos.appendChild(tr);
-      atualizarValores(); // Inicializa valores
     });
+
+    totalCalculado.textContent = formatarValor(somaCalculado);
+    totalReal.textContent = formatarValor(somaReal);
+    totalDiferenca.textContent = formatarValor(somaReal - somaCalculado);
   });
 }
 
-function recalcularTotais() {
-  let totalCalc = 0, totalReal = 0;
-  Array.from(tabelaProdutos.children).forEach(tr => {
-    const valorUnitario = parseFloat(tr.dataset.valorUnitario || 0);
-    const valorCalculado = parseFloat(tr.dataset.valorCalculado || 0);
-    const input = tr.querySelector("input");
-    const qtdReal = parseFloat(input.value) || 0;
-    const valorReal = qtdReal * valorUnitario;
+salvarBtn.addEventListener("click", () => {
+  const idEvento = selectEvento.value;
+  if (!idEvento) return alert("Selecione um evento.");
 
-    totalCalc += valorCalculado;
-    totalReal += valorReal;
+  const linhas = tabelaProdutos.querySelectorAll("tr");
+  const produtos = [];
+
+  linhas.forEach(linha => {
+    const tds = linha.querySelectorAll("td");
+    if (tds.length < 7) return;
+
+    const nome = tds[0].textContent;
+    const qtdSistema = parseFloat(tds[1].textContent || 0);
+    const valorUnit = parseFloat(tds[2].textContent.replace('R$', '').replace(',', '.').trim()) || 0;
+    const qtdReal = parseFloat(tds[3].querySelector("input").value || 0);
+    const valorCalc = qtdSistema * valorUnit;
+    const valorReal = qtdReal * valorUnit;
+
+    produtos.push({ nome, qtdSistema, qtdReal, valorUnit, valorCalc, valorReal, diferenca: valorReal - valorCalc });
   });
 
-  totalCalculadoEl.textContent = formatar(totalCalc);
-  totalRealEl.textContent = formatar(totalReal);
-  totalDiferencaEl.textContent = formatar(totalReal - totalCalc);
-}
+  set(ref(db, `conferencias/${idEvento}`), {
+    dataHora: new Date().toISOString(),
+    produtos
+  }).then(() => {
+    alert("Conferência salva com sucesso.");
+  }).catch(err => {
+    alert("Erro ao salvar: " + err.message);
+  });
+});
+
+selectEvento.addEventListener("change", () => {
+  const id = selectEvento.value;
+  if (id) carregarProdutos(id);
+});
 
 carregarEventos();
