@@ -10,7 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="../assets/menu.js"></script>
   <style>
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
     th { background-color: #ffcc80; }
     .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; border-radius: 5px; font-size: 12px; cursor: pointer; margin-right: 5px; }
@@ -18,6 +18,8 @@
     .form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; align-items: flex-end; }
     .form-row > div { display: flex; flex-direction: column; }
     label, select, input { font-size: 12px; }
+    details summary { font-weight: bold; cursor: pointer; margin-top: 10px; background: #f0f0f0; padding: 5px; }
+    tfoot td { font-weight: bold; background: #f9f9f9; }
   </style>
 </head>
 <body>
@@ -146,14 +148,7 @@
 
       linhas.push({
         responsavel: e.responsavel || '-',
-        vendaPDV, lucro,
-        percLucro: vendaPDV ? (lucro / vendaPDV * 100).toFixed(1) : '0.0',
-        diferenca,
-        percDif: vendaPDV ? (diferenca / vendaPDV * 100).toFixed(1) : '0.0',
-        perda: custoPerda,
-        percPerda: vendaPDV ? (custoPerda / vendaPDV * 100).toFixed(1) : '0.0',
-        assado: valorAssados,
-        percAssado: vendaPDV ? (valorAssados / vendaPDV * 100).toFixed(1) : '0.0'
+        vendaPDV, lucro, diferenca, perda: custoPerda, assado: valorAssados
       });
     });
 
@@ -161,23 +156,66 @@
   }
 
   function exibirTabela(linhas) {
-    let html = `<table><thead><tr>
-      <th>Responsável</th><th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
-      <th>Diferença</th><th>% Diferença</th><th>Perda</th><th>% Perda</th>
-      <th>Assado</th><th>% Assado</th></tr></thead><tbody>`;
+    const grupos = {};
     linhas.forEach(l => {
-      html += `<tr><td>${l.responsavel}</td>
-      <td>R$ ${l.vendaPDV.toFixed(2)}</td>
-      <td>R$ ${l.lucro.toFixed(2)}</td>
-      <td>${l.percLucro}%</td>
-      <td>R$ ${l.diferenca.toFixed(2)}</td>
-      <td>${l.percDif}%</td>
-      <td>R$ ${l.perda.toFixed(2)}</td>
-      <td>${l.percPerda}%</td>
-      <td>R$ ${l.assado.toFixed(2)}</td>
-      <td>${l.percAssado}%</td></tr>`;
+      if (!grupos[l.responsavel]) grupos[l.responsavel] = [];
+      grupos[l.responsavel].push(l);
     });
-    html += '</tbody></table>';
+
+    let html = '';
+    let total = { vendaPDV: 0, lucro: 0, diferenca: 0, perda: 0, assado: 0 };
+
+    // Total no topo
+    html += `<table><thead><tr>
+      <th>Total Venda PDV</th><th>Lucro</th><th>% Lucro</th>
+      <th>Diferença</th><th>% Diferença</th><th>Perda</th><th>% Perda</th>
+      <th>Assado</th><th>% Assado</th></tr></thead><tbody><tr>`;
+
+    linhas.forEach(l => {
+      total.vendaPDV += l.vendaPDV;
+      total.lucro += l.lucro;
+      total.diferenca += l.diferenca;
+      total.perda += l.perda;
+      total.assado += l.assado;
+    });
+
+    html += `
+      <td>R$ ${total.vendaPDV.toFixed(2)}</td>
+      <td>R$ ${total.lucro.toFixed(2)}</td>
+      <td>${total.vendaPDV ? (total.lucro / total.vendaPDV * 100).toFixed(1) : '0.0'}%</td>
+      <td>R$ ${total.diferenca.toFixed(2)}</td>
+      <td>${total.vendaPDV ? (total.diferenca / total.vendaPDV * 100).toFixed(1) : '0.0'}%</td>
+      <td>R$ ${total.perda.toFixed(2)}</td>
+      <td>${total.vendaPDV ? (total.perda / total.vendaPDV * 100).toFixed(1) : '0.0'}%</td>
+      <td>R$ ${total.assado.toFixed(2)}</td>
+      <td>${total.vendaPDV ? (total.assado / total.vendaPDV * 100).toFixed(1) : '0.0'}%</td>
+    </tr></tbody></table>`;
+
+    // Cabeçalho fixo para todos os blocos
+    for (const responsavel in grupos) {
+      html += `<details><summary>${responsavel}</summary>`;
+      html += `<table><thead><tr>
+        <th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
+        <th>Diferença</th><th>% Diferença</th><th>Perda</th><th>% Perda</th>
+        <th>Assado</th><th>% Assado</th></tr></thead><tbody>`;
+
+      grupos[responsavel].forEach(l => {
+        const { vendaPDV, lucro, diferenca, perda, assado } = l;
+        html += `<tr>
+          <td>R$ ${vendaPDV.toFixed(2)}</td>
+          <td>R$ ${lucro.toFixed(2)}</td>
+          <td>${vendaPDV ? (lucro / vendaPDV * 100).toFixed(1) : '0.0'}%</td>
+          <td>R$ ${diferenca.toFixed(2)}</td>
+          <td>${vendaPDV ? (diferenca / vendaPDV * 100).toFixed(1) : '0.0'}%</td>
+          <td>R$ ${perda.toFixed(2)}</td>
+          <td>${vendaPDV ? (perda / vendaPDV * 100).toFixed(1) : '0.0'}%</td>
+          <td>R$ ${assado.toFixed(2)}</td>
+          <td>${vendaPDV ? (assado / vendaPDV * 100).toFixed(1) : '0.0'}%</td>
+        </tr>`;
+      });
+      html += '</tbody></table></details>';
+    }
+
     document.getElementById('tabelaResultado').innerHTML = html;
   }
 
