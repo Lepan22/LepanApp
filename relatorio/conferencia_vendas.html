@@ -2,33 +2,46 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Conferências de Vendas</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <title>Conferência de Vendas por Evento</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script type="module" src="../assets/conferencia_vendas.js"></script>
   <link rel="stylesheet" href="../assets/base.css" />
-  <link rel="stylesheet" href="../assets/menu-styles.css" />
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-  <script type="module" src="../assets/menu.js"></script>
-  <script type="module" src="../assets/conferencias.js" defer></script>
 </head>
 <body>
-  <div class="menu-lateral" id="menuLateral"></div>
+  <h1>Conferência de Vendas por Evento</h1>
 
-  <main class="conteudo">
-    <h1>Lista de Conferências</h1>
-    <table>
-      <thead>
-        <tr style="background-color: orange; color: white;">
-          <th>Nome do Evento</th>
-          <th>Data</th>
-          <th>Valor Diferença</th>
-          <th>% Venda Real</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody id="listaConferencias"></tbody>
-    </table>
-  </main>
+  <div style="margin-bottom: 10px;">
+    <label for="nomeEventoSelect">Nome do Evento:</label>
+    <select id="nomeEventoSelect"></select>
+
+    <label for="dataEventoSelect">Data:</label>
+    <select id="dataEventoSelect"></select>
+  </div>
+
+  <table>
+    <thead>
+      <tr style="background-color: orange; color: white;">
+        <th>Produto</th>
+        <th>Qtd Vendida (Sistema)</th>
+        <th>Valor Unitário</th>
+        <th>Qtd Real Vendida</th>
+        <th>Valor Calculado</th>
+        <th>Valor Real</th>
+        <th>Diferença</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaProdutos"></tbody>
+    <tfoot>
+      <tr>
+        <td><strong>Totais</strong></td>
+        <td colspan="3"></td>
+        <td id="totalCalculado">R$ 0,00</td>
+        <td id="totalReal">R$ 0,00</td>
+        <td id="totalDiferenca">R$ 0,00</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <button id="salvarBtn" style="margin-top: 15px;">Salvar Conferência</button>
 </body>
 </html>
