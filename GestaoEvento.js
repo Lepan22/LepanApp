@@ -4,6 +4,7 @@ const firebaseConfig = {
   databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
   projectId: "lepanapp"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
@@ -17,9 +18,6 @@ function carregarPercentualCMV() {
     percentualCMV = snapshot.val() || 0;
   });
 }
-
-// As demais funções (carregarClientes, carregarResponsaveis, carregarEquipeDisponivel, etc.)
-// continuam exatamente como no seu arquivo original.
 
 function calcularTotais() {
   let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmvCalculado = 0, potencialVenda = 0;
@@ -77,7 +75,7 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     equipe: equipeAlocada,
     logistica: logisticaAlocada,
 
-    // CAMPOS CALCULADOS
+    // CAMPOS CALCULADOS INCLUÍDOS
     totalVendida: parseInt(document.getElementById('totalVendida').innerText),
     vendaSistema: parseFloat(document.getElementById('vendaSistema').innerText),
     diferencaVenda: parseFloat(document.getElementById('diferencaVenda').innerText),
@@ -97,7 +95,6 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
   });
 });
 
-// Carregamento automático dos dados ao iniciar a página
 document.addEventListener("DOMContentLoaded", () => {
   carregarPercentualCMV().then(() => {
     carregarClientes();
