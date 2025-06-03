@@ -255,6 +255,7 @@ function calcularTotais() {
   document.getElementById('potencialVenda').innerText = potencialVenda.toFixed(2);
 }
 
+
 document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
   e.preventDefault();
 
@@ -262,6 +263,15 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
   const cmvReal = vendaPDV * (percentualCMV / 100);
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
   const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
+
+  let vendaSistema = 0;
+  listaProdutos.forEach(p => {
+    const produto = produtosDisponiveis.find(prod => prod.id === p.produtoId) || { valorVenda: 0 };
+    const vendida = Math.max(0, p.quantidade - p.congelado - p.assado - p.perda);
+    vendaSistema += vendida * produto.valorVenda;
+  });
+
+  const diferencaVenda = vendaPDV - vendaSistema;
   const custoPerda = listaProdutos.reduce((s, p) => {
     const produto = produtosDisponiveis.find(prod => prod.id === p.produtoId) || { custo: 0 };
     return s + (p.perda * produto.custo);
@@ -275,7 +285,8 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     status: document.getElementById('status').value,
     vendaPDV: vendaPDV,
     cmvReal: cmvReal,
-    custoPerda: custoPerda
+    custoPerda: custoPerda,
+    diferencaVenda: diferencaVenda,
     lucroFinal: lucroFinal,
     estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
     produtos: listaProdutos,
@@ -288,6 +299,8 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     alert('Evento salvo com sucesso!');
     window.location.href = "eventos.html";
   });
+});
+
 });
 
 document.addEventListener("DOMContentLoaded", () => {
