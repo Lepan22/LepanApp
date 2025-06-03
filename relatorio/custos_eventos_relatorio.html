@@ -46,15 +46,26 @@
       cursor: pointer;
       border-radius: 5px;
       font-size: 12px;
+      margin-top: 10px;
+      margin-right: 10px;
     }
     .btn-navegar:hover {
       background-color: #e96f00;
     }
-    .form-control {
-      font-size: 12px;
-      padding: 4px 8px;
+    .form-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 15px;
     }
-    label {
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+    .form-group input {
+      padding: 5px;
       font-size: 12px;
     }
   </style>
@@ -69,20 +80,20 @@
     </div>
 
     <div class="card-dashboard">
-      <form id="filtroForm" class="row g-3 mb-3">
-        <div class="col-auto">
-          <label>Data Inicial</label>
-          <input type="date" id="dataInicial" class="form-control">
-        </div>
-        <div class="col-auto">
-          <label>Data Final</label>
-          <input type="date" id="dataFinal" class="form-control">
-        </div>
-        <div class="col-auto align-self-end">
-          <button type="submit" class="btn-navegar">Gerar Relatório</button>
-        </div>
-        <div class="col-auto align-self-end">
-          <button type="button" class="btn-navegar" onclick="exportarExcel()">Exportar Excel</button>
+      <form id="filtroForm">
+        <div class="form-group">
+          <div>
+            <label for="dataInicial">Data Inicial</label>
+            <input type="date" id="dataInicial">
+          </div>
+          <div>
+            <label for="dataFinal">Data Final</label>
+            <input type="date" id="dataFinal">
+          </div>
+          <div>
+            <button type="submit" class="btn-navegar">Gerar Relatório</button>
+            <button type="button" class="btn-navegar" onclick="exportarExcel()">Exportar Excel</button>
+          </div>
         </div>
       </form>
 
