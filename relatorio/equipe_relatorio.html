@@ -80,12 +80,7 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  let eventos = [], produtos = {};
-
-  db.ref('produtos').once('value').then(snapshot => {
-    snapshot.forEach(child => produtos[child.key] = child.val());
-    carregarEventos();
-  });
+  let eventos = [];
 
   function carregarEventos() {
     db.ref('eventos').once('value').then(snapshot => {
@@ -144,23 +139,10 @@
       return true;
     }).forEach(e => {
       const vendaPDV = parseFloat(e.vendaPDV) || 0;
-      const cmvReal = parseFloat(e.cmvReal) || 0;
-      const custoEquipe = (e.equipe || []).reduce((s, eq) => s + (eq.valor || 0), 0);
-      const custoLogistica = (e.logistica || []).reduce((s, lg) => s + (lg.valor || 0), 0);
-
-      let custoPerda = 0, custoAssado = 0;
-      (e.produtos || []).forEach(p => {
-        const produtoKey = p.produtoId || p.idProduto;
-        const prod = produtos[produtoKey] || {};
-        const custo = parseFloat(prod.custo || 0);
-        const perda = parseFloat(p.perda || 0);
-        const assado = parseFloat(p.assado || 0);
-        custoPerda += perda * custo;
-        custoAssado += assado * custo;
-      });
-
-      const lucro = vendaPDV - cmvReal - custoEquipe - custoLogistica - custoPerda;
-      const diferenca = vendaPDV - lucro;
+      const lucro = parseFloat(e.lucroFinal) || 0;
+      const diferenca = parseFloat(e.diferencaVenda) || 0;
+      const custoPerda = parseFloat(e.custoPerda) || 0;
+      const valorAssados = parseFloat(e.valorAssados) || 0;
 
       linhas.push({
         responsavel: e.responsavel || '-',
@@ -170,8 +152,8 @@
         percDif: vendaPDV ? (diferenca / vendaPDV * 100).toFixed(1) : '0.0',
         perda: custoPerda,
         percPerda: vendaPDV ? (custoPerda / vendaPDV * 100).toFixed(1) : '0.0',
-        assado: custoAssado,
-        percAssado: vendaPDV ? (custoAssado / vendaPDV * 100).toFixed(1) : '0.0'
+        assado: valorAssados,
+        percAssado: vendaPDV ? (valorAssados / vendaPDV * 100).toFixed(1) : '0.0'
       });
     });
 
@@ -198,6 +180,8 @@
     html += '</tbody></table>';
     document.getElementById('tabelaResultado').innerHTML = html;
   }
+
+  carregarEventos();
 </script>
 </body>
 </html>
