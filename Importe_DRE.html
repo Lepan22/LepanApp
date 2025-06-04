@@ -60,6 +60,16 @@
 
     let consolidadoBruto = { entradas: {}, saidas: {}, totalEntrada: 0, totalSaida: 0 };
 
+    function normalizarTexto(txt) {
+      return txt.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    }
+
+    function extrairValor(valorRaw) {
+      return parseFloat(
+        valorRaw.toString().replace("R$", "").replace(/\./g, "").replace(",", ".").trim()
+      ) || 0;
+    }
+
     document.getElementById('arquivoExcel').addEventListener('change', function(e) {
       const file = e.target.files[0];
       const reader = new FileReader();
@@ -67,21 +77,25 @@
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const linhas = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+        const linhasOriginais = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
         const entrada = {}, saida = {};
         let totalEntrada = 0, totalSaida = 0;
 
-        linhas.forEach(linha => {
-          const tipo = (linha['Tipo'] || linha.tipo || "").toLowerCase().trim();
-          const categoria = linha['Centro de Custo'] || linha['Centro Custo'] || linha['categoria'] || "Outros";
-          const bruto = linha['Valor'] || linha['valor'] || "0";
-          const valor = parseFloat(bruto.toString().replace(",", ".").replace("R$", "").trim()) || 0;
+        linhasOriginais.forEach(linha => {
+          const novaLinha = {};
+          for (let chave in linha) {
+            novaLinha[normalizarTexto(chave)] = linha[chave];
+          }
 
-          if (tipo === "entrada") {
+          const tipo = normalizarTexto(novaLinha["tipo"] || "");
+          const categoria = novaLinha["categoria"] || "Outros";
+          const valor = extrairValor(novaLinha["valor"]);
+
+          if (tipo === "entrada" || tipo === "entradas") {
             entrada[categoria] = (entrada[categoria] || 0) + valor;
             totalEntrada += valor;
-          } else if (tipo === "saída" || tipo === "saida") {
+          } else if (tipo === "saida" || tipo === "saídas" || tipo === "saída") {
             saida[categoria] = (saida[categoria] || 0) + valor;
             totalSaida += valor;
           }
