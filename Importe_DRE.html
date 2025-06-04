@@ -92,10 +92,10 @@
           const categoria = novaLinha["categoria"] || "Outros";
           const valor = extrairValor(novaLinha["valor"]);
 
-          if (tipo === "entrada" || tipo === "entradas") {
+          if (["entrada", "entradas"].includes(tipo)) {
             entrada[categoria] = (entrada[categoria] || 0) + valor;
             totalEntrada += valor;
-          } else if (tipo === "saida" || tipo === "saídas" || tipo === "saída") {
+          } else if (["saida", "saidas", "saída", "saídas"].includes(tipo)) {
             saida[categoria] = (saida[categoria] || 0) + valor;
             totalSaida += valor;
           }
