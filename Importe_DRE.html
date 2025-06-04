@@ -65,8 +65,13 @@
     }
 
     function extrairValor(valorRaw) {
+      if (!valorRaw) return 0;
       return parseFloat(
-        valorRaw.toString().replace("R$", "").replace(/\./g, "").replace(",", ".").trim()
+        valorRaw.toString()
+          .replace(/\s/g, '')        // remove espaços
+          .replace('R$', '')         // remove R$
+          .replace(/\./g, '')        // remove separador de milhar
+          .replace(',', '.')         // troca vírgula decimal
       ) || 0;
     }
 
