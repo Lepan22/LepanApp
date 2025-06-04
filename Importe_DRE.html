@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Importa DRE</title>
+  <title>Importar DRE</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -66,13 +66,19 @@
 
     function extrairValor(valorRaw) {
       if (!valorRaw) return 0;
-      return parseFloat(
-        valorRaw.toString()
-          .replace(/\s/g, '')        // remove espaços
-          .replace('R$', '')         // remove R$
-          .replace(/\./g, '')        // remove separador de milhar
-          .replace(',', '.')         // troca vírgula decimal
-      ) || 0;
+      let str = valorRaw.toString().trim();
+
+      // Remove R$ e espaços
+      str = str.replace(/R\$/g, "").replace(/\s/g, "");
+
+      // Detecta formato brasileiro com milhar e vírgula decimal
+      if (str.match(/\.\d{3},\d{2}$/)) {
+        str = str.replace(/\./g, "").replace(",", ".");
+      } else if (str.match(/,\d{2}$/)) {
+        str = str.replace(",", ".");
+      }
+
+      return parseFloat(str) || 0;
     }
 
     document.getElementById('arquivoExcel').addEventListener('change', function(e) {
