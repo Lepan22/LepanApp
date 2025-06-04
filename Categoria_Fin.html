@@ -30,6 +30,10 @@
     .tabela-categorias td {
       padding: 4px 6px;
     }
+    .acoes button {
+      margin-right: 4px;
+      font-size: 11px;
+    }
   </style>
 </head>
 <body>
@@ -55,11 +59,12 @@
       </label>
 
       <label>
-        Descrição<br>
-        <textarea id="descricaoCategoria"></textarea>
+        Centro de Custo<br>
+        <textarea id="centroDeCustoCategoria"></textarea>
       </label>
 
       <button type="submit">Salvar</button>
+      <input type="hidden" id="categoriaId" />
     </form>
 
     <table class="tabela-categorias">
@@ -67,7 +72,8 @@
         <tr>
           <th>Nome</th>
           <th>Tipo</th>
-          <th>Descrição</th>
+          <th>Centro de Custo</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody id="listaCategorias"></tbody>
@@ -76,41 +82,67 @@
 
   <script type="module">
     import { db } from './assets/firebase-config.js';
-    import { ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const form = document.getElementById('formCategoria');
     const nome = document.getElementById('nomeCategoria');
     const tipo = document.getElementById('tipoCategoria');
-    const descricao = document.getElementById('descricaoCategoria');
+    const centro = document.getElementById('centroDeCustoCategoria');
+    const categoriaId = document.getElementById('categoriaId');
     const lista = document.getElementById('listaCategorias');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!nome.value || !tipo.value) return;
 
-      const novaRef = push(ref(db, 'financeiro/categorias'));
-      await set(novaRef, {
+      const novaCategoria = {
         nome: nome.value,
         tipo: tipo.value,
-        descricao: descricao.value || ''
-      });
+        centroDeCusto: centro.value || ''
+      };
+
+      if (categoriaId.value) {
+        await update(ref(db, `financeiro/categorias/${categoriaId.value}`), novaCategoria);
+      } else {
+        const novaRef = push(ref(db, 'financeiro/categorias'));
+        await set(novaRef, novaCategoria);
+      }
 
       form.reset();
+      categoriaId.value = '';
     });
 
     onValue(ref(db, 'financeiro/categorias'), snapshot => {
       lista.innerHTML = '';
       snapshot.forEach(child => {
+        const id = child.key;
         const cat = child.val();
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${cat.nome}</td>
           <td>${cat.tipo}</td>
-          <td>${cat.descricao || ''}</td>
+          <td>${cat.centroDeCusto || ''}</td>
+          <td class="acoes">
+            <button onclick="editarCategoria('${id}', '${cat.nome}', '${cat.tipo}', \`${cat.centroDeCusto || ''}\`)">Editar</button>
+            <button onclick="excluirCategoria('${id}')">Excluir</button>
+          </td>
         `;
         lista.appendChild(tr);
       });
     });
+
+    window.editarCategoria = function (id, nomeCat, tipoCat, centro) {
+      document.getElementById('categoriaId').value = id;
+      nome.value = nomeCat;
+      tipo.value = tipoCat;
+      centroDeCustoCategoria.value = centro;
+    };
+
+    window.excluirCategoria = function (id) {
+      if (confirm('Deseja excluir esta categoria?')) {
+        remove(ref(db, `financeiro/categorias/${id}`));
+      }
+    };
   </script>
 </body>
 </html>
