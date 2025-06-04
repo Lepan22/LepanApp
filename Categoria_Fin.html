@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Categorias Financeiras</title>
+  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <script type="module" src="assets/firebase-config.js"></script>
+  <script defer src="assets/menu.js"></script>
+  <style>
+    .form-linha {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .form-linha input, .form-linha select, .form-linha textarea {
+      padding: 6px;
+      font-size: 12px;
+      width: 160px;
+    }
+    .form-linha textarea {
+      width: 300px;
+      height: 50px;
+    }
+    .form-linha button {
+      height: 28px;
+    }
+    .tabela-categorias td {
+      padding: 4px 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="menuLateral" class="sidebar"></div>
+
+  <div class="main-content">
+    <h2>Categorias Financeiras</h2>
+
+    <form id="formCategoria" class="form-linha">
+      <label>
+        Nome<br>
+        <input type="text" id="nomeCategoria" required />
+      </label>
+
+      <label>
+        Tipo<br>
+        <select id="tipoCategoria" required>
+          <option value="">Selecione</option>
+          <option value="Entrada">Entrada</option>
+          <option value="Saída">Saída</option>
+          <option value="Entrada/Saída">Entrada/Saída</option>
+        </select>
+      </label>
+
+      <label>
+        Descrição<br>
+        <textarea id="descricaoCategoria"></textarea>
+      </label>
+
+      <button type="submit">Salvar</button>
+    </form>
+
+    <table class="tabela-categorias">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Descrição</th>
+        </tr>
+      </thead>
+      <tbody id="listaCategorias"></tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    import { db } from './assets/firebase-config.js';
+    import { ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const form = document.getElementById('formCategoria');
+    const nome = document.getElementById('nomeCategoria');
+    const tipo = document.getElementById('tipoCategoria');
+    const descricao = document.getElementById('descricaoCategoria');
+    const lista = document.getElementById('listaCategorias');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!nome.value || !tipo.value) return;
+
+      const novaRef = push(ref(db, 'financeiro/categorias'));
+      novaRef.set({
+        nome: nome.value,
+        tipo: tipo.value,
+        descricao: descricao.value || ''
+      });
+
+      form.reset();
+    });
+
+    onValue(ref(db, 'financeiro/categorias'), snapshot => {
+      lista.innerHTML = '';
+      snapshot.forEach(child => {
+        const cat = child.val();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${cat.nome}</td>
+          <td>${cat.tipo}</td>
+          <td>${cat.descricao || ''}</td>
+        `;
+        lista.appendChild(tr);
+      });
+    });
+  </script>
+</body>
+</html>
