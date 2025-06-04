@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Análise DRE</title>
+  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <script type="module" src="assets/firebase-config.js"></script>
+  <script defer src="assets/menu.js"></script>
+  <style>
+    .filtros { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .kpi { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .kpi div { background: #f0f0f0; padding: 10px 16px; border-radius: 8px; font-size: 14px; }
+    table { width: 100%; font-size: 13px; margin-top: 10px; }
+    th, td { padding: 4px 8px; text-align: left; }
+    td.valor { text-align: right; }
+    .grupo { background: #e0e0e0; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div id="menuLateral" class="sidebar"></div>
+
+  <div class="main-content">
+    <h2>Análise do DRE</h2>
+
+    <div class="filtros">
+      <label>Ano:
+        <select id="filtroAno">
+          <option value="2024">2024</option>
+          <option value="2025" selected>2025</option>
+        </select>
+      </label>
+      <label>Mês:
+        <select id="filtroMes">
+          <option value="0">Acumulado</option>
+          <option value="1">Janeiro</option>
+          <option value="2">Fevereiro</option>
+          <option value="3">Março</option>
+          <option value="4">Abril</option>
+          <option value="5">Maio</option>
+          <option value="6" selected>Junho</option>
+          <option value="7">Julho</option>
+          <option value="8">Agosto</option>
+          <option value="9">Setembro</option>
+          <option value="10">Outubro</option>
+          <option value="11">Novembro</option>
+          <option value="12">Dezembro</option>
+        </select>
+      </label>
+      <button id="btnAtualizar">Atualizar</button>
+    </div>
+
+    <div class="kpi" id="kpiContainer"></div>
+    <div id="tabelaDRE"></div>
+  </div>
+
+  <script type="module">
+    import { db } from './assets/firebase-config.js';
+    import { get, ref } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const btn = document.getElementById('btnAtualizar');
+    btn.addEventListener('click', carregarDRE);
+
+    async function carregarDRE() {
+      const ano = document.getElementById('filtroAno').value;
+      const mes = parseInt(document.getElementById('filtroMes').value);
+
+      const consolidado = {};
+      const snap = await get(ref(db, `financeiro/consolidado`));
+      if (!snap.exists()) return;
+
+      snap.forEach(m => {
+        const item = m.val();
+        if (item.ano == ano) {
+          if (mes === 0 || item.mes == mes) {
+            for (let [k, v] of Object.entries(item.entradas || {})) {
+              consolidado[k] = (consolidado[k] || 0) + v;
+            }
+            for (let [k, v] of Object.entries(item.saidas || {})) {
+              consolidado[k + "##saida"] = (consolidado[k + "##saida"] || 0) + v;
+            }
+          }
+        }
+      });
+
+      const entradas = {};
+      const saidas = {};
+      let totalEntrada = 0;
+      let totalSaida = 0;
+
+      for (let [k, v] of Object.entries(consolidado)) {
+        if (k.includes("##saida")) {
+          const nome = k.replace("##saida", "");
+          saidas[nome] = v;
+          totalSaida += v;
+        } else {
+          entradas[k] = v;
+          totalEntrada += v;
+        }
+      }
+
+      const lucro = totalEntrada - totalSaida;
+      const margem = totalEntrada > 0 ? ((lucro / totalEntrada) * 100) : 0;
+
+      document.getElementById("kpiContainer").innerHTML = `
+        <div><strong>Entradas:</strong> R$ ${totalEntrada.toFixed(2)}</div>
+        <div><strong>Saídas:</strong> R$ ${totalSaida.toFixed(2)}</div>
+        <div><strong>Lucro Líquido:</strong> R$ ${lucro.toFixed(2)}</div>
+        <div><strong>Margem:</strong> ${margem.toFixed(1)}%</div>
+      `;
+
+      let html = `<table><thead><tr><th>Categoria</th><th>Valor</th></tr></thead><tbody>`;
+      html += `<tr class="grupo"><td>Entradas</td><td></td></tr>`;
+      for (let [cat, val] of Object.entries(entradas)) {
+        html += `<tr><td>${cat}</td><td class="valor">${val.toFixed(2)}</td></tr>`;
+      }
+      html += `<tr class="grupo"><td>Saídas</td><td></td></tr>`;
+      for (let [cat, val] of Object.entries(saidas)) {
+        html += `<tr><td>${cat}</td><td class="valor">-${val.toFixed(2)}</td></tr>`;
+      }
+      html += `<tr class="grupo"><td>Lucro Líquido</td><td class="valor">${lucro.toFixed(2)}</td></tr>`;
+      html += `</tbody></table>`;
+      document.getElementById("tabelaDRE").innerHTML = html;
+    }
+
+    carregarDRE(); // carregamento inicial
+  </script>
+</body>
+</html>
