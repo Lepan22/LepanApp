@@ -121,6 +121,7 @@ function adicionarEquipe() {
   renderizarEquipe();
 }
 
+
 function renderizarEquipe() {
   const container = document.getElementById('equipeContainer');
   container.innerHTML = '';
@@ -130,17 +131,25 @@ function renderizarEquipe() {
     div.innerHTML = `
       <div class="col"><select class="form-select form-select-sm">${equipeDisponivel.map(m => `<option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>`).join('')}</select></div>
       <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
+      <div class="col-auto"><button type="button" class="btn btn-sm btn-danger">🗑️</button></div>
     `;
     container.appendChild(div);
     div.querySelector('select').onchange = e => { item.membroId = e.target.value; calcularTotais(); };
     div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
+    div.querySelector('button').onclick = () => {
+      equipeAlocada.splice(i, 1);
+      renderizarEquipe();
+      calcularTotais();
+    };
   });
 }
+
 
 function adicionarLogistica() {
   logisticaAlocada.push({ prestadorId: '', valor: 0 });
   renderizarLogistica();
 }
+
 
 function renderizarLogistica() {
   const container = document.getElementById('logisticaContainer');
@@ -151,12 +160,19 @@ function renderizarLogistica() {
     div.innerHTML = `
       <div class="col"><select class="form-select form-select-sm">${logisticaDisponivel.map(l => `<option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>`).join('')}</select></div>
       <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
+      <div class="col-auto"><button type="button" class="btn btn-sm btn-danger">🗑️</button></div>
     `;
     container.appendChild(div);
     div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; calcularTotais(); };
     div.querySelector('input').oninput = e => { item.valor = parseFloat(e.target.value) || 0; calcularTotais(); };
+    div.querySelector('button').onclick = () => {
+      logisticaAlocada.splice(i, 1);
+      renderizarLogistica();
+      calcularTotais();
+    };
   });
 }
+
 
 function adicionarProduto() {
   listaProdutos.push({ produtoId: '', produtoNome: '', quantidade: 0, congelado: 0, assado: 0, perda: 0 });
@@ -168,35 +184,45 @@ async function buscarMediaProduto(nomeEvento, produtoId) {
   return snap.exists() ? snap.val().toFixed(1) : '0.0';
 }
 
-async 
-function renderizarProdutos() {
-  const tbody = document.getElementById('tabelaProdutos');
-  tbody.innerHTML = '';
-  listaProdutos.forEach((prod, i) => {
-    const produto = produtosDisponiveis.find(p => p.nome === prod.nome) || {};
-    const nomeProduto = produto.nome || prod.nome || '';
-    const valorVenda = produto.valorVenda || 0;
-    const vendido = (prod.quantidade || 0) - (prod.congelado || 0) - (prod.assado || 0) - (prod.perda || 0);
-    const valorTotal = vendido * valorVenda;
-    const valorPerda = (prod.perda || 0) * valorVenda;
+async function renderizarProdutos() {
+  const tabela = document.getElementById('tabelaProdutos');
+  tabela.innerHTML = '';
 
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input list="produtosList" value="${nomeProduto}" oninput="listaProdutos[${i}].nome = this.value; calcularTotais()"></td>
-      <td><input type="number" value="${prod.quantidade || 0}" oninput="listaProdutos[${i}].quantidade = parseFloat(this.value) || 0; calcularTotais()"></td>
-      <td>${(produto.media || 0).toFixed(1)}</td>
-      <td><input type="number" value="${prod.congelado || 0}" oninput="listaProdutos[${i}].congelado = parseFloat(this.value) || 0; calcularTotais()"></td>
-      <td><input type="number" value="${prod.assado || 0}" oninput="listaProdutos[${i}].assado = parseFloat(this.value) || 0; calcularTotais()"></td>
-      <td><input type="number" value="${prod.perda || 0}" oninput="listaProdutos[${i}].perda = parseFloat(this.value) || 0; calcularTotais()"></td>
-      <td>${vendido}</td>
-      <td>R$ ${valorTotal.toFixed(2)}</td>
-      <td>R$ ${valorPerda.toFixed(2)}</td>
-      <td><button class="btn btn-sm btn-danger" onclick="removerProduto(${i})">🗑️</button></td>
+  const nomeEvento = document.getElementById('nomeEvento').value;
+
+  for (let index = 0; index < listaProdutos.length; index++) {
+    const item = listaProdutos[index];
+    const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { id: '', nome: '', valorVenda: 0, custo: 0 };
+
+    const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
+    const valorVenda = vendida * produto.valorVenda;
+    const valorPerda = item.perda * produto.custo;
+
+    const media = item.produtoId && nomeEvento ? await buscarMediaProduto(nomeEvento, item.produtoId) : '0.0';
+
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><input type="text" class="form-control form-control-sm" list="produtosList" value="${produto.nome}"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.quantidade}"></td>
+      <td><input type="text" class="form-control form-control-sm" value="${media}" disabled></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.congelado}"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.assado}"></td>
+      <td><input type="number" class="form-control form-control-sm" value="${item.perda}"></td>
+      <td><input type="text" class="form-control form-control-sm" value="${vendida}" disabled></td>
+      <td><input type="text" class="form-control form-control-sm" value="R$ ${valorVenda.toFixed(2)}" disabled></td>
+      <td><input type="text" class="form-control form-control-sm" value="R$ ${valorPerda.toFixed(2)}" disabled></td>
+      <td><button class="btn btn-sm btn-outline-danger">🗑️</button></td>
     `;
-    tbody.appendChild(tr);
-  });
-}
+    tabela.appendChild(row);
 
+    const inputs = row.querySelectorAll('input');
+    inputs[0].onchange = e => {
+      const nome = e.target.value;
+      const prod = produtosDisponiveis.find(p => p.nome === nome);
+      if (prod) {
+        item.produtoId = prod.id;
+        item.produtoNome = prod.nome;
+      }
       calcularTotais();
     };
     inputs[1].oninput = e => { item.quantidade = parseInt(e.target.value) || 0; calcularTotais(); };
