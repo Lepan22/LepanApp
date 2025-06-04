@@ -45,7 +45,8 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="financeiro" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <span style="padding: 10px 15px; display: block; color: #ccc;">Em construção</span>
+              <a href="/LepanApp/Importe_DRE.html">Importar DRE</a>
+              <a href="/LepanApp/DRE.html">DRE</a>
             </div>
           </div>
         </div>
