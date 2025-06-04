@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Importa DRE</title>
+  <title>Importar DRE</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -58,7 +58,7 @@
     import { db } from './assets/firebase-config.js';
     import { ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    let consolidado = {};
+    let consolidadoBruto = { entradas: {}, saidas: {}, totalEntrada: 0, totalSaida: 0 };
 
     document.getElementById('arquivoExcel').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -67,36 +67,28 @@
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const linhas = XLSX.utils.sheet_to_json(sheet);
+        const linhas = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
         const entrada = {}, saida = {};
         let totalEntrada = 0, totalSaida = 0;
 
         linhas.forEach(linha => {
-          const tipo = (linha.Tipo || linha.tipo || '').toLowerCase();
-          const categoria = linha['Centro de Custo'] || linha.categoria || 'Outros';
-          const valor = parseFloat((linha.Valor || linha.valor || '0').toString().replace(',', '.'));
+          const tipo = (linha['Tipo'] || linha.tipo || "").toLowerCase().trim();
+          const categoria = linha['Centro de Custo'] || linha['Centro Custo'] || linha['categoria'] || "Outros";
+          const bruto = linha['Valor'] || linha['valor'] || "0";
+          const valor = parseFloat(bruto.toString().replace(",", ".").replace("R$", "").trim()) || 0;
 
-          if (tipo === 'entrada') {
+          if (tipo === "entrada") {
             entrada[categoria] = (entrada[categoria] || 0) + valor;
             totalEntrada += valor;
-          } else if (tipo === 'saída' || tipo === 'saida') {
+          } else if (tipo === "saída" || tipo === "saida") {
             saida[categoria] = (saida[categoria] || 0) + valor;
             totalSaida += valor;
           }
         });
 
+        consolidadoBruto = { entradas: entrada, saidas: saida, totalEntrada, totalSaida };
         const lucro = totalEntrada - totalSaida;
-
-        const mes = parseInt(document.getElementById('filtroMes').value);
-        const ano = parseInt(document.getElementById('filtroAno').value);
-
-        consolidado = {
-          ano, mes,
-          entradas: entrada,
-          saidas: saida,
-          lucroLiquido: parseFloat(lucro.toFixed(2))
-        };
 
         renderizarDRE(entrada, saida, lucro);
       };
@@ -121,7 +113,19 @@
     }
 
     document.getElementById('salvarBtn').addEventListener('click', () => {
-      const caminho = `financeiro/consolidado/${consolidado.ano}_${String(consolidado.mes).padStart(2, '0')}`;
+      const mes = parseInt(document.getElementById('filtroMes').value);
+      const ano = parseInt(document.getElementById('filtroAno').value);
+      const lucroLiquido = consolidadoBruto.totalEntrada - consolidadoBruto.totalSaida;
+
+      const consolidado = {
+        ano,
+        mes,
+        entradas: consolidadoBruto.entradas,
+        saidas: consolidadoBruto.saidas,
+        lucroLiquido: parseFloat(lucroLiquido.toFixed(2))
+      };
+
+      const caminho = `financeiro/consolidado/${ano}_${String(mes).padStart(2, '0')}`;
       set(ref(db, caminho), consolidado)
         .then(() => alert('Consolidação salva com sucesso!'))
         .catch(() => alert('Erro ao salvar no Firebase.'));
