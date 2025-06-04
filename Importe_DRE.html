@@ -3,46 +3,35 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Relatório DRE</title>
-  <link rel="stylesheet" href="../assets/base.css" />
-  <link rel="stylesheet" href="../assets/menu-styles.css" />
+  <title>Importar DRE</title>
+  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="../assets/menu.js" defer></script>
+  <script type="module" src="assets/firebase-config.js"></script>
+  <script defer src="assets/menu.js"></script>
   <style>
-    .container { padding: 20px; }
-    h1 { font-size: 1.5em; margin-bottom: 10px; }
-    .filtros { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-    th { background-color: #f9a825; color: white; }
-    .grupo { background-color: #eee; font-weight: bold; }
-    .valor { text-align: right; }
-    input[type="file"] { margin-top: 10px; }
+    .form-filtro { margin: 10px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+    table { margin-top: 20px; font-size: 12px; }
+    td.valor { text-align: right; }
+    .grupo { background: #f0f0f0; font-weight: bold; }
+    button { margin-top: 15px; }
   </style>
 </head>
 <body>
-  <div class="menu-lateral">
-    <h2>Le Pan</h2>
-    <ul>
-      <li><a href="../index.html">Dashboard</a></li>
-      <li><a href="../eventos/eventos.html">Eventos</a></li>
-      <li><a href="dre.html" class="ativo">Relatório DRE</a></li>
-    </ul>
-  </div>
+  <div id="menuLateral" class="sidebar"></div>
 
-  <div class="container">
-    <h1>Relatório DRE</h1>
+  <div class="main-content">
+    <h2>Importar Planilha DRE</h2>
 
-    <div class="filtros">
+    <div class="form-filtro">
       <label>Mês:
         <select id="filtroMes">
-          <option value="">Todos</option>
           <option value="1">Janeiro</option>
           <option value="2">Fevereiro</option>
           <option value="3">Março</option>
           <option value="4">Abril</option>
           <option value="5">Maio</option>
-          <option value="6">Junho</option>
+          <option value="6" selected>Junho</option>
           <option value="7">Julho</option>
           <option value="8">Agosto</option>
           <option value="9">Setembro</option>
@@ -54,93 +43,94 @@
 
       <label>Ano:
         <select id="filtroAno">
-          <option value="">Todos</option>
           <option value="2024">2024</option>
           <option value="2025" selected>2025</option>
         </select>
       </label>
-
-      <label><input type="checkbox" id="filtroAcumulado" /> Mostrar Acumulado</label>
     </div>
 
     <input type="file" id="arquivoExcel" accept=".xls,.xlsx" />
-    <div id="tabelaDRE"></div>
+    <div id="resultadoDRE"></div>
+    <button id="salvarBtn" style="display:none;">Salvar Consolidação no Firebase</button>
   </div>
 
-  <script>
-    let dados = [];
+  <script type="module">
+    import { db } from './assets/firebase-config.js';
+    import { ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    let dadosImportados = [], consolidado = {};
 
     document.getElementById('arquivoExcel').addEventListener('change', function(e) {
       const file = e.target.files[0];
       const reader = new FileReader();
-      reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
+      reader.onload = function(evt) {
+        const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet);
-        dados = json;
-        renderizarDRE();
+        dadosImportados = XLSX.utils.sheet_to_json(sheet);
+        processarDRE();
       };
       reader.readAsArrayBuffer(file);
     });
 
-    document.querySelectorAll('#filtroMes, #filtroAno, #filtroAcumulado').forEach(el => {
-      el.addEventListener('change', renderizarDRE);
-    });
-
-    function renderizarDRE() {
+    function processarDRE() {
       const mes = parseInt(document.getElementById('filtroMes').value);
       const ano = parseInt(document.getElementById('filtroAno').value);
-      const acumulado = document.getElementById('filtroAcumulado').checked;
-      const tabela = document.getElementById('tabelaDRE');
-      if (!dados.length) return (tabela.innerHTML = '');
+      const entrada = {}, saida = {};
+      let totalEntrada = 0, totalSaida = 0;
 
-      const categorias = {
-        entrada: {},
-        saida: {}
-      };
-
-      dados.forEach(linha => {
+      dadosImportados.forEach(linha => {
         const data = new Date(linha.Data || linha.data || '');
         if (!data.getTime()) return;
-        const m = data.getMonth() + 1;
-        const y = data.getFullYear();
-
-        if (mes && !acumulado && m !== mes) return;
-        if (ano && y !== ano) return;
-        if (acumulado && mes && (m > mes)) return;
+        if (data.getMonth() + 1 !== mes || data.getFullYear() !== ano) return;
 
         const tipo = (linha.Tipo || linha.tipo || '').toLowerCase();
         const categoria = linha.Categoria || linha.categoria || 'Outros';
         const valor = parseFloat(linha.Valor || linha.valor || 0);
 
         if (tipo === 'entrada') {
-          categorias.entrada[categoria] = (categorias.entrada[categoria] || 0) + valor;
+          entrada[categoria] = (entrada[categoria] || 0) + valor;
+          totalEntrada += valor;
         } else if (tipo === 'saída' || tipo === 'saida') {
-          categorias.saida[categoria] = (categorias.saida[categoria] || 0) + valor;
+          saida[categoria] = (saida[categoria] || 0) + valor;
+          totalSaida += valor;
         }
       });
 
-      const totalEntrada = Object.values(categorias.entrada).reduce((a, b) => a + b, 0);
-      const totalSaida = Object.values(categorias.saida).reduce((a, b) => a + b, 0);
       const lucro = totalEntrada - totalSaida;
+      consolidado = {
+        ano, mes,
+        entradas: entrada,
+        saidas: saida,
+        lucroLiquido: parseFloat(lucro.toFixed(2))
+      };
 
+      renderizarDRE(entrada, saida, lucro);
+    }
+
+    function renderizarDRE(entrada, saida, lucro) {
+      const div = document.getElementById('resultadoDRE');
       let html = '<table><thead><tr><th>Categoria</th><th>Valor (R$)</th></tr></thead><tbody>';
-
-      html += '<tr class="grupo"><td>Receita Bruta</td><td></td></tr>';
-      for (let cat in categorias.entrada) {
-        html += `<tr><td>${cat}</td><td class="valor">${categorias.entrada[cat].toFixed(2)}</td></tr>`;
+      html += '<tr class="grupo"><td>Entradas</td><td></td></tr>';
+      for (let cat in entrada) {
+        html += `<tr><td>${cat}</td><td class="valor">${entrada[cat].toFixed(2)}</td></tr>`;
       }
-
-      html += '<tr class="grupo"><td>Despesas</td><td></td></tr>';
-      for (let cat in categorias.saida) {
-        html += `<tr><td>${cat}</td><td class="valor">-${categorias.saida[cat].toFixed(2)}</td></tr>`;
+      html += '<tr class="grupo"><td>Saídas</td><td></td></tr>';
+      for (let cat in saida) {
+        html += `<tr><td>${cat}</td><td class="valor">-${saida[cat].toFixed(2)}</td></tr>`;
       }
-
       html += `<tr class="grupo"><td>Lucro Líquido</td><td class="valor">${lucro.toFixed(2)}</td></tr>`;
       html += '</tbody></table>';
-      tabela.innerHTML = html;
+      div.innerHTML = html;
+      document.getElementById('salvarBtn').style.display = 'inline-block';
     }
+
+    document.getElementById('salvarBtn').addEventListener('click', () => {
+      const caminho = `financeiro/consolidado/${consolidado.ano}_${String(consolidado.mes).padStart(2, '0')}`;
+      set(ref(db, caminho), consolidado)
+        .then(() => alert('Consolidação salva com sucesso!'))
+        .catch(() => alert('Erro ao salvar no Firebase.'));
+    });
   </script>
 </body>
 </html>
