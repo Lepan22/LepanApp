@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Le Pan pan</title>
+  <title>Le Pan pan - Dash</title>
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -77,7 +77,7 @@
         <div class="kpi"><h2>Clientes Perdidos</h2><p id="kpi-clientes-perdidos">0</p></div>
       </div>
 
-      <!-- KPIs de Quantidade de Eventos -->
+      <!-- KPIs de Eventos -->
       <div class="kpi-linha" style="margin-top: 4px;">
         <div class="kpi"><h2>Total de Eventos no Ano</h2><p id="kpi-eventos-ano">0</p></div>
         <div class="kpi"><h2>Eventos Realizados no Mês</h2><p id="kpi-realizado">0</p></div>
@@ -95,9 +95,9 @@
       <div class="kpi-linha" style="margin-top: 4px;">
         <div class="kpi"><h2>Lucro Total no Ano</h2><p id="kpi-lucro-ano">R$ 0,00</p></div>
         <div class="kpi"><h2>Lucro no Mês</h2><p id="kpi-lucro-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Margem de Lucro</h2><p id="kpi-margem-lucro">0,0%</p></div>
       </div>
 
-      <!-- Linha divisória -->
       <hr class="linha-divisoria" />
 
       <!-- Gráficos -->
@@ -144,6 +144,10 @@
 
     function formatCurrency(valor) {
       return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function formatPercent(valor) {
+      return valor.toFixed(1).replace('.', ',') + '%';
     }
 
     async function carregarKPIs() {
@@ -231,6 +235,9 @@
       document.getElementById('kpi-estimativa-semana').innerText = formatCurrency(estimativaSemana);
       document.getElementById('kpi-lucro-mes').innerText = formatCurrency(lucroMes);
       document.getElementById('kpi-lucro-ano').innerText = formatCurrency(lucroAno);
+
+      const margemLucro = vendaAno > 0 ? (lucroAno / vendaAno) * 100 : 0;
+      document.getElementById('kpi-margem-lucro').innerText = formatPercent(margemLucro);
     }
 
     function desenharGraficos(data) {
