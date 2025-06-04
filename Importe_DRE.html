@@ -21,7 +21,7 @@
   <div id="menuLateral" class="sidebar"></div>
 
   <div class="main-content">
-    <h2>Importar Planilha DRE</h2>
+    <h2>Importar Planilha Consolidada DRE</h2>
 
     <div class="form-filtro">
       <label>Mês:
@@ -58,7 +58,7 @@
     import { db } from './assets/firebase-config.js';
     import { ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    let dadosImportados = [], consolidado = {};
+    let consolidado = {};
 
     document.getElementById('arquivoExcel').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -67,46 +67,41 @@
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        dadosImportados = XLSX.utils.sheet_to_json(sheet);
-        processarDRE();
+        const linhas = XLSX.utils.sheet_to_json(sheet);
+
+        const entrada = {}, saida = {};
+        let totalEntrada = 0, totalSaida = 0;
+
+        linhas.forEach(linha => {
+          const tipo = (linha.Tipo || linha.tipo || '').toLowerCase();
+          const categoria = linha['Centro de Custo'] || linha.categoria || 'Outros';
+          const valor = parseFloat((linha.Valor || linha.valor || '0').toString().replace(',', '.'));
+
+          if (tipo === 'entrada') {
+            entrada[categoria] = (entrada[categoria] || 0) + valor;
+            totalEntrada += valor;
+          } else if (tipo === 'saída' || tipo === 'saida') {
+            saida[categoria] = (saida[categoria] || 0) + valor;
+            totalSaida += valor;
+          }
+        });
+
+        const lucro = totalEntrada - totalSaida;
+
+        const mes = parseInt(document.getElementById('filtroMes').value);
+        const ano = parseInt(document.getElementById('filtroAno').value);
+
+        consolidado = {
+          ano, mes,
+          entradas: entrada,
+          saidas: saida,
+          lucroLiquido: parseFloat(lucro.toFixed(2))
+        };
+
+        renderizarDRE(entrada, saida, lucro);
       };
       reader.readAsArrayBuffer(file);
     });
-
-    function processarDRE() {
-      const mes = parseInt(document.getElementById('filtroMes').value);
-      const ano = parseInt(document.getElementById('filtroAno').value);
-      const entrada = {}, saida = {};
-      let totalEntrada = 0, totalSaida = 0;
-
-      dadosImportados.forEach(linha => {
-        const data = new Date(linha.Data || linha.data || '');
-        if (!data.getTime()) return;
-        if (data.getMonth() + 1 !== mes || data.getFullYear() !== ano) return;
-
-        const tipo = (linha.Tipo || linha.tipo || '').toLowerCase();
-        const categoria = linha.Categoria || linha.categoria || 'Outros';
-        const valor = parseFloat(linha.Valor || linha.valor || 0);
-
-        if (tipo === 'entrada') {
-          entrada[categoria] = (entrada[categoria] || 0) + valor;
-          totalEntrada += valor;
-        } else if (tipo === 'saída' || tipo === 'saida') {
-          saida[categoria] = (saida[categoria] || 0) + valor;
-          totalSaida += valor;
-        }
-      });
-
-      const lucro = totalEntrada - totalSaida;
-      consolidado = {
-        ano, mes,
-        entradas: entrada,
-        saidas: saida,
-        lucroLiquido: parseFloat(lucro.toFixed(2))
-      };
-
-      renderizarDRE(entrada, saida, lucro);
-    }
 
     function renderizarDRE(entrada, saida, lucro) {
       const div = document.getElementById('resultadoDRE');
