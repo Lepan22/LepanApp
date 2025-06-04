@@ -1,57 +1,38 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Análise DRE</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análise DRE Mensal</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script type="module" src="assets/firebase-config.js"></script>
   <script defer src="assets/menu.js"></script>
   <style>
-    .filtros { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-    .kpi { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-    .kpi div { background: #f0f0f0; padding: 10px 16px; border-radius: 8px; font-size: 14px; }
-    table { width: 100%; font-size: 13px; margin-top: 10px; }
-    th, td { padding: 4px 8px; text-align: left; }
-    td.valor { text-align: right; }
-    .grupo { background: #e0e0e0; font-weight: bold; }
+    .filtros { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .tabela-dre { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+    .tabela-dre th, .tabela-dre td { border: 1px solid #ccc; padding: 4px 6px; text-align: right; }
+    .tabela-dre th:first-child, .tabela-dre td:first-child { text-align: left; position: sticky; left: 0; background: #f9f9f9; }
+    .grupo { background: #f0f0f0; font-weight: bold; }
   </style>
 </head>
 <body>
   <div id="menuLateral" class="sidebar"></div>
 
   <div class="main-content">
-    <h2>Análise do DRE</h2>
+    <h2>Análise DRE - Visão Mensal</h2>
 
     <div class="filtros">
-      <label>Ano:
+      <label>
+        Ano:
         <select id="filtroAno">
           <option value="2024">2024</option>
           <option value="2025" selected>2025</option>
         </select>
       </label>
-      <label>Mês:
-        <select id="filtroMes">
-          <option value="0">Acumulado</option>
-          <option value="1">Janeiro</option>
-          <option value="2">Fevereiro</option>
-          <option value="3">Março</option>
-          <option value="4">Abril</option>
-          <option value="5">Maio</option>
-          <option value="6" selected>Junho</option>
-          <option value="7">Julho</option>
-          <option value="8">Agosto</option>
-          <option value="9">Setembro</option>
-          <option value="10">Outubro</option>
-          <option value="11">Novembro</option>
-          <option value="12">Dezembro</option>
-        </select>
-      </label>
-      <button id="btnAtualizar">Atualizar</button>
+      <button onclick="carregarDRE()">Atualizar</button>
     </div>
 
-    <div class="kpi" id="kpiContainer"></div>
     <div id="tabelaDRE"></div>
   </div>
 
@@ -59,72 +40,96 @@
     import { db } from './assets/firebase-config.js';
     import { get, ref } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    const btn = document.getElementById('btnAtualizar');
-    btn.addEventListener('click', carregarDRE);
-
     async function carregarDRE() {
       const ano = document.getElementById('filtroAno').value;
-      const mes = parseInt(document.getElementById('filtroMes').value);
-
-      const consolidado = {};
-      const snap = await get(ref(db, `financeiro/consolidado`));
-      if (!snap.exists()) return;
-
-      snap.forEach(m => {
-        const item = m.val();
-        if (item.ano == ano) {
-          if (mes === 0 || item.mes == mes) {
-            for (let [k, v] of Object.entries(item.entradas || {})) {
-              consolidado[k] = (consolidado[k] || 0) + v;
-            }
-            for (let [k, v] of Object.entries(item.saidas || {})) {
-              consolidado[k + "##saida"] = (consolidado[k + "##saida"] || 0) + v;
-            }
-          }
-        }
+      const snapCategorias = await get(ref(db, 'financeiro/categorias'));
+      const mapCategorias = {};
+      snapCategorias.forEach(cat => {
+        const v = cat.val();
+        if (v.nome) mapCategorias[v.nome] = v.centroDeCusto || "Outros";
       });
 
-      const entradas = {};
-      const saidas = {};
-      let totalEntrada = 0;
-      let totalSaida = 0;
+      const snap = await get(ref(db, `financeiro/consolidado`));
+      const meses = Array.from({ length: 12 }, (_, i) => i + 1);
+      const estrutura = {
+        Receita: {},
+        CMV: {},
+        "Despesa Fixa": {},
+        "Despesa Variável": {},
+        Outros: {},
+        "Lucro Bruto": {},
+        "Lucro Operacional": {},
+        "Lucro Líquido": {},
+        "Margem Bruta (%)": {},
+        "Margem Operacional (%)": {},
+        "Margem Líquida (%)": {}
+      };
 
-      for (let [k, v] of Object.entries(consolidado)) {
-        if (k.includes("##saida")) {
-          const nome = k.replace("##saida", "");
-          saidas[nome] = v;
-          totalSaida += v;
-        } else {
-          entradas[k] = v;
-          totalEntrada += v;
-        }
+      for (const mes of meses) {
+        let totalEntrada = 0, totalCMV = 0, totalFixa = 0, totalVariavel = 0, totalOutros = 0;
+
+        snap.forEach(item => {
+          const val = item.val();
+          if (val.ano == ano && val.mes == mes) {
+            const entradas = val.entradas || {};
+            const saidas = val.saidas || {};
+
+            for (let [nome, valor] of Object.entries(entradas)) {
+              const tipo = mapCategorias[nome] || "Outros";
+              estrutura.Receita[mes] = (estrutura.Receita[mes] || 0) + valor;
+              totalEntrada += valor;
+            }
+
+            for (let [nome, valor] of Object.entries(saidas)) {
+              const tipo = mapCategorias[nome] || "Outros";
+              estrutura[tipo] = estrutura[tipo] || {};
+              estrutura[tipo][mes] = (estrutura[tipo][mes] || 0) + valor;
+
+              if (tipo === "CMV") totalCMV += valor;
+              else if (tipo === "Despesa Fixa") totalFixa += valor;
+              else if (tipo === "Despesa Variável") totalVariavel += valor;
+              else totalOutros += valor;
+            }
+          }
+        });
+
+        const lucroBruto = totalEntrada - totalCMV;
+        const lucroOperacional = lucroBruto - totalFixa - totalVariavel;
+        const lucroLiquido = lucroOperacional - totalOutros;
+
+        estrutura["Lucro Bruto"][mes] = lucroBruto;
+        estrutura["Lucro Operacional"][mes] = lucroOperacional;
+        estrutura["Lucro Líquido"][mes] = lucroLiquido;
+
+        estrutura["Margem Bruta (%)"][mes] = totalEntrada > 0 ? (lucroBruto / totalEntrada) * 100 : 0;
+        estrutura["Margem Operacional (%)"][mes] = totalEntrada > 0 ? (lucroOperacional / totalEntrada) * 100 : 0;
+        estrutura["Margem Líquida (%)"][mes] = totalEntrada > 0 ? (lucroLiquido / totalEntrada) * 100 : 0;
       }
 
-      const lucro = totalEntrada - totalSaida;
-      const margem = totalEntrada > 0 ? ((lucro / totalEntrada) * 100) : 0;
-
-      document.getElementById("kpiContainer").innerHTML = `
-        <div><strong>Entradas:</strong> R$ ${totalEntrada.toFixed(2)}</div>
-        <div><strong>Saídas:</strong> R$ ${totalSaida.toFixed(2)}</div>
-        <div><strong>Lucro Líquido:</strong> R$ ${lucro.toFixed(2)}</div>
-        <div><strong>Margem:</strong> ${margem.toFixed(1)}%</div>
-      `;
-
-      let html = `<table><thead><tr><th>Categoria</th><th>Valor</th></tr></thead><tbody>`;
-      html += `<tr class="grupo"><td>Entradas</td><td></td></tr>`;
-      for (let [cat, val] of Object.entries(entradas)) {
-        html += `<tr><td>${cat}</td><td class="valor">${val.toFixed(2)}</td></tr>`;
-      }
-      html += `<tr class="grupo"><td>Saídas</td><td></td></tr>`;
-      for (let [cat, val] of Object.entries(saidas)) {
-        html += `<tr><td>${cat}</td><td class="valor">-${val.toFixed(2)}</td></tr>`;
-      }
-      html += `<tr class="grupo"><td>Lucro Líquido</td><td class="valor">${lucro.toFixed(2)}</td></tr>`;
-      html += `</tbody></table>`;
-      document.getElementById("tabelaDRE").innerHTML = html;
+      renderizarTabela(estrutura, meses);
     }
 
-    carregarDRE(); // carregamento inicial
+    function renderizarTabela(dados, meses) {
+      let html = `<table class="tabela-dre"><thead><tr><th>Categoria</th>`;
+      for (const m of meses) html += `<th>${m.toString().padStart(2, '0')}</th>`;
+      html += `<th>Total</th></tr></thead><tbody>`;
+
+      for (let [categoria, valores] of Object.entries(dados)) {
+        html += `<tr class="${["Lucro", "Margem"].some(k => categoria.includes(k)) ? 'grupo' : ''}"><td>${categoria}</td>`;
+        let total = 0;
+        for (const m of meses) {
+          const val = valores[m] || 0;
+          total += val;
+          html += `<td>${categoria.includes("Margem") ? val.toFixed(1) + '%' : (categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros") ? '-' + val.toFixed(2) : val.toFixed(2)}</td>`;
+        }
+        html += `<td>${categoria.includes("Margem") ? total / meses.length : total.toFixed(2)}</td></tr>`;
+      }
+
+      html += `</tbody></table>`;
+      document.getElementById('tabelaDRE').innerHTML = html;
+    }
+
+    carregarDRE();
   </script>
 </body>
 </html>
