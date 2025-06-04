@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Le Pan pan</title>
+  <title>Le Pan pan - Dash</title>
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="assets/menu.js" defer></script>
   <style>
     .kpi-linha {
@@ -40,6 +41,27 @@
       font-weight: bold;
       color: #ff9800;
     }
+    .graficos-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 20px;
+    }
+    .grafico {
+      width: 48%;
+      min-width: 300px;
+    }
+    canvas {
+      background-color: white;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    hr.linha-divisoria {
+      border: none;
+      border-top: 2px solid #ccc;
+      margin: 30px 20px 10px;
+    }
   </style>
 </head>
 <body>
@@ -49,66 +71,41 @@
 
       <!-- KPIs de Clientes -->
       <div class="kpi-linha" style="margin-top: 20px;">
-        <div class="kpi">
-          <h2>Clientes Ativos</h2>
-          <p id="kpi-clientes-ativos">0</p>
-        </div>
-        <div class="kpi">
-          <h2>Clientes Novos no Ano</h2>
-          <p id="kpi-clientes-novos">0</p>
-        </div>
-        <div class="kpi">
-          <h2>Clientes Quentes</h2>
-          <p id="kpi-clientes-quentes">0</p>
-        </div>
-        <div class="kpi">
-          <h2>Clientes Perdidos</h2>
-          <p id="kpi-clientes-perdidos">0</p>
-        </div>
+        <div class="kpi"><h2>Clientes Ativos</h2><p id="kpi-clientes-ativos">0</p></div>
+        <div class="kpi"><h2>Clientes Novos no Ano</h2><p id="kpi-clientes-novos">0</p></div>
+        <div class="kpi"><h2>Clientes Quentes</h2><p id="kpi-clientes-quentes">0</p></div>
+        <div class="kpi"><h2>Clientes Perdidos</h2><p id="kpi-clientes-perdidos">0</p></div>
       </div>
 
       <!-- KPIs de Quantidade de Eventos -->
       <div class="kpi-linha" style="margin-top: 4px;">
-        <div class="kpi">
-          <h2>Total de Eventos no Ano</h2>
-          <p id="kpi-eventos-ano">0</p>
-        </div>
-        <div class="kpi">
-          <h2>Eventos Realizados no Mês</h2>
-          <p id="kpi-realizado">0</p>
-        </div>
-        <div class="kpi">
-          <h2>Eventos desta Semana</h2>
-          <p id="kpi-semana">0</p>
-        </div>
+        <div class="kpi"><h2>Total de Eventos no Ano</h2><p id="kpi-eventos-ano">0</p></div>
+        <div class="kpi"><h2>Eventos Realizados no Mês</h2><p id="kpi-realizado">0</p></div>
+        <div class="kpi"><h2>Eventos desta Semana</h2><p id="kpi-semana">0</p></div>
       </div>
 
       <!-- KPIs de Venda -->
       <div class="kpi-linha" style="margin-top: 4px;">
-        <div class="kpi">
-          <h2>Total de Venda no Ano</h2>
-          <p id="kpi-venda-ano">R$ 0,00</p>
-        </div>
-        <div class="kpi">
-          <h2>Venda Real Mês</h2>
-          <p id="kpi-venda-mes">R$ 0,00</p>
-        </div>
-        <div class="kpi">
-          <h2>Estimativa Venda Semana</h2>
-          <p id="kpi-estimativa-semana">R$ 0,00</p>
-        </div>
+        <div class="kpi"><h2>Total de Venda no Ano</h2><p id="kpi-venda-ano">R$ 0,00</p></div>
+        <div class="kpi"><h2>Venda Real Mês</h2><p id="kpi-venda-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Estimativa Venda Semana</h2><p id="kpi-estimativa-semana">R$ 0,00</p></div>
       </div>
 
       <!-- KPIs de Lucro -->
       <div class="kpi-linha" style="margin-top: 4px;">
-        <div class="kpi">
-          <h2>Lucro Total no Ano</h2>
-          <p id="kpi-lucro-ano">R$ 0,00</p>
-        </div>
-        <div class="kpi">
-          <h2>Lucro no Mês</h2>
-          <p id="kpi-lucro-mes">R$ 0,00</p>
-        </div>
+        <div class="kpi"><h2>Lucro Total no Ano</h2><p id="kpi-lucro-ano">R$ 0,00</p></div>
+        <div class="kpi"><h2>Lucro no Mês</h2><p id="kpi-lucro-mes">R$ 0,00</p></div>
+      </div>
+
+      <!-- Linha divisória -->
+      <hr class="linha-divisoria" />
+
+      <!-- Gráficos -->
+      <div class="graficos-container">
+        <div class="grafico"><canvas id="graficoVenda"></canvas></div>
+        <div class="grafico"><canvas id="graficoLucro"></canvas></div>
+        <div class="grafico"><canvas id="graficoPerdaAssado"></canvas></div>
+        <div class="grafico"><canvas id="graficoEventos"></canvas></div>
       </div>
 
     </main>
@@ -124,9 +121,9 @@
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-
     const now = new Date();
     const currentYear = now.getFullYear();
+    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
     const getMonday = (date) => {
       const d = new Date(date);
@@ -154,89 +151,140 @@
       let vendaAno = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0, lucroAno = 0;
       let clientesAtivos = 0, clientesNovos = 0, clientesQuentes = 0, clientesPerdidos = 0;
 
-      try {
-        const [eventosSnap, clientesSnap] = await Promise.all([
-          db.ref('eventos').once('value'),
-          db.ref('clientes').once('value')
-        ]);
+      const [eventosSnap, clientesSnap] = await Promise.all([
+        db.ref('eventos').once('value'),
+        db.ref('clientes').once('value')
+      ]);
 
-        const eventos = eventosSnap.val();
-        if (eventos) {
-          Object.values(eventos).forEach(evento => {
-            if (!evento?.data) return;
+      const eventos = eventosSnap.val();
+      const dadosMes = Array.from({ length: 12 }, (_, i) => ({
+        mes: meses[i], venda: 0, perda: 0, assado: 0, eventos: 0
+      }));
 
-            let dataEvento;
-            try {
-              dataEvento = formatDateBR(evento.data);
-              if (isNaN(dataEvento)) throw new Error("Data inválida");
-            } catch {
-              console.warn("Data do evento inválida:", evento.data);
-              return;
-            }
+      if (eventos) {
+        Object.values(eventos).forEach(evento => {
+          if (!evento?.data) return;
+          const dataEvento = formatDateBR(evento.data);
+          const status = (evento.status || '').toLowerCase();
+          const finalizado = status === 'fechado' || status === 'finalizado';
 
-            const status = (evento.status || '').toLowerCase();
-            const finalizado = (status === "fechado" || status === "finalizado");
+          const vendaPDV = Number(evento.vendaPDV || 0);
+          const cmvReal = Number(evento.cmvReal || 0);
+          const custoEquipe = (evento.equipe || []).reduce((s, e) => s + (Number(e.valor) || 0), 0);
+          const custoLogistica = (evento.logistica || []).reduce((s, l) => s + (Number(l.valor) || 0), 0);
+          const lucroCalculado = vendaPDV - cmvReal - custoLogistica - custoEquipe;
 
-            const vendaPDV = Number(evento.vendaPDV || 0);
-            const cmvReal = Number(evento.cmvReal || 0);
-            const custoEquipe = (evento.equipe || []).reduce((s, e) => s + (Number(e.valor) || 0), 0);
-            const custoLogistica = (evento.logistica || []).reduce((s, l) => s + (Number(l.valor) || 0), 0);
-            const lucroCalculado = vendaPDV - cmvReal - custoLogistica - custoEquipe;
+          const mes = dataEvento.getMonth();
+          if (dataEvento.getFullYear() === currentYear) {
+            dadosMes[mes].venda += vendaPDV;
+            dadosMes[mes].perda += (evento.produtos || []).reduce((s, p) => s + Number(p.perda || 0), 0);
+            dadosMes[mes].assado += (evento.produtos || []).reduce((s, p) => s + Number(p.assado || 0), 0);
+            dadosMes[mes].eventos += 1;
+          }
 
-            if (dataEvento.getFullYear() === currentYear && finalizado) {
-              eventosAno++;
-              vendaAno += vendaPDV;
-              lucroAno += lucroCalculado;
-            }
+          if (finalizado && dataEvento.getFullYear() === currentYear) {
+            eventosAno++;
+            vendaAno += vendaPDV;
+            lucroAno += lucroCalculado;
+          }
 
-            if (dataEvento.getFullYear() === now.getFullYear() &&
-                dataEvento.getMonth() === now.getMonth() &&
-                finalizado) {
-              realizadoMes++;
-              vendaMes += vendaPDV;
-              lucroMes += lucroCalculado;
-            }
+          if (finalizado && dataEvento.getFullYear() === now.getFullYear() && dataEvento.getMonth() === now.getMonth()) {
+            realizadoMes++;
+            vendaMes += vendaPDV;
+            lucroMes += lucroCalculado;
+          }
 
-            if (dataEvento >= weekStart && dataEvento <= weekEnd) {
-              estimativaSemana += Number(evento.estimativaVenda || 0);
-              semana++;
-            }
-          });
-        }
+          if (dataEvento >= weekStart && dataEvento <= weekEnd) {
+            estimativaSemana += Number(evento.estimativaVenda || 0);
+            semana++;
+          }
+        });
 
-        const clientes = clientesSnap.val();
-        if (clientes) {
-          Object.values(clientes).forEach(cli => {
-            const status = cli.status || '';
-            const statusEvento = cli.clienteAtivo?.statusEvento;
-
-            if (status.toLowerCase() === 'quente') clientesQuentes++;
-            if (statusEvento === 'Ativo') clientesAtivos++;
-            if (statusEvento === 'Inativo') clientesPerdidos++;
-
-            if (cli.dataCadastro && status === 'Fechado') {
-              const ano = new Date(cli.dataCadastro).getFullYear();
-              if (ano === currentYear) clientesNovos++;
-            }
-          });
-        }
-
-        document.getElementById('kpi-clientes-ativos').innerText = clientesAtivos;
-        document.getElementById('kpi-clientes-novos').innerText = clientesNovos;
-        document.getElementById('kpi-clientes-quentes').innerText = clientesQuentes;
-        document.getElementById('kpi-clientes-perdidos').innerText = clientesPerdidos;
-        document.getElementById('kpi-eventos-ano').innerText = eventosAno;
-        document.getElementById('kpi-realizado').innerText = realizadoMes;
-        document.getElementById('kpi-semana').innerText = semana;
-        document.getElementById('kpi-venda-ano').innerText = formatCurrency(vendaAno);
-        document.getElementById('kpi-venda-mes').innerText = formatCurrency(vendaMes);
-        document.getElementById('kpi-estimativa-semana').innerText = formatCurrency(estimativaSemana);
-        document.getElementById('kpi-lucro-mes').innerText = formatCurrency(lucroMes);
-        document.getElementById('kpi-lucro-ano').innerText = formatCurrency(lucroAno);
-
-      } catch (error) {
-        console.error("Erro ao carregar KPIs:", error);
+        desenharGraficos(dadosMes);
       }
+
+      const clientes = clientesSnap.val();
+      if (clientes) {
+        Object.values(clientes).forEach(cli => {
+          const status = cli.status || '';
+          const statusEvento = cli.clienteAtivo?.statusEvento;
+          if (status.toLowerCase() === 'quente') clientesQuentes++;
+          if (statusEvento === 'Ativo') clientesAtivos++;
+          if (statusEvento === 'Inativo') clientesPerdidos++;
+          if (cli.dataCadastro && status === 'Fechado') {
+            const ano = new Date(cli.dataCadastro).getFullYear();
+            if (ano === currentYear) clientesNovos++;
+          }
+        });
+      }
+
+      document.getElementById('kpi-clientes-ativos').innerText = clientesAtivos;
+      document.getElementById('kpi-clientes-novos').innerText = clientesNovos;
+      document.getElementById('kpi-clientes-quentes').innerText = clientesQuentes;
+      document.getElementById('kpi-clientes-perdidos').innerText = clientesPerdidos;
+      document.getElementById('kpi-eventos-ano').innerText = eventosAno;
+      document.getElementById('kpi-realizado').innerText = realizadoMes;
+      document.getElementById('kpi-semana').innerText = semana;
+      document.getElementById('kpi-venda-ano').innerText = formatCurrency(vendaAno);
+      document.getElementById('kpi-venda-mes').innerText = formatCurrency(vendaMes);
+      document.getElementById('kpi-estimativa-semana').innerText = formatCurrency(estimativaSemana);
+      document.getElementById('kpi-lucro-mes').innerText = formatCurrency(lucroMes);
+      document.getElementById('kpi-lucro-ano').innerText = formatCurrency(lucroAno);
+    }
+
+    function desenharGraficos(data) {
+      new Chart(document.getElementById('graficoVenda'), {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.mes),
+          datasets: [{
+            label: 'Venda PDV',
+            data: data.map(d => d.venda),
+            borderWidth: 2,
+            fill: false,
+            tension: 0.2
+          }]
+        }
+      });
+
+      new Chart(document.getElementById('graficoLucro'), {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.mes),
+          datasets: [{
+            label: 'Lucro (em breve)',
+            data: [],
+            borderWidth: 2,
+            borderDash: [5, 5],
+            fill: false
+          }]
+        }
+      });
+
+      new Chart(document.getElementById('graficoPerdaAssado'), {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.mes),
+          datasets: [
+            { label: 'Perda', data: data.map(d => d.perda), borderWidth: 2, fill: false, tension: 0.2 },
+            { label: 'Assado', data: data.map(d => d.assado), borderWidth: 2, fill: false, tension: 0.2 }
+          ]
+        }
+      });
+
+      new Chart(document.getElementById('graficoEventos'), {
+        type: 'line',
+        data: {
+          labels: data.map(d => d.mes),
+          datasets: [{
+            label: 'Eventos',
+            data: data.map(d => d.eventos),
+            borderWidth: 2,
+            fill: false,
+            tension: 0.2
+          }]
+        }
+      });
     }
 
     carregarKPIs();
