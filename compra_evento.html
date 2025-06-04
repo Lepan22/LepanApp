@@ -100,9 +100,11 @@
         if (!evento.produtos) return;
         evento.produtos.forEach(produto => {
           const prodId = produto.produtoId;
-          const prodNome = produtosDB[prodId] ? produtosDB[prodId].nome : prodId;
-          if (!dadosTabela[prodNome]) dadosTabela[prodNome] = {};
+          const info = produtosDB[prodId];
+          const prodNome = info ? info.nome : prodId;
+          if (!dadosTabela[prodNome]) dadosTabela[prodNome] = { total: 0, quantidadePorCaixa: info?.quantidadePorCaixa || 0 };
           dadosTabela[prodNome][nomeData] = produto.quantidade || 0;
+          dadosTabela[prodNome].total += produto.quantidade || 0;
         });
       });
 
@@ -116,21 +118,25 @@
       eventosNomes.forEach(nome => {
         headerRow.innerHTML += `<th>${nome}</th>`;
       });
-      headerRow.innerHTML += `<th>Total</th>`;
+      headerRow.innerHTML += `<th>Total</th><th>Qtd/Caixa</th><th>Pedido</th>`;
 
       const tbody = document.querySelector('#tabelaProdutos tbody');
       tbody.innerHTML = '';
 
-      Object.keys(dadosTabela).forEach(produto => {
+      Object.entries(dadosTabela).forEach(([produto, dados]) => {
         const tr = document.createElement('tr');
         let row = `<td>${produto}</td>`;
-        let totalEnviado = 0;
         eventosNomes.forEach(nome => {
-          const enviada = dadosTabela[produto][nome] || 0;
-          totalEnviado += enviada;
+          const enviada = dados[nome] || 0;
           row += `<td>${Number(enviada).toFixed(1).replace('.', ',')}</td>`;
         });
-        row += `<td>${totalEnviado.toFixed(1).replace('.', ',')}</td>`;
+        const total = dados.total || 0;
+        const qtdCaixa = Number(dados.quantidadePorCaixa || 0);
+        const pedido = qtdCaixa > 0 ? (total / qtdCaixa).toFixed(1).replace('.', ',') : '-';
+
+        row += `<td>${total.toFixed(1).replace('.', ',')}</td>`;
+        row += `<td>${qtdCaixa || '-'}</td>`;
+        row += `<td>${pedido}</td>`;
         tr.innerHTML = row;
         tbody.appendChild(tr);
       });
@@ -170,20 +176,22 @@
     function exportarXLSX() {
       const ws_data = [];
       const header = ["Produto"];
-      const eventosNomes = Object.keys(dadosTabela[Object.keys(dadosTabela)[0]] || {});
+      const eventosNomes = Object.keys(dadosTabela[Object.keys(dadosTabela)[0]] || {}).filter(k => k !== 'total' && k !== 'quantidadePorCaixa');
       eventosNomes.forEach(nome => header.push(nome));
-      header.push("Total");
+      header.push("Total", "Qtd/Caixa", "Pedido");
       ws_data.push(header);
 
-      Object.keys(dadosTabela).forEach(produto => {
+      Object.entries(dadosTabela).forEach(([produto, dados]) => {
         const row = [produto];
-        let totalEnviado = 0;
+        let total = 0;
         eventosNomes.forEach(nome => {
-          const enviada = dadosTabela[produto][nome] || 0;
-          totalEnviado += enviada;
+          const enviada = dados[nome] || 0;
+          total += enviada;
           row.push(Number(enviada).toFixed(1).replace('.', ','));
         });
-        row.push(totalEnviado.toFixed(1).replace('.', ','));
+        const qtdCaixa = Number(dados.quantidadePorCaixa || 0);
+        const pedido = qtdCaixa > 0 ? (total / qtdCaixa).toFixed(1).replace('.', ',') : '-';
+        row.push(total.toFixed(1).replace('.', ','), qtdCaixa || '-', pedido);
         ws_data.push(row);
       });
 
