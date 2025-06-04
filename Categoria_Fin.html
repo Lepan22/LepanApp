@@ -76,7 +76,7 @@
 
   <script type="module">
     import { db } from './assets/firebase-config.js';
-    import { ref, push, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { ref, push, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const form = document.getElementById('formCategoria');
     const nome = document.getElementById('nomeCategoria');
@@ -84,12 +84,12 @@
     const descricao = document.getElementById('descricaoCategoria');
     const lista = document.getElementById('listaCategorias');
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!nome.value || !tipo.value) return;
 
       const novaRef = push(ref(db, 'financeiro/categorias'));
-      novaRef.set({
+      await set(novaRef, {
         nome: nome.value,
         tipo: tipo.value,
         descricao: descricao.value || ''
