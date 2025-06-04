@@ -130,7 +130,7 @@ function renderizarEquipe() {
     div.innerHTML = `
       <div class="col"><select class="form-select form-select-sm">${equipeDisponivel.map(m => `<option value="${m.id}" ${m.id === item.membroId ? 'selected' : ''}>${m.nome}</option>`).join('')}</select></div>
       <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
-      <div class="col-auto"><button class="btn btn-sm btn-danger">🗑️</button></div>
+      <div class="col-auto"><button type="button" class="btn btn-sm btn-danger">🗑️</button></div>
     `;
     container.appendChild(div);
     div.querySelector('select').onchange = e => { item.membroId = e.target.value; calcularTotais(); };
@@ -157,7 +157,7 @@ function renderizarLogistica() {
     div.innerHTML = `
       <div class="col"><select class="form-select form-select-sm">${logisticaDisponivel.map(l => `<option value="${l.id}" ${l.id === item.prestadorId ? 'selected' : ''}>${l.nome}</option>`).join('')}</select></div>
       <div class="col"><input type="number" class="form-control form-control-sm" placeholder="Valor" value="${item.valor}"></div>
-      <div class="col-auto"><button class="btn btn-sm btn-danger">🗑️</button></div>
+      <div class="col-auto"><button type="button" class="btn btn-sm btn-danger">🗑️</button></div>
     `;
     container.appendChild(div);
     div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; calcularTotais(); };
