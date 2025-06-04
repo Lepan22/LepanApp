@@ -120,6 +120,30 @@
     datalist {
       display: none;
     }
+
+    .item-linha {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 6px;
+      align-items: center;
+    }
+
+    .item-linha select, .item-linha input {
+      flex: 1;
+    }
+
+    .item-linha button {
+      background: #dc3545;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .item-linha button:hover {
+      background: #c82333;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
