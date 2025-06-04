@@ -10,10 +10,32 @@
   <script defer src="assets/menu.js"></script>
   <style>
     .filtros { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
-    .tabela-dre { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
-    .tabela-dre th, .tabela-dre td { border: 1px solid #ccc; padding: 4px 6px; text-align: right; }
-    .tabela-dre th:first-child, .tabela-dre td:first-child { text-align: left; position: sticky; left: 0; background: #f9f9f9; }
-    .grupo { background: #f0f0f0; font-weight: bold; }
+    .tabela-dre {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin-top: 10px;
+      table-layout: fixed;
+    }
+    .tabela-dre th, .tabela-dre td {
+      border: 1px solid #ccc;
+      padding: 4px 6px;
+      text-align: right;
+      width: 80px;
+      overflow-wrap: break-word;
+    }
+    .tabela-dre th:first-child, .tabela-dre td:first-child {
+      text-align: left;
+      width: 180px;
+      background: #f9f9f9;
+      position: sticky;
+      left: 0;
+      z-index: 1;
+    }
+    .grupo {
+      background: #f0f0f0;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
@@ -39,6 +61,18 @@
   <script type="module">
     import { db } from './assets/firebase-config.js';
     import { get, ref } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    function formatarMoeda(valor) {
+      return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2
+      }).format(valor);
+    }
+
+    function formatarPercentual(valor) {
+      return valor.toFixed(2).replace('.', ',') + '%';
+    }
 
     async function carregarDRE() {
       const ano = document.getElementById('filtroAno').value;
@@ -75,7 +109,6 @@
             const saidas = val.saidas || {};
 
             for (let [nome, valor] of Object.entries(entradas)) {
-              const tipo = mapCategorias[nome] || "Outros";
               estrutura.Receita[mes] = (estrutura.Receita[mes] || 0) + valor;
               totalEntrada += valor;
             }
@@ -120,9 +153,15 @@
         for (const m of meses) {
           const val = valores[m] || 0;
           total += val;
-          html += `<td>${categoria.includes("Margem") ? val.toFixed(1) + '%' : (categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros") ? '-' + val.toFixed(2) : val.toFixed(2)}</td>`;
+          const formatado = categoria.includes("Margem")
+            ? formatarPercentual(val)
+            : formatarMoeda(categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros" ? -val : val);
+          html += `<td>${formatado}</td>`;
         }
-        html += `<td>${categoria.includes("Margem") ? total / meses.length : total.toFixed(2)}</td></tr>`;
+        const totalFormatado = categoria.includes("Margem")
+          ? formatarPercentual(total / meses.length)
+          : formatarMoeda(categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros" ? -total : total);
+        html += `<td>${totalFormatado}</td></tr>`;
       }
 
       html += `</tbody></table>`;
