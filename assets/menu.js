@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
               <a href="/LepanApp/eventos.html">Eventos</a>
               <a href="/LepanApp/compra_evento.html">Gerar Compra</a>
               <a href="/LepanApp/controle_etapas.html">Gestão Etapa</a>
+              <a href="/LepanApp/agenda.html">Agenda</a>
               <a href="/LepanApp/relatorio/conferencia_vendas.html">Conferencia Evento</a>
             </div>
           </div>
@@ -78,6 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
               <a href="/LepanApp/previsao_receita.html">Gerar Previsão Receita</a>
               <a href="/LepanApp/gestao_agenda.html">Gestão da Agenda</a>
               <a href="/LepanApp/configuracao.html">Parâmetros Gerais</a>
+              <a href="/LepanApp/Categoria_Fin.html">Cadastro Centro Custo</a>
               <a href="/LepanApp/media_cliente.html">Gerar Média PDV</a>
               <a href="/LepanApp/media_produtos.html">Gerar Média Produto</a>
             </div>
