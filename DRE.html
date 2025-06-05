@@ -9,13 +9,21 @@
   <script type="module" src="assets/firebase-config.js"></script>
   <script defer src="assets/menu.js"></script>
   <style>
-    .filtros { margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .filtros {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .tabela-dre-container {
+      overflow-x: auto;
+    }
     .tabela-dre {
-      width: 100%;
       border-collapse: collapse;
       font-size: 13px;
       margin-top: 10px;
       table-layout: fixed;
+      min-width: max-content;
     }
     .tabela-dre th, .tabela-dre td {
       border: 1px solid #ccc;
@@ -23,18 +31,31 @@
       text-align: right;
       width: 80px;
       overflow-wrap: break-word;
+      background: white;
     }
-    .tabela-dre th:first-child, .tabela-dre td:first-child {
+    .tabela-dre th:first-child,
+    .tabela-dre td:first-child {
       text-align: left;
-      width: 180px;
-      background: #f9f9f9;
+      width: 200px;
       position: sticky;
       left: 0;
+      z-index: 2;
+      background: #f9f9f9;
+    }
+    .tabela-dre th:nth-child(2),
+    .tabela-dre td:nth-child(2) {
+      position: sticky;
+      left: 200px;
       z-index: 1;
+      background: #f1f1f1;
     }
     .grupo {
       background: #f0f0f0;
       font-weight: bold;
+      cursor: pointer;
+    }
+    .oculto {
+      display: none;
     }
   </style>
 </head>
@@ -55,7 +76,9 @@
       <button onclick="carregarDRE()">Atualizar</button>
     </div>
 
-    <div id="tabelaDRE"></div>
+    <div class="tabela-dre-container">
+      <div id="tabelaDRE"></div>
+    </div>
   </div>
 
   <script type="module">
@@ -85,12 +108,42 @@
 
       const snap = await get(ref(db, `financeiro/consolidado`));
       const meses = Array.from({ length: 12 }, (_, i) => i + 1);
-      const estrutura = {
-        Receita: {},
-        CMV: {},
-        "Despesa Fixa": {},
-        "Despesa Variável": {},
-        Outros: {},
+      const estrutura = {};
+      const grupos = new Set();
+
+      snap.forEach(item => {
+        const val = item.val();
+        if (val.ano == ano) {
+          const mes = val.mes;
+          const entradas = val.entradas || {};
+          const saidas = val.saidas || {};
+
+          for (let [nome, valor] of Object.entries(entradas)) {
+            estrutura["Receita"] = estrutura["Receita"] || { total: 0 };
+            estrutura["Receita"][mes] = (estrutura["Receita"][mes] || 0) + valor;
+            estrutura["Receita"].total += valor;
+            grupos.add("Receita");
+          }
+
+          for (let [nome, valor] of Object.entries(saidas)) {
+            const tipo = mapCategorias[nome] || "Outros";
+            estrutura[tipo] = estrutura[tipo] || { total: 0 };
+            estrutura[tipo][mes] = (estrutura[tipo][mes] || 0) + valor;
+            estrutura[tipo].total += valor;
+            grupos.add(tipo);
+          }
+        }
+      });
+
+      // Cálculos adicionais
+      const Receita = estrutura["Receita"] || {};
+      const CMV = estrutura["CMV"] || {};
+      const Fixa = estrutura["Despesa Fixa"] || {};
+      const Variavel = estrutura["Despesa Variável"] || {};
+      const Outros = estrutura["Outros"] || {};
+
+      const mesesComDados = meses.filter(m => Receita[m]);
+      const resumo = {
         "Lucro Bruto": {},
         "Lucro Operacional": {},
         "Lucro Líquido": {},
@@ -100,72 +153,66 @@
       };
 
       for (const mes of meses) {
-        let totalEntrada = 0, totalCMV = 0, totalFixa = 0, totalVariavel = 0, totalOutros = 0;
+        const entrada = Receita[mes] || 0;
+        const cmv = CMV[mes] || 0;
+        const fixa = Fixa[mes] || 0;
+        const variavel = Variavel[mes] || 0;
+        const outros = Outros[mes] || 0;
 
-        snap.forEach(item => {
-          const val = item.val();
-          if (val.ano == ano && val.mes == mes) {
-            const entradas = val.entradas || {};
-            const saidas = val.saidas || {};
+        const lucroBruto = entrada - cmv;
+        const operacional = lucroBruto - fixa - variavel;
+        const liquido = operacional - outros;
 
-            for (let [nome, valor] of Object.entries(entradas)) {
-              estrutura.Receita[mes] = (estrutura.Receita[mes] || 0) + valor;
-              totalEntrada += valor;
-            }
+        resumo["Lucro Bruto"][mes] = lucroBruto;
+        resumo["Lucro Operacional"][mes] = operacional;
+        resumo["Lucro Líquido"][mes] = liquido;
 
-            for (let [nome, valor] of Object.entries(saidas)) {
-              const tipo = mapCategorias[nome] || "Outros";
-              estrutura[tipo] = estrutura[tipo] || {};
-              estrutura[tipo][mes] = (estrutura[tipo][mes] || 0) + valor;
+        resumo["Margem Bruta (%)"][mes] = entrada ? (lucroBruto / entrada) * 100 : 0;
+        resumo["Margem Operacional (%)"][mes] = entrada ? (operacional / entrada) * 100 : 0;
+        resumo["Margem Líquida (%)"][mes] = entrada ? (liquido / entrada) * 100 : 0;
+      }
 
-              if (tipo === "CMV") totalCMV += valor;
-              else if (tipo === "Despesa Fixa") totalFixa += valor;
-              else if (tipo === "Despesa Variável") totalVariavel += valor;
-              else totalOutros += valor;
-            }
-          }
-        });
-
-        const lucroBruto = totalEntrada - totalCMV;
-        const lucroOperacional = lucroBruto - totalFixa - totalVariavel;
-        const lucroLiquido = lucroOperacional - totalOutros;
-
-        estrutura["Lucro Bruto"][mes] = lucroBruto;
-        estrutura["Lucro Operacional"][mes] = lucroOperacional;
-        estrutura["Lucro Líquido"][mes] = lucroLiquido;
-
-        estrutura["Margem Bruta (%)"][mes] = totalEntrada > 0 ? (lucroBruto / totalEntrada) * 100 : 0;
-        estrutura["Margem Operacional (%)"][mes] = totalEntrada > 0 ? (lucroOperacional / totalEntrada) * 100 : 0;
-        estrutura["Margem Líquida (%)"][mes] = totalEntrada > 0 ? (lucroLiquido / totalEntrada) * 100 : 0;
+      for (let categoria in resumo) {
+        resumo[categoria].total = meses.reduce((soma, m) => soma + (resumo[categoria][m] || 0), 0);
+        estrutura[categoria] = resumo[categoria];
       }
 
       renderizarTabela(estrutura, meses);
     }
 
     function renderizarTabela(dados, meses) {
-      let html = `<table class="tabela-dre"><thead><tr><th>Categoria</th>`;
+      let html = `<table class="tabela-dre"><thead><tr><th>Categoria</th><th>Total</th>`;
       for (const m of meses) html += `<th>${m.toString().padStart(2, '0')}</th>`;
-      html += `<th>Total</th></tr></thead><tbody>`;
+      html += `</tr></thead><tbody>`;
 
       for (let [categoria, valores] of Object.entries(dados)) {
-        html += `<tr class="${["Lucro", "Margem"].some(k => categoria.includes(k)) ? 'grupo' : ''}"><td>${categoria}</td>`;
-        let total = 0;
+        const isResumo = categoria.includes("Lucro") || categoria.includes("Margem");
+        const classe = isResumo ? 'grupo' : '';
+        const idLinha = `linha-${categoria.replace(/\s+/g, '-')}`;
+
+        html += `<tr class="${classe}" data-linha="${idLinha}"><td>${!isResumo ? `<span onclick="alternarGrupo('${idLinha}')" style="cursor:pointer;">[+]</span> ` : ''}${categoria}</td>`;
+        const total = valores.total || 0;
+        const totalFmt = categoria.includes("Margem") ? formatarPercentual(total / meses.length) : formatarMoeda(total);
+        html += `<td>${categoria.includes("Despesa") || categoria === "CMV" || categoria === "Outros" ? formatarMoeda(-total) : totalFmt}</td>`;
+
         for (const m of meses) {
           const val = valores[m] || 0;
-          total += val;
-          const formatado = categoria.includes("Margem")
+          const fmt = categoria.includes("Margem")
             ? formatarPercentual(val)
             : formatarMoeda(categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros" ? -val : val);
-          html += `<td>${formatado}</td>`;
+          html += `<td>${fmt}</td>`;
         }
-        const totalFormatado = categoria.includes("Margem")
-          ? formatarPercentual(total / meses.length)
-          : formatarMoeda(categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros" ? -total : total);
-        html += `<td>${totalFormatado}</td></tr>`;
+
+        html += `</tr>`;
       }
 
       html += `</tbody></table>`;
       document.getElementById('tabelaDRE').innerHTML = html;
+    }
+
+    window.alternarGrupo = function(id) {
+      const linhas = document.querySelectorAll(`[data-linha="${id}"]`);
+      linhas.forEach(l => l.classList.toggle("oculto"));
     }
 
     carregarDRE();
