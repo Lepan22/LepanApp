@@ -82,160 +82,169 @@
     <div class="tabela-dre-container">
       <div id="tabelaDRE"></div>
     </div>
-<script type="module">
-  import { db } from './assets/firebase-config.js';
-  import { get, ref } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-  function formatarMoeda(valor) {
-    const classe = valor < 0 ? 'negativo' : '';
-    return `<span class="${classe}">${new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      minimumFractionDigits: 2
-    }).format(valor)}</span>`;
-  }
+    <script type="module">
+      import { db } from './assets/firebase-config.js';
+      import { get, ref } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-  function formatarPercentual(valor) {
-    const classe = valor < 0 ? 'negativo' : '';
-    return `<span class="${classe}">${valor.toFixed(2).replace('.', ',')}%</span>`;
-  }
-
-  async function carregarDRE() {
-    const ano = document.getElementById('filtroAno').value;
-
-    const snapCategorias = await get(ref(db, 'financeiro/categorias'));
-    const mapCategorias = {};
-    snapCategorias.forEach(cat => {
-      const v = cat.val();
-      if (v.nome) mapCategorias[v.nome] = v.centroDeCusto || "Outros";
-    });
-
-    const snap = await get(ref(db, 'financeiro/consolidado'));
-    const meses = Array.from({ length: 12 }, (_, i) => i + 1);
-    const estrutura = {};
-
-    snap.forEach(item => {
-      const val = item.val();
-      if (val.ano == ano) {
-        const mes = val.mes;
-        const entradas = val.entradas || {};
-        const saidas = val.saidas || {};
-
-        // Entradas (Receita)
-        for (let [nome, valor] of Object.entries(entradas)) {
-          const grupo = "Receita";
-          estrutura[grupo] = estrutura[grupo] || {};
-          estrutura[grupo][nome] = estrutura[grupo][nome] || { total: 0 };
-          estrutura[grupo][nome][mes] = (estrutura[grupo][nome][mes] || 0) + valor;
-          estrutura[grupo][nome].total += valor;
-        }
-
-        // Saídas (Despesa)
-        for (let [nome, valor] of Object.entries(saidas)) {
-          const grupo = mapCategorias[nome] || "Outros";
-          estrutura[grupo] = estrutura[grupo] || {};
-          estrutura[grupo][nome] = estrutura[grupo][nome] || { total: 0 };
-          estrutura[grupo][nome][mes] = (estrutura[grupo][nome][mes] || 0) + valor;
-          estrutura[grupo][nome].total += valor;
-        }
+      function formatarMoeda(valor) {
+        const classe = valor < 0 ? 'negativo' : '';
+        return `<span class="${classe}">${new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+          minimumFractionDigits: 2
+        }).format(valor)}</span>`;
       }
-    });
 
-    // Totais por grupo
-    const totais = {};
-    for (let grupo in estrutura) {
-      totais[grupo] = { total: 0 };
-      for (let sub in estrutura[grupo]) {
+      function formatarPercentual(valor) {
+        const classe = valor < 0 ? 'negativo' : '';
+        return `<span class="${classe}">${valor.toFixed(2).replace('.', ',')}%</span>`;
+      }
+
+      async function carregarDRE() {
+        const ano = document.getElementById('filtroAno').value;
+
+        const snapCategorias = await get(ref(db, 'financeiro/categorias'));
+        const mapCategorias = {};
+        snapCategorias.forEach(cat => {
+          const v = cat.val();
+          if (v.nome) mapCategorias[v.nome] = v.centroDeCusto || "Outros";
+        });
+
+        const snap = await get(ref(db, 'financeiro/consolidado'));
+        const meses = Array.from({ length: 12 }, (_, i) => i + 1);
+        const estrutura = {};
+
+        snap.forEach(item => {
+          const val = item.val();
+          if (val.ano == ano) {
+            const mes = val.mes;
+            const entradas = val.entradas || {};
+            const saidas = val.saidas || {};
+
+            for (let [nome, valor] of Object.entries(entradas)) {
+              const grupo = "Receita";
+              estrutura[grupo] = estrutura[grupo] || {};
+              estrutura[grupo][nome] = estrutura[grupo][nome] || { total: 0 };
+              estrutura[grupo][nome][mes] = (estrutura[grupo][nome][mes] || 0) + valor;
+              estrutura[grupo][nome].total += valor;
+            }
+
+            for (let [nome, valor] of Object.entries(saidas)) {
+              const grupo = mapCategorias[nome] || "Outros";
+              estrutura[grupo] = estrutura[grupo] || {};
+              estrutura[grupo][nome] = estrutura[grupo][nome] || { total: 0 };
+              estrutura[grupo][nome][mes] = (estrutura[grupo][nome][mes] || 0) + valor;
+              estrutura[grupo][nome].total += valor;
+            }
+          }
+        });
+
+        const totais = {};
+        for (let grupo in estrutura) {
+          totais[grupo] = { total: 0 };
+          for (let sub in estrutura[grupo]) {
+            for (let mes of meses) {
+              totais[grupo][mes] = (totais[grupo][mes] || 0) + (estrutura[grupo][sub][mes] || 0);
+            }
+            totais[grupo].total += estrutura[grupo][sub].total;
+          }
+        }
+
+        const Receita = totais["Receita"] || {};
+        const CMV = totais["CMV"] || {};
+        const Fixas = totais["Despesa Fixa"] || {};
+        const Variaveis = totais["Despesa Variável"] || {};
+        const Prolabore = totais["Pro Labore"] || {};
+        const Investimento = totais["Investimento"] || {};
+        const Outros = totais["Outros"] || {};
+
+        const resumo = {
+          "Lucro Venda": {},
+          "Lucro Operacional": {},
+          "Lucro Líquido": {},
+          "Margem Bruta (%)": {},
+          "Margem Operacional (%)": {},
+          "Margem Líquida (%)": {}
+        };
+
         for (let mes of meses) {
-          totais[grupo][mes] = (totais[grupo][mes] || 0) + (estrutura[grupo][sub][mes] || 0);
+          const receita = Receita[mes] || 0;
+          const cmv = CMV[mes] || 0;
+          const fixas = Fixas[mes] || 0;
+          const variaveis = Variaveis[mes] || 0;
+          const pro = Prolabore[mes] || 0;
+          const inv = Investimento[mes] || 0;
+          const outros = Outros[mes] || 0;
+
+          const venda = receita - cmv;
+          const operacional = venda - fixas - variaveis;
+          const liquido = operacional - pro - inv - outros;
+
+          resumo["Lucro Venda"][mes] = venda;
+          resumo["Lucro Operacional"][mes] = operacional;
+          resumo["Lucro Líquido"][mes] = liquido;
+          resumo["Margem Bruta (%)"][mes] = receita ? (venda / receita) * 100 : 0;
+          resumo["Margem Operacional (%)"][mes] = receita ? (operacional / receita) * 100 : 0;
+          resumo["Margem Líquida (%)"][mes] = receita ? (liquido / receita) * 100 : 0;
         }
-        totais[grupo].total += estrutura[grupo][sub].total;
+
+        renderizarTabela(estrutura, totais, resumo, meses);
       }
-    }
 
-    // Cálculo dos lucros
-    const Receita = totais["Receita"] || {};
-    const CMV = totais["CMV"] || {};
-    const Fixas = totais["Despesa Fixa"] || {};
-    const Variaveis = totais["Despesa Variável"] || {};
-    const Prolabore = totais["Pro Labore"] || {};
-    const Investimento = totais["Investimento"] || {};
-    const Outros = totais["Outros"] || {};
+      function renderizarTabela(estrutura, totais, resumo, meses) {
+        let html = `<table class="tabela-dre"><thead><tr><th>Categoria</th><th>Total</th>`;
+        for (let m of meses) html += `<th>${m.toString().padStart(2, '0')}</th>`;
+        html += `</tr></thead><tbody>`;
 
-    const resumo = {
-      "Lucro Venda": {},
-      "Lucro Operacional": {},
-      "Lucro Líquido": {},
-      "Margem Bruta (%)": {},
-      "Margem Operacional (%)": {},
-      "Margem Líquida (%)": {}
-    };
+        const ordem = [
+          "Receita",
+          "CMV",
+          "Despesa Fixa",
+          "Despesa Variável",
+          "Outros",
+          "Pro Labore",
+          "Investimento"
+        ];
 
-    for (let mes of meses) {
-      const receita = Receita[mes] || 0;
-      const cmv = CMV[mes] || 0;
-      const fixas = Fixas[mes] || 0;
-      const variaveis = Variaveis[mes] || 0;
-      const pro = Prolabore[mes] || 0;
-      const inv = Investimento[mes] || 0;
-      const outros = Outros[mes] || 0;
+        ordem.forEach(grupo => {
+          if (!estrutura[grupo]) return;
+          const totalGrupo = totais[grupo]?.total || 0;
+          html += `<tr class="grupo" onclick="alternar('${grupo}')"><td>[+/-] ${grupo}</td><td>${formatarMoeda(totalGrupo)}</td>`;
+          for (let m of meses) html += `<td>${formatarMoeda(totais[grupo][m] || 0)}</td>`;
+          html += `</tr>`;
 
-      const venda = receita - cmv;
-      const operacional = venda - fixas - variaveis;
-      const liquido = operacional - pro - inv - outros;
+          for (let sub in estrutura[grupo]) {
+            const dados = estrutura[grupo][sub];
+            html += `<tr class="subcategoria linha-${grupo} oculto"><td>${sub}</td><td>${formatarMoeda(dados.total)}</td>`;
+            for (let m of meses) html += `<td>${formatarMoeda(dados[m] || 0)}</td>`;
+            html += `</tr>`;
+          }
+        });
 
-      resumo["Lucro Venda"][mes] = venda;
-      resumo["Lucro Operacional"][mes] = operacional;
-      resumo["Lucro Líquido"][mes] = liquido;
-      resumo["Margem Bruta (%)"][mes] = receita ? (venda / receita) * 100 : 0;
-      resumo["Margem Operacional (%)"][mes] = receita ? (operacional / receita) * 100 : 0;
-      resumo["Margem Líquida (%)"][mes] = receita ? (liquido / receita) * 100 : 0;
-    }
+        for (let categoria in resumo) {
+          const total = meses.reduce((s, m) => s + (resumo[categoria][m] || 0), 0);
+          const media = categoria.includes("%") ? total / meses.length : total;
+          html += `<tr class="grupo"><td>${categoria}</td><td>${categoria.includes("%") ? formatarPercentual(media) : formatarMoeda(media)}</td>`;
+          for (let m of meses) {
+            const val = resumo[categoria][m] || 0;
+            html += `<td>${categoria.includes("%") ? formatarPercentual(val) : formatarMoeda(val)}</td>`;
+          }
+          html += `</tr>`;
+        }
 
-    renderizarTabela(estrutura, totais, resumo, meses);
-  }
-
-  function renderizarTabela(estrutura, totais, resumo, meses) {
-    let html = `<table class="tabela-dre"><thead><tr><th>Categoria</th><th>Total</th>`;
-    for (let m of meses) html += `<th>${m.toString().padStart(2, '0')}</th>`;
-    html += `</tr></thead><tbody>`;
-
-    for (let grupo in estrutura) {
-      const totalGrupo = totais[grupo].total || 0;
-      html += `<tr class="grupo" onclick="alternar('${grupo}')"><td>[+/-] ${grupo}</td><td>${formatarMoeda(totalGrupo)}</td>`;
-      for (let m of meses) html += `<td>${formatarMoeda(totais[grupo][m] || 0)}</td>`;
-      html += `</tr>`;
-
-      for (let sub in estrutura[grupo]) {
-        const dados = estrutura[grupo][sub];
-        html += `<tr class="subcategoria linha-${grupo} oculto"><td>${sub}</td><td>${formatarMoeda(dados.total)}</td>`;
-        for (let m of meses) html += `<td>${formatarMoeda(dados[m] || 0)}</td>`;
-        html += `</tr>`;
+        html += `</tbody></table>`;
+        document.getElementById("tabelaDRE").innerHTML = html;
       }
-    }
 
-    for (let categoria in resumo) {
-      const total = meses.reduce((s, m) => s + (resumo[categoria][m] || 0), 0);
-      const media = categoria.includes("%") ? total / meses.length : total;
-      html += `<tr class="grupo"><td>${categoria}</td><td>${categoria.includes("%") ? formatarPercentual(media) : formatarMoeda(media)}</td>`;
-      for (let m of meses) {
-        const val = resumo[categoria][m] || 0;
-        html += `<td>${categoria.includes("%") ? formatarPercentual(val) : formatarMoeda(val)}</td>`;
-      }
-      html += `</tr>`;
-    }
+      window.alternar = (grupo) => {
+        document.querySelectorAll(`.linha-${grupo}`).forEach(l => {
+          l.classList.toggle('oculto');
+        });
+      };
 
-    html += `</tbody></table>`;
-    document.getElementById("tabelaDRE").innerHTML = html;
-  }
-
-  window.alternar = (grupo) => {
-    document.querySelectorAll(`.linha-${grupo}`).forEach(l => {
-      l.classList.toggle('oculto');
-    });
-  };
-
-  carregarDRE();
-</script>
+      carregarDRE();
+    </script>
+  </div>
 </body>
 </html>
