@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Análise DRE Mensal</title>
-  <link rel="stylesheet" href="assets/base.css" />
-  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css">
+  <link rel="stylesheet" href="assets/menu-styles.css">
   <script type="module" src="assets/firebase-config.js"></script>
   <script defer src="assets/menu.js"></script>
   <style>
@@ -15,11 +15,9 @@
       gap: 10px;
       flex-wrap: wrap;
     }
-
     .tabela-dre-container {
       overflow-x: auto;
     }
-
     .tabela-dre {
       border-collapse: collapse;
       font-size: 13px;
@@ -28,17 +26,13 @@
       min-width: max-content;
       background: white;
     }
-
     .tabela-dre th, .tabela-dre td {
       border: 1px solid #ccc;
       padding: 6px 8px;
       text-align: right;
-      width: 90px;
       white-space: nowrap;
     }
-
-    .tabela-dre th:first-child,
-    .tabela-dre td:first-child {
+    .tabela-dre th:first-child, .tabela-dre td:first-child {
       text-align: left;
       width: 220px;
       position: sticky;
@@ -46,25 +40,31 @@
       background: #fff;
       z-index: 2;
     }
-
-    .tabela-dre th:nth-child(2),
-    .tabela-dre td:nth-child(2) {
+    .tabela-dre th:nth-child(2), .tabela-dre td:nth-child(2) {
       position: sticky;
       left: 220px;
       background: #f8f8f8;
       z-index: 1;
     }
-
     .grupo {
       background-color: #eee;
       font-weight: bold;
       color: #333;
+      cursor: pointer;
+    }
+    .subcategoria {
+      background: #fafafa;
+    }
+    .negativo {
+      color: red;
+    }
+    .oculto {
+      display: none;
     }
   </style>
 </head>
 <body>
   <div id="menuLateral" class="sidebar"></div>
-
   <div class="main-content">
     <h2>Análise DRE - Visão Mensal</h2>
 
@@ -82,131 +82,160 @@
     <div class="tabela-dre-container">
       <div id="tabelaDRE"></div>
     </div>
-  </div>
+<script type="module">
+  import { db } from './assets/firebase-config.js';
+  import { get, ref } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-  <script type="module">
-    import { db } from './assets/firebase-config.js';
-    import { get, ref } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  function formatarMoeda(valor) {
+    const classe = valor < 0 ? 'negativo' : '';
+    return `<span class="${classe}">${new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+      minimumFractionDigits: 2
+    }).format(valor)}</span>`;
+  }
 
-    function formatarMoeda(valor) {
-      return new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-        minimumFractionDigits: 2
-      }).format(valor);
-    }
+  function formatarPercentual(valor) {
+    const classe = valor < 0 ? 'negativo' : '';
+    return `<span class="${classe}">${valor.toFixed(2).replace('.', ',')}%</span>`;
+  }
 
-    function formatarPercentual(valor) {
-      return valor.toFixed(2).replace('.', ',') + '%';
-    }
+  async function carregarDRE() {
+    const ano = document.getElementById('filtroAno').value;
 
-    async function carregarDRE() {
-      const ano = document.getElementById('filtroAno').value;
-      const snapCategorias = await get(ref(db, 'financeiro/categorias'));
-      const mapCategorias = {};
-      snapCategorias.forEach(cat => {
-        const v = cat.val();
-        if (v.nome) mapCategorias[v.nome] = v.centroDeCusto || "Outros";
-      });
+    const snapCategorias = await get(ref(db, 'financeiro/categorias'));
+    const mapCategorias = {};
+    snapCategorias.forEach(cat => {
+      const v = cat.val();
+      if (v.nome) mapCategorias[v.nome] = v.centroDeCusto || "Outros";
+    });
 
-      const snap = await get(ref(db, `financeiro/consolidado`));
-      const meses = Array.from({ length: 12 }, (_, i) => i + 1);
-      const estrutura = {};
+    const snap = await get(ref(db, 'financeiro/consolidado'));
+    const meses = Array.from({ length: 12 }, (_, i) => i + 1);
+    const estrutura = {};
 
-      snap.forEach(item => {
-        const val = item.val();
-        if (val.ano == ano) {
-          const mes = val.mes;
-          const entradas = val.entradas || {};
-          const saidas = val.saidas || {};
+    snap.forEach(item => {
+      const val = item.val();
+      if (val.ano == ano) {
+        const mes = val.mes;
+        const entradas = val.entradas || {};
+        const saidas = val.saidas || {};
 
-          for (let [nome, valor] of Object.entries(entradas)) {
-            estrutura["Receita"] = estrutura["Receita"] || { total: 0 };
-            estrutura["Receita"][mes] = (estrutura["Receita"][mes] || 0) + valor;
-            estrutura["Receita"].total += valor;
-          }
-
-          for (let [nome, valor] of Object.entries(saidas)) {
-            const tipo = mapCategorias[nome] || "Outros";
-            estrutura[tipo] = estrutura[tipo] || { total: 0 };
-            estrutura[tipo][mes] = (estrutura[tipo][mes] || 0) + valor;
-            estrutura[tipo].total += valor;
-          }
+        // Entradas (Receita)
+        for (let [nome, valor] of Object.entries(entradas)) {
+          const grupo = "Receita";
+          estrutura[grupo] = estrutura[grupo] || {};
+          estrutura[grupo][nome] = estrutura[grupo][nome] || { total: 0 };
+          estrutura[grupo][nome][mes] = (estrutura[grupo][nome][mes] || 0) + valor;
+          estrutura[grupo][nome].total += valor;
         }
-      });
 
-      // Cálculos adicionais
-      const Receita = estrutura["Receita"] || {};
-      const CMV = estrutura["CMV"] || {};
-      const Fixa = estrutura["Despesa Fixa"] || {};
-      const Variavel = estrutura["Despesa Variável"] || {};
-      const Outros = estrutura["Outros"] || {};
-
-      const resumo = {
-        "Lucro Bruto": {},
-        "Lucro Operacional": {},
-        "Lucro Líquido": {},
-        "Margem Bruta (%)": {},
-        "Margem Operacional (%)": {},
-        "Margem Líquida (%)": {}
-      };
-
-      for (const mes of meses) {
-        const entrada = Receita[mes] || 0;
-        const cmv = CMV[mes] || 0;
-        const fixa = Fixa[mes] || 0;
-        const variavel = Variavel[mes] || 0;
-        const outros = Outros[mes] || 0;
-
-        const lucroBruto = entrada - cmv;
-        const operacional = lucroBruto - fixa - variavel;
-        const liquido = operacional - outros;
-
-        resumo["Lucro Bruto"][mes] = lucroBruto;
-        resumo["Lucro Operacional"][mes] = operacional;
-        resumo["Lucro Líquido"][mes] = liquido;
-
-        resumo["Margem Bruta (%)"][mes] = entrada ? (lucroBruto / entrada) * 100 : 0;
-        resumo["Margem Operacional (%)"][mes] = entrada ? (operacional / entrada) * 100 : 0;
-        resumo["Margem Líquida (%)"][mes] = entrada ? (liquido / entrada) * 100 : 0;
+        // Saídas (Despesa)
+        for (let [nome, valor] of Object.entries(saidas)) {
+          const grupo = mapCategorias[nome] || "Outros";
+          estrutura[grupo] = estrutura[grupo] || {};
+          estrutura[grupo][nome] = estrutura[grupo][nome] || { total: 0 };
+          estrutura[grupo][nome][mes] = (estrutura[grupo][nome][mes] || 0) + valor;
+          estrutura[grupo][nome].total += valor;
+        }
       }
+    });
 
-      for (let categoria in resumo) {
-        resumo[categoria].total = meses.reduce((soma, m) => soma + (resumo[categoria][m] || 0), 0);
-        estrutura[categoria] = resumo[categoria];
+    // Totais por grupo
+    const totais = {};
+    for (let grupo in estrutura) {
+      totais[grupo] = { total: 0 };
+      for (let sub in estrutura[grupo]) {
+        for (let mes of meses) {
+          totais[grupo][mes] = (totais[grupo][mes] || 0) + (estrutura[grupo][sub][mes] || 0);
+        }
+        totais[grupo].total += estrutura[grupo][sub].total;
       }
-
-      renderizarTabela(estrutura, meses);
     }
 
-    function renderizarTabela(dados, meses) {
-      let html = `<table class="tabela-dre"><thead><tr><th>Categoria</th><th>Total</th>`;
-      for (const m of meses) html += `<th>${m.toString().padStart(2, '0')}</th>`;
-      html += `</tr></thead><tbody>`;
+    // Cálculo dos lucros
+    const Receita = totais["Receita"] || {};
+    const CMV = totais["CMV"] || {};
+    const Fixas = totais["Despesa Fixa"] || {};
+    const Variaveis = totais["Despesa Variável"] || {};
+    const Prolabore = totais["Pro Labore"] || {};
+    const Investimento = totais["Investimento"] || {};
+    const Outros = totais["Outros"] || {};
 
-      for (let [categoria, valores] of Object.entries(dados)) {
-        const isResumo = categoria.includes("Lucro") || categoria.includes("Margem");
-        const classe = isResumo ? 'grupo' : '';
-        const total = valores.total || 0;
-        const totalFmt = categoria.includes("Margem") ? formatarPercentual(total / meses.length)
-            : formatarMoeda(categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros" ? -total : total);
+    const resumo = {
+      "Lucro Venda": {},
+      "Lucro Operacional": {},
+      "Lucro Líquido": {},
+      "Margem Bruta (%)": {},
+      "Margem Operacional (%)": {},
+      "Margem Líquida (%)": {}
+    };
 
-        html += `<tr class="${classe}"><td>${categoria}</td><td>${totalFmt}</td>`;
-        for (const m of meses) {
-          const val = valores[m] || 0;
-          const fmt = categoria.includes("Margem")
-            ? formatarPercentual(val)
-            : formatarMoeda(categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros" ? -val : val);
-          html += `<td>${fmt}</td>`;
-        }
+    for (let mes of meses) {
+      const receita = Receita[mes] || 0;
+      const cmv = CMV[mes] || 0;
+      const fixas = Fixas[mes] || 0;
+      const variaveis = Variaveis[mes] || 0;
+      const pro = Prolabore[mes] || 0;
+      const inv = Investimento[mes] || 0;
+      const outros = Outros[mes] || 0;
+
+      const venda = receita - cmv;
+      const operacional = venda - fixas - variaveis;
+      const liquido = operacional - pro - inv - outros;
+
+      resumo["Lucro Venda"][mes] = venda;
+      resumo["Lucro Operacional"][mes] = operacional;
+      resumo["Lucro Líquido"][mes] = liquido;
+      resumo["Margem Bruta (%)"][mes] = receita ? (venda / receita) * 100 : 0;
+      resumo["Margem Operacional (%)"][mes] = receita ? (operacional / receita) * 100 : 0;
+      resumo["Margem Líquida (%)"][mes] = receita ? (liquido / receita) * 100 : 0;
+    }
+
+    renderizarTabela(estrutura, totais, resumo, meses);
+  }
+
+  function renderizarTabela(estrutura, totais, resumo, meses) {
+    let html = `<table class="tabela-dre"><thead><tr><th>Categoria</th><th>Total</th>`;
+    for (let m of meses) html += `<th>${m.toString().padStart(2, '0')}</th>`;
+    html += `</tr></thead><tbody>`;
+
+    for (let grupo in estrutura) {
+      const totalGrupo = totais[grupo].total || 0;
+      html += `<tr class="grupo" onclick="alternar('${grupo}')"><td>[+/-] ${grupo}</td><td>${formatarMoeda(totalGrupo)}</td>`;
+      for (let m of meses) html += `<td>${formatarMoeda(totais[grupo][m] || 0)}</td>`;
+      html += `</tr>`;
+
+      for (let sub in estrutura[grupo]) {
+        const dados = estrutura[grupo][sub];
+        html += `<tr class="subcategoria linha-${grupo} oculto"><td>${sub}</td><td>${formatarMoeda(dados.total)}</td>`;
+        for (let m of meses) html += `<td>${formatarMoeda(dados[m] || 0)}</td>`;
         html += `</tr>`;
       }
-
-      html += `</tbody></table>`;
-      document.getElementById('tabelaDRE').innerHTML = html;
     }
 
-    carregarDRE();
-  </script>
+    for (let categoria in resumo) {
+      const total = meses.reduce((s, m) => s + (resumo[categoria][m] || 0), 0);
+      const media = categoria.includes("%") ? total / meses.length : total;
+      html += `<tr class="grupo"><td>${categoria}</td><td>${categoria.includes("%") ? formatarPercentual(media) : formatarMoeda(media)}</td>`;
+      for (let m of meses) {
+        const val = resumo[categoria][m] || 0;
+        html += `<td>${categoria.includes("%") ? formatarPercentual(val) : formatarMoeda(val)}</td>`;
+      }
+      html += `</tr>`;
+    }
+
+    html += `</tbody></table>`;
+    document.getElementById("tabelaDRE").innerHTML = html;
+  }
+
+  window.alternar = (grupo) => {
+    document.querySelectorAll(`.linha-${grupo}`).forEach(l => {
+      l.classList.toggle('oculto');
+    });
+  };
+
+  carregarDRE();
+</script>
 </body>
 </html>
