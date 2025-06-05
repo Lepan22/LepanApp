@@ -39,14 +39,16 @@
       width: 240px;
       position: sticky;
       left: 0;
-      background: #fff;
+      background: #ddd;
+      color: #000;
       z-index: 2;
     }
     .tabela-dre th:nth-child(2), .tabela-dre td:nth-child(2) {
       position: sticky;
       left: 240px;
       width: 100px;
-      background: #f8f8f8;
+      background: #eee;
+      color: #000;
       z-index: 1;
     }
     .grupo {
@@ -158,9 +160,9 @@
         const CMV = totais["CMV"] || {};
         const Fixas = totais["Despesa Fixa"] || {};
         const Variaveis = totais["Despesa Variável"] || {};
+        const Outros = totais["Outros"] || {};
         const Prolabore = totais["Pro Labore"] || {};
         const Investimento = totais["Investimento"] || {};
-        const Outros = totais["Outros"] || {};
 
         const resumo = {
           "Lucro Venda": {},
@@ -176,13 +178,13 @@
           const cmv = CMV[mes] || 0;
           const fixas = Fixas[mes] || 0;
           const variaveis = Variaveis[mes] || 0;
+          const outros = Outros[mes] || 0;
           const pro = Prolabore[mes] || 0;
           const inv = Investimento[mes] || 0;
-          const outros = Outros[mes] || 0;
 
           const venda = receita - cmv;
-          const operacional = venda - fixas - variaveis;
-          const liquido = operacional - pro - inv - outros;
+          const operacional = venda - fixas - variaveis - outros;
+          const liquido = operacional - pro - inv;
 
           resumo["Lucro Venda"][mes] = venda;
           resumo["Lucro Operacional"][mes] = operacional;
@@ -212,24 +214,25 @@
 
         ordem.forEach(grupo => {
           if (!estrutura[grupo]) return;
+          const grupoId = grupo.replace(/\s+/g, '-');
           const totalGrupo = totais[grupo]?.total || 0;
-          html += `<tr class="grupo" onclick="alternar('${grupo}')"><td>[+/-] ${grupo}</td><td>${formatarMoeda(totalGrupo)}</td>`;
+          html += `<tr class="grupo" onclick="alternar('${grupoId}')"><td>[+/-] ${grupo}</td><td>${formatarMoeda(totalGrupo)}</td>`;
           for (let m of meses) html += `<td>${formatarMoeda(totais[grupo][m] || 0)}</td>`;
           html += `</tr>`;
 
           for (let sub in estrutura[grupo]) {
             const dados = estrutura[grupo][sub];
-            html += `<tr class="subcategoria linha-${grupo} oculto"><td>${sub}</td><td>${formatarMoeda(dados.total)}</td>`;
+            html += `<tr class="subcategoria linha-${grupoId} oculto"><td>${sub}</td><td>${formatarMoeda(dados.total)}</td>`;
             for (let m of meses) html += `<td>${formatarMoeda(dados[m] || 0)}</td>`;
             html += `</tr>`;
           }
         });
 
         for (let categoria in resumo) {
-          const total = meses.reduce((s, m) => s + (resumo[categoria][m] || 0), 0);
-          const media = categoria.includes("%") ? total / meses.length : total;
+          const total = Object.values(resumo[categoria]).reduce((s, v) => s + v, 0);
+          const media = categoria.includes("%") ? total / 12 : total;
           html += `<tr class="grupo"><td>${categoria}</td><td>${categoria.includes("%") ? formatarPercentual(media) : formatarMoeda(media)}</td>`;
-          for (let m of meses) {
+          for (let m = 1; m <= 12; m++) {
             const val = resumo[categoria][m] || 0;
             html += `<td>${categoria.includes("%") ? formatarPercentual(val) : formatarMoeda(val)}</td>`;
           }
@@ -240,8 +243,8 @@
         document.getElementById("tabelaDRE").innerHTML = html;
       }
 
-      window.alternar = (grupo) => {
-        document.querySelectorAll(`.linha-${grupo}`).forEach(l => {
+      window.alternar = (grupoId) => {
+        document.querySelectorAll(`.linha-${grupoId}`).forEach(l => {
           l.classList.toggle('oculto');
         });
       };
