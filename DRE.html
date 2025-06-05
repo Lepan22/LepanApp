@@ -15,47 +15,50 @@
       gap: 10px;
       flex-wrap: wrap;
     }
+
     .tabela-dre-container {
       overflow-x: auto;
     }
+
     .tabela-dre {
       border-collapse: collapse;
       font-size: 13px;
       margin-top: 10px;
       table-layout: fixed;
       min-width: max-content;
-    }
-    .tabela-dre th, .tabela-dre td {
-      border: 1px solid #ccc;
-      padding: 4px 6px;
-      text-align: right;
-      width: 80px;
-      overflow-wrap: break-word;
       background: white;
     }
+
+    .tabela-dre th, .tabela-dre td {
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      text-align: right;
+      width: 90px;
+      white-space: nowrap;
+    }
+
     .tabela-dre th:first-child,
     .tabela-dre td:first-child {
       text-align: left;
-      width: 200px;
+      width: 220px;
       position: sticky;
       left: 0;
+      background: #fff;
       z-index: 2;
-      background: #f9f9f9;
     }
+
     .tabela-dre th:nth-child(2),
     .tabela-dre td:nth-child(2) {
       position: sticky;
-      left: 200px;
+      left: 220px;
+      background: #f8f8f8;
       z-index: 1;
-      background: #f1f1f1;
     }
+
     .grupo {
-      background: #f0f0f0;
+      background-color: #eee;
       font-weight: bold;
-      cursor: pointer;
-    }
-    .oculto {
-      display: none;
+      color: #333;
     }
   </style>
 </head>
@@ -109,7 +112,6 @@
       const snap = await get(ref(db, `financeiro/consolidado`));
       const meses = Array.from({ length: 12 }, (_, i) => i + 1);
       const estrutura = {};
-      const grupos = new Set();
 
       snap.forEach(item => {
         const val = item.val();
@@ -122,7 +124,6 @@
             estrutura["Receita"] = estrutura["Receita"] || { total: 0 };
             estrutura["Receita"][mes] = (estrutura["Receita"][mes] || 0) + valor;
             estrutura["Receita"].total += valor;
-            grupos.add("Receita");
           }
 
           for (let [nome, valor] of Object.entries(saidas)) {
@@ -130,7 +131,6 @@
             estrutura[tipo] = estrutura[tipo] || { total: 0 };
             estrutura[tipo][mes] = (estrutura[tipo][mes] || 0) + valor;
             estrutura[tipo].total += valor;
-            grupos.add(tipo);
           }
         }
       });
@@ -142,7 +142,6 @@
       const Variavel = estrutura["Despesa Variável"] || {};
       const Outros = estrutura["Outros"] || {};
 
-      const mesesComDados = meses.filter(m => Receita[m]);
       const resumo = {
         "Lucro Bruto": {},
         "Lucro Operacional": {},
@@ -188,13 +187,11 @@
       for (let [categoria, valores] of Object.entries(dados)) {
         const isResumo = categoria.includes("Lucro") || categoria.includes("Margem");
         const classe = isResumo ? 'grupo' : '';
-        const idLinha = `linha-${categoria.replace(/\s+/g, '-')}`;
-
-        html += `<tr class="${classe}" data-linha="${idLinha}"><td>${!isResumo ? `<span onclick="alternarGrupo('${idLinha}')" style="cursor:pointer;">[+]</span> ` : ''}${categoria}</td>`;
         const total = valores.total || 0;
-        const totalFmt = categoria.includes("Margem") ? formatarPercentual(total / meses.length) : formatarMoeda(total);
-        html += `<td>${categoria.includes("Despesa") || categoria === "CMV" || categoria === "Outros" ? formatarMoeda(-total) : totalFmt}</td>`;
+        const totalFmt = categoria.includes("Margem") ? formatarPercentual(total / meses.length)
+            : formatarMoeda(categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros" ? -total : total);
 
+        html += `<tr class="${classe}"><td>${categoria}</td><td>${totalFmt}</td>`;
         for (const m of meses) {
           const val = valores[m] || 0;
           const fmt = categoria.includes("Margem")
@@ -202,17 +199,11 @@
             : formatarMoeda(categoria.startsWith("Despesa") || categoria === "CMV" || categoria === "Outros" ? -val : val);
           html += `<td>${fmt}</td>`;
         }
-
         html += `</tr>`;
       }
 
       html += `</tbody></table>`;
       document.getElementById('tabelaDRE').innerHTML = html;
-    }
-
-    window.alternarGrupo = function(id) {
-      const linhas = document.querySelectorAll(`[data-linha="${id}"]`);
-      linhas.forEach(l => l.classList.toggle("oculto"));
     }
 
     carregarDRE();
