@@ -17,24 +17,26 @@
     }
     .tabela-dre-container {
       overflow-x: auto;
+      max-width: 100%;
     }
     .tabela-dre {
       border-collapse: collapse;
       font-size: 13px;
       margin-top: 10px;
       table-layout: fixed;
-      min-width: max-content;
+      min-width: 1100px;
       background: white;
     }
     .tabela-dre th, .tabela-dre td {
       border: 1px solid #ccc;
       padding: 6px 8px;
       text-align: right;
+      width: 100px;
       white-space: nowrap;
     }
     .tabela-dre th:first-child, .tabela-dre td:first-child {
       text-align: left;
-      width: 220px;
+      width: 240px;
       position: sticky;
       left: 0;
       background: #fff;
@@ -42,7 +44,8 @@
     }
     .tabela-dre th:nth-child(2), .tabela-dre td:nth-child(2) {
       position: sticky;
-      left: 220px;
+      left: 240px;
+      width: 100px;
       background: #f8f8f8;
       z-index: 1;
     }
@@ -245,6 +248,5 @@
 
       carregarDRE();
     </script>
-  </div>
 </body>
 </html>
