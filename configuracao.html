@@ -34,6 +34,14 @@
         </div>
       </form>
 
+      <hr style="margin: 30px 0;">
+
+      <div>
+        <h3>Backup Manual</h3>
+        <button id="botaoBackup">Fazer Backup</button>
+        <div id="msgBackup" style="margin-top: 10px;"></div>
+      </div>
+
       <div id="statusMsg" style="margin-top: 10px;"></div>
     </main>
   </div>
@@ -56,6 +64,8 @@
     const capacidadeInput = document.getElementById('capacidadeEventos');
     const percentualInput = document.getElementById('percentualCMV');
     const statusMsg = document.getElementById('statusMsg');
+    const botaoBackup = document.getElementById('botaoBackup');
+    const msgBackup = document.getElementById('msgBackup');
 
     function carregarConfiguracao() {
       db.ref('configuracao').once('value')
@@ -90,6 +100,27 @@
         .catch(error => {
           console.error('Erro ao salvar:', error);
           statusMsg.textContent = 'Erro ao atualizar configurações.';
+        });
+    });
+
+    botaoBackup.addEventListener('click', () => {
+      msgBackup.textContent = 'Gerando backup...';
+      db.ref('/').once('value')
+        .then(snapshot => {
+          const data = snapshot.val();
+          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+          const link = document.createElement('a');
+          const dataAtual = new Date().toISOString().slice(0, 10); // yyyy-mm-dd
+          link.href = URL.createObjectURL(blob);
+          link.download = `backup-lepan-${dataAtual}.json`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          msgBackup.textContent = 'Backup gerado com sucesso.';
+        })
+        .catch(error => {
+          console.error('Erro ao gerar backup:', error);
+          msgBackup.textContent = 'Erro ao gerar backup.';
         });
     });
 
