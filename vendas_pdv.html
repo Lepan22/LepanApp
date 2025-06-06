@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Resumo de Vendas PDV</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resumo Vendas PDV</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script defer src="assets/menu.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
   <style>
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
     th { background-color: #ffcc80; }
-    input, select { width: 100%; padding: 4px; }
-    .form-grid { display: grid; grid-template-columns: repeat(4, 1fr) 100px; gap: 10px; margin-top: 20px; }
-    .form-grid input, .form-grid select { width: 100%; }
-    button { padding: 6px 12px; margin-top: 10px; }
+    input[type="number"] { width: 100px; }
+    input[type="file"] { margin-top: 10px; }
+    .diferenca-negativa { background-color: #ffe0e0; }
+    .diferenca-zero { background-color: #e0ffe0; }
   </style>
 </head>
 <body>
@@ -25,37 +26,23 @@
     <div class="main-content">
       <h2>Resumo de Vendas por PDV</h2>
 
-      <div class="form-grid">
-        <select id="empresa">
-          <option value="PagBank">PagBank</option>
-          <option value="Infinity">Infinity</option>
-        </select>
-        <select id="tipo">
-          <option value="Débito">Débito</option>
-          <option value="Crédito">Crédito</option>
-          <option value="Pix QR Code">Pix QR Code</option>
-          <option value="Pix Nubank">Pix Nubank</option>
-          <option value="Dinheiro">Dinheiro</option>
-        </select>
-        <input id="bandeira" placeholder="Bandeira (ex: Visa)" />
-        <input id="valor" placeholder="Valor (R$)" type="number" step="0.01" />
-        <button onclick="adicionarVenda()">Adicionar</button>
-      </div>
+      <input type="file" accept=".csv" onchange="importarCSV(this.files[0])">
 
-      <table id="tabelaVendas">
+      <table id="resumoTable">
         <thead>
           <tr>
             <th>Empresa</th>
             <th>Tipo</th>
             <th>Bandeira</th>
-            <th>Valor (R$)</th>
-            <th>Ações</th>
+            <th>Bruto CSV</th>
+            <th>PDV (Informado)</th>
+            <th>Diferença</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
 
-      <button onclick="salvarVendas()">Salvar no Firebase</button>
+      <button onclick="salvarResumo()">Salvar Resumo no Firebase</button>
     </div>
   </div>
 
@@ -66,60 +53,88 @@
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
       projectId: "lepanapp"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    let listaVendas = [];
 
-    function adicionarVenda() {
-      const empresa = document.getElementById("empresa").value;
-      const tipo = document.getElementById("tipo").value;
-      const bandeira = document.getElementById("bandeira").value.trim() || "-";
-      const valor = parseFloat(document.getElementById("valor").value);
+    let resumo = [];
 
-      if (!valor || valor <= 0) {
-        alert("Informe um valor válido.");
-        return;
-      }
+    function importarCSV(arquivo) {
+      Papa.parse(arquivo, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter: ";",
+        complete: function(result) {
+          const dados = result.data;
+          const agrupado = {};
 
-      listaVendas.push({ empresa, tipo, bandeira, valor });
-      renderizarTabela();
+          dados.forEach(linha => {
+            const tipo = linha["Forma de Pagamento"]?.trim() || "-";
+            const bandeira = linha["Bandeira"]?.trim() || "-";
+            const empresa = "PagBank";
 
-      // limpar campos
-      document.getElementById("bandeira").value = "";
-      document.getElementById("valor").value = "";
+            const bruto = parseFloat((linha["Valor Bruto"] || linha["Valor Bruto (R$)"] || "0")
+              .replace("R$", "")
+              .replace(/\./g, "")
+              .replace(",", "."));
+
+            if (!bruto || isNaN(bruto)) return;
+
+            const chave = `${empresa}|${tipo}|${bandeira}`;
+            if (!agrupado[chave]) {
+              agrupado[chave] = { empresa, tipo, bandeira, bruto: 0, pdv: "", diff: "" };
+            }
+
+            agrupado[chave].bruto += bruto;
+          });
+
+          resumo = Object.values(agrupado);
+          renderizarResumo();
+        }
+      });
     }
 
-    function renderizarTabela() {
-      const corpo = document.querySelector("#tabelaVendas tbody");
+    function renderizarResumo() {
+      const corpo = document.querySelector("#resumoTable tbody");
       corpo.innerHTML = "";
 
-      listaVendas.forEach((venda, index) => {
+      resumo.forEach((item, index) => {
         const tr = document.createElement("tr");
+        const diferenca = item.pdv ? parseFloat(item.pdv) - item.bruto : "";
+        const classe = diferenca === 0 ? "diferenca-zero" : (diferenca < 0 ? "diferenca-negativa" : "");
+
+        tr.className = classe;
         tr.innerHTML = `
-          <td>${venda.empresa}</td>
-          <td>${venda.tipo}</td>
-          <td>${venda.bandeira}</td>
-          <td>R$ ${venda.valor.toFixed(2)}</td>
-          <td><button onclick="removerVenda(${index})">Remover</button></td>
+          <td>${item.empresa}</td>
+          <td>${item.tipo}</td>
+          <td>${item.bandeira}</td>
+          <td>R$ ${item.bruto.toFixed(2)}</td>
+          <td><input type="number" step="0.01" value="${item.pdv || ""}" 
+                     onchange="atualizarPDV(${index}, this.value)" /></td>
+          <td>${item.pdv ? "R$ " + diferenca.toFixed(2) : "-"}</td>
         `;
         corpo.appendChild(tr);
       });
     }
 
-    function removerVenda(index) {
-      listaVendas.splice(index, 1);
-      renderizarTabela();
+    function atualizarPDV(index, valor) {
+      resumo[index].pdv = parseFloat(valor) || 0;
+      renderizarResumo();
     }
 
-    function salvarVendas() {
-      if (!listaVendas.length) {
-        alert("Nenhuma venda para salvar.");
-        return;
-      }
+    function salvarResumo() {
+      const preenchidos = resumo
+        .filter(r => r.pdv !== "")
+        .map(r => ({
+          empresa: r.empresa,
+          tipo: r.tipo,
+          bandeira: r.bandeira,
+          valorCSV: r.bruto,
+          valorPDV: parseFloat(r.pdv),
+          diferenca: parseFloat(r.pdv) - r.bruto
+        }));
 
-      db.ref("resumo_vendas_pdv").set(listaVendas)
-        .then(() => alert("Vendas salvas com sucesso!"))
+      db.ref("resumo_vendas_pdv").set(preenchidos)
+        .then(() => alert("Resumo salvo com sucesso!"))
         .catch(err => alert("Erro ao salvar: " + err));
     }
   </script>
