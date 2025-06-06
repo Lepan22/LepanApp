@@ -3,16 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Configuração Taxas</title>
+  <title>Configuração de Taxas</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script defer src="assets/menu.js"></script>
   <style>
-    .container {
-      padding: 20px;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -36,47 +33,49 @@
   </style>
 </head>
 <body>
-  <div class="menu-lateral"></div>
-  <div class="container">
-    <h2>Cadastro de Taxas por Empresa e Bandeira</h2>
+  <div class="layout">
+    <div class="sidebar" id="menuLateral"></div>
+    <div class="main-content">
+      <h2>Cadastro de Taxas por Empresa e Bandeira</h2>
 
-    <table>
-      <thead>
-        <tr>
-          <th>Empresa</th>
-          <th>Bandeira</th>
-          <th>Débito (%)</th>
-          <th>Crédito (%)</th>
-          <th>PIX (%)</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><input id="empresa" /></td>
-          <td><input id="bandeira" /></td>
-          <td><input id="debito" type="number" step="0.01" /></td>
-          <td><input id="credito" type="number" step="0.01" /></td>
-          <td><input id="pix" type="number" step="0.01" /></td>
-          <td><button onclick="adicionarTaxa()">Salvar</button></td>
-        </tr>
-      </tbody>
-    </table>
+      <table>
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Bandeira</th>
+            <th>Débito (%)</th>
+            <th>Crédito (%)</th>
+            <th>PIX (%)</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><input id="empresa" /></td>
+            <td><input id="bandeira" /></td>
+            <td><input id="debito" type="number" step="0.01" /></td>
+            <td><input id="credito" type="number" step="0.01" /></td>
+            <td><input id="pix" type="number" step="0.01" /></td>
+            <td><button onclick="adicionarTaxa()">Salvar</button></td>
+          </tr>
+        </tbody>
+      </table>
 
-    <h3 style="margin-top:30px;">Taxas Cadastradas</h3>
-    <table id="listaTaxas">
-      <thead>
-        <tr>
-          <th>Empresa</th>
-          <th>Bandeira</th>
-          <th>Débito (%)</th>
-          <th>Crédito (%)</th>
-          <th>PIX (%)</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+      <h3 style="margin-top:30px;">Taxas Cadastradas</h3>
+      <table id="listaTaxas">
+        <thead>
+          <tr>
+            <th>Empresa</th>
+            <th>Bandeira</th>
+            <th>Débito (%)</th>
+            <th>Crédito (%)</th>
+            <th>PIX (%)</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
   <script>
