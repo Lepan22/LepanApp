@@ -1,51 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Le Pan pan - Agenda</title>
-  <link rel="stylesheet" href="menu-styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Agenda</title>
+  <link rel="stylesheet" href="assets/base.css">
+  <link rel="stylesheet" href="assets/menu-styles.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <style>
-    h1 { font-size: 16px; margin-bottom: 10px; }
-    .kpis { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
-    .kpi { background-color: #f2f2f2; padding: 10px; border-radius: 5px; flex: 1 1 200px; }
-    .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
-    .btn-navegar:hover { background-color: #e96f00; }
-    .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 60px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
-    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
-    .semana-atual { background-color: #ffe0b2; }
-    .farol { width: 15px; height: 15px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    .farol-cinza { background-color: gray; }
-    .farol-verde { background-color: green; }
-    .farol-vermelho { background-color: red; }
-    table { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-    th { background-color: #f2f2f2; }
-    .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; }
-    .evento-dia-projetado { font-size: 7px; margin-top: 2px; background: #ccc; color: #333; border-radius: 3px; padding: 1px; border: 1px dashed #999; }
-    
-    /* Estilos para os cards no formato do dashboard */
-    .card-dashboard {
-      background-color: white;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-    
-    .page-header {
-      margin-bottom: 20px;
-    }
-  </style>
 </head>
 <body>
   <div class="layout">
-    <!-- Menu lateral será carregado via JavaScript -->
     <aside class="sidebar" id="menuLateral"></aside>
-    
+
     <main class="main-content">
       <div class="page-header">
         <h1>Agenda</h1>
@@ -65,26 +32,6 @@
 
         <div class="calendario" id="calendario"></div>
       </div>
-
-      <div class="card-dashboard">
-        <h4>Clientes Ativos</h4>
-        <table>
-          <thead>
-            <tr><th>Cliente</th><th>Nome do Evento</th><th>Frequência</th><th>Farol</th></tr>
-          </thead>
-          <tbody id="tabelaClientesAtivos"></tbody>
-        </table>
-      </div>
-
-      <div class="card-dashboard">
-        <h4>Eventos</h4>
-        <table>
-          <thead>
-            <tr><th>Nome do Evento</th><th>Data</th><th>Status</th><th>Tipo</th></tr>
-          </thead>
-          <tbody id="tabelaEventos"></tbody>
-        </table>
-      </div>
     </main>
   </div>
 
@@ -94,12 +41,8 @@
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d"
+      projectId: "lepanapp"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
@@ -159,19 +102,16 @@
         for (let dia = 1; dia <= 31; dia++) {
           const data = new Date(ano, mes, dia);
           if (data.getMonth() !== mes) break;
-          const diaSemanaTexto = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'][data.getDay()];
-
+          const diaSemanaTexto = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'][data.getDay()];
           if (!diasSemana.includes(diaSemanaTexto)) continue;
 
           let incluir = false;
-
           if (freq === 'Semanal') incluir = true;
           if (freq === 'Quinzenal' && Math.floor((dia - 1) / 7) % 2 === 0) incluir = true;
           if (freq === 'Mensal' && dia <= 7) incluir = true;
 
           const dataStr = data.toISOString().split('T')[0];
           const chave = `${nomeEvento}_${dataStr}`;
-
           if (incluir && !eventosReaisMap.has(chave)) {
             eventosProjecao.push({ nomeEvento, data: dataStr, status: 'Projetado', tipo: 'Projeção' });
           }
@@ -183,8 +123,6 @@
       document.getElementById('mesAtual').textContent = mesAtual.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
       atualizarKPIs();
       renderizarCalendario();
-      listarClientesAtivos();
-      listarEventos();
     }
 
     function atualizarKPIs() {
@@ -195,8 +133,7 @@
     function renderizarCalendario() {
       const calendario = document.getElementById('calendario');
       calendario.innerHTML = '';
-
-      const cabecalho = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+      const cabecalho = ['S','T','Q','Q','S','S','D'];
       cabecalho.forEach(dia => {
         const div = document.createElement('div');
         div.classList.add('dia', 'cabecalho');
@@ -209,23 +146,17 @@
       const primeiroDia = new Date(ano, mes, 1);
       const ultimoDia = new Date(ano, mes + 1, 0);
       const diaSemanaInicio = primeiroDia.getDay();
-
       for (let i = 0; i < diaSemanaInicio; i++) {
         calendario.appendChild(document.createElement('div'));
       }
 
       const semanaAtual = getSemanaAtual();
-
       for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
         const data = new Date(ano, mes, dia);
         const dataStr = data.toISOString().split('T')[0];
-
         const divDia = document.createElement('div');
         divDia.classList.add('dia');
-
-        if (semanaAtual.includes(dataStr)) {
-          divDia.classList.add('semana-atual');
-        }
+        if (semanaAtual.includes(dataStr)) divDia.classList.add('semana-atual');
 
         const numeroDia = document.createElement('div');
         numeroDia.textContent = dia;
@@ -255,53 +186,30 @@
       const inicio = new Date(hoje);
       inicio.setDate(hoje.getDate() - diaSemana + 1);
       const datas = [];
-
       for (let i = 0; i < 7; i++) {
         const d = new Date(inicio);
         d.setDate(inicio.getDate() + i);
         datas.push(d.toISOString().split('T')[0]);
       }
-
       return datas;
-    }
-
-    function listarClientesAtivos() {
-      const tbody = document.getElementById('tabelaClientesAtivos');
-      tbody.innerHTML = '';
-
-      clientes.forEach(c => {
-        const freq = c.clienteAtivo.frequencia;
-        const farol = getFarol(c);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${c.nome}</td><td>${c.clienteAtivo.nomeEvento}</td><td>${freq}</td><td><span class="farol ${farol}"></span></td>`;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function getFarol(cliente) {
-      const freq = cliente.clienteAtivo.frequencia;
-      if (freq === "Esporadico") return 'farol-cinza';
-      return 'farol-vermelho';
-    }
-
-    function listarEventos() {
-      const tbody = document.getElementById('tabelaEventos');
-      tbody.innerHTML = '';
-
-      eventos.forEach(e => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status || '-'}</td><td>Real</td>`;
-        tbody.appendChild(tr);
-      });
-
-      eventosProjecao.forEach(e => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${e.nomeEvento || '-'}</td><td>${e.data || '-'}</td><td>${e.status}</td><td>Projeção</td>`;
-        tbody.appendChild(tr);
-      });
     }
 
     document.addEventListener('DOMContentLoaded', carregarDados);
   </script>
+
+  <style>
+    .kpis { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+    .kpi { background-color: #f2f2f2; padding: 10px; border-radius: 5px; flex: 1 1 200px; }
+    .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
+    .btn-navegar:hover { background-color: #e96f00; }
+    .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
+    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 60px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
+    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
+    .semana-atual { background-color: #ffe0b2; }
+    .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; }
+    .evento-dia-projetado { font-size: 7px; margin-top: 2px; background: #ccc; color: #333; border-radius: 3px; padding: 1px; border: 1px dashed #999; }
+    .card-dashboard { background-color: white; border-radius: 8px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .page-header { margin-bottom: 20px; }
+  </style>
 </body>
 </html>
