@@ -80,6 +80,7 @@
         Papa.parse(arquivo, {
           header: true,
           skipEmptyLines: true,
+          delimiter: ";",
           complete: function(results) {
             const dados = results.data;
             const resumo = {};
@@ -87,8 +88,8 @@
             dados.forEach(linha => {
               const forma = linha["Forma de Pagamento"]?.trim() || "-";
               const bandeira = linha["Bandeira"]?.trim() || "-";
-              const bruto = parseFloat(linha["Valor Bruto (R$)"]?.replace("R$", "").replace(",", ".") || 0);
-              const liquido = parseFloat(linha["Valor Líquido (R$)"]?.replace("R$", "").replace(",", ".") || 0);
+              const bruto = parseFloat((linha["Valor Bruto (R$)"] || "0").replace("R$", "").replace(/\./g, "").replace(",", "."));
+              const liquido = parseFloat((linha["Valor Líquido (R$)"] || "0").replace("R$", "").replace(/\./g, "").replace(",", "."));
 
               if (!bruto || isNaN(bruto)) return;
 
