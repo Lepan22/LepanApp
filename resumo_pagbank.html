@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Resumo Venda PagBank</title>
+  <title>Resumo Vendas PagBank</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -88,8 +88,16 @@
             dados.forEach(linha => {
               const forma = linha["Forma de Pagamento"]?.trim() || "-";
               const bandeira = linha["Bandeira"]?.trim() || "-";
-              const bruto = parseFloat((linha["Valor Bruto (R$)"] || "0").replace("R$", "").replace(/\./g, "").replace(",", "."));
-              const liquido = parseFloat((linha["Valor Líquido (R$)"] || "0").replace("R$", "").replace(/\./g, "").replace(",", "."));
+
+              const bruto = parseFloat((linha["Valor Bruto (R$)"] || "0")
+                .replace("R$", "")
+                .replace(/\./g, "")
+                .replace(",", "."));
+
+              const liquido = parseFloat((linha["Valor Líquido (R$)"] || "0")
+                .replace("R$", "")
+                .replace(/\./g, "")
+                .replace(",", "."));
 
               if (!bruto || isNaN(bruto)) return;
 
