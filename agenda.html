@@ -39,10 +39,11 @@
 
     let mesAtual = new Date();
     let eventos = [];
+    let diasIndisponiveis = new Set();
 
     function mudarMes(delta) {
       mesAtual.setMonth(mesAtual.getMonth() + delta);
-      atualizarInterface();
+      carregarDados();
     }
 
     async function carregarDados() {
@@ -53,6 +54,23 @@
         evento.id = child.key;
         eventos.push(evento);
       });
+
+      const indisponiveisSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
+      diasIndisponiveis = new Set();
+
+      indisponiveisSnap.forEach(child => {
+        const item = child.val();
+        if (item.tipo === 'único' && item.data) {
+          diasIndisponiveis.add(item.data);
+        } else if (item.tipo === 'período' && item.inicio && item.fim) {
+          const inicio = new Date(item.inicio);
+          const fim = new Date(item.fim);
+          for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
+            diasIndisponiveis.add(d.toISOString().split('T')[0]);
+          }
+        }
+      });
+
       atualizarInterface();
     }
 
@@ -77,13 +95,11 @@
       const primeiroDia = new Date(ano, mes, 1);
       const ultimoDia = new Date(ano, mes + 1, 0);
       const diaSemanaInicio = primeiroDia.getDay();
-
       for (let i = 0; i < diaSemanaInicio; i++) {
         calendario.appendChild(document.createElement('div'));
       }
 
       const semanaAtual = getSemanaAtual();
-
       for (let dia = 1; dia <= ultimoDia.getDate(); dia++) {
         const data = new Date(ano, mes, dia);
         const dataStr = data.toISOString().split('T')[0];
@@ -92,6 +108,7 @@
         divDia.dataset.data = dataStr;
 
         if (semanaAtual.includes(dataStr)) divDia.classList.add('semana-atual');
+        if (diasIndisponiveis.has(dataStr)) divDia.classList.add('dia-indisponivel');
 
         divDia.addEventListener('dragover', e => e.preventDefault());
         divDia.addEventListener('drop', eventDrop);
@@ -152,14 +169,71 @@
   </script>
 
   <style>
-    .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; cursor: pointer; border-radius: 5px; font-size: 12px; margin: 0 5px; }
-    .btn-navegar:hover { background-color: #e96f00; }
-    .calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
-    .dia { border: 1px solid #ddd; border-radius: 4px; padding: 4px; min-height: 60px; font-size: 8px; display: flex; flex-direction: column; justify-content: flex-start; }
-    .cabecalho { font-weight: bold; background-color: #f2f2f2; text-align: center; }
-    .semana-atual { background-color: #ffe0b2; }
-    .evento-dia { font-size: 7px; margin-top: 2px; background: #ff7f00; color: white; border-radius: 3px; padding: 1px; cursor: grab; }
-    .card-dashboard { background-color: white; border-radius: 8px; padding: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .btn-navegar {
+      background-color: #ff7f00;
+      color: white;
+      padding: 6px 10px;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+      font-size: 12px;
+      margin: 0 5px;
+    }
+
+    .btn-navegar:hover {
+      background-color: #e96f00;
+    }
+
+    .calendario {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+      margin-top: 10px;
+    }
+
+    .dia {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 4px;
+      min-height: 60px;
+      font-size: 8px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .cabecalho {
+      font-weight: bold;
+      background-color: #f2f2f2;
+      text-align: center;
+    }
+
+    .semana-atual {
+      background-color: #ffe0b2;
+    }
+
+    .evento-dia {
+      font-size: 7px;
+      margin-top: 2px;
+      background: #ff7f00;
+      color: white;
+      border-radius: 3px;
+      padding: 1px;
+      cursor: grab;
+    }
+
+    .dia-indisponivel {
+      background-color: #f8f8f8;
+      border: 2px dashed red;
+    }
+
+    .card-dashboard {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
   </style>
 </body>
 </html>
