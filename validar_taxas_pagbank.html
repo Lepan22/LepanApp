@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Validar Taxas - PagBank</title>
+  <title>Validação de Taxas - PagBank</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -54,6 +54,15 @@
     const db = firebase.database();
     let taxasCadastradas = [];
 
+    function normalizar(texto) {
+      return (texto || "")
+        .toString()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "");
+    }
+
     function carregarTaxas(callback) {
       db.ref("configuracao/taxas").once("value").then(snapshot => {
         const lista = [];
@@ -69,22 +78,23 @@
                         tipo.toLowerCase().includes("pix") ? "pix" : "";
 
       const empresa = "pagbank";
+      const bandeiraNormalizada = normalizar(bandeira);
 
-      // Busca taxa específica
-      let entrada = taxasCadastradas.find(t =>
-        t.empresa.toLowerCase().includes(empresa) &&
-        t.bandeira.toLowerCase() === bandeira.toLowerCase()
+      // 1. Procura taxa exata
+      const taxaExata = taxasCadastradas.find(t =>
+        normalizar(t.empresa).includes(empresa) &&
+        normalizar(t.bandeira) === bandeiraNormalizada
       );
 
-      // Se não achar, tenta "Outras"
-      if (!entrada) {
-        entrada = taxasCadastradas.find(t =>
-          t.empresa.toLowerCase().includes(empresa) &&
-          t.bandeira.toLowerCase() === "outras"
-        );
-      }
+      if (taxaExata) return parseFloat(taxaExata[tipoChave] || 0);
 
-      return entrada ? parseFloat(entrada[tipoChave] || 0) : 0;
+      // 2. Fallback: taxa "Outras"
+      const taxaOutras = taxasCadastradas.find(t =>
+        normalizar(t.empresa).includes(empresa) &&
+        normalizar(t.bandeira) === "outras"
+      );
+
+      return taxaOutras ? parseFloat(taxaOutras[tipoChave] || 0) : 0;
     }
 
     function validarCSV(arquivo) {
