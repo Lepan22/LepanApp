@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Validação Taxas - Infinity Pay</title>
+  <title>Validação de Taxas - Infinity Pay</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -28,6 +28,7 @@
         <thead>
           <tr>
             <th>Tipo</th>
+            <th>Bandeira</th>
             <th>Bruto (R$)</th>
             <th>Líquido (R$)</th>
             <th>Taxa Aplicada (%)</th>
@@ -62,6 +63,14 @@
         .replace(/[^a-z0-9]/g, "");
     }
 
+    function corrigirCodificacao(texto) {
+      try {
+        return new TextDecoder("utf-8").decode(new TextEncoder().encode(texto));
+      } catch {
+        return texto;
+      }
+    }
+
     function carregarTaxas(callback) {
       db.ref("configuracao/taxas").once("value").then(snapshot => {
         taxasCadastradas = [];
@@ -72,28 +81,29 @@
       });
     }
 
-    function buscarTaxaContratada(tipo) {
-      const tipoLimpo = normalizar(tipo);
-      const tipoChave = tipoLimpo.includes("debito") ? "debito" :
-                        tipoLimpo.includes("credito") ? "credito" :
-                        tipoLimpo.includes("pix") ? "pix" : "";
+    function buscarTaxaContratada(bandeira, tipo) {
+      const tipoChave = normalizar(tipo).includes("debito") ? "debito" :
+                        normalizar(tipo).includes("credito") ? "credito" :
+                        normalizar(tipo).includes("pix") ? "pix" : "";
 
       const empresa = "infinity";
+      const bandeiraLimpa = normalizar(bandeira);
 
-      const taxa = taxasCadastradas.find(t =>
+      // 1. Procura taxa específica
+      const taxaExata = taxasCadastradas.find(t =>
+        normalizar(t.empresa).includes(empresa) &&
+        normalizar(t.bandeira) === bandeiraLimpa
+      );
+
+      if (taxaExata) return parseFloat(taxaExata[tipoChave] || 0);
+
+      // 2. Fallback: "Outras"
+      const taxaOutras = taxasCadastradas.find(t =>
         normalizar(t.empresa).includes(empresa) &&
         normalizar(t.bandeira) === "outras"
       );
 
-      return taxa ? parseFloat(taxa[tipoChave] || 0) : 0;
-    }
-
-    function corrigirCodificacao(texto) {
-      try {
-        return decodeURIComponent(escape(texto));
-      } catch {
-        return texto;
-      }
+      return taxaOutras ? parseFloat(taxaOutras[tipoChave] || 0) : 0;
     }
 
     function validarCSV(arquivo) {
@@ -108,8 +118,8 @@
             corpo.innerHTML = "";
 
             dados.forEach(linha => {
-              const tipoRaw = linha["Método"]?.trim() || "-";
-              const tipo = corrigirCodificacao(tipoRaw);
+              const tipo = corrigirCodificacao(linha["Meio"]?.trim() || "-");
+              const bandeira = corrigirCodificacao(linha["Bandeira"]?.trim() || "-");
 
               const bruto = parseFloat((linha["Valor Bruto"] || linha["Valor (R$)"] || "0")
                 .replace("R$", "").replace(/\./g, "").replace(",", "."));
@@ -119,7 +129,7 @@
               if (!bruto || isNaN(bruto) || !liquido || isNaN(liquido)) return;
 
               const taxaAplicada = ((bruto - liquido) / bruto) * 100;
-              const taxaContratada = buscarTaxaContratada(tipo);
+              const taxaContratada = buscarTaxaContratada(bandeira, tipo);
               const diferenca = taxaAplicada - taxaContratada;
               const status = Math.abs(diferenca) > 0.5 ? "Alerta" : "OK";
 
@@ -128,6 +138,7 @@
 
               tr.innerHTML = `
                 <td>${tipo}</td>
+                <td>${bandeira}</td>
                 <td>R$ ${bruto.toFixed(2)}</td>
                 <td>R$ ${liquido.toFixed(2)}</td>
                 <td>${taxaAplicada.toFixed(2)}%</td>
