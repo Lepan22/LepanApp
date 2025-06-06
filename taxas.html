@@ -17,7 +17,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 10px;
+      margin-top: 20px;
     }
     th, td {
       border: 1px solid #ccc;
@@ -28,20 +28,20 @@
       background-color: #ffcc80;
     }
     input {
-      width: 80px;
-      text-align: right;
+      width: 100px;
+      text-align: center;
     }
-    button {
-      margin-top: 10px;
-      padding: 8px 16px;
+    .acoes button {
+      margin: 0 4px;
     }
   </style>
 </head>
 <body>
   <div class="menu-lateral"></div>
   <div class="container">
-    <h2>Configuração de Taxas por Empresa e Bandeira</h2>
-    <table id="tabelaTaxas">
+    <h2>Cadastro de Taxas por Empresa e Bandeira</h2>
+
+    <table>
       <thead>
         <tr>
           <th>Empresa</th>
@@ -49,50 +49,109 @@
           <th>Débito (%)</th>
           <th>Crédito (%)</th>
           <th>PIX (%)</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td><input value="PagBank" /></td>
-          <td><input value="Visa" /></td>
-          <td><input type="number" step="0.01" value="2.10" /></td>
-          <td><input type="number" step="0.01" value="4.20" /></td>
-          <td><input type="number" step="0.01" value="0.99" /></td>
-        </tr>
-        <tr>
-          <td><input value="Infinity" /></td>
-          <td><input value="Elo" /></td>
-          <td><input type="number" step="0.01" value="1.80" /></td>
-          <td><input type="number" step="0.01" value="3.90" /></td>
-          <td><input type="number" step="0.01" value="0.00" /></td>
+          <td><input id="empresa" /></td>
+          <td><input id="bandeira" /></td>
+          <td><input id="debito" type="number" step="0.01" /></td>
+          <td><input id="credito" type="number" step="0.01" /></td>
+          <td><input id="pix" type="number" step="0.01" /></td>
+          <td><button onclick="adicionarTaxa()">Salvar</button></td>
         </tr>
       </tbody>
     </table>
-    <button onclick="salvarTaxas()">Salvar Taxas</button>
+
+    <h3 style="margin-top:30px;">Taxas Cadastradas</h3>
+    <table id="listaTaxas">
+      <thead>
+        <tr>
+          <th>Empresa</th>
+          <th>Bandeira</th>
+          <th>Débito (%)</th>
+          <th>Crédito (%)</th>
+          <th>PIX (%)</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
   <script>
     const db = firebase.database();
+    let taxasRef = db.ref("configuracao/taxas");
 
-    function salvarTaxas() {
-      const linhas = document.querySelectorAll("#tabelaTaxas tbody tr");
-      const taxas = [];
+    function carregarTaxas() {
+      taxasRef.once("value", snapshot => {
+        const corpo = document.querySelector("#listaTaxas tbody");
+        corpo.innerHTML = "";
 
-      linhas.forEach(linha => {
-        const cells = linha.querySelectorAll("input");
-        taxas.push({
-          empresa: cells[0].value.trim(),
-          bandeira: cells[1].value.trim(),
-          debito: parseFloat(cells[2].value) || 0,
-          credito: parseFloat(cells[3].value) || 0,
-          pix: parseFloat(cells[4].value) || 0,
+        const taxas = snapshot.val() || {};
+        Object.entries(taxas).forEach(([id, taxa]) => {
+          const tr = document.createElement("tr");
+
+          tr.innerHTML = `
+            <td>${taxa.empresa}</td>
+            <td>${taxa.bandeira}</td>
+            <td>${taxa.debito.toFixed(2)}</td>
+            <td>${taxa.credito.toFixed(2)}</td>
+            <td>${taxa.pix.toFixed(2)}</td>
+            <td class="acoes">
+              <button onclick="editarTaxa('${id}')">Editar</button>
+              <button onclick="excluirTaxa('${id}')">Excluir</button>
+            </td>
+          `;
+          corpo.appendChild(tr);
         });
       });
-
-      db.ref("configuracao/taxas").set(taxas)
-        .then(() => alert("Taxas salvas com sucesso!"))
-        .catch(err => alert("Erro ao salvar: " + err));
     }
+
+    function adicionarTaxa() {
+      const empresa = document.getElementById("empresa").value.trim();
+      const bandeira = document.getElementById("bandeira").value.trim();
+      const debito = parseFloat(document.getElementById("debito").value) || 0;
+      const credito = parseFloat(document.getElementById("credito").value) || 0;
+      const pix = parseFloat(document.getElementById("pix").value) || 0;
+
+      if (!empresa || !bandeira) {
+        alert("Preencha todos os campos!");
+        return;
+      }
+
+      const novaRef = taxasRef.push();
+      novaRef.set({ empresa, bandeira, debito, credito, pix })
+        .then(() => {
+          document.getElementById("empresa").value = "";
+          document.getElementById("bandeira").value = "";
+          document.getElementById("debito").value = "";
+          document.getElementById("credito").value = "";
+          document.getElementById("pix").value = "";
+          carregarTaxas();
+        });
+    }
+
+    function excluirTaxa(id) {
+      if (confirm("Deseja excluir esta taxa?")) {
+        taxasRef.child(id).remove().then(carregarTaxas);
+      }
+    }
+
+    function editarTaxa(id) {
+      taxasRef.child(id).once("value").then(snapshot => {
+        const t = snapshot.val();
+        document.getElementById("empresa").value = t.empresa;
+        document.getElementById("bandeira").value = t.bandeira;
+        document.getElementById("debito").value = t.debito;
+        document.getElementById("credito").value = t.credito;
+        document.getElementById("pix").value = t.pix;
+        excluirTaxa(id);
+      });
+    }
+
+    carregarTaxas();
   </script>
 </body>
 </html>
