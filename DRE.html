@@ -229,9 +229,30 @@
         });
 
         for (let categoria in resumo) {
-          const total = Object.values(resumo[categoria]).reduce((s, v) => s + v, 0);
-          const media = categoria.includes("%") ? total / 12 : total;
-          html += `<tr class="grupo"><td>${categoria}</td><td>${categoria.includes("%") ? formatarPercentual(media) : formatarMoeda(media)}</td>`;
+          let total = 0;
+          let totalReceita = 0;
+
+          if (categoria === "Margem Bruta (%)") {
+            for (let m = 1; m <= 12; m++) {
+              total += (resumo["Lucro Venda"][m] || 0);
+              totalReceita += (estrutura["Receita"] ? totais["Receita"][m] || 0 : 0);
+            }
+          } else if (categoria === "Margem Operacional (%)") {
+            for (let m = 1; m <= 12; m++) {
+              total += (resumo["Lucro Operacional"][m] || 0);
+              totalReceita += (estrutura["Receita"] ? totais["Receita"][m] || 0 : 0);
+            }
+          } else if (categoria === "Margem Líquida (%)") {
+            for (let m = 1; m <= 12; m++) {
+              total += (resumo["Lucro Líquido"][m] || 0);
+              totalReceita += (estrutura["Receita"] ? totais["Receita"][m] || 0 : 0);
+            }
+          } else {
+            total = Object.values(resumo[categoria]).reduce((s, v) => s + v, 0);
+          }
+
+          const valorTotal = categoria.includes("%") ? (totalReceita ? (total / totalReceita) * 100 : 0) : total;
+          html += `<tr class="grupo"><td>${categoria}</td><td>${categoria.includes("%") ? formatarPercentual(valorTotal) : formatarMoeda(valorTotal)}</td>`;
           for (let m = 1; m <= 12; m++) {
             const val = resumo[categoria][m] || 0;
             html += `<td>${categoria.includes("%") ? formatarPercentual(val) : formatarMoeda(val)}</td>`;
