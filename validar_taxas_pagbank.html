@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ValidaR de Taxas - PagBank</title>
+  <title>Validação de Taxas - PagBank</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -65,17 +65,19 @@
 
     function carregarTaxas(callback) {
       db.ref("configuracao/taxas").once("value").then(snapshot => {
-        const lista = [];
-        snapshot.forEach(child => lista.push(child.val()));
-        taxasCadastradas = lista;
+        taxasCadastradas = [];
+        snapshot.forEach(child => {
+          taxasCadastradas.push(child.val());
+        });
         if (callback) callback();
       });
     }
 
     function buscarTaxaContratada(bandeira, tipo) {
-      const tipoChave = tipo.toLowerCase().includes("débito") ? "debito" :
-                        tipo.toLowerCase().includes("crédito") ? "credito" :
-                        tipo.toLowerCase().includes("pix") ? "pix" : "";
+      const tipoLimpo = normalizar(tipo);
+      const tipoChave = tipoLimpo.includes("debito") ? "debito" :
+                        tipoLimpo.includes("credito") ? "credito" :
+                        tipoLimpo.includes("pix") ? "pix" : "";
 
       const empresa = "pagbank";
       const bandeiraNormalizada = normalizar(bandeira);
