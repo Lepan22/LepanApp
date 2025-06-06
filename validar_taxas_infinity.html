@@ -63,14 +63,6 @@
         .replace(/[^a-z0-9]/g, "");
     }
 
-    function corrigirCodificacao(texto) {
-      try {
-        return new TextDecoder("utf-8").decode(new TextEncoder().encode(texto));
-      } catch {
-        return texto;
-      }
-    }
-
     function carregarTaxas(callback) {
       db.ref("configuracao/taxas").once("value").then(snapshot => {
         taxasCadastradas = [];
@@ -89,7 +81,6 @@
       const empresa = "infinity";
       const bandeiraLimpa = normalizar(bandeira);
 
-      // 1. Procura taxa específica
       const taxaExata = taxasCadastradas.find(t =>
         normalizar(t.empresa).includes(empresa) &&
         normalizar(t.bandeira) === bandeiraLimpa
@@ -97,7 +88,6 @@
 
       if (taxaExata) return parseFloat(taxaExata[tipoChave] || 0);
 
-      // 2. Fallback: "Outras"
       const taxaOutras = taxasCadastradas.find(t =>
         normalizar(t.empresa).includes(empresa) &&
         normalizar(t.bandeira) === "outras"
@@ -118,12 +108,12 @@
             corpo.innerHTML = "";
 
             dados.forEach(linha => {
-              const tipo = corrigirCodificacao(linha["Meio"]?.trim() || "-");
-              const bandeira = corrigirCodificacao(linha["Bandeira"]?.trim() || "-");
+              const tipo = linha["Meio - Meio"]?.trim() || "-";
+              const bandeira = linha["Meio - Bandeira"]?.trim() || "-";
 
-              const bruto = parseFloat((linha["Valor Bruto"] || linha["Valor (R$)"] || "0")
+              const bruto = parseFloat((linha["Valor (R$)"] || "0")
                 .replace("R$", "").replace(/\./g, "").replace(",", "."));
-              const liquido = parseFloat((linha["Valor Líquido"] || linha["Líquido (R$)"] || "0")
+              const liquido = parseFloat((linha["Líquido (R$)"] || "0")
                 .replace("R$", "").replace(/\./g, "").replace(",", "."));
 
               if (!bruto || isNaN(bruto) || !liquido || isNaN(liquido)) return;
