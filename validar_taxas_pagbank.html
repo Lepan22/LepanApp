@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Validação de Taxas - PagBank</title>
+  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script defer src="assets/menu.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <style>
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    th { background-color: #ffcc80; }
+    input[type="file"] { margin-top: 10px; }
+    .erro { background-color: #ffe0e0; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="sidebar" id="menuLateral"></div>
+    <div class="main-content">
+      <h2>Validação de Taxas PagBank</h2>
+      <input type="file" accept=".csv" onchange="validarCSV(this.files[0])">
+      <table id="tabelaValidacao">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Bandeira</th>
+            <th>Bruto (R$)</th>
+            <th>Líquido (R$)</th>
+            <th>Taxa Aplicada (%)</th>
+            <th>Taxa Contratada (%)</th>
+            <th>Diferença (%)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    let taxasCadastradas = [];
+
+    function carregarTaxas(callback) {
+      db.ref("configuracao/taxas").once("value").then(snapshot => {
+        const lista = [];
+        snapshot.forEach(child => lista.push(child.val()));
+        taxasCadastradas = lista;
+        if (callback) callback();
+      });
+    }
+
+    function buscarTaxaContratada(bandeira, tipo) {
+      const tipoChave = tipo.toLowerCase().includes("débito") ? "debito" :
+                        tipo.toLowerCase().includes("crédito") ? "credito" :
+                        tipo.toLowerCase().includes("pix") ? "pix" : "";
+      const resultado = taxasCadastradas.find(t =>
+        t.empresa.toLowerCase() === "pagbank" &&
+        t.bandeira.toLowerCase() === bandeira.toLowerCase()
+      );
+      return resultado ? parseFloat(resultado[tipoChave] || 0) : 0;
+    }
+
+    function validarCSV(arquivo) {
+      carregarTaxas(() => {
+        Papa.parse(arquivo, {
+          header: true,
+          skipEmptyLines: true,
+          delimiter: ";",
+          complete: function(result) {
+            const dados = result.data;
+            const corpo = document.querySelector("#tabelaValidacao tbody");
+            corpo.innerHTML = "";
+
+            dados.forEach(linha => {
+              const tipo = linha["Forma de Pagamento"]?.trim() || "-";
+              const bandeira = linha["Bandeira"]?.trim() || "-";
+
+              const bruto = parseFloat((linha["Valor Bruto"] || linha["Valor Bruto (R$)"] || "0")
+                .replace("R$", "").replace(/\./g, "").replace(",", "."));
+              const liquido = parseFloat((linha["Valor Líquido"] || linha["Valor Líquido (R$)"] || "0")
+                .replace("R$", "").replace(/\./g, "").replace(",", "."));
+
+              if (!bruto || isNaN(bruto) || !liquido || isNaN(liquido)) return;
+
+              const taxaAplicada = ((bruto - liquido) / bruto) * 100;
+              const taxaContratada = buscarTaxaContratada(bandeira, tipo);
+              const diferenca = taxaAplicada - taxaContratada;
+              const status = Math.abs(diferenca) > 0.5 ? "Alerta" : "OK";
+
+              const tr = document.createElement("tr");
+              if (status === "Alerta") tr.classList.add("erro");
+
+              tr.innerHTML = `
+                <td>${tipo}</td>
+                <td>${bandeira}</td>
+                <td>R$ ${bruto.toFixed(2)}</td>
+                <td>R$ ${liquido.toFixed(2)}</td>
+                <td>${taxaAplicada.toFixed(2)}%</td>
+                <td>${taxaContratada.toFixed(2)}%</td>
+                <td>${diferenca.toFixed(2)}%</td>
+                <td>${status}</td>
+              `;
+              corpo.appendChild(tr);
+            });
+          }
+        });
+      });
+    }
+  </script>
+</body>
+</html>
