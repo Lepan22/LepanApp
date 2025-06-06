@@ -67,11 +67,24 @@
       const tipoChave = tipo.toLowerCase().includes("débito") ? "debito" :
                         tipo.toLowerCase().includes("crédito") ? "credito" :
                         tipo.toLowerCase().includes("pix") ? "pix" : "";
-      const resultado = taxasCadastradas.find(t =>
-        t.empresa.toLowerCase() === "pagbank" &&
+
+      const empresa = "pagbank";
+
+      // Busca taxa específica
+      let entrada = taxasCadastradas.find(t =>
+        t.empresa.toLowerCase().includes(empresa) &&
         t.bandeira.toLowerCase() === bandeira.toLowerCase()
       );
-      return resultado ? parseFloat(resultado[tipoChave] || 0) : 0;
+
+      // Se não achar, tenta "Outras"
+      if (!entrada) {
+        entrada = taxasCadastradas.find(t =>
+          t.empresa.toLowerCase().includes(empresa) &&
+          t.bandeira.toLowerCase() === "outras"
+        );
+      }
+
+      return entrada ? parseFloat(entrada[tipoChave] || 0) : 0;
     }
 
     function validarCSV(arquivo) {
