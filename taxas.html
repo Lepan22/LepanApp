@@ -6,7 +6,6 @@
   <title>Configuração de Taxas</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
-  <script type="module" src="assets/firebase-config.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script defer src="assets/menu.js"></script>
@@ -81,11 +80,18 @@
   </div>
 
   <script>
-    const db = firebase.database();
-    let taxasRef = db.ref("configuracao/taxas");
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database().ref("configuracao/taxas");
 
     function carregarTaxas() {
-      taxasRef.once("value", snapshot => {
+      db.once("value").then(snapshot => {
         const corpo = document.querySelector("#listaTaxas tbody");
         corpo.innerHTML = "";
 
@@ -121,7 +127,7 @@
         return;
       }
 
-      const novaRef = taxasRef.push();
+      const novaRef = db.push();
       novaRef.set({ empresa, bandeira, debito, credito, pix })
         .then(() => {
           document.getElementById("empresa").value = "";
@@ -135,12 +141,12 @@
 
     function excluirTaxa(id) {
       if (confirm("Deseja excluir esta taxa?")) {
-        taxasRef.child(id).remove().then(carregarTaxas);
+        db.child(id).remove().then(carregarTaxas);
       }
     }
 
     function editarTaxa(id) {
-      taxasRef.child(id).once("value").then(snapshot => {
+      db.child(id).once("value").then(snapshot => {
         const t = snapshot.val();
         document.getElementById("empresa").value = t.empresa;
         document.getElementById("bandeira").value = t.bandeira;
@@ -151,7 +157,7 @@
       });
     }
 
-    carregarTaxas();
+    document.addEventListener("DOMContentLoaded", carregarTaxas);
   </script>
 </body>
 </html>
