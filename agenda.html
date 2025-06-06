@@ -39,7 +39,7 @@
 
     let mesAtual = new Date();
     let eventos = [];
-    let diasIndisponiveis = new Set();
+    let mapaIndisponiveis = {}; // data => motivo
 
     function mudarMes(delta) {
       mesAtual.setMonth(mesAtual.getMonth() + delta);
@@ -56,17 +56,18 @@
       });
 
       const indisponiveisSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
-      diasIndisponiveis = new Set();
+      mapaIndisponiveis = {};
 
       indisponiveisSnap.forEach(child => {
         const item = child.val();
         if (item.tipo === 'único' && item.data) {
-          diasIndisponiveis.add(item.data);
+          mapaIndisponiveis[item.data] = item.motivo;
         } else if (item.tipo === 'período' && item.inicio && item.fim) {
           const inicio = new Date(item.inicio);
           const fim = new Date(item.fim);
           for (let d = new Date(inicio); d <= fim; d.setDate(d.getDate() + 1)) {
-            diasIndisponiveis.add(d.toISOString().split('T')[0]);
+            const dataStr = d.toISOString().split('T')[0];
+            mapaIndisponiveis[dataStr] = item.motivo;
           }
         }
       });
@@ -108,7 +109,7 @@
         divDia.dataset.data = dataStr;
 
         if (semanaAtual.includes(dataStr)) divDia.classList.add('semana-atual');
-        if (diasIndisponiveis.has(dataStr)) divDia.classList.add('dia-indisponivel');
+        if (mapaIndisponiveis[dataStr]) divDia.classList.add('dia-indisponivel');
 
         divDia.addEventListener('dragover', e => e.preventDefault());
         divDia.addEventListener('drop', eventDrop);
@@ -117,12 +118,39 @@
         numeroDia.textContent = dia;
         divDia.appendChild(numeroDia);
 
+        if (mapaIndisponiveis[dataStr]) {
+          const motivoDiv = document.createElement('div');
+          motivoDiv.className = 'motivo-indisponivel';
+          motivoDiv.textContent = mapaIndisponiveis[dataStr];
+          divDia.appendChild(motivoDiv);
+        }
+
         eventos.filter(ev => ev.data === dataStr).forEach(ev => {
           const eventoDiv = document.createElement('div');
           eventoDiv.classList.add('evento-dia');
-          eventoDiv.textContent = ev.nomeEvento || 'Sem nome';
           eventoDiv.setAttribute('draggable', true);
           eventoDiv.dataset.eventoId = ev.id;
+
+          const texto = document.createElement('span');
+          texto.textContent = ev.nomeEvento || 'Sem nome';
+
+          const botaoDup = document.createElement('span');
+          botaoDup.textContent = '➕';
+          botaoDup.classList.add('botao-duplicar');
+          botaoDup.title = "Duplicar Evento";
+          botaoDup.onclick = () => {
+            if (confirm("Deseja duplicar este evento?")) {
+              const novo = { ...ev };
+              delete novo.id;
+              db.ref('eventos').push(novo).then(() => {
+                alert("Evento duplicado com sucesso!");
+                carregarDados();
+              });
+            }
+          };
+
+          eventoDiv.appendChild(texto);
+          eventoDiv.appendChild(botaoDup);
 
           eventoDiv.addEventListener('dragstart', e => {
             e.dataTransfer.setData('eventoId', ev.id);
@@ -218,13 +246,29 @@
       background: #ff7f00;
       color: white;
       border-radius: 3px;
-      padding: 1px;
+      padding: 1px 3px;
       cursor: grab;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .botao-duplicar {
+      margin-left: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 10px;
     }
 
     .dia-indisponivel {
       background-color: #f8f8f8;
       border: 2px dashed red;
+    }
+
+    .motivo-indisponivel {
+      font-size: 7px;
+      color: red;
+      margin-top: 2px;
     }
 
     .card-dashboard {
