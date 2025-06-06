@@ -76,18 +76,24 @@
       const tipoLimpo = normalizar(tipo);
       const tipoChave = tipoLimpo.includes("debito") ? "debito" :
                         tipoLimpo.includes("credito") ? "credito" :
-                        tipoLimpo.includes("pix") ? "pix" :
-                        tipoLimpo.includes("dinheiro") ? "pix" : "";
+                        tipoLimpo.includes("pix") ? "pix" : "";
 
       const empresa = "infinity";
 
-      // 1. Procura taxa exata
       const taxa = taxasCadastradas.find(t =>
         normalizar(t.empresa).includes(empresa) &&
         normalizar(t.bandeira) === "outras"
       );
 
       return taxa ? parseFloat(taxa[tipoChave] || 0) : 0;
+    }
+
+    function corrigirCodificacao(texto) {
+      try {
+        return decodeURIComponent(escape(texto));
+      } catch {
+        return texto;
+      }
     }
 
     function validarCSV(arquivo) {
@@ -102,11 +108,12 @@
             corpo.innerHTML = "";
 
             dados.forEach(linha => {
-              const tipo = linha["Meio"]?.trim() || "-";
+              const tipoRaw = linha["Método"]?.trim() || "-";
+              const tipo = corrigirCodificacao(tipoRaw);
 
-              const bruto = parseFloat((linha["Valor (R$)"] || "0")
+              const bruto = parseFloat((linha["Valor Bruto"] || linha["Valor (R$)"] || "0")
                 .replace("R$", "").replace(/\./g, "").replace(",", "."));
-              const liquido = parseFloat((linha["Líquido (R$)"] || "0")
+              const liquido = parseFloat((linha["Valor Líquido"] || linha["Líquido (R$)"] || "0")
                 .replace("R$", "").replace(/\./g, "").replace(",", "."));
 
               if (!bruto || isNaN(bruto) || !liquido || isNaN(liquido)) return;
