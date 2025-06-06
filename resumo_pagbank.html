@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Importação PagBank</title>
+  <title>Importação dPagBank</title>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script defer src="assets/menu.js"></script>
@@ -53,8 +53,8 @@
               <td>${linha["Data da Transação"] || ""}</td>
               <td>${linha["Forma de Pagamento"] || ""}</td>
               <td>${linha["Bandeira"] || ""}</td>
-              <td>${linha["Valor Bruto (R$)"] || ""}</td>
-              <td>${linha["Valor Líquido (R$)"] || ""}</td>
+              <td>${linha["Valor Bruto"] || linha["Valor Bruto (R$)"] || ""}</td>
+              <td>${linha["Valor Líquido"] || linha["Valor Líquido (R$)"] || ""}</td>
             `;
             corpo.appendChild(tr);
           });
