@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resumo Vendas PagBank</title>
+  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script defer src="assets/menu.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+  <style>
+    .container { padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    th { background-color: #ffcc80; }
+    input[type="file"] { margin-top: 10px; }
+    .divergente { background-color: #ffe0e0; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="sidebar" id="menuLateral"></div>
+    <div class="main-content">
+      <h2>Resumo de Vendas - PagBank</h2>
+      <input type="file" accept=".csv" onchange="processarArquivo(this.files[0])">
+      <table id="resumoTable">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Bandeira</th>
+            <th>Bruto (R$)</th>
+            <th>Taxa (%)</th>
+            <th>Líquido Esperado</th>
+            <th>Líquido Real</th>
+            <th>Diferença</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let taxasCadastradas = [];
+
+    function carregarTaxas(callback) {
+      db.ref("configuracao/taxas").once("value").then(snapshot => {
+        const lista = [];
+        snapshot.forEach(child => {
+          lista.push(child.val());
+        });
+        taxasCadastradas = lista;
+        if (callback) callback();
+      });
+    }
+
+    function buscarTaxa(empresa, bandeira, tipo) {
+      const achada = taxasCadastradas.find(t => 
+        t.empresa.toLowerCase() === empresa.toLowerCase() && 
+        t.bandeira.toLowerCase() === (bandeira || '').toLowerCase()
+      );
+      if (!achada) return 0;
+      return parseFloat(achada[tipo] || 0);
+    }
+
+    function processarArquivo(arquivo) {
+      carregarTaxas(() => {
+        Papa.parse(arquivo, {
+          header: true,
+          skipEmptyLines: true,
+          complete: function(results) {
+            const dados = results.data;
+            const resumo = {};
+
+            dados.forEach(linha => {
+              const forma = linha["Forma de Pagamento"]?.trim() || "-";
+              const bandeira = linha["Bandeira"]?.trim() || "-";
+              const bruto = parseFloat(linha["Valor Bruto (R$)"]?.replace("R$", "").replace(",", ".") || 0);
+              const liquido = parseFloat(linha["Valor Líquido (R$)"]?.replace("R$", "").replace(",", ".") || 0);
+
+              if (!bruto || isNaN(bruto)) return;
+
+              const chave = `${forma}|${bandeira}`;
+              if (!resumo[chave]) {
+                resumo[chave] = { forma, bandeira, bruto: 0, liquido: 0 };
+              }
+
+              resumo[chave].bruto += bruto;
+              resumo[chave].liquido += liquido;
+            });
+
+            mostrarResumo(Object.values(resumo));
+          }
+        });
+      });
+    }
+
+    function mostrarResumo(lista) {
+      const corpo = document.querySelector("#resumoTable tbody");
+      corpo.innerHTML = "";
+
+      lista.forEach(item => {
+        const tipo = item.forma.toLowerCase().includes("débito") ? "debito" :
+                     item.forma.toLowerCase().includes("crédito") ? "credito" :
+                     item.forma.toLowerCase().includes("pix") ? "pix" : "outro";
+
+        const taxa = buscarTaxa("PagBank", item.bandeira, tipo);
+        const liquidoEsperado = item.bruto * (1 - taxa / 100);
+        const diferenca = item.liquido - liquidoEsperado;
+        const status = Math.abs(diferenca) <= 1 ? "OK" : "Divergente";
+
+        const tr = document.createElement("tr");
+        if (status === "Divergente") tr.classList.add("divergente");
+
+        tr.innerHTML = `
+          <td>${item.forma}</td>
+          <td>${item.bandeira}</td>
+          <td>R$ ${item.bruto.toFixed(2)}</td>
+          <td>${taxa.toFixed(2)}%</td>
+          <td>R$ ${liquidoEsperado.toFixed(2)}</td>
+          <td>R$ ${item.liquido.toFixed(2)}</td>
+          <td>R$ ${diferenca.toFixed(2)}</td>
+          <td>${status}</td>
+        `;
+        corpo.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
