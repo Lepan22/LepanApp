@@ -87,9 +87,8 @@ function aplicarFiltros() {
 
 function calcularKPIs() {
   const hoje = new Date();
-  const currentMonthPath = `${hoje.getFullYear()}_${String(hoje.getMonth() + 1).padStart(2, '0')}`;
   const semanaInicio = new Date(hoje);
-  semanaInicio.setDate(semanaInicio.getDate() - semanaInicio.getDay() +1);
+  semanaInicio.setDate(semanaInicio.getDate() - semanaInicio.getDay() + 1);
   const semanaFim = new Date(semanaInicio);
   semanaFim.setDate(semanaFim.getDate() + 7);
 
@@ -97,16 +96,13 @@ function calcularKPIs() {
   let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
 
   const eventosRef = db.ref('eventos');
-  const projRef = db.ref(`projecao_eventos/${currentMonthPath}`);
-  const previsaoRef = db.ref(`previsao_receita/${currentMonthPath}/total`);
+  const projRef = db.ref(`projecao_eventos/${hoje.getFullYear()}_${String(hoje.getMonth() + 1).padStart(2, '0')}`);
 
   Promise.all([
     projRef.once('value'),
-    previsaoRef.once('value'),
     eventosRef.once('value')
-  ]).then(([projSnap, previsaoSnap, eventosSnap]) => {
+  ]).then(([projSnap, eventosSnap]) => {
     if (projSnap.exists()) estimado = Object.keys(projSnap.val()).length;
-    estimativaMes = previsaoSnap.val() || 0;
 
     const lista = eventosSnap.val();
     if (lista) {
@@ -130,6 +126,10 @@ function calcularKPIs() {
           realizado++;
           vendaMes += vendaPDV;
           lucroMes += lucroCalculado;
+        }
+
+        if (dentroDoMes) {
+          estimativaMes += Number(e.estimativaVenda || 0);
         }
 
         if (dentroDaSemana) {
