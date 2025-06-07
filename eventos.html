@@ -132,6 +132,26 @@
     </main>
   </div>
 
+  <!-- Script para aplicar valores padrões nos filtros -->
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      // Define valor padrão do filtro de status
+      document.getElementById('filtroStatus').value = 'Aberto';
+
+      // Define data fim para a próxima segunda-feira
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const diasAteSegunda = (8 - diaSemana) % 7 || 7;
+      const proximaSegunda = new Date(hoje);
+      proximaSegunda.setDate(hoje.getDate() + diasAteSegunda);
+
+      const yyyy = proximaSegunda.getFullYear();
+      const mm = String(proximaSegunda.getMonth() + 1).padStart(2, '0');
+      const dd = String(proximaSegunda.getDate()).padStart(2, '0');
+      document.getElementById('filtroDataFim').value = `${yyyy}-${mm}-${dd}`;
+    });
+  </script>
+
   <script src="eventos.js"></script>
 </body>
 </html>
