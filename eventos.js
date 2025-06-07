@@ -95,19 +95,13 @@ function calcularKPIs() {
   let estimado = 0, realizado = 0, semana = 0;
   let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
 
-  const eventosRef = db.ref('eventos');
-  const projRef = db.ref(`projecao_eventos/${hoje.getFullYear()}_${String(hoje.getMonth() + 1).padStart(2, '0')}`);
+  db.ref('eventos').once('value').then(snapshot => {
+    const lista = snapshot.val();
 
-  Promise.all([
-    projRef.once('value'),
-    eventosRef.once('value')
-  ]).then(([projSnap, eventosSnap]) => {
-    if (projSnap.exists()) estimado = Object.keys(projSnap.val()).length;
-
-    const lista = eventosSnap.val();
     if (lista) {
       Object.values(lista).forEach(e => {
         if (!e.data) return;
+
         const dataEvento = formatDateBR(e.data);
         const status = (e.status || '').toLowerCase();
 
@@ -122,14 +116,15 @@ function calcularKPIs() {
         const custoLogistica = (e.logistica || []).reduce((s, i) => s + (Number(i.valor) || 0), 0);
         const lucroCalculado = vendaPDV - cmvReal - custoEquipe - custoLogistica;
 
+        if (dentroDoMes) {
+          estimado++;
+          estimativaMes += Number(e.estimativaVenda || 0);
+        }
+
         if (dentroDoMes && (status === 'fechado' || status === 'finalizado')) {
           realizado++;
           vendaMes += vendaPDV;
           lucroMes += lucroCalculado;
-        }
-
-        if (dentroDoMes) {
-          estimativaMes += Number(e.estimativaVenda || 0);
         }
 
         if (dentroDaSemana) {
