@@ -57,10 +57,15 @@ function aplicarFiltros() {
   });
 
   eventosFiltrados.forEach(eAtual => {
-    const eventosAnteriores = eventos.filter(e => 
-      e.nomeEvento === eAtual.nomeEvento && 
-      e.data && eAtual.data && e.data < eAtual.data
-    );
+    const eventosAnteriores = eventos
+      .filter(e =>
+        e.nomeEvento === eAtual.nomeEvento &&
+        e.data && eAtual.data &&
+        e.data < eAtual.data &&
+        e.vendaPDV
+      )
+      .sort((a, b) => b.data.localeCompare(a.data))
+      .slice(0, 3);
 
     const somaVenda = eventosAnteriores.reduce((s, ev) => s + (parseFloat(ev.vendaPDV) || 0), 0);
     const quantidade = eventosAnteriores.length;
