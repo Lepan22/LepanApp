@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Funil de Prospecção</title>
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
+  <style>
+    .linha { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+    .campo { flex: 1; min-width: 200px; }
+    label { display: block; font-size: 13px; margin-bottom: 2px; }
+    input, select, textarea { width: 100%; box-sizing: border-box; padding: 6px; }
+    table { margin-top: 20px; width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div id="menuLateral" class="sidebar"></div>
+    <div class="main-content">
+      <h2>Cadastro de Origem de Prospecção</h2>
+      <form id="origemForm">
+        <div class="linha">
+          <div class="campo">
+            <label>Tipo:</label>
+            <select id="tipoOrigem">
+              <option>Administradora</option>
+              <option>Síndico Profissional</option>
+            </select>
+          </div>
+          <div class="campo">
+            <label>Nome:</label>
+            <input type="text" id="nomeOrigem" />
+          </div>
+          <div class="campo">
+            <label>Observações:</label>
+            <input type="text" id="observacoesOrigem" />
+          </div>
+        </div>
+        <label>Contatos:</label>
+        <div id="contatosOrigem"></div>
+        <button type="button" onclick="adicionarContatoOrigem()">Adicionar Contato</button>
+        <br /><br />
+        <button type="submit">Salvar Origem</button>
+      </form>
+
+      <hr>
+
+      <h2>Prospecções Ativas</h2>
+      <div id="listaProspeccoes"></div>
+    </div>
+  </div>
+  <script src="funil_prospecao.js"></script>
+</body>
+</html>
