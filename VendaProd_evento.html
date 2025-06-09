@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Le Pan pan - Venda - Produtos por Evento</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/menu-styles.css">
+  <link rel="stylesheet" href="assets/base.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+
+    <main class="main-content">
+      <h2>Quantidade Vendida por Evento</h2>
+
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+        <label for="filtroStatus">Status:</label>
+        <select id="filtroStatus">
+          <option value="aberto" selected>Aberto</option>
+          <option value="finalizado">Finalizado</option>
+          <option value="fechado">Fechado</option>
+        </select>
+
+        <label for="filtroDataFim">Data Fim:</label>
+        <input type="date" id="filtroDataFim">
+
+        <button onclick="exportarXLSX()">Exportar XLSX</button>
+      </div>
+
+      <div>
+        <h3>Totais por Evento</h3>
+        <div id="totaisEventos"></div>
+      </div>
+
+      <div>
+        <h3>Quantidade Vendida por Produto</h3>
+        <table id="tabelaProdutos">
+          <thead>
+            <tr id="headerRow"></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let eventos = [];
+    let produtosDB = {};
+    let dadosTabela = {};
+
+    function formatDateBR(dataISO) {
+      if (!dataISO) return '';
+      const [ano, mes, dia] = dataISO.split("-");
+      return `${dia}/${mes}/${ano}`;
+    }
+
+    function formatDateISO(date) {
+      const d = new Date(date);
+      return d.toISOString().split('T')[0];
+    }
+
+    function getProximaSegunda() {
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const diasAteSegunda = (8 - diaSemana) % 7 || 7;
+      const proximaSegunda = new Date(hoje);
+      proximaSegunda.setDate(hoje.getDate() + diasAteSegunda);
+      return formatDateISO(proximaSegunda);
+    }
+
+    async function carregarDados() {
+      document.getElementById('filtroDataFim').value = getProximaSegunda();
+
+      const produtosSnap = await db.ref('produtos').once('value');
+      produtosDB = produtosSnap.val();
+
+      const eventosSnap = await db.ref('eventos').once('value');
+      eventos = [];
+      eventosSnap.forEach(child => {
+        const evento = child.val();
+        evento.id = child.key;
+        eventos.push(evento);
+      });
+
+      processarDados();
+    }
+
+    function processarDados() {
+      dadosTabela = {};
+      const filtroStatus = document.getElementById('filtroStatus').value;
+      const filtroDataFim = document.getElementById('filtroDataFim').value;
+
+      const eventosFiltrados = eventos.filter(e => {
+        const statusOk = (e.status || '').toLowerCase() === filtroStatus;
+        const dataOk = !filtroDataFim || !e.data || e.data <= filtroDataFim;
+        return statusOk && dataOk;
+      });
+
+      const eventosNomes = eventosFiltrados.map(e => `${e.nomeEvento || e.id} ${e.data ? formatDateBR(e.data) : ''}`);
+
+      eventosFiltrados.forEach(evento => {
+        const nomeData = `${evento.nomeEvento || evento.id} ${evento.data ? formatDateBR(evento.data) : ''}`;
+        if (!evento.produtos) return;
+        evento.produtos.forEach(produto => {
+          const prodId = produto.produtoId;
+          const info = produtosDB[prodId];
+          const prodNome = info ? info.nome : prodId;
+
+          const enviada = produto.quantidade || 0;
+          const congelado = produto.congelado || 0;
+          const assado = produto.assado || 0;
+          const perda = produto.perda || 0;
+          const vendida = enviada - congelado - assado - perda;
+
+          if (!dadosTabela[prodNome]) dadosTabela[prodNome] = { total: 0, quantidadePorCaixa: info?.quantidadePorCaixa || 0 };
+          dadosTabela[prodNome][nomeData] = vendida > 0 ? vendida : 0;
+          dadosTabela[prodNome].total += vendida > 0 ? vendida : 0;
+        });
+      });
+
+      renderTabela(eventosNomes);
+      renderTotaisEventos(eventosFiltrados);
+    }
+
+    function renderTabela(eventosNomes) {
+      const headerRow = document.getElementById('headerRow');
+      headerRow.innerHTML = `<th>Produto</th>`;
+      eventosNomes.forEach(nome => {
+        headerRow.innerHTML += `<th>${nome}</th>`;
+      });
+      headerRow.innerHTML += `<th>Total</th><th>Qtd/Caixa</th><th>Pedido</th>`;
+
+      const tbody = document.querySelector('#tabelaProdutos tbody');
+      tbody.innerHTML = '';
+
+      Object.entries(dadosTabela).forEach(([produto, dados]) => {
+        const tr = document.createElement('tr');
+        let row = `<td>${produto}</td>`;
+        eventosNomes.forEach(nome => {
+          const vendida = dados[nome] || 0;
+          row += `<td>${vendida.toFixed(1).replace('.', ',')}</td>`;
+        });
+        const total = dados.total || 0;
+        const qtdCaixa = Number(dados.quantidadePorCaixa || 0);
+        const pedido = qtdCaixa > 0 ? (total / qtdCaixa).toFixed(1).replace('.', ',') : '-';
+
+        row += `<td>${total.toFixed(1).replace('.', ',')}</td>`;
+        row += `<td>${qtdCaixa || '-'}</td>`;
+        row += `<td>${pedido}</td>`;
+        tr.innerHTML = row;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderTotaisEventos(eventosFiltrados) {
+      const div = document.getElementById('totaisEventos');
+      div.innerHTML = '';
+
+      const table = document.createElement('table');
+      table.classList.add('totais-table');
+
+      const thead = document.createElement('thead');
+      thead.innerHTML = `<tr><th>Evento</th><th>Estimativa Venda</th><th>Potencial Venda</th></tr>`;
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      eventosFiltrados.forEach(evento => {
+        let potencial = 0;
+        if (evento.produtos) {
+          evento.produtos.forEach(prod => {
+            const valorVenda = produtosDB[prod.produtoId]?.valorVenda || 0;
+            potencial += (prod.quantidade || 0) * valorVenda;
+          });
+        }
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${evento.nomeEvento} ${evento.data ? formatDateBR(evento.data) : ''}</td>
+                        <td>R$ ${Number(evento.estimativaVenda || 0).toFixed(2).replace('.', ',')}</td>
+                        <td>R$ ${potencial.toFixed(2).replace('.', ',')}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      div.appendChild(table);
+    }
+
+    function exportarXLSX() {
+      const ws_data = [];
+      const header = ["Produto"];
+      const eventosNomes = Object.keys(dadosTabela[Object.keys(dadosTabela)[0]] || {}).filter(k => k !== 'total' && k !== 'quantidadePorCaixa');
+      eventosNomes.forEach(nome => header.push(nome));
+      header.push("Total", "Qtd/Caixa", "Pedido");
+      ws_data.push(header);
+
+      Object.entries(dadosTabela).forEach(([produto, dados]) => {
+        const row = [produto];
+        let total = 0;
+        eventosNomes.forEach(nome => {
+          const vendida = dados[nome] || 0;
+          total += vendida;
+          row.push(Number(vendida).toFixed(1).replace('.', ','));
+        });
+        const qtdCaixa = Number(dados.quantidadePorCaixa || 0);
+        const pedido = qtdCaixa > 0 ? (total / qtdCaixa).toFixed(1).replace('.', ',') : '-';
+        row.push(total.toFixed(1).replace('.', ','), qtdCaixa || '-', pedido);
+        ws_data.push(row);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      XLSX.utils.book_append_sheet(wb, ws, "Quantidade Vendida");
+      XLSX.writeFile(wb, "quantidade_vendida_por_evento.xlsx");
+    }
+
+    document.getElementById('filtroStatus').addEventListener('change', processarDados);
+    document.getElementById('filtroDataFim').addEventListener('change', processarDados);
+    document.addEventListener("DOMContentLoaded", carregarDados);
+  </script>
+</body>
+</html>
