@@ -26,9 +26,6 @@
           <option value="fechado">Fechado</option>
         </select>
 
-        <label for="filtroDataInicio">Data Início:</label>
-        <input type="date" id="filtroDataInicio">
-
         <label for="filtroDataFim">Data Fim:</label>
         <input type="date" id="filtroDataFim">
 
@@ -75,7 +72,23 @@
       return `${dia}/${mes}/${ano}`;
     }
 
+    function formatDateISO(date) {
+      const d = new Date(date);
+      return d.toISOString().split('T')[0];
+    }
+
+    function getProximaSegunda() {
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const diasAteSegunda = (8 - diaSemana) % 7 || 7;
+      const proximaSegunda = new Date(hoje);
+      proximaSegunda.setDate(hoje.getDate() + diasAteSegunda);
+      return formatDateISO(proximaSegunda);
+    }
+
     async function carregarDados() {
+      document.getElementById('filtroDataFim').value = getProximaSegunda();
+
       const produtosSnap = await db.ref('produtos').once('value');
       produtosDB = produtosSnap.val();
 
@@ -93,13 +106,11 @@
     function processarDados() {
       dadosTabela = {};
       const filtroStatus = document.getElementById('filtroStatus').value;
-      const dataInicio = document.getElementById('filtroDataInicio').value;
-      const dataFim = document.getElementById('filtroDataFim').value;
+      const filtroDataFim = document.getElementById('filtroDataFim').value;
 
       const eventosFiltrados = eventos.filter(e => {
         const statusOk = (e.status || '').toLowerCase() === filtroStatus;
-        const data = e.data || '';
-        const dataOk = (!dataInicio || data >= dataInicio) && (!dataFim || data <= dataFim);
+        const dataOk = !filtroDataFim || !e.data || e.data <= filtroDataFim;
         return statusOk && dataOk;
       });
 
@@ -211,23 +222,9 @@
       XLSX.writeFile(wb, "produtos_por_evento.xlsx");
     }
 
-    function setarDataFimPadrao() {
-      const hoje = new Date();
-      const diaSemana = hoje.getDay();
-      const diff = (8 - diaSemana) % 7 || 7;
-      hoje.setDate(hoje.getDate() + diff);
-      document.getElementById('filtroDataFim').value = hoje.toISOString().split('T')[0];
-    }
-
     document.getElementById('filtroStatus').addEventListener('change', processarDados);
-    document.getElementById('filtroDataInicio').addEventListener('change', processarDados);
     document.getElementById('filtroDataFim').addEventListener('change', processarDados);
-
-    document.addEventListener("DOMContentLoaded", () => {
-      carregarMenu('../');
-      setarDataFimPadrao();
-      carregarDados();
-    });
+    document.addEventListener("DOMContentLoaded", carregarDados);
   </script>
 </body>
 </html>
