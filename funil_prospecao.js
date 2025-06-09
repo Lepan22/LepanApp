@@ -21,10 +21,18 @@ fonteForm.addEventListener("submit", e => {
     contatos: capturarContatosFonte()
   };
 
+  if (!novaFonte.nome) {
+    alert("Por favor, preencha o nome da fonte.");
+    return;
+  }
+
   fontesRef.push(novaFonte).then(() => {
     alert("Fonte salva com sucesso!");
     fonteForm.reset();
     document.getElementById("contatosFonte").innerHTML = "";
+  }).catch(error => {
+    console.error("Erro ao salvar fonte:", error);
+    alert("Erro ao salvar a fonte. Tente novamente.");
   });
 });
 
@@ -86,7 +94,7 @@ function carregarProspecoes() {
         <td>${c.status}</td>
         <td>${c.proximaAcao}</td>
         <td>${c.dataAcao || ""}</td>
-        <td><button onclick=\"converterCliente('${child.key}')\">Converter</button></td>
+        <td><button onclick="converterCliente('${child.key}')">Converter</button></td>
       `;
       tbody.appendChild(tr);
     });
