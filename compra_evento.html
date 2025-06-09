@@ -98,7 +98,8 @@
 
       const eventosFiltrados = eventos.filter(e => {
         const statusOk = (e.status || '').toLowerCase() === filtroStatus;
-        const dataOk = (!dataInicio || e.data >= dataInicio) && (!dataFim || e.data <= dataFim);
+        const data = e.data || '';
+        const dataOk = (!dataInicio || data >= dataInicio) && (!dataFim || data <= dataFim);
         return statusOk && dataOk;
       });
 
