@@ -48,6 +48,7 @@
           <div>
             <label for="filtroStatus">Status</label>
             <select id="filtroStatus">
+              <option value="">Todos</option>
               <option value="Fechado" selected>Fechado</option>
               <option value="Aberto">Aberto</option>
               <option value="Finalizado">Finalizado</option>
@@ -114,7 +115,7 @@
     document.querySelectorAll('#filtroNomeEvento option').forEach(o => o.selected = false);
     document.getElementById('filtroDataInicio').value = '';
     document.getElementById('filtroDataFim').value = '';
-    document.getElementById('filtroStatus').value = 'Fechado';
+    document.getElementById('filtroStatus').value = '';
     aplicarFiltros();
   }
 
