@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Compras por Evento</title>
   <link rel="stylesheet" href="../assets/base.css">
   <link rel="stylesheet" href="../assets/menu-styles.css">
@@ -10,158 +10,144 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="../assets/menu.js" defer></script>
   <style>
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 12px;
-      margin-top: 10px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 6px;
-      text-align: center;
-    }
-    th {
-      background-color: #ffcc80;
-    }
-    td input {
-      width: 50px;
-      text-align: center;
-    }
-    .filtros {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
-    }
-    .filtros label {
-      font-weight: bold;
-      font-size: 12px;
-    }
-    .filtros input {
-      font-size: 12px;
-      padding: 4px;
-    }
+    body { font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    th { background-color: #ffcc80; }
+    td input { width: 60px; text-align: right; }
+    .form-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; align-items: flex-end; }
+    .form-row label { font-weight: bold; font-size: 13px; }
+    .form-row input, .form-row select { font-size: 13px; padding: 3px; }
+    .btn-navegar { background-color: #ff7f00; color: white; padding: 5px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+    .btn-navegar:hover { background-color: #e96f00; }
   </style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
-    <main class="main-content">
-      <div class="page-header">
-        <h1>Compras por Evento</h1>
+<div class="layout">
+  <aside class="sidebar" id="menuLateral"></aside>
+  <main class="main-content">
+    <div class="page-header">
+      <h1>Compras por Evento</h1>
+    </div>
+
+    <div class="card-dashboard">
+      <div class="form-row">
+        <div>
+          <label for="statusFiltro">Status</label><br>
+          <select id="statusFiltro">
+            <option value="aberto" selected>Aberto</option>
+            <option value="fechado">Fechado</option>
+            <option value="finalizado">Finalizado</option>
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label for="dataInicio">Data Início</label><br>
+          <input type="date" id="dataInicio">
+        </div>
+        <div>
+          <label for="dataFim">Data Fim</label><br>
+          <input type="date" id="dataFim">
+        </div>
+        <div style="align-self: flex-end;">
+          <button class="btn-navegar" onclick="processarDados()">Aplicar Filtro</button>
+        </div>
       </div>
 
-      <div class="card-dashboard">
-        <form id="form-filtros" class="filtros">
-          <div>
-            <label for="dataInicio">Data Início</label><br>
-            <input type="date" id="dataInicio">
-          </div>
-          <div>
-            <label for="dataFim">Data Fim</label><br>
-            <input type="date" id="dataFim">
-          </div>
-          <div style="align-self: end;">
-            <button type="submit" style="padding: 6px 12px;">Aplicar Filtro</button>
-          </div>
-        </form>
+      <div id="tabela-compras"></div>
+    </div>
+  </main>
+</div>
 
-        <div id="tabela-compras"></div>
-      </div>
-    </main>
-  </div>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+  let eventos = [];
 
-    let eventos = [];
-
-    function getProximaSegunda() {
-      const hoje = new Date();
-      const day = hoje.getDay();
-      const diff = (8 - day) % 7 || 7;
-      const prox = new Date(hoje);
-      prox.setDate(hoje.getDate() + diff);
-      return prox.toISOString().split('T')[0];
-    }
-
-    function carregarEventos() {
-      db.ref('eventos').once('value').then(snapshot => {
-        eventos = [];
-        snapshot.forEach(child => {
-          const ev = child.val();
-          ev.id = child.key;
-          eventos.push(ev);
-        });
-        gerarTabela();
+  function carregarDados() {
+    db.ref('eventos').once('value').then(snapshot => {
+      eventos = [];
+      snapshot.forEach(child => {
+        const evento = child.val();
+        evento.id = child.key;
+        eventos.push(evento);
       });
-    }
+      processarDados();
+    });
+  }
 
-    function gerarTabela() {
-      const dataInicio = document.getElementById('dataInicio').value;
-      const dataFim = document.getElementById('dataFim').value;
+  function formatarData(dataISO) {
+    const [ano, mes, dia] = dataISO.split("-");
+    return `${dia}/${mes}`;
+  }
 
-      const produtos = {};
-      const colunas = new Set();
+  function processarDados() {
+    const filtroStatus = document.getElementById('statusFiltro').value;
+    const dataInicio = document.getElementById('dataInicio').value;
+    const dataFim = document.getElementById('dataFim').value;
 
-      eventos.forEach(ev => {
-        if (!ev.data) return;
-        if (dataInicio && ev.data < dataInicio) return;
-        if (dataFim && ev.data > dataFim) return;
-
-        const nomeColuna = `${ev.nomeEvento || 'Sem Nome'}<br>${formatarData(ev.data)}`;
-        colunas.add(nomeColuna);
-
-        (ev.produtos || []).forEach(prod => {
-          const nome = prod.nome || prod.produtoNome || 'Produto';
-          if (!produtos[nome]) produtos[nome] = {};
-          produtos[nome][nomeColuna] = (produtos[nome][nomeColuna] || 0) + Number(prod.quantidade || 0);
-        });
-      });
-
-      const colunasOrdenadas = Array.from(colunas).sort();
-      let html = '<table><thead><tr><th>Produto</th>';
-      colunasOrdenadas.forEach(col => html += `<th>${col}</th>`);
-      html += '<th>Total</th></tr></thead><tbody>';
-
-      for (const nome in produtos) {
-        let total = 0;
-        html += `<tr><td>${nome}</td>`;
-        colunasOrdenadas.forEach(col => {
-          const val = produtos[nome][col] || 0;
-          html += `<td>${val}</td>`;
-          total += val;
-        });
-        html += `<td><strong>${total}</strong></td></tr>`;
-      }
-
-      html += '</tbody></table>';
-      document.getElementById('tabela-compras').innerHTML = html;
-    }
-
-    function formatarData(dataStr) {
-      const [ano, mes, dia] = dataStr.split('-');
-      return `${dia}/${mes}/${ano}`;
-    }
-
-    document.getElementById('form-filtros').addEventListener('submit', e => {
-      e.preventDefault();
-      gerarTabela();
+    const eventosFiltrados = eventos.filter(e => {
+      const status = (e.status || '').toLowerCase();
+      const statusOk = !filtroStatus || status === filtroStatus;
+      const dataOk = (!e.data || (!dataInicio || e.data >= dataInicio) && (!dataFim || e.data <= dataFim));
+      return statusOk && dataOk;
     });
 
-    document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('dataFim').value = getProximaSegunda();
-      carregarMenu('../');
-      carregarEventos();
+    const colunas = [];
+    const produtos = {};
+
+    eventosFiltrados.forEach(ev => {
+      const col = `${ev.nomeEvento || 'Sem Nome'}<br>${formatarData(ev.data || '')}`;
+      if (!colunas.includes(col)) colunas.push(col);
+
+      (ev.produtos || []).forEach(p => {
+        const nome = p.nome || p.produtoNome || '';
+        if (!produtos[nome]) produtos[nome] = {};
+        produtos[nome][col] = (produtos[nome][col] || 0) + Number(p.quantidade || 0);
+      });
     });
-  </script>
+
+    colunas.sort();
+    let html = '<table><thead><tr><th>Produto</th>';
+    colunas.forEach(c => html += `<th>${c}</th>`);
+    html += '<th>Total</th></tr></thead><tbody>';
+
+    for (const nome in produtos) {
+      let total = 0;
+      html += `<tr><td>${nome}</td>`;
+      colunas.forEach(col => {
+        const val = produtos[nome][col] || 0;
+        total += val;
+        html += `<td>${val}</td>`;
+      });
+      html += `<td><strong>${total}</strong></td></tr>`;
+    }
+
+    html += '</tbody></table>';
+    document.getElementById('tabela-compras').innerHTML = html;
+  }
+
+  function setarDataFimParaProximaSegunda() {
+    const hoje = new Date();
+    const day = hoje.getDay();
+    const diff = (8 - day) % 7 || 7;
+    const proximaSeg = new Date(hoje);
+    proximaSeg.setDate(hoje.getDate() + diff);
+    document.getElementById('dataFim').value = proximaSeg.toISOString().split('T')[0];
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarMenu('../');
+    setarDataFimParaProximaSegunda();
+    carregarDados();
+  });
+</script>
 </body>
 </html>
