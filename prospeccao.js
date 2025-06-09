@@ -11,6 +11,8 @@ const db = firebase.database().ref("prospeccao/contatos");
 const form = document.getElementById("contatoForm");
 const tabela = document.querySelector("#tabelaContatos tbody");
 
+let contatoEditandoId = null;
+
 form.addEventListener("submit", e => {
   e.preventDefault();
 
@@ -26,9 +28,11 @@ form.addEventListener("submit", e => {
     return;
   }
 
-  db.push(novo).then(() => {
+  const ref = contatoEditandoId ? db.child(contatoEditandoId) : db.push();
+  ref.update(novo).then(() => {
     alert("Contato salvo!");
     form.reset();
+    contatoEditandoId = null;
     document.getElementById("contatosSecundarios").innerHTML = "";
     carregarContatos();
   });
@@ -82,13 +86,9 @@ function carregarContatos() {
     snapshot.forEach(child => {
       const c = child.val();
       const id = child.key;
-      const tr = document.createElement("tr");
-      const td = document.createElement("td");
-      td.colSpan = 4;
-      td.innerHTML = `
-        <div class="detalhes" id="detalhes-${id}" style="display:none"></div>
-      `;
-      tr.innerHTML = `
+
+      const linhaPrincipal = document.createElement("tr");
+      linhaPrincipal.innerHTML = `
         <td>${c.nome}</td>
         <td>${c.tipo}</td>
         <td>${c.observacoes || ""}</td>
@@ -98,15 +98,22 @@ function carregarContatos() {
           <button onclick="toggleDetalhes('${id}')">Detalhes</button>
         </td>
       `;
-      tabela.appendChild(tr);
-      tabela.appendChild(Object.assign(document.createElement("tr"), { appendChild: () => tr.appendChild(td) }));
+
+      const linhaDetalhes = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 4;
+      td.innerHTML = `<div id="detalhes-${id}" class="detalhes" style="display: none;"></div>`;
+      linhaDetalhes.appendChild(td);
+
+      tabela.appendChild(linhaPrincipal);
+      tabela.appendChild(linhaDetalhes);
     });
   });
 }
 
 function toggleDetalhes(id) {
   const container = document.getElementById(`detalhes-${id}`);
-  if (!container.innerHTML) {
+  if (container.style.display === "none" || container.innerHTML === "") {
     db.child(id).once("value").then(snap => {
       const c = snap.val();
       let html = "<div class='subtitulo'>Interações</div>";
@@ -123,6 +130,7 @@ function toggleDetalhes(id) {
           <div class='campo'><button onclick="salvarInteracao('${id}')">Adicionar</button></div>
         </div>
       `;
+
       html += "<div class='subtitulo'>Clientes Potenciais</div>";
       const pot = c.potenciais || {};
       for (let key in pot) {
@@ -141,7 +149,7 @@ function toggleDetalhes(id) {
       container.style.display = "block";
     });
   } else {
-    container.style.display = container.style.display === "none" ? "block" : "none";
+    container.style.display = "none";
   }
 }
 
@@ -160,7 +168,7 @@ function salvarPotencial(id) {
   const obs = document.getElementById(`potObs-${id}`).value;
   if (!nome) return;
   db.child(id).child("potenciais").push({ nome, status, obs }).then(() => {
-    if (status === "Fechado") {
+    if (status.toLowerCase() === "fechado") {
       firebase.database().ref("clientes").push({
         nome: nome,
         indicadoPor: id,
@@ -174,22 +182,4 @@ function salvarPotencial(id) {
 }
 
 function excluirContato(id) {
-  if (confirm("Deseja excluir este contato?")) {
-    db.child(id).remove().then(carregarContatos);
-  }
-}
-
-function editarContato(id) {
-  db.child(id).once("value").then(snapshot => {
-    const c = snapshot.val();
-    if (!c) return;
-    document.getElementById("tipoContato").value = c.tipo || "";
-    document.getElementById("nomeContato").value = c.nome || "";
-    document.getElementById("obsContato").value = c.observacoes || "";
-    document.getElementById("contatosSecundarios").innerHTML = "";
-    (c.contatos || []).forEach(adicionarContatoSecundario);
-    db.child(id).remove();
-  });
-}
-
-window.onload = carregarContatos;
+  if (confirm(
