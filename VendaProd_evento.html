@@ -36,11 +36,6 @@
       </div>
 
       <div>
-        <h3>Totais por Evento</h3>
-        <div id="totaisEventos"></div>
-      </div>
-
-      <div>
         <h3>Quantidade Vendida por Produto</h3>
         <table id="tabelaProdutos">
           <thead>
@@ -75,7 +70,23 @@
       return `${dia}/${mes}/${ano}`;
     }
 
+    function formatDateISO(date) {
+      const d = new Date(date);
+      return d.toISOString().split('T')[0];
+    }
+
+    function getSegundaPassada() {
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const diasDesdeSegunda = (diaSemana + 6) % 7; // segunda = 1
+      const segundaPassada = new Date(hoje);
+      segundaPassada.setDate(hoje.getDate() - diasDesdeSegunda);
+      return formatDateISO(segundaPassada);
+    }
+
     async function carregarDados() {
+      document.getElementById('filtroDataInicio').value = getSegundaPassada();
+
       const produtosSnap = await db.ref('produtos').once('value');
       produtosDB = produtosSnap.val();
 
@@ -119,14 +130,13 @@
           const perda = produto.perda || 0;
           const vendida = enviada - congelado - assado - perda;
 
-          if (!dadosTabela[prodNome]) dadosTabela[prodNome] = { total: 0, quantidadePorCaixa: info?.quantidadePorCaixa || 0 };
+          if (!dadosTabela[prodNome]) dadosTabela[prodNome] = { total: 0 };
           dadosTabela[prodNome][nomeData] = vendida > 0 ? vendida : 0;
           dadosTabela[prodNome].total += vendida > 0 ? vendida : 0;
         });
       });
 
       renderTabela(eventosNomes);
-      renderTotaisEventos(eventosFiltrados);
     }
 
     function renderTabela(eventosNomes) {
@@ -135,7 +145,7 @@
       eventosNomes.forEach(nome => {
         headerRow.innerHTML += `<th>${nome}</th>`;
       });
-      headerRow.innerHTML += `<th>Total</th><th>Qtd/Caixa</th><th>Pedido</th>`;
+      headerRow.innerHTML += `<th>Total</th>`;
 
       const tbody = document.querySelector('#tabelaProdutos tbody');
       tbody.innerHTML = '';
@@ -148,54 +158,18 @@
           row += `<td>${vendida.toFixed(1).replace('.', ',')}</td>`;
         });
         const total = dados.total || 0;
-        const qtdCaixa = Number(dados.quantidadePorCaixa || 0);
-        const pedido = qtdCaixa > 0 ? (total / qtdCaixa).toFixed(1).replace('.', ',') : '-';
-
         row += `<td>${total.toFixed(1).replace('.', ',')}</td>`;
-        row += `<td>${qtdCaixa || '-'}</td>`;
-        row += `<td>${pedido}</td>`;
         tr.innerHTML = row;
         tbody.appendChild(tr);
       });
     }
 
-    function renderTotaisEventos(eventosFiltrados) {
-      const div = document.getElementById('totaisEventos');
-      div.innerHTML = '';
-
-      const table = document.createElement('table');
-      table.classList.add('totais-table');
-
-      const thead = document.createElement('thead');
-      thead.innerHTML = `<tr><th>Evento</th><th>Estimativa Venda</th><th>Potencial Venda</th></tr>`;
-      table.appendChild(thead);
-
-      const tbody = document.createElement('tbody');
-      eventosFiltrados.forEach(evento => {
-        let potencial = 0;
-        if (evento.produtos) {
-          evento.produtos.forEach(prod => {
-            const valorVenda = produtosDB[prod.produtoId]?.valorVenda || 0;
-            potencial += (prod.quantidade || 0) * valorVenda;
-          });
-        }
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${evento.nomeEvento} ${evento.data ? formatDateBR(evento.data) : ''}</td>
-                        <td>R$ ${Number(evento.estimativaVenda || 0).toFixed(2).replace('.', ',')}</td>
-                        <td>R$ ${potencial.toFixed(2).replace('.', ',')}</td>`;
-        tbody.appendChild(tr);
-      });
-
-      table.appendChild(tbody);
-      div.appendChild(table);
-    }
-
     function exportarXLSX() {
       const ws_data = [];
       const header = ["Produto"];
-      const eventosNomes = Object.keys(dadosTabela[Object.keys(dadosTabela)[0]] || {}).filter(k => k !== 'total' && k !== 'quantidadePorCaixa');
+      const eventosNomes = Object.keys(dadosTabela[Object.keys(dadosTabela)[0]] || {}).filter(k => k !== 'total');
       eventosNomes.forEach(nome => header.push(nome));
-      header.push("Total", "Qtd/Caixa", "Pedido");
+      header.push("Total");
       ws_data.push(header);
 
       Object.entries(dadosTabela).forEach(([produto, dados]) => {
@@ -206,9 +180,7 @@
           total += vendida;
           row.push(Number(vendida).toFixed(1).replace('.', ','));
         });
-        const qtdCaixa = Number(dados.quantidadePorCaixa || 0);
-        const pedido = qtdCaixa > 0 ? (total / qtdCaixa).toFixed(1).replace('.', ',') : '-';
-        row.push(total.toFixed(1).replace('.', ','), qtdCaixa || '-', pedido);
+        row.push(total.toFixed(1).replace('.', ','));
         ws_data.push(row);
       });
 
