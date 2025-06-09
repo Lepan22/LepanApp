@@ -22,6 +22,10 @@
         </div>
 
         <div class="calendario" id="calendario"></div>
+
+        <div style="margin-top: 10px; text-align: center;">
+          <button class="btn-navegar" onclick="duplicarMes()">📅 Duplicar Mês</button>
+        </div>
       </div>
     </main>
   </div>
@@ -57,7 +61,6 @@
 
       const indisponiveisSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
       mapaIndisponiveis = {};
-
       indisponiveisSnap.forEach(child => {
         const item = child.val();
         if (item.tipo === 'único' && item.data) {
@@ -142,18 +145,6 @@
             if (confirm("Deseja duplicar este evento?")) {
               const novo = { ...ev };
               delete novo.id;
-              novo.status = 'Aberto';
-              delete novo.vendaPDV;
-
-              if (Array.isArray(novo.produtos)) {
-                novo.produtos = novo.produtos.map(p => ({
-                  ...p,
-                  congelado: '',
-                  assado: '',
-                  perda: ''
-                }));
-              }
-
               db.ref('eventos').push(novo).then(() => {
                 alert("Evento duplicado com sucesso!");
                 carregarDados();
@@ -203,6 +194,47 @@
         datas.push(d.toISOString().split('T')[0]);
       }
       return datas;
+    }
+
+    async function duplicarMes() {
+      if (!confirm("Deseja realmente duplicar todos os eventos do mês para o mês seguinte?")) return;
+
+      const ano = mesAtual.getFullYear();
+      const mes = mesAtual.getMonth();
+
+      const eventosDoMes = eventos.filter(ev => {
+        const data = new Date(ev.data);
+        return data.getMonth() === mes && data.getFullYear() === ano;
+      });
+
+      const promises = eventosDoMes.map(ev => {
+        const novaData = new Date(ev.data);
+        novaData.setMonth(novaData.getMonth() + 1);
+
+        const ultimoDiaDoNovoMes = new Date(novaData.getFullYear(), novaData.getMonth() + 1, 0).getDate();
+        if (novaData.getDate() > ultimoDiaDoNovoMes) {
+          novaData.setDate(ultimoDiaDoNovoMes);
+        }
+
+        const novoEvento = { ...ev };
+        delete novoEvento.id;
+        novoEvento.data = novaData.toISOString().split('T')[0];
+        novoEvento.status = 'aberto';
+
+        delete novoEvento.vendaPDV;
+        if (novoEvento.produtos) {
+          novoEvento.produtos = novoEvento.produtos.map(p => {
+            const { congelado, assado, perda, ...rest } = p;
+            return rest;
+          });
+        }
+
+        return db.ref('eventos').push(novoEvento);
+      });
+
+      await Promise.all(promises);
+      alert("Eventos duplicados com sucesso!");
+      carregarDados();
     }
 
     document.addEventListener('DOMContentLoaded', carregarDados);
