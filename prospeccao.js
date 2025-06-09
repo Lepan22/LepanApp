@@ -6,180 +6,200 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const db = firebase.database().ref("prospeccao/contatos");
+const db = firebase.database();
 
-const form = document.getElementById("contatoForm");
-const tabela = document.querySelector("#tabelaContatos tbody");
+const selectContato = document.getElementById("selectContato");
+const selectProspect = document.getElementById("selectProspect");
+const kanbanBoard = document.getElementById("kanbanBoard");
+const listaProximas = document.querySelector("#listaProximas tbody");
 
-let contatoEditandoId = null;
+const statusList = ["Aberto", "Negociando", "Proposta", "Fechado", "Perdido"];
+let contatosMap = {};
+let prospectsMap = {};
 
-form.addEventListener("submit", e => {
-  e.preventDefault();
+// Carrega contatos e prospects
+function carregarContatos() {
+  selectContato.innerHTML = "<option value=''>Selecione</option>";
+  db.ref("prospeccao/contatos").once("value").then(snap => {
+    contatosMap = {};
+    snap.forEach(child => {
+      const c = child.val();
+      contatosMap[child.key] = c;
+      const op = document.createElement("option");
+      op.value = child.key;
+      op.textContent = c.nome;
+      selectContato.appendChild(op);
+    });
+  });
+}
 
-  const novo = {
-    tipo: document.getElementById("tipoContato").value,
-    nome: document.getElementById("nomeContato").value.trim(),
-    observacoes: document.getElementById("obsContato").value.trim(),
-    contatos: capturarContatos()
-  };
+function carregarProspects() {
+  selectProspect.innerHTML = "<option value=''>Selecione</option>";
+  db.ref("prospeccao/prospects").once("value").then(snap => {
+    prospectsMap = {};
+    snap.forEach(child => {
+      const p = child.val();
+      prospectsMap[child.key] = p;
+      const op = document.createElement("option");
+      op.value = child.key;
+      op.textContent = p.nome;
+      selectProspect.appendChild(op);
+    });
+  });
+}
 
-  if (!novo.nome) {
-    alert("Informe o nome do contato.");
+function salvarAcao() {
+  const contatoId = selectContato.value;
+  const prospectId = selectProspect.value;
+  const status = document.getElementById("statusProspect").value;
+  const dataContato = document.getElementById("dataContato").value;
+  const comentario = document.getElementById("comentario").value;
+  const observacao = document.getElementById("observacao").value;
+  const proximaData = document.getElementById("proximaData").value;
+
+  if (!contatoId || !prospectId || !dataContato) {
+    alert("Preencha os campos obrigatórios.");
     return;
   }
 
-  const ref = contatoEditandoId ? db.child(contatoEditandoId) : db.push();
-  ref.update(novo).then(() => {
-    alert("Contato salvo!");
-    form.reset();
-    contatoEditandoId = null;
-    document.getElementById("contatosSecundarios").innerHTML = "";
-    carregarContatos();
-  });
-});
+  const nova = {
+    contatoId,
+    prospectId,
+    status,
+    dataContato,
+    comentario,
+    observacao,
+    proximaData,
+    dataCriacao: new Date().toISOString()
+  };
 
-function adicionarContatoSecundario(contato = {}) {
-  const div = document.createElement("div");
-
-  const nome = document.createElement("input");
-  nome.placeholder = "Nome";
-  nome.value = contato.nome || "";
-
-  const tel = document.createElement("input");
-  tel.placeholder = "Telefone";
-  tel.value = contato.telefone || "";
-
-  const email = document.createElement("input");
-  email.placeholder = "Email";
-  email.value = contato.email || "";
-
-  const cargo = document.createElement("input");
-  cargo.placeholder = "Cargo/Função";
-  cargo.value = contato.cargo || "";
-
-  div.appendChild(nome);
-  div.appendChild(tel);
-  div.appendChild(email);
-  div.appendChild(cargo);
-
-  document.getElementById("contatosSecundarios").appendChild(div);
-}
-
-function capturarContatos() {
-  const lista = [];
-  const linhas = document.getElementById("contatosSecundarios").querySelectorAll("div");
-  linhas.forEach(div => {
-    const inputs = div.querySelectorAll("input");
-    lista.push({
-      nome: inputs[0].value.trim(),
-      telefone: inputs[1].value.trim(),
-      email: inputs[2].value.trim(),
-      cargo: inputs[3].value.trim()
-    });
-  });
-  return lista;
-}
-
-function carregarContatos() {
-  tabela.innerHTML = "";
-  db.once("value").then(snapshot => {
-    snapshot.forEach(child => {
-      const c = child.val();
-      const id = child.key;
-
-      const linhaPrincipal = document.createElement("tr");
-      linhaPrincipal.innerHTML = `
-        <td>${c.nome}</td>
-        <td>${c.tipo}</td>
-        <td>${c.observacoes || ""}</td>
-        <td>
-          <button onclick="editarContato('${id}')">Editar</button>
-          <button onclick="excluirContato('${id}')">Excluir</button>
-          <button onclick="toggleDetalhes('${id}')">Detalhes</button>
-        </td>
-      `;
-
-      const linhaDetalhes = document.createElement("tr");
-      const td = document.createElement("td");
-      td.colSpan = 4;
-      td.innerHTML = `<div id="detalhes-${id}" class="detalhes" style="display: none;"></div>`;
-      linhaDetalhes.appendChild(td);
-
-      tabela.appendChild(linhaPrincipal);
-      tabela.appendChild(linhaDetalhes);
-    });
-  });
-}
-
-function toggleDetalhes(id) {
-  const container = document.getElementById(`detalhes-${id}`);
-  if (container.style.display === "none" || container.innerHTML === "") {
-    db.child(id).once("value").then(snap => {
-      const c = snap.val();
-      let html = "<div class='subtitulo'>Interações</div>";
-      const interacoes = c.interacoes || {};
-      for (let key in interacoes) {
-        const i = interacoes[key];
-        html += `<div class='item-interacao'><strong>${i.data}</strong>: ${i.descricao}<br><em>Próx: ${i.proximo}</em></div>`;
-      }
-      html += `
-        <div class='linha'>
-          <div class='campo'><input type='date' id='intData-${id}' /></div>
-          <div class='campo'><input type='text' placeholder='Descrição' id='intDesc-${id}' /></div>
-          <div class='campo'><input type='date' id='intProx-${id}' /></div>
-          <div class='campo'><button onclick="salvarInteracao('${id}')">Adicionar</button></div>
-        </div>
-      `;
-
-      html += "<div class='subtitulo'>Clientes Potenciais</div>";
-      const pot = c.potenciais || {};
-      for (let key in pot) {
-        const p = pot[key];
-        html += `<div class='item-potencial'><strong>${p.nome}</strong> (${p.status})<br>${p.obs || ""}</div>`;
-      }
-      html += `
-        <div class='linha'>
-          <div class='campo'><input type='text' placeholder='Condomínio' id='potNome-${id}' /></div>
-          <div class='campo'><input type='text' placeholder='Status' id='potStatus-${id}' /></div>
-          <div class='campo'><input type='text' placeholder='Observações' id='potObs-${id}' /></div>
-          <div class='campo'><button onclick="salvarPotencial('${id}')">Adicionar</button></div>
-        </div>
-      `;
-      container.innerHTML = html;
-      container.style.display = "block";
-    });
-  } else {
-    container.style.display = "none";
-  }
-}
-
-function salvarInteracao(id) {
-  const data = document.getElementById(`intData-${id}`).value;
-  const descricao = document.getElementById(`intDesc-${id}`).value;
-  const proximo = document.getElementById(`intProx-${id}`).value;
-  if (data && descricao) {
-    db.child(id).child("interacoes").push({ data, descricao, proximo }).then(() => toggleDetalhes(id));
-  }
-}
-
-function salvarPotencial(id) {
-  const nome = document.getElementById(`potNome-${id}`).value;
-  const status = document.getElementById(`potStatus-${id}`).value;
-  const obs = document.getElementById(`potObs-${id}`).value;
-  if (!nome) return;
-  db.child(id).child("potenciais").push({ nome, status, obs }).then(() => {
-    if (status.toLowerCase() === "fechado") {
+  db.ref("prospeccao/acoes").push(nova).then(() => {
+    if (status === "Fechado") {
+      const prospect = prospectsMap[prospectId];
       firebase.database().ref("clientes").push({
-        nome: nome,
-        indicadoPor: id,
+        nome: prospect.nome,
+        indicadoPor: contatoId,
         status: "Fechado",
-        dataCadastro: new Date().toISOString().split("T")[0],
-        observacoes: obs || ""
+        dataCadastro: new Date().toISOString().split("T")[0]
       });
     }
-    toggleDetalhes(id);
+    carregarKanban();
+    carregarProximas();
   });
 }
 
-function excluirContato(id) {
-  if (confirm(
+function carregarKanban() {
+  kanbanBoard.innerHTML = "";
+  const colunas = {};
+  statusList.forEach(status => {
+    const col = document.createElement("div");
+    col.className = "kanban-column";
+    col.dataset.status = status;
+    col.innerHTML = `<h3>${status}</h3>`;
+    col.ondragover = e => e.preventDefault();
+    col.ondrop = e => {
+      const id = e.dataTransfer.getData("text");
+      alterarStatus(id, status);
+    };
+    kanbanBoard.appendChild(col);
+    colunas[status] = col;
+  });
+
+  db.ref("prospeccao/acoes").once("value").then(snap => {
+    snap.forEach(child => {
+      const acao = child.val();
+      const div = document.createElement("div");
+      div.className = "kanban-item";
+      div.draggable = true;
+      div.ondragstart = e => e.dataTransfer.setData("text", child.key);
+      div.onclick = () => abrirPainel(child.key);
+      const prospect = prospectsMap[acao.prospectId]?.nome || "Sem nome";
+      div.innerHTML = `<strong>${prospect}</strong><br>${acao.comentario || ""}`;
+      colunas[acao.status]?.appendChild(div);
+    });
+  });
+}
+
+function alterarStatus(acaoId, novoStatus) {
+  db.ref("prospeccao/acoes/" + acaoId + "/status").set(novoStatus).then(() => {
+    if (novoStatus === "Fechado") {
+      db.ref("prospeccao/acoes/" + acaoId).once("value").then(snap => {
+        const acao = snap.val();
+        const prospect = prospectsMap[acao.prospectId];
+        if (prospect) {
+          firebase.database().ref("clientes").push({
+            nome: prospect.nome,
+            indicadoPor: acao.contatoId,
+            status: "Fechado",
+            dataCadastro: new Date().toISOString().split("T")[0]
+          });
+        }
+      });
+    }
+    carregarKanban();
+    carregarProximas();
+  });
+}
+
+function carregarProximas() {
+  listaProximas.innerHTML = "";
+  db.ref("prospeccao/acoes").once("value").then(snap => {
+    const linhas = [];
+    snap.forEach(child => {
+      const a = child.val();
+      if (a.proximaData) {
+        linhas.push({
+          nome: prospectsMap[a.prospectId]?.nome || "-",
+          contato: contatosMap[a.contatoId]?.nome || "-",
+          proxima: a.proximaData,
+          id: child.key
+        });
+      }
+    });
+
+    linhas.sort((a, b) => new Date(a.proxima) - new Date(b.proxima));
+
+    linhas.forEach(l => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><a href="#" onclick="abrirPainel('${l.id}')">${l.nome}</a></td>
+        <td>${l.contato}</td>
+        <td>${l.proxima}</td>
+        <td><button onclick="abrirPainel('${l.id}')">Ver</button></td>
+      `;
+      listaProximas.appendChild(tr);
+    });
+  });
+}
+
+function abrirPainel(id) {
+  const painel = document.getElementById("sidePanel");
+  const div = document.getElementById("detalheProspect");
+  painel.classList.add("open");
+
+  db.ref("prospeccao/acoes/" + id).once("value").then(snap => {
+    const a = snap.val();
+    const contato = contatosMap[a.contatoId]?.nome || "-";
+    const prospect = prospectsMap[a.prospectId]?.nome || "-";
+    div.innerHTML = `
+      <h3>${prospect}</h3>
+      <p><strong>Contato:</strong> ${contato}</p>
+      <p><strong>Status:</strong> ${a.status}</p>
+      <p><strong>Data do Contato:</strong> ${a.dataContato}</p>
+      <p><strong>Comentário:</strong> ${a.comentario}</p>
+      <p><strong>Observação:</strong> ${a.observacao}</p>
+      <p><strong>Próxima Data:</strong> ${a.proximaData}</p>
+    `;
+  });
+}
+
+function fecharPainel() {
+  document.getElementById("sidePanel").classList.remove("open");
+}
+
+window.onload = () => {
+  carregarContatos();
+  carregarProspects();
+  carregarKanban();
+  carregarProximas();
+};
