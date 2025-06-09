@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Prospecção</title>
-  <link rel="stylesheet" href="assets/menu-styles.css">
-  <link rel="stylesheet" href="assets/base.css">
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
@@ -16,7 +16,7 @@
     input, select, textarea { width: 100%; box-sizing: border-box; }
     table { width: 100%; border-collapse: collapse; margin-top: 20px; }
     th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
-    .subtitulo { margin-top: 20px; font-weight: bold; font-size: 15px; }
+    button { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -24,7 +24,7 @@
     <div id="menuLateral" class="sidebar"></div>
 
     <div class="main-content">
-      <h2>Cadastro de Contato</h2>
+      <h2>Cadastrar Contato</h2>
       <form id="contatoForm">
         <div class="linha">
           <div class="campo">
@@ -33,17 +33,12 @@
               <option>Síndico</option>
               <option>Síndico Profissional</option>
               <option>Administradora</option>
-              <option>Eventos</option>
-              <option>Outros</option>
             </select>
           </div>
           <div class="campo">
             <label>Nome:</label>
             <input type="text" id="nomeContato" />
           </div>
-        </div>
-
-        <div class="linha">
           <div class="campo">
             <label>Observações:</label>
             <input type="text" id="obsContato" />
@@ -51,14 +46,14 @@
         </div>
 
         <label>Contatos:</label>
-        <div id="contatosInternos"></div>
-        <button type="button" onclick="adicionarContatoInterno()">Adicionar Contato</button>
+        <div id="contatosSecundarios"></div>
+        <button type="button" onclick="adicionarContatoSecundario()">Adicionar Contato</button>
         <br /><br />
         <button type="submit">Salvar Contato</button>
       </form>
 
       <h2>Contatos Cadastrados</h2>
-      <table id="contatosTable">
+      <table id="tabelaContatos">
         <thead>
           <tr>
             <th>Nome</th>
@@ -71,6 +66,7 @@
       </table>
     </div>
   </div>
+
   <script src="prospeccao.js"></script>
 </body>
 </html>
