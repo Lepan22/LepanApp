@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Prosecção</title>
+  <title>Prospecção - Kanban</title>
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -14,62 +14,84 @@
     .campo { flex: 1; min-width: 200px; }
     label { font-size: 13px; display: block; margin-bottom: 2px; }
     input, select, textarea { width: 100%; box-sizing: border-box; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; vertical-align: top; }
-    button { cursor: pointer; }
-    .detalhes { background: #f9f9f9; padding: 10px; margin-top: 10px; border: 1px solid #ccc; }
-    .subtitulo { font-weight: bold; margin-top: 10px; }
-    .item-interacao, .item-potencial { margin: 4px 0; padding: 4px; border-bottom: 1px solid #ddd; }
+    .kanban-board { display: flex; gap: 20px; overflow-x: auto; margin-top: 20px; }
+    .kanban-column { flex: 1; min-width: 250px; background: #f4f4f4; padding: 10px; border-radius: 6px; }
+    .kanban-column h3 { margin-top: 0; }
+    .kanban-item { background: white; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; cursor: move; }
+    .side-panel { position: fixed; top: 0; right: -100%; width: 400px; height: 100%; background: white; box-shadow: -2px 0 6px rgba(0,0,0,0.1); overflow-y: auto; padding: 20px; transition: right 0.3s ease; }
+    .side-panel.open { right: 0; }
+    .kanban-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   </style>
 </head>
 <body>
   <div class="layout">
     <div id="menuLateral" class="sidebar"></div>
-
     <div class="main-content">
-      <h2>Cadastrar Contato</h2>
-      <form id="contatoForm">
-        <div class="linha">
-          <div class="campo">
-            <label>Tipo:</label>
-            <select id="tipoContato">
-              <option>Síndico</option>
-              <option>Síndico Profissional</option>
-              <option>Administradora</option>
-            </select>
-          </div>
-          <div class="campo">
-            <label>Nome:</label>
-            <input type="text" id="nomeContato" />
-          </div>
-          <div class="campo">
-            <label>Observações:</label>
-            <input type="text" id="obsContato" />
-          </div>
+      <h2>Prospecção Comercial</h2>
+
+      <div class="linha">
+        <div class="campo">
+          <label>Contato:</label>
+          <select id="selectContato"></select>
         </div>
+        <div class="campo">
+          <label>Prospect:</label>
+          <select id="selectProspect"></select>
+        </div>
+        <div class="campo">
+          <label>Status:</label>
+          <select id="statusProspect">
+            <option>Aberto</option>
+            <option>Negociando</option>
+            <option>Proposta</option>
+            <option>Fechado</option>
+            <option>Perdido</option>
+          </select>
+        </div>
+      </div>
+      <div class="linha">
+        <div class="campo">
+          <label>Data do Contato:</label>
+          <input type="date" id="dataContato">
+        </div>
+        <div class="campo">
+          <label>Comentário:</label>
+          <input type="text" id="comentario">
+        </div>
+        <div class="campo">
+          <label>Observação:</label>
+          <input type="text" id="observacao">
+        </div>
+        <div class="campo">
+          <label>Próxima Data:</label>
+          <input type="date" id="proximaData">
+        </div>
+        <div class="campo">
+          <button onclick="salvarAcao()">Salvar Ação</button>
+        </div>
+      </div>
 
-        <label>Contatos:</label>
-        <div id="contatosSecundarios"></div>
-        <button type="button" onclick="adicionarContatoSecundario()">Adicionar Contato</button>
-        <br /><br />
-        <button type="submit">Salvar Contato</button>
-      </form>
+      <div class="kanban-board" id="kanbanBoard"></div>
 
-      <h2>Contatos Cadastrados</h2>
-      <table id="tabelaContatos">
+      <h3>Próximas Ações</h3>
+      <table border="1" cellpadding="5" cellspacing="0" width="100%" id="listaProximas">
         <thead>
           <tr>
-            <th>Nome</th>
-            <th>Tipo</th>
-            <th>Observações</th>
+            <th>Prospect</th>
+            <th>Contato</th>
+            <th>Próxima Data</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
     </div>
-  </div>
 
+    <div id="sidePanel" class="side-panel">
+      <button onclick="fecharPainel()">Fechar</button>
+      <div id="detalheProspect"></div>
+    </div>
+  </div>
   <script src="prospeccao.js"></script>
 </body>
 </html>
