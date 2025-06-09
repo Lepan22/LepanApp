@@ -18,9 +18,7 @@ form.addEventListener("submit", e => {
     tipo: document.getElementById("tipoContato").value,
     nome: document.getElementById("nomeContato").value.trim(),
     observacoes: document.getElementById("obsContato").value.trim(),
-    contatos: capturarContatos(),
-    interacoes: [],
-    potenciais: []
+    contatos: capturarContatos()
   };
 
   if (!novo.nome) {
@@ -83,20 +81,95 @@ function carregarContatos() {
   db.once("value").then(snapshot => {
     snapshot.forEach(child => {
       const c = child.val();
+      const id = child.key;
       const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.colSpan = 4;
+      td.innerHTML = `
+        <div class="detalhes" id="detalhes-${id}" style="display:none"></div>
+      `;
       tr.innerHTML = `
         <td>${c.nome}</td>
         <td>${c.tipo}</td>
         <td>${c.observacoes || ""}</td>
         <td>
-          <button onclick="editarContato('${child.key}')">Editar</button>
-          <button onclick="excluirContato('${child.key}')">Excluir</button>
-          <button onclick="adicionarInteracao('${child.key}')">+ Interação</button>
-          <button onclick="adicionarPotencial('${child.key}')">+ Cliente</button>
+          <button onclick="editarContato('${id}')">Editar</button>
+          <button onclick="excluirContato('${id}')">Excluir</button>
+          <button onclick="toggleDetalhes('${id}')">Detalhes</button>
         </td>
       `;
       tabela.appendChild(tr);
+      tabela.appendChild(Object.assign(document.createElement("tr"), { appendChild: () => tr.appendChild(td) }));
     });
+  });
+}
+
+function toggleDetalhes(id) {
+  const container = document.getElementById(`detalhes-${id}`);
+  if (!container.innerHTML) {
+    db.child(id).once("value").then(snap => {
+      const c = snap.val();
+      let html = "<div class='subtitulo'>Interações</div>";
+      const interacoes = c.interacoes || {};
+      for (let key in interacoes) {
+        const i = interacoes[key];
+        html += `<div class='item-interacao'><strong>${i.data}</strong>: ${i.descricao}<br><em>Próx: ${i.proximo}</em></div>`;
+      }
+      html += `
+        <div class='linha'>
+          <div class='campo'><input type='date' id='intData-${id}' /></div>
+          <div class='campo'><input type='text' placeholder='Descrição' id='intDesc-${id}' /></div>
+          <div class='campo'><input type='date' id='intProx-${id}' /></div>
+          <div class='campo'><button onclick="salvarInteracao('${id}')">Adicionar</button></div>
+        </div>
+      `;
+      html += "<div class='subtitulo'>Clientes Potenciais</div>";
+      const pot = c.potenciais || {};
+      for (let key in pot) {
+        const p = pot[key];
+        html += `<div class='item-potencial'><strong>${p.nome}</strong> (${p.status})<br>${p.obs || ""}</div>`;
+      }
+      html += `
+        <div class='linha'>
+          <div class='campo'><input type='text' placeholder='Condomínio' id='potNome-${id}' /></div>
+          <div class='campo'><input type='text' placeholder='Status' id='potStatus-${id}' /></div>
+          <div class='campo'><input type='text' placeholder='Observações' id='potObs-${id}' /></div>
+          <div class='campo'><button onclick="salvarPotencial('${id}')">Adicionar</button></div>
+        </div>
+      `;
+      container.innerHTML = html;
+      container.style.display = "block";
+    });
+  } else {
+    container.style.display = container.style.display === "none" ? "block" : "none";
+  }
+}
+
+function salvarInteracao(id) {
+  const data = document.getElementById(`intData-${id}`).value;
+  const descricao = document.getElementById(`intDesc-${id}`).value;
+  const proximo = document.getElementById(`intProx-${id}`).value;
+  if (data && descricao) {
+    db.child(id).child("interacoes").push({ data, descricao, proximo }).then(() => toggleDetalhes(id));
+  }
+}
+
+function salvarPotencial(id) {
+  const nome = document.getElementById(`potNome-${id}`).value;
+  const status = document.getElementById(`potStatus-${id}`).value;
+  const obs = document.getElementById(`potObs-${id}`).value;
+  if (!nome) return;
+  db.child(id).child("potenciais").push({ nome, status, obs }).then(() => {
+    if (status === "Fechado") {
+      firebase.database().ref("clientes").push({
+        nome: nome,
+        indicadoPor: id,
+        status: "Fechado",
+        dataCadastro: new Date().toISOString().split("T")[0],
+        observacoes: obs || ""
+      });
+    }
+    toggleDetalhes(id);
   });
 }
 
@@ -116,34 +189,6 @@ function editarContato(id) {
     document.getElementById("contatosSecundarios").innerHTML = "";
     (c.contatos || []).forEach(adicionarContatoSecundario);
     db.child(id).remove();
-  });
-}
-
-function adicionarInteracao(id) {
-  const data = prompt("Data da interação (AAAA-MM-DD):");
-  const descricao = prompt("Descritivo da ação realizada:");
-  const proximo = prompt("Data do próximo contato (AAAA-MM-DD):");
-  if (data && descricao) {
-    db.child(id).child("interacoes").push({ data, descricao, proximo });
-  }
-}
-
-function adicionarPotencial(id) {
-  const nome = prompt("Nome do condomínio:");
-  const status = prompt("Status (Aberto, Negociando, Perdido, Fechado):", "Aberto");
-  const obs = prompt("Observações:");
-  if (!nome) return;
-  const potencial = { nome, status, obs };
-  db.child(id).child("potenciais").push(potencial).then(() => {
-    if (status === "Fechado") {
-      firebase.database().ref("clientes").push({
-        nome: nome,
-        indicadoPor: id,
-        status: "Fechado",
-        dataCadastro: new Date().toISOString().split("T")[0],
-        observacoes: obs || ""
-      });
-    }
   });
 }
 
