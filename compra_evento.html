@@ -1,29 +1,47 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Compras por Evento</title>
-  <link rel="stylesheet" href="../assets/base.css">
-  <link rel="stylesheet" href="../assets/menu-styles.css">
+  <meta charset="UTF-8">
+  <title>Le Pan pan - Compra - Produtos por Evento</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="assets/menu-styles.css">
+  <link rel="stylesheet" href="assets/base.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="../assets/menu.js" defer></script>
+  <script src="assets/menu.js" defer></script>
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar" id="menuLateral"></aside>
-    <main class="main-content">
-      <div class="page-header"><h1>Compras por Evento</h1></div>
 
-      <div class="card-dashboard">
-        <div style="margin-bottom: 10px;">
-          <label for="dataInicio">Data Início:</label>
-          <input type="date" id="dataInicio">
-          <label for="dataFim">Data Fim:</label>
-          <input type="date" id="dataFim">
-        </div>
-        <div id="comprasTable"></div>
+    <main class="main-content">
+      <h2>Produtos por Evento</h2>
+
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 10px;">
+        <label for="filtroStatus">Status:</label>
+        <select id="filtroStatus">
+          <option value="aberto" selected>Aberto</option>
+          <option value="finalizado">Finalizado</option>
+          <option value="fechado">Fechado</option>
+        </select>
+
+        <button onclick="exportarXLSX()">Exportar XLSX</button>
+      </div>
+
+      <div>
+        <h3>Totais por Evento</h3>
+        <div id="totaisEventos"></div>
+      </div>
+
+      <div>
+        <h3>Produtos por Evento</h3>
+        <table id="tabelaProdutos">
+          <thead>
+            <tr id="headerRow"></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
       </div>
     </main>
   </div>
@@ -33,82 +51,158 @@
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp"
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    function getProximaSegunda() {
-      const hoje = new Date();
-      const diaSemana = hoje.getDay();
-      const distancia = (8 - diaSemana) % 7 || 7;
-      hoje.setDate(hoje.getDate() + distancia);
-      return hoje.toISOString().split('T')[0];
+    let eventos = [];
+    let produtosDB = {};
+    let dadosTabela = {};
+
+    function formatDateBR(dataISO) {
+      if (!dataISO) return '';
+      const [ano, mes, dia] = dataISO.split("-");
+      return `${dia}/${mes}/${ano}`;
     }
 
-    function carregarCompras() {
-      db.ref('eventos').once('value').then(snapshot => {
-        const eventos = [];
-        snapshot.forEach(child => {
-          const evento = child.val();
-          evento.id = child.key;
-          eventos.push(evento);
+    async function carregarDados() {
+      const produtosSnap = await db.ref('produtos').once('value');
+      produtosDB = produtosSnap.val();
+
+      const eventosSnap = await db.ref('eventos').once('value');
+      eventos = [];
+      eventosSnap.forEach(child => {
+        const evento = child.val();
+        evento.id = child.key;
+        eventos.push(evento);
+      });
+
+      processarDados();
+    }
+
+    function processarDados() {
+      dadosTabela = {};
+      const filtroStatus = document.getElementById('filtroStatus').value;
+
+      const eventosFiltrados = eventos.filter(e => {
+        const statusOk = (e.status || '').toLowerCase() === filtroStatus;
+        return statusOk;
+      });
+
+      const eventosNomes = eventosFiltrados.map(e => `${e.nomeEvento || e.id} ${e.data ? formatDateBR(e.data) : ''}`);
+
+      eventosFiltrados.forEach(evento => {
+        const nomeData = `${evento.nomeEvento || evento.id} ${evento.data ? formatDateBR(evento.data) : ''}`;
+        if (!evento.produtos) return;
+        evento.produtos.forEach(produto => {
+          const prodId = produto.produtoId;
+          const info = produtosDB[prodId];
+          const prodNome = info ? info.nome : prodId;
+          if (!dadosTabela[prodNome]) dadosTabela[prodNome] = { total: 0, quantidadePorCaixa: info?.quantidadePorCaixa || 0 };
+          dadosTabela[prodNome][nomeData] = produto.quantidade || 0;
+          dadosTabela[prodNome].total += produto.quantidade || 0;
         });
+      });
 
-        const dataInicio = document.getElementById('dataInicio').value;
-        const dataFim = document.getElementById('dataFim').value;
+      renderTabela(eventosNomes);
+      renderTotaisEventos(eventosFiltrados);
+    }
 
-        const produtos = {};
-        const colunas = [];
+    function renderTabela(eventosNomes) {
+      const headerRow = document.getElementById('headerRow');
+      headerRow.innerHTML = `<th>Produto</th>`;
+      eventosNomes.forEach(nome => {
+        headerRow.innerHTML += `<th>${nome}</th>`;
+      });
+      headerRow.innerHTML += `<th>Total</th><th>Qtd/Caixa</th><th>Pedido</th>`;
 
-        eventos.forEach(e => {
-          if (!e.data) return;
-          if (dataInicio && e.data < dataInicio) return;
-          if (dataFim && e.data > dataFim) return;
+      const tbody = document.querySelector('#tabelaProdutos tbody');
+      tbody.innerHTML = '';
 
-          const nomeColuna = `${e.nomeEvento || 'Sem nome'}<br>${formatarData(e.data)}`;
-          if (!colunas.includes(nomeColuna)) colunas.push(nomeColuna);
-
-          (e.produtos || []).forEach(p => {
-            const nome = p.nome || p.produtoNome || '';
-            if (!produtos[nome]) produtos[nome] = {};
-            produtos[nome][nomeColuna] = (produtos[nome][nomeColuna] || 0) + Number(p.quantidade || 0);
-          });
+      Object.entries(dadosTabela).forEach(([produto, dados]) => {
+        const tr = document.createElement('tr');
+        let row = `<td>${produto}</td>`;
+        eventosNomes.forEach(nome => {
+          const enviada = dados[nome] || 0;
+          row += `<td>${Number(enviada).toFixed(1).replace('.', ',')}</td>`;
         });
+        const total = dados.total || 0;
+        const qtdCaixa = Number(dados.quantidadePorCaixa || 0);
+        const pedido = qtdCaixa > 0 ? (total / qtdCaixa).toFixed(1).replace('.', ',') : '-';
 
-        colunas.sort();
-        let html = '<table><thead><tr><th>Produto</th>';
-        colunas.forEach(c => html += `<th>${c}</th>`);
-        html += '<th>Total</th></tr></thead><tbody>';
-
-        for (const nome in produtos) {
-          let total = 0;
-          html += `<tr><td>${nome}</td>`;
-          colunas.forEach(col => {
-            const val = produtos[nome][col] || 0;
-            html += `<td>${val}</td>`;
-            total += val;
-          });
-          html += `<td><strong>${total}</strong></td></tr>`;
-        }
-
-        html += '</tbody></table>';
-        document.getElementById('comprasTable').innerHTML = html;
+        row += `<td>${total.toFixed(1).replace('.', ',')}</td>`;
+        row += `<td>${qtdCaixa || '-'}</td>`;
+        row += `<td>${pedido}</td>`;
+        tr.innerHTML = row;
+        tbody.appendChild(tr);
       });
     }
 
-    function formatarData(iso) {
-      const [ano, mes, dia] = iso.split('-');
-      return `${dia}/${mes}`;
+    function renderTotaisEventos(eventosFiltrados) {
+      const div = document.getElementById('totaisEventos');
+      div.innerHTML = '';
+
+      const table = document.createElement('table');
+      table.classList.add('totais-table');
+
+      const thead = document.createElement('thead');
+      thead.innerHTML = `<tr><th>Evento</th><th>Estimativa Venda</th><th>Potencial Venda</th></tr>`;
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      eventosFiltrados.forEach(evento => {
+        let potencial = 0;
+        if (evento.produtos) {
+          evento.produtos.forEach(prod => {
+            const valorVenda = produtosDB[prod.produtoId]?.valorVenda || 0;
+            potencial += (prod.quantidade || 0) * valorVenda;
+          });
+        }
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${evento.nomeEvento} ${evento.data ? formatDateBR(evento.data) : ''}</td>
+                        <td>R$ ${Number(evento.estimativaVenda || 0).toFixed(2).replace('.', ',')}</td>
+                        <td>R$ ${potencial.toFixed(2).replace('.', ',')}</td>`;
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      div.appendChild(table);
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
-      carregarMenu('../');
-      document.getElementById('dataFim').value = getProximaSegunda();
-      document.getElementById('dataInicio').addEventListener('change', carregarCompras);
-      document.getElementById('dataFim').addEventListener('change', carregarCompras);
-      carregarCompras();
-    });
+    function exportarXLSX() {
+      const ws_data = [];
+      const header = ["Produto"];
+      const eventosNomes = Object.keys(dadosTabela[Object.keys(dadosTabela)[0]] || {}).filter(k => k !== 'total' && k !== 'quantidadePorCaixa');
+      eventosNomes.forEach(nome => header.push(nome));
+      header.push("Total", "Qtd/Caixa", "Pedido");
+      ws_data.push(header);
+
+      Object.entries(dadosTabela).forEach(([produto, dados]) => {
+        const row = [produto];
+        let total = 0;
+        eventosNomes.forEach(nome => {
+          const enviada = dados[nome] || 0;
+          total += enviada;
+          row.push(Number(enviada).toFixed(1).replace('.', ','));
+        });
+        const qtdCaixa = Number(dados.quantidadePorCaixa || 0);
+        const pedido = qtdCaixa > 0 ? (total / qtdCaixa).toFixed(1).replace('.', ',') : '-';
+        row.push(total.toFixed(1).replace('.', ','), qtdCaixa || '-', pedido);
+        ws_data.push(row);
+      });
+
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      XLSX.utils.book_append_sheet(wb, ws, "Produtos por Evento");
+      XLSX.writeFile(wb, "produtos_por_evento.xlsx");
+    }
+
+    document.getElementById('filtroStatus').addEventListener('change', processarDados);
+    document.addEventListener("DOMContentLoaded", carregarDados);
   </script>
 </body>
 </html>
