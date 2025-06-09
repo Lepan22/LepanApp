@@ -77,11 +77,11 @@
 
     function getSegundaPassada() {
       const hoje = new Date();
-      const diaSemana = hoje.getDay();
-      const diasDesdeSegunda = (diaSemana + 6) % 7; // segunda = 1
-      const segundaPassada = new Date(hoje);
-      segundaPassada.setDate(hoje.getDate() - diasDesdeSegunda);
-      return formatDateISO(segundaPassada);
+      const diaSemana = hoje.getDay(); // 0=domingo, 1=segunda, ..., 6=sábado
+      const diasParaVoltar = diaSemana === 1 ? 7 : ((diaSemana + 6) % 7) + 7;
+      const segunda = new Date(hoje);
+      segunda.setDate(hoje.getDate() - diasParaVoltar);
+      return formatDateISO(segunda);
     }
 
     async function carregarDados() {
