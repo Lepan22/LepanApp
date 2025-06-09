@@ -20,9 +20,10 @@ document.addEventListener('DOMContentLoaded', function () {
           <div id="eventos" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
               <a href="/LepanApp/eventos.html">Eventos</a>
-              <a href="/LepanApp/compra_evento.html">Gerar Compra</a>
-              <a href="/LepanApp/controle_etapas.html">Gestão Etapa</a>
               <a href="/LepanApp/agenda.html">Agenda</a>
+              <a href="/LepanApp/controle_etapas.html">Gestão Etapa</a>              
+              <a href="/LepanApp/compra_evento.html">Gerar Compra</a>
+              <a href="/LepanApp/VendaProd_evento.html">Consumo Prod Evento</a>
               <a href="/LepanApp/relatorio/conferencia_vendas.html">Conferencia Evento</a>
             </div>
           </div>
