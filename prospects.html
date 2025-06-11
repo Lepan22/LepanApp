@@ -1,17 +1,281 @@
-<!-- O conteúdo completo é idêntico ao último prospects.html que enviei,
-com essas 3 mudanças incluídas: -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Prospecção</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    label { display: block; margin-top: 10px; }
+    input, select, textarea { width: 100%; padding: 5px; margin-top: 2px; }
+    button { margin-top: 10px; padding: 6px 12px; }
+    .item { border: 1px solid #ccc; padding: 10px; margin-top: 10px; background: #f9f9f9; }
+    .acoes-container { margin-top: 10px; padding-left: 10px; border-left: 3px solid #ddd; }
 
-1. Ao final do <body>, **logo após** a Tabela de Próximas Ações:
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      font-size: 14px;
+      text-align: left;
+    }
+    th {
+      background-color: #eee;
+    }
+    .btn-acao {
+      margin-right: 5px;
+    }
+  </style>
 
-```html
-<h2>Lista de Leads</h2>
-<table>
-  <thead>
-    <tr>
-      <th>Tipo</th>
-      <th>Nome</th>
-      <th>Ações</th>
-    </tr>
-  </thead>
-  <tbody id="tabelaLeads"></tbody>
-</table>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+
+  <h2>Cadastro de Prospect</h2>
+
+  <form id="formProspect">
+    <label>Tipo:</label>
+    <input type="text" id="tipo" required>
+
+    <label>Nome:</label>
+    <input type="text" id="nome" required>
+
+    <h3>Contatos:</h3>
+    <div id="contatosContainer"></div>
+    <button type="button" onclick="adicionarContato()">+ Contato</button>
+
+    <h3>Prospects:</h3>
+    <div id="prospectsContainer"></div>
+    <button type="button" onclick="adicionarProspect()">+ Prospect</button>
+
+    <br><br>
+    <button type="submit">Salvar</button>
+  </form>
+
+  <h2>Lista de Próximas Ações</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Data da Próxima Ação</th>
+        <th>Nome do Prospect</th>
+        <th>Status</th>
+        <th>Atividade</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaProspects"></tbody>
+  </table>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database().ref("prospecao");
+
+    let editandoId = null;
+
+    document.getElementById("formProspect").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const tipo = document.getElementById("tipo").value.trim();
+      const nome = document.getElementById("nome").value.trim();
+      if (!tipo || !nome) {
+        alert("Preencha os campos obrigatórios");
+        return;
+      }
+
+      const contatos = [];
+      document.querySelectorAll('.contato-item').forEach(div => {
+        const nome = div.querySelector('.contato-nome').value.trim();
+        const telefone = div.querySelector('.contato-telefone').value.trim();
+        const email = div.querySelector('.contato-email').value.trim();
+        if (nome) contatos.push({ nome, telefone, email });
+      });
+
+      const prospects = [];
+      document.querySelectorAll('.prospect-item').forEach(div => {
+        const nome = div.querySelector('.prospect-nome').value.trim();
+        const status = div.querySelector('.prospect-status').value;
+        const atividade = div.querySelector('.prospect-atividade').value.trim();
+
+        const acoes = [];
+        div.querySelectorAll('.acao-item').forEach(acaoDiv => {
+          const data = acaoDiv.querySelector('.acao-data').value;
+          const descricao = acaoDiv.querySelector('.acao-desc').value.trim();
+          const proximaData = acaoDiv.querySelector('.acao-prox').value;
+          const concluido = acaoDiv.querySelector('.acao-concluido').checked;
+          if (descricao) acoes.push({ data, descricao, proximaData, concluido });
+        });
+
+        acoes.sort((a, b) => new Date(b.proximaData) - new Date(a.proximaData));
+
+        if (nome) prospects.push({ nome, status, atividade, acoes });
+      });
+
+      const novo = { tipo, nome, contatos, prospects, criadoEm: new Date().toISOString() };
+
+      const ref = editandoId ? db.child(editandoId) : db.push();
+      ref.set(novo).then(() => {
+        alert("Salvo com sucesso!");
+        document.getElementById("formProspect").reset();
+        document.getElementById("contatosContainer").innerHTML = '';
+        document.getElementById("prospectsContainer").innerHTML = '';
+        editandoId = null;
+        carregarListaProspects();
+      }).catch(err => {
+        alert("Erro ao salvar: " + err.message);
+      });
+    });
+
+    function adicionarContato(contato = {}) {
+      const div = document.createElement("div");
+      div.className = "item contato-item";
+      div.innerHTML = `
+        <label>Nome:</label>
+        <input type="text" class="contato-nome" value="${contato.nome || ''}">
+        <label>Telefone:</label>
+        <input type="text" class="contato-telefone" value="${contato.telefone || ''}">
+        <label>Email:</label>
+        <input type="email" class="contato-email" value="${contato.email || ''}">
+        <button type="button" onclick="this.parentElement.remove()">Remover</button>
+      `;
+      document.getElementById("contatosContainer").appendChild(div);
+    }
+
+    function adicionarProspect(p = {}) {
+      const div = document.createElement("div");
+      div.className = "item prospect-item";
+      const id = 'acoes_' + Date.now();
+      div.innerHTML = `
+        <label>Nome do Prospect:</label>
+        <input type="text" class="prospect-nome" value="${p.nome || ''}">
+        <label>Status:</label>
+        <select class="prospect-status">
+          <option ${p.status === 'Aberto' ? 'selected' : ''}>Aberto</option>
+          <option ${p.status === 'Negociando' ? 'selected' : ''}>Negociando</option>
+          <option ${p.status === 'Fechado' ? 'selected' : ''}>Fechado</option>
+          <option ${p.status === 'Perdido' ? 'selected' : ''}>Perdido</option>
+        </select>
+        <label>Atividade:</label>
+        <input type="text" class="prospect-atividade" value="${p.atividade || ''}">
+        <div class="acoes-container" id="${id}"></div>
+        <button type="button" onclick="adicionarAcao('${id}')">+ Ação</button>
+        <button type="button" onclick="this.parentElement.remove()">Remover Prospect</button>
+      `;
+      document.getElementById("prospectsContainer").appendChild(div);
+      (p.acoes || []).forEach(a => adicionarAcao(id, a));
+    }
+
+    function adicionarAcao(containerId, a = {}) {
+      const container = document.getElementById(containerId);
+      const div = document.createElement("div");
+      div.className = "acao-item";
+      div.innerHTML = `
+        <hr>
+        <label>Data:</label>
+        <input type="date" class="acao-data" value="${a.data || ''}">
+        <label>Descritivo:</label>
+        <textarea class="acao-desc" rows="2">${a.descricao || ''}</textarea>
+        <label>Próxima Data:</label>
+        <input type="date" class="acao-prox" value="${a.proximaData || ''}">
+        <label><input type="checkbox" class="acao-concluido" ${a.concluido ? 'checked' : ''}> Concluído</label>
+        <button type="button" onclick="this.parentElement.remove()">Remover Ação</button>
+      `;
+      container.appendChild(div);
+    }
+
+    function carregarListaProspects() {
+      db.once("value").then(snapshot => {
+        const lista = [];
+
+        snapshot.forEach(child => {
+          const id = child.key;
+          const contato = child.val();
+          const prospects = contato.prospects || [];
+
+          prospects.forEach(p => {
+            const acoes = (p.acoes || []).sort((a, b) => new Date(b.proximaData) - new Date(a.proximaData));
+            const ultima = acoes[0];
+            if (ultima?.proximaData) {
+              lista.push({
+                id,
+                data: ultima.proximaData,
+                nome: p.nome,
+                status: p.status,
+                atividade: p.atividade,
+                full: contato
+              });
+            }
+          });
+        });
+
+        lista.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+        const tbody = document.getElementById("tabelaProspects");
+        tbody.innerHTML = lista.map(p => `
+          <tr>
+            <td>${p.data}</td>
+            <td>${p.nome}</td>
+            <td>${p.status}</td>
+            <td>${p.atividade || ''}</td>
+            <td>
+              <button class="btn-acao" onclick='visualizar(${JSON.stringify(p.full).replace(/'/g, "\\'")})'>🔍</button>
+              <button class="btn-acao" onclick='editar("${p.id}")'>✏️</button>
+            </td>
+          </tr>
+        `).join("");
+      });
+    }
+
+    function visualizar(dados) {
+      let texto = `Tipo: ${dados.tipo || ''}\nNome: ${dados.nome || ''}\n\nContatos:\n`;
+      (dados.contatos || []).forEach(c => {
+        texto += ` - ${c.nome} | ${c.telefone} | ${c.email}\n`;
+      });
+
+      texto += `\nProspects:\n`;
+      (dados.prospects || []).forEach(p => {
+        texto += `\nNome: ${p.nome}\nStatus: ${p.status}\nAtividade: ${p.atividade}\n`;
+        const acoes = (p.acoes || []).sort((a, b) => new Date(a.proximaData) - new Date(b.proximaData));
+        acoes.forEach(a => {
+          texto += `  - ${a.data} | ${a.descricao} | Próxima: ${a.proximaData} | Concluído: ${a.concluido ? 'Sim' : 'Não'}\n`;
+        });
+      });
+
+      alert(texto);
+    }
+
+    function editar(id) {
+      db.child(id).once("value").then(snapshot => {
+        const c = snapshot.val();
+        if (!c) return;
+
+        document.getElementById("formProspect").reset();
+        document.getElementById("contatosContainer").innerHTML = '';
+        document.getElementById("prospectsContainer").innerHTML = '';
+        document.getElementById("tipo").value = c.tipo || '';
+        document.getElementById("nome").value = c.nome || '';
+        (c.contatos || []).forEach(adicionarContato);
+        (c.prospects || []).forEach(adicionarProspect);
+        editandoId = id;
+        window.scrollTo(0, 0);
+      });
+    }
+
+    carregarListaProspects();
+  </script>
+
+</body>
+</html>
