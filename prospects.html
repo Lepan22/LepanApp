@@ -7,74 +7,73 @@
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
   <style>
-    .linha {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .campo {
-      flex: 1;
-      min-width: 200px;
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
     }
     label {
       display: block;
-      font-size: 13px;
-      margin: 0;
+      margin-top: 10px;
     }
-    input, select, textarea {
-      width: 100%;
-      box-sizing: border-box;
+    input {
+      width: 300px;
+      padding: 5px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 6px 12px;
     }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="assets/menu.js" defer></script>
 </head>
 <body>
-  <div class="layout">
-    <div id="menuLateral" class="sidebar"></div>
 
-    <div class="main-content">
-      <form id="formProspect">
-        <div class="linha">
-          <div class="campo">
-            <label>Tipo:</label>
-            <input type="text" id="tipo" required>
-          </div>
-          <div class="campo">
-            <label>Nome do Contato:</label>
-            <input type="text" id="nome" required>
-          </div>
-        </div>
+  <h2>Cadastro Simples de Prospect</h2>
 
-        <label>Contatos:</label>
-        <div id="contatosContainer"></div>
-        <button type="button" onclick="adicionarContato()">+ Contato</button>
+  <form id="formProspect">
+    <label for="tipo">Tipo:</label>
+    <input type="text" id="tipo" required>
 
-        <label>Prospects:</label>
-        <div id="prospectsContainer"></div>
-        <button type="button" onclick="adicionarProspect()">+ Prospect</button>
+    <label for="nome">Nome:</label>
+    <input type="text" id="nome" required>
 
-        <br><br>
-        <button type="submit">Salvar</button>
-      </form>
+    <button type="submit">Salvar</button>
+  </form>
 
-      <hr>
+  <script>
+    // Firebase v8
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
 
-      <table id="tabelaProspects" border="1" cellspacing="0" cellpadding="4">
-        <thead>
-          <tr>
-            <th>Tipo</th>
-            <th>Nome</th>
-            <th>Prospects</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database().ref("prospecao");
 
-  <script src="assets/prospects.js"></script>
+    document.getElementById("formProspect").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const tipo = document.getElementById("tipo").value.trim();
+      const nome = document.getElementById("nome").value.trim();
+
+      if (!tipo || !nome) {
+        alert("Preencha todos os campos");
+        return;
+      }
+
+      const novo = { tipo, nome, criadoEm: new Date().toISOString() };
+      db.push(novo).then(() => {
+        alert("Salvo com sucesso!");
+        document.getElementById("formProspect").reset();
+      }).catch((err) => {
+        alert("Erro ao salvar: " + err.message);
+      });
+    });
+  </script>
+
 </body>
 </html>
