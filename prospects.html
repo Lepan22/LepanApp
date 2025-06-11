@@ -115,8 +115,11 @@
           const data = acaoDiv.querySelector('.acao-data').value;
           const descricao = acaoDiv.querySelector('.acao-desc').value.trim();
           const proximaData = acaoDiv.querySelector('.acao-prox').value;
-          if (descricao) acoes.push({ data, descricao, proximaData });
+          const concluido = acaoDiv.querySelector('.acao-concluido').checked;
+          if (descricao) acoes.push({ data, descricao, proximaData, concluido });
         });
+
+        acoes.sort((a, b) => new Date(a.proximaData) - new Date(b.proximaData));
 
         if (nome) prospects.push({ nome, status, atividade, acoes });
       });
@@ -172,7 +175,6 @@
         <button type="button" onclick="this.parentElement.remove()">Remover Prospect</button>
       `;
       document.getElementById("prospectsContainer").appendChild(div);
-
       (p.acoes || []).forEach(a => adicionarAcao(id, a));
     }
 
@@ -188,6 +190,7 @@
         <textarea class="acao-desc" rows="2">${a.descricao || ''}</textarea>
         <label>Próxima Data:</label>
         <input type="date" class="acao-prox" value="${a.proximaData || ''}">
+        <label><input type="checkbox" class="acao-concluido" ${a.concluido ? 'checked' : ''}> Concluído</label>
         <button type="button" onclick="this.parentElement.remove()">Remover Ação</button>
       `;
       container.appendChild(div);
@@ -203,11 +206,11 @@
           const prospects = contato.prospects || [];
 
           prospects.forEach(p => {
-            const acoes = p.acoes || [];
-            const ultima = acoes[acoes.length - 1];
+            const acoes = (p.acoes || []).sort((a, b) => new Date(a.proximaData) - new Date(b.proximaData));
+            const ultima = acoes[0];
             if (ultima?.proximaData) {
               lista.push({
-                id, // para editar
+                id,
                 data: ultima.proximaData,
                 nome: p.nome,
                 status: p.status,
@@ -228,7 +231,7 @@
             <td>${p.status}</td>
             <td>${p.atividade || ''}</td>
             <td>
-              <button class="btn-acao" onclick='visualizar(${JSON.stringify(p.full)})'>🔍</button>
+              <button class="btn-acao" onclick='visualizar(${JSON.stringify(p.full).replace(/'/g, "\\'")})'>🔍</button>
               <button class="btn-acao" onclick='editar("${p.id}")'>✏️</button>
             </td>
           </tr>
@@ -237,7 +240,20 @@
     }
 
     function visualizar(dados) {
-      const texto = JSON.stringify(dados, null, 2);
+      let texto = `Tipo: ${dados.tipo || ''}\nNome: ${dados.nome || ''}\n\nContatos:\n`;
+      (dados.contatos || []).forEach(c => {
+        texto += ` - ${c.nome} | ${c.telefone} | ${c.email}\n`;
+      });
+
+      texto += `\nProspects:\n`;
+      (dados.prospects || []).forEach(p => {
+        texto += `\nNome: ${p.nome}\nStatus: ${p.status}\nAtividade: ${p.atividade}\n`;
+        const acoes = (p.acoes || []).sort((a, b) => new Date(a.proximaData) - new Date(b.proximaData));
+        acoes.forEach(a => {
+          texto += `  - ${a.data} | ${a.descricao} | Próxima: ${a.proximaData} | Concluído: ${a.concluido ? 'Sim' : 'Não'}\n`;
+        });
+      });
+
       alert(texto);
     }
 
