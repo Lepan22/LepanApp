@@ -119,7 +119,7 @@
           if (descricao) acoes.push({ data, descricao, proximaData, concluido });
         });
 
-        acoes.sort((a, b) => new Date(a.proximaData) - new Date(b.proximaData));
+        acoes.sort((a, b) => new Date(b.proximaData) - new Date(a.proximaData));
 
         if (nome) prospects.push({ nome, status, atividade, acoes });
       });
