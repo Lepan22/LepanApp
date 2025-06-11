@@ -73,6 +73,18 @@
     <tbody id="tabelaProspects"></tbody>
   </table>
 
+  <h2>Lista de Leads</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Tipo</th>
+        <th>Nome</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaLeads"></tbody>
+  </table>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -134,6 +146,7 @@
         document.getElementById("prospectsContainer").innerHTML = '';
         editandoId = null;
         carregarListaProspects();
+        carregarListaLeads();
       }).catch(err => {
         alert("Erro ao salvar: " + err.message);
       });
@@ -239,6 +252,41 @@
       });
     }
 
+    function carregarListaLeads() {
+      db.once("value").then(snapshot => {
+        const tbody = document.getElementById("tabelaLeads");
+        tbody.innerHTML = "";
+
+        snapshot.forEach(child => {
+          const id = child.key;
+          const c = child.val();
+          const tipo = c.tipo || '';
+          const nome = c.nome || '';
+
+          tbody.innerHTML += `
+            <tr>
+              <td>${tipo}</td>
+              <td>${nome}</td>
+              <td>
+                <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
+                <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
+              </td>
+            </tr>
+          `;
+        });
+      });
+    }
+
+    function excluir(id) {
+      if (confirm("Tem certeza que deseja excluir este lead?")) {
+        db.child(id).remove().then(() => {
+          alert("Lead excluído.");
+          carregarListaProspects();
+          carregarListaLeads();
+        });
+      }
+    }
+
     function visualizar(dados) {
       let texto = `Tipo: ${dados.tipo || ''}\nNome: ${dados.nome || ''}\n\nContatos:\n`;
       (dados.contatos || []).forEach(c => {
@@ -275,6 +323,7 @@
     }
 
     carregarListaProspects();
+    carregarListaLeads();
   </script>
 
 </body>
