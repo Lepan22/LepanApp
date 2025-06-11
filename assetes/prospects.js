@@ -1,74 +1,114 @@
-import { db } from './firebase-config.js';
-import {
-  ref,
-  push,
-  set
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+  authDomain: "lepanapp.firebaseapp.com",
+  databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+  projectId: "lepanapp"
+};
 
-document.addEventListener('DOMContentLoaded', () => {
-  const form = document.getElementById('formContato');
-  const listaContatos = document.getElementById('listaContatos');
-  const listaProspects = document.getElementById('listaProspects');
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database().ref("prospecao");
 
-  document.getElementById('btnAddContato').addEventListener('click', () => {
-    const div = document.createElement('div');
-    div.className = 'contato-item';
-    div.innerHTML = `
-      <input type="text" class="contato-nome" placeholder="Nome do Contato" required>
-      <input type="text" class="contato-telefone" placeholder="Telefone">
-      <input type="email" class="contato-email" placeholder="Email">
-      <button type="button" onclick="this.parentElement.remove()">Remover</button>
-    `;
-    listaContatos.appendChild(div);
+document.getElementById("formProspect").addEventListener("submit", (e) => {
+  e.preventDefault();
+
+  const novo = {
+    tipo: document.getElementById("tipo").value.trim(),
+    nome: document.getElementById("nome").value.trim(),
+    contatos: capturarContatos(),
+    prospects: capturarProspects(),
+    criadoEm: new Date().toISOString()
+  };
+
+  db.push(novo).then(() => {
+    alert("Salvo com sucesso!");
+    location.reload();
+  });
+});
+
+function adicionarContato(contato = {}) {
+  const div = document.createElement("div");
+
+  const nome = document.createElement("input");
+  nome.placeholder = "Nome";
+  nome.value = contato.nome || "";
+
+  const telefone = document.createElement("input");
+  telefone.placeholder = "Telefone";
+  telefone.value = contato.telefone || "";
+
+  const email = document.createElement("input");
+  email.placeholder = "Email";
+  email.value = contato.email || "";
+
+  div.appendChild(nome);
+  div.appendChild(telefone);
+  div.appendChild(email);
+
+  document.getElementById("contatosContainer").appendChild(div);
+}
+
+function adicionarProspect(prospect = {}) {
+  const div = document.createElement("div");
+
+  const nome = document.createElement("input");
+  nome.placeholder = "Nome do Prospect";
+  nome.value = prospect.nome || "";
+
+  const status = document.createElement("select");
+  ["Aberto", "Negociando", "Fechado", "Perdido"].forEach(op => {
+    const option = document.createElement("option");
+    option.value = op;
+    option.textContent = op;
+    if (prospect.status === op) option.selected = true;
+    status.appendChild(option);
   });
 
-  document.getElementById('btnAddProspect').addEventListener('click', () => {
-    const div = document.createElement('div');
-    div.className = 'prospect-item';
-    div.innerHTML = `
-      <input type="text" class="prospect-nome" placeholder="Nome do Prospect" required>
-      <select class="prospect-status">
-        <option value="Aberto">Aberto</option>
-        <option value="Negociando">Negociando</option>
-        <option value="Fechado">Fechado</option>
-        <option value="Perdido">Perdido</option>
-      </select>
-      <button type="button" onclick="this.parentElement.remove()">Remover</button>
-    `;
-    listaProspects.appendChild(div);
+  div.appendChild(nome);
+  div.appendChild(status);
+
+  document.getElementById("prospectsContainer").appendChild(div);
+}
+
+function capturarContatos() {
+  const lista = [];
+  const divs = document.querySelectorAll("#contatosContainer > div");
+  divs.forEach(div => {
+    const inputs = div.querySelectorAll("input");
+    lista.push({
+      nome: inputs[0].value.trim(),
+      telefone: inputs[1].value.trim(),
+      email: inputs[2].value.trim()
+    });
   });
+  return lista;
+}
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+function capturarProspects() {
+  const lista = [];
+  const divs = document.querySelectorAll("#prospectsContainer > div");
+  divs.forEach(div => {
+    const inputs = div.querySelectorAll("input");
+    const select = div.querySelector("select");
+    lista.push({
+      nome: inputs[0].value.trim(),
+      status: select.value
+    });
+  });
+  return lista;
+}
 
-    const tipo = document.getElementById('tipo').value.trim();
-    const nome = document.getElementById('nomeContato').value.trim();
-
-    const contatos = Array.from(document.querySelectorAll('.contato-item')).map(item => ({
-      nome: item.querySelector('.contato-nome').value.trim(),
-      telefone: item.querySelector('.contato-telefone').value.trim(),
-      email: item.querySelector('.contato-email').value.trim()
-    }));
-
-    const prospects = Array.from(document.querySelectorAll('.prospect-item')).map(item => ({
-      nome: item.querySelector('.prospect-nome').value.trim(),
-      status: item.querySelector('.prospect-status').value
-    }));
-
-    const novoCadastro = {
-      tipo,
-      nome,
-      contatos,
-      prospects,
-      criadoEm: new Date().toISOString()
-    };
-
-    try {
-      await set(push(ref(db, 'prospecao')), novoCadastro);
-      alert('Salvo com sucesso!');
-      location.reload();
-    } catch (error) {
-      alert('Erro ao salvar: ' + error.message);
-    }
+// Carregar tabela
+db.once("value").then(snapshot => {
+  const tbody = document.querySelector("#tabelaProspects tbody");
+  tbody.innerHTML = "";
+  snapshot.forEach(child => {
+    const p = child.val();
+    const nomes = (p.prospects || []).map(p => `${p.nome} (${p.status})`).join("<br>");
+    const row = `<tr>
+      <td>${p.tipo}</td>
+      <td>${p.nome}</td>
+      <td>${nomes}</td>
+    </tr>`;
+    tbody.innerHTML += row;
   });
 });
