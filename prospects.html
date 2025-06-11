@@ -2,96 +2,37 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Prospecção - Kanban</title>
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-  <link rel="stylesheet" href="assets/base.css" />
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="assets/menu.js" defer></script>
-  <style>
-    .linha { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-    .campo { flex: 1; min-width: 200px; }
-    label { font-size: 13px; display: block; margin-bottom: 2px; }
-    input, select, textarea { width: 100%; box-sizing: border-box; }
-    .kanban-board { display: flex; gap: 20px; overflow-x: auto; margin-top: 20px; }
-    .kanban-column { flex: 1; min-width: 250px; background: #f4f4f4; padding: 10px; border-radius: 6px; }
-    .kanban-column h3 { margin-top: 0; }
-    .kanban-item { background: white; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ccc; cursor: move; }
-    .side-panel { position: fixed; top: 0; right: -100%; width: 400px; height: 100%; background: white; box-shadow: -2px 0 6px rgba(0,0,0,0.1); overflow-y: auto; padding: 20px; transition: right 0.3s ease; }
-    .side-panel.open { right: 0; }
-    .kanban-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cadastro de Contato e Prospects</title>
+  <link rel="stylesheet" href="assets/base.css">
+  <link rel="stylesheet" href="assets/menu-styles.css">
+  <script type="module" src="assets/firebase-config.js"></script>
+  <script defer src="assets/menu.js"></script>
+  <script defer src="assets/prospects.js"></script>
 </head>
 <body>
-  <div class="layout">
-    <div id="menuLateral" class="sidebar"></div>
-    <div class="main-content">
-      <h2>Prospecção Comercial</h2>
+  <div class="menu-container"></div>
 
-      <div class="linha">
-        <div class="campo">
-          <label>Contato:</label>
-          <select id="selectContato"></select>
-        </div>
-        <div class="campo">
-          <label>Prospect:</label>
-          <select id="selectProspect"></select>
-        </div>
-        <div class="campo">
-          <label>Status:</label>
-          <select id="statusProspect">
-            <option>Aberto</option>
-            <option>Negociando</option>
-            <option>Proposta</option>
-            <option>Fechado</option>
-            <option>Perdido</option>
-          </select>
-        </div>
-      </div>
-      <div class="linha">
-        <div class="campo">
-          <label>Data do Contato:</label>
-          <input type="date" id="dataContato">
-        </div>
-        <div class="campo">
-          <label>Comentário:</label>
-          <input type="text" id="comentario">
-        </div>
-        <div class="campo">
-          <label>Observação:</label>
-          <input type="text" id="observacao">
-        </div>
-        <div class="campo">
-          <label>Próxima Data:</label>
-          <input type="date" id="proximaData">
-        </div>
-        <div class="campo">
-          <button onclick="salvarAcao()">Salvar Ação</button>
-        </div>
-      </div>
+  <main>
+    <h1>Cadastro de Contato</h1>
+    <form id="formContato">
+      <label for="tipo">Tipo:</label>
+      <input type="text" id="tipo" required>
 
-      <div class="kanban-board" id="kanbanBoard"></div>
+      <label for="nomeContato">Nome:</label>
+      <input type="text" id="nomeContato" required>
 
-      <h3>Próximas Ações</h3>
-      <table border="1" cellpadding="5" cellspacing="0" width="100%" id="listaProximas">
-        <thead>
-          <tr>
-            <th>Prospect</th>
-            <th>Contato</th>
-            <th>Próxima Data</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
+      <h3>Contatos</h3>
+      <div id="listaContatos"></div>
+      <button type="button" onclick="adicionarContato()">+ Contato</button>
 
-    <div id="sidePanel" class="side-panel">
-      <button onclick="fecharPainel()">Fechar</button>
-      <div id="detalheProspect"></div>
-    </div>
-  </div>
-  <script src="prospeccao.js"></script>
+      <h3>Prospects</h3>
+      <div id="listaProspects"></div>
+      <button type="button" onclick="adicionarProspect()">+ Prospect</button>
+
+      <br><br>
+      <button type="submit">Salvar</button>
+    </form>
+  </main>
 </body>
 </html>
