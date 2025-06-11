@@ -13,6 +13,21 @@
     button { margin-top: 10px; padding: 6px 12px; }
     .item { border: 1px solid #ccc; padding: 10px; margin-top: 10px; background: #f9f9f9; }
     .acoes-container { margin-top: 10px; padding-left: 10px; border-left: 3px solid #ddd; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      font-size: 14px;
+      text-align: left;
+    }
+    th {
+      background-color: #eee;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -40,6 +55,18 @@
     <br><br>
     <button type="submit">Salvar</button>
   </form>
+
+  <h2>Lista de Próximas Ações</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Data da Próxima Ação</th>
+        <th>Nome do Prospect</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaProspects"></tbody>
+  </table>
 
   <script>
     // Firebase v8
@@ -101,6 +128,7 @@
         document.getElementById("formProspect").reset();
         document.getElementById("contatosContainer").innerHTML = '';
         document.getElementById("prospectsContainer").innerHTML = '';
+        carregarListaProspects();
       }).catch((err) => {
         alert("Erro ao salvar: " + err.message);
       });
@@ -158,6 +186,43 @@
       `;
       container.appendChild(div);
     }
+
+    function carregarListaProspects() {
+      db.once("value").then(snapshot => {
+        const lista = [];
+
+        snapshot.forEach(child => {
+          const contato = child.val();
+          const prospects = contato.prospects || [];
+
+          prospects.forEach(p => {
+            const acoes = p.acoes || [];
+            const ultimaAcao = acoes[acoes.length - 1];
+            if (ultimaAcao?.proximaData) {
+              lista.push({
+                data: ultimaAcao.proximaData,
+                nome: p.nome,
+                status: p.status
+              });
+            }
+          });
+        });
+
+        lista.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+        const tbody = document.getElementById("tabelaProspects");
+        tbody.innerHTML = lista.map(p => `
+          <tr>
+            <td>${p.data}</td>
+            <td>${p.nome}</td>
+            <td>${p.status}</td>
+          </tr>
+        `).join("");
+      });
+    }
+
+    // carregar ao abrir
+    carregarListaProspects();
   </script>
 
 </body>
