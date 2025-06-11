@@ -7,12 +7,10 @@ import {
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('formContato');
-  const btnAddContato = document.getElementById('btnAddContato');
-  const btnAddProspect = document.getElementById('btnAddProspect');
   const listaContatos = document.getElementById('listaContatos');
   const listaProspects = document.getElementById('listaProspects');
 
-  btnAddContato.addEventListener('click', () => {
+  document.getElementById('btnAddContato').addEventListener('click', () => {
     const div = document.createElement('div');
     div.className = 'contato-item';
     div.innerHTML = `
@@ -24,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     listaContatos.appendChild(div);
   });
 
-  btnAddProspect.addEventListener('click', () => {
+  document.getElementById('btnAddProspect').addEventListener('click', () => {
     const div = document.createElement('div');
     div.className = 'prospect-item';
     div.innerHTML = `
@@ -66,8 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     try {
-      const refNovo = push(ref(db, 'prospecao'));
-      await set(refNovo, novoCadastro);
+      await set(push(ref(db, 'prospecao')), novoCadastro);
       alert('Salvo com sucesso!');
       location.reload();
     } catch (error) {
