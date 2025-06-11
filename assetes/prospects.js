@@ -1,35 +1,50 @@
+import { db } from './firebase-config.js';
+import {
+  ref,
+  push,
+  set
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-const db = firebase.database();
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('formContato');
+  const btnAddContato = document.getElementById('btnAddContato');
+  const btnAddProspect = document.getElementById('btnAddProspect');
 
-document.getElementById('formContato').addEventListener('submit', async (e) => {
-  e.preventDefault();
+  btnAddContato.addEventListener('click', adicionarContato);
+  btnAddProspect.addEventListener('click', adicionarProspect);
 
-  const tipo = document.getElementById('tipo').value.trim();
-  const nome = document.getElementById('nomeContato').value.trim();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
 
-  const contatos = [];
-  document.querySelectorAll('.contato-item').forEach(div => {
-    const nome = div.querySelector('.contato-nome').value.trim();
-    const telefone = div.querySelector('.contato-telefone').value.trim();
-    const email = div.querySelector('.contato-email').value.trim();
-    if (nome) contatos.push({ nome, telefone, email });
+    const tipo = document.getElementById('tipo').value.trim();
+    const nome = document.getElementById('nomeContato').value.trim();
+
+    const contatos = [];
+    document.querySelectorAll('.contato-item').forEach(div => {
+      const nome = div.querySelector('.contato-nome').value.trim();
+      const telefone = div.querySelector('.contato-telefone').value.trim();
+      const email = div.querySelector('.contato-email').value.trim();
+      if (nome) contatos.push({ nome, telefone, email });
+    });
+
+    const prospects = [];
+    document.querySelectorAll('.prospect-item').forEach(div => {
+      const nome = div.querySelector('.prospect-nome').value.trim();
+      const status = div.querySelector('.prospect-status').value;
+      if (nome) prospects.push({ nome, status });
+    });
+
+    const novoContato = {
+      tipo, nome, contatos, prospects,
+      criadoEm: new Date().toISOString()
+    };
+
+    const refContato = push(ref(db, 'prospecao'));
+    await set(refContato, novoContato);
+
+    alert('Contato salvo com sucesso!');
+    location.reload();
   });
-
-  const prospects = [];
-  document.querySelectorAll('.prospect-item').forEach(div => {
-    const nome = div.querySelector('.prospect-nome').value.trim();
-    const status = div.querySelector('.prospect-status').value;
-    if (nome) prospects.push({ nome, status });
-  });
-
-  const novoContato = {
-    tipo, nome, contatos, prospects,
-    criadoEm: new Date().toISOString()
-  };
-
-  await db.ref('prospecao').push(novoContato);
-  alert('Contato salvo com sucesso!');
-  location.reload();
 });
 
 function adicionarContato() {
