@@ -2,37 +2,79 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cadastro Contato e Prospects</title>
-  <link rel="stylesheet" href="assets/base.css">
-  <link rel="stylesheet" href="assets/menu-styles.css">
+  <title>Prospecção</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+  <style>
+    .linha {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .campo {
+      flex: 1;
+      min-width: 200px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin: 0;
+    }
+    input, select, textarea {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
 </head>
 <body>
-  <div class="menu-container"></div>
+  <div class="layout">
+    <div id="menuLateral" class="sidebar"></div>
 
-  <main>
-    <h1>Cadastro de Contato</h1>
-    <form id="formContato">
-      <label for="tipo">Tipo:</label>
-      <input type="text" id="tipo" required>
+    <div class="main-content">
+      <form id="formProspect">
+        <div class="linha">
+          <div class="campo">
+            <label>Tipo:</label>
+            <input type="text" id="tipo" required>
+          </div>
+          <div class="campo">
+            <label>Nome do Contato:</label>
+            <input type="text" id="nome" required>
+          </div>
+        </div>
 
-      <label for="nomeContato">Nome:</label>
-      <input type="text" id="nomeContato" required>
+        <label>Contatos:</label>
+        <div id="contatosContainer"></div>
+        <button type="button" onclick="adicionarContato()">+ Contato</button>
 
-      <h3>Contatos</h3>
-      <div id="listaContatos"></div>
-      <button type="button" id="btnAddContato">+ Contato</button>
+        <label>Prospects:</label>
+        <div id="prospectsContainer"></div>
+        <button type="button" onclick="adicionarProspect()">+ Prospect</button>
 
-      <h3>Prospects</h3>
-      <div id="listaProspects"></div>
-      <button type="button" id="btnAddProspect">+ Prospect</button>
+        <br><br>
+        <button type="submit">Salvar</button>
+      </form>
 
-      <br><br>
-      <button type="submit">Salvar</button>
-    </form>
-  </main>
+      <hr>
 
-  <!-- Aqui o script deve ser carregado como MÓDULO -->
-  <script type="module" src="assets/prospects.js"></script>
+      <table id="tabelaProspects" border="1" cellspacing="0" cellpadding="4">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Nome</th>
+            <th>Prospects</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="assets/prospects.js"></script>
 </body>
 </html>
