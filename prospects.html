@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Prosp ecção</title>
+  <title>Prospecção</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -27,6 +27,9 @@
     }
     th {
       background-color: #eee;
+    }
+    .btn-acao {
+      margin-right: 5px;
     }
   </style>
 
@@ -63,13 +66,14 @@
         <th>Data da Próxima Ação</th>
         <th>Nome do Prospect</th>
         <th>Status</th>
+        <th>Atividade</th>
+        <th>Ações</th>
       </tr>
     </thead>
     <tbody id="tabelaProspects"></tbody>
   </table>
 
   <script>
-    // Firebase v8
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
@@ -80,12 +84,13 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database().ref("prospecao");
 
+    let editandoId = null;
+
     document.getElementById("formProspect").addEventListener("submit", function (e) {
       e.preventDefault();
 
       const tipo = document.getElementById("tipo").value.trim();
       const nome = document.getElementById("nome").value.trim();
-
       if (!tipo || !nome) {
         alert("Preencha os campos obrigatórios");
         return;
@@ -103,6 +108,7 @@
       document.querySelectorAll('.prospect-item').forEach(div => {
         const nome = div.querySelector('.prospect-nome').value.trim();
         const status = div.querySelector('.prospect-status').value;
+        const atividade = div.querySelector('.prospect-atividade').value.trim();
 
         const acoes = [];
         div.querySelectorAll('.acao-item').forEach(acaoDiv => {
@@ -112,76 +118,76 @@
           if (descricao) acoes.push({ data, descricao, proximaData });
         });
 
-        if (nome) prospects.push({ nome, status, acoes });
+        if (nome) prospects.push({ nome, status, atividade, acoes });
       });
 
-      const novo = {
-        tipo,
-        nome,
-        contatos,
-        prospects,
-        criadoEm: new Date().toISOString()
-      };
+      const novo = { tipo, nome, contatos, prospects, criadoEm: new Date().toISOString() };
 
-      db.push(novo).then(() => {
+      const ref = editandoId ? db.child(editandoId) : db.push();
+      ref.set(novo).then(() => {
         alert("Salvo com sucesso!");
         document.getElementById("formProspect").reset();
         document.getElementById("contatosContainer").innerHTML = '';
         document.getElementById("prospectsContainer").innerHTML = '';
+        editandoId = null;
         carregarListaProspects();
-      }).catch((err) => {
+      }).catch(err => {
         alert("Erro ao salvar: " + err.message);
       });
     });
 
-    function adicionarContato() {
+    function adicionarContato(contato = {}) {
       const div = document.createElement("div");
       div.className = "item contato-item";
       div.innerHTML = `
         <label>Nome:</label>
-        <input type="text" class="contato-nome" placeholder="Nome do contato">
+        <input type="text" class="contato-nome" value="${contato.nome || ''}">
         <label>Telefone:</label>
-        <input type="text" class="contato-telefone" placeholder="Telefone">
+        <input type="text" class="contato-telefone" value="${contato.telefone || ''}">
         <label>Email:</label>
-        <input type="email" class="contato-email" placeholder="Email">
+        <input type="email" class="contato-email" value="${contato.email || ''}">
         <button type="button" onclick="this.parentElement.remove()">Remover</button>
       `;
       document.getElementById("contatosContainer").appendChild(div);
     }
 
-    function adicionarProspect() {
+    function adicionarProspect(p = {}) {
       const div = document.createElement("div");
       div.className = "item prospect-item";
       const id = 'acoes_' + Date.now();
       div.innerHTML = `
         <label>Nome do Prospect:</label>
-        <input type="text" class="prospect-nome" placeholder="Nome do prospect">
+        <input type="text" class="prospect-nome" value="${p.nome || ''}">
         <label>Status:</label>
         <select class="prospect-status">
-          <option value="Aberto">Aberto</option>
-          <option value="Negociando">Negociando</option>
-          <option value="Fechado">Fechado</option>
-          <option value="Perdido">Perdido</option>
+          <option ${p.status === 'Aberto' ? 'selected' : ''}>Aberto</option>
+          <option ${p.status === 'Negociando' ? 'selected' : ''}>Negociando</option>
+          <option ${p.status === 'Fechado' ? 'selected' : ''}>Fechado</option>
+          <option ${p.status === 'Perdido' ? 'selected' : ''}>Perdido</option>
         </select>
+        <label>Atividade:</label>
+        <input type="text" class="prospect-atividade" value="${p.atividade || ''}">
         <div class="acoes-container" id="${id}"></div>
         <button type="button" onclick="adicionarAcao('${id}')">+ Ação</button>
         <button type="button" onclick="this.parentElement.remove()">Remover Prospect</button>
       `;
       document.getElementById("prospectsContainer").appendChild(div);
+
+      (p.acoes || []).forEach(a => adicionarAcao(id, a));
     }
 
-    function adicionarAcao(containerId) {
+    function adicionarAcao(containerId, a = {}) {
       const container = document.getElementById(containerId);
       const div = document.createElement("div");
       div.className = "acao-item";
       div.innerHTML = `
         <hr>
         <label>Data:</label>
-        <input type="date" class="acao-data">
+        <input type="date" class="acao-data" value="${a.data || ''}">
         <label>Descritivo:</label>
-        <textarea class="acao-desc" rows="2" placeholder="Descrição da ação"></textarea>
+        <textarea class="acao-desc" rows="2">${a.descricao || ''}</textarea>
         <label>Próxima Data:</label>
-        <input type="date" class="acao-prox">
+        <input type="date" class="acao-prox" value="${a.proximaData || ''}">
         <button type="button" onclick="this.parentElement.remove()">Remover Ação</button>
       `;
       container.appendChild(div);
@@ -192,17 +198,21 @@
         const lista = [];
 
         snapshot.forEach(child => {
+          const id = child.key;
           const contato = child.val();
           const prospects = contato.prospects || [];
 
           prospects.forEach(p => {
             const acoes = p.acoes || [];
-            const ultimaAcao = acoes[acoes.length - 1];
-            if (ultimaAcao?.proximaData) {
+            const ultima = acoes[acoes.length - 1];
+            if (ultima?.proximaData) {
               lista.push({
-                data: ultimaAcao.proximaData,
+                id, // para editar
+                data: ultima.proximaData,
                 nome: p.nome,
-                status: p.status
+                status: p.status,
+                atividade: p.atividade,
+                full: contato
               });
             }
           });
@@ -216,12 +226,38 @@
             <td>${p.data}</td>
             <td>${p.nome}</td>
             <td>${p.status}</td>
+            <td>${p.atividade || ''}</td>
+            <td>
+              <button class="btn-acao" onclick='visualizar(${JSON.stringify(p.full)})'>🔍</button>
+              <button class="btn-acao" onclick='editar("${p.id}")'>✏️</button>
+            </td>
           </tr>
         `).join("");
       });
     }
 
-    // carregar ao abrir
+    function visualizar(dados) {
+      const texto = JSON.stringify(dados, null, 2);
+      alert(texto);
+    }
+
+    function editar(id) {
+      db.child(id).once("value").then(snapshot => {
+        const c = snapshot.val();
+        if (!c) return;
+
+        document.getElementById("formProspect").reset();
+        document.getElementById("contatosContainer").innerHTML = '';
+        document.getElementById("prospectsContainer").innerHTML = '';
+        document.getElementById("tipo").value = c.tipo || '';
+        document.getElementById("nome").value = c.nome || '';
+        (c.contatos || []).forEach(adicionarContato);
+        (c.prospects || []).forEach(adicionarProspect);
+        editandoId = id;
+        window.scrollTo(0, 0);
+      });
+    }
+
     carregarListaProspects();
   </script>
 
