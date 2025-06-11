@@ -15,7 +15,7 @@
       display: block;
       margin-top: 10px;
     }
-    input {
+    input, select {
       width: 300px;
       padding: 5px;
     }
@@ -23,7 +23,7 @@
       margin-top: 15px;
       padding: 6px 12px;
     }
-    .contato-item {
+    .contato-item, .prospect-item {
       margin-top: 10px;
       border: 1px solid #ccc;
       padding: 10px;
@@ -48,6 +48,10 @@
     <h3>Contatos:</h3>
     <div id="contatosContainer"></div>
     <button type="button" onclick="adicionarContato()">+ Contato</button>
+
+    <h3>Prospects:</h3>
+    <div id="prospectsContainer"></div>
+    <button type="button" onclick="adicionarProspect()">+ Prospect</button>
 
     <br><br>
     <button type="submit">Salvar</button>
@@ -84,10 +88,18 @@
         if (nome) contatos.push({ nome, telefone, email });
       });
 
+      const prospects = [];
+      document.querySelectorAll('.prospect-item').forEach(div => {
+        const nome = div.querySelector('.prospect-nome').value.trim();
+        const status = div.querySelector('.prospect-status').value;
+        if (nome) prospects.push({ nome, status });
+      });
+
       const novo = {
         tipo,
         nome,
         contatos,
+        prospects,
         criadoEm: new Date().toISOString()
       };
 
@@ -95,26 +107,11 @@
         alert("Salvo com sucesso!");
         document.getElementById("formProspect").reset();
         document.getElementById("contatosContainer").innerHTML = '';
+        document.getElementById("prospectsContainer").innerHTML = '';
       }).catch((err) => {
         alert("Erro ao salvar: " + err.message);
       });
     });
 
     function adicionarContato() {
-      const div = document.createElement("div");
-      div.className = "contato-item";
-      div.innerHTML = `
-        <label>Nome:</label>
-        <input type="text" class="contato-nome" placeholder="Nome do contato">
-        <label>Telefone:</label>
-        <input type="text" class="contato-telefone" placeholder="Telefone">
-        <label>Email:</label>
-        <input type="email" class="contato-email" placeholder="Email">
-        <button type="button" onclick="this.parentElement.remove()">Remover</button>
-      `;
-      document.getElementById("contatosContainer").appendChild(div);
-    }
-  </script>
-
-</body>
-</html>
+      const div = document.create
