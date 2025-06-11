@@ -206,7 +206,7 @@
           const prospects = contato.prospects || [];
 
           prospects.forEach(p => {
-            const acoes = (p.acoes || []).sort((a, b) => new Date(a.proximaData) - new Date(b.proximaData));
+            const acoes = (p.acoes || []).sort((a, b) => new Date(b.proximaData) - new Date(a.proximaData));
             const ultima = acoes[0];
             if (ultima?.proximaData) {
               lista.push({
@@ -221,7 +221,7 @@
           });
         });
 
-        lista.sort((a, b) => new Date(a.data) - new Date(b.data));
+        lista.sort((a, b) => new Date(b.data) - new Date(a.data));
 
         const tbody = document.getElementById("tabelaProspects");
         tbody.innerHTML = lista.map(p => `
