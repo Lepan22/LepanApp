@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Cadastro Contato e Prospects</title>
+  <title>Cadastro de Contato e Prospects</title>
   <link rel="stylesheet" href="assets/base.css">
   <link rel="stylesheet" href="assets/menu-styles.css">
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script type="module" src="assets/firebase-config.js"></script>
-  <script defer src="assets/menu.js"></script>
-  <script defer src="assets/prospects.js"></script>
+  <script type="module" src="assets/menu.js"></script>
+  <script type="module" src="assets/prospects.js"></script>
 </head>
 <body>
   <div class="menu-container"></div>
@@ -26,11 +24,11 @@
 
       <h3>Contatos</h3>
       <div id="listaContatos"></div>
-      <button type="button" onclick="adicionarContato()">+ Contato</button>
+      <button type="button" id="btnAddContato">+ Contato</button>
 
       <h3>Prospects</h3>
       <div id="listaProspects"></div>
-      <button type="button" onclick="adicionarProspect()">+ Prospect</button>
+      <button type="button" id="btnAddProspect">+ Prospect</button>
 
       <br><br>
       <button type="submit">Salvar</button>
