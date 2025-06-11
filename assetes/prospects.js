@@ -9,9 +9,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('formContato');
   const btnAddContato = document.getElementById('btnAddContato');
   const btnAddProspect = document.getElementById('btnAddProspect');
+  const listaContatos = document.getElementById('listaContatos');
+  const listaProspects = document.getElementById('listaProspects');
 
-  btnAddContato.addEventListener('click', adicionarContato);
-  btnAddProspect.addEventListener('click', adicionarProspect);
+  btnAddContato.addEventListener('click', () => {
+    const div = document.createElement('div');
+    div.className = 'contato-item';
+    div.innerHTML = `
+      <input type="text" class="contato-nome" placeholder="Nome do Contato" required>
+      <input type="text" class="contato-telefone" placeholder="Telefone">
+      <input type="email" class="contato-email" placeholder="Email">
+      <button type="button" onclick="this.parentElement.remove()">Remover</button>
+    `;
+    listaContatos.appendChild(div);
+  });
+
+  btnAddProspect.addEventListener('click', () => {
+    const div = document.createElement('div');
+    div.className = 'prospect-item';
+    div.innerHTML = `
+      <input type="text" class="prospect-nome" placeholder="Nome do Prospect" required>
+      <select class="prospect-status">
+        <option value="Aberto">Aberto</option>
+        <option value="Negociando">Negociando</option>
+        <option value="Fechado">Fechado</option>
+        <option value="Perdido">Perdido</option>
+      </select>
+      <button type="button" onclick="this.parentElement.remove()">Remover</button>
+    `;
+    listaProspects.appendChild(div);
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -19,58 +46,32 @@ document.addEventListener('DOMContentLoaded', () => {
     const tipo = document.getElementById('tipo').value.trim();
     const nome = document.getElementById('nomeContato').value.trim();
 
-    const contatos = [];
-    document.querySelectorAll('.contato-item').forEach(div => {
-      const nome = div.querySelector('.contato-nome').value.trim();
-      const telefone = div.querySelector('.contato-telefone').value.trim();
-      const email = div.querySelector('.contato-email').value.trim();
-      if (nome) contatos.push({ nome, telefone, email });
-    });
+    const contatos = Array.from(document.querySelectorAll('.contato-item')).map(item => ({
+      nome: item.querySelector('.contato-nome').value.trim(),
+      telefone: item.querySelector('.contato-telefone').value.trim(),
+      email: item.querySelector('.contato-email').value.trim()
+    }));
 
-    const prospects = [];
-    document.querySelectorAll('.prospect-item').forEach(div => {
-      const nome = div.querySelector('.prospect-nome').value.trim();
-      const status = div.querySelector('.prospect-status').value;
-      if (nome) prospects.push({ nome, status });
-    });
+    const prospects = Array.from(document.querySelectorAll('.prospect-item')).map(item => ({
+      nome: item.querySelector('.prospect-nome').value.trim(),
+      status: item.querySelector('.prospect-status').value
+    }));
 
-    const novoContato = {
-      tipo, nome, contatos, prospects,
+    const novoCadastro = {
+      tipo,
+      nome,
+      contatos,
+      prospects,
       criadoEm: new Date().toISOString()
     };
 
-    const refContato = push(ref(db, 'prospecao'));
-    await set(refContato, novoContato);
-
-    alert('Contato salvo com sucesso!');
-    location.reload();
+    try {
+      const refNovo = push(ref(db, 'prospecao'));
+      await set(refNovo, novoCadastro);
+      alert('Salvo com sucesso!');
+      location.reload();
+    } catch (error) {
+      alert('Erro ao salvar: ' + error.message);
+    }
   });
 });
-
-function adicionarContato() {
-  const div = document.createElement('div');
-  div.className = 'contato-item';
-  div.innerHTML = `
-    <input type="text" class="contato-nome" placeholder="Nome do Contato">
-    <input type="text" class="contato-telefone" placeholder="Telefone">
-    <input type="email" class="contato-email" placeholder="Email">
-    <button type="button" onclick="this.parentElement.remove()">Remover</button>
-  `;
-  document.getElementById('listaContatos').appendChild(div);
-}
-
-function adicionarProspect() {
-  const div = document.createElement('div');
-  div.className = 'prospect-item';
-  div.innerHTML = `
-    <input type="text" class="prospect-nome" placeholder="Nome do Prospect">
-    <select class="prospect-status">
-      <option value="Aberto">Aberto</option>
-      <option value="Negociando">Negociando</option>
-      <option value="Fechado">Fechado</option>
-      <option value="Perdido">Perdido</option>
-    </select>
-    <button type="button" onclick="this.parentElement.remove()">Remover</button>
-  `;
-  document.getElementById('listaProspects').appendChild(div);
-}
