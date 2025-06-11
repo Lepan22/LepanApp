@@ -23,6 +23,12 @@
       margin-top: 15px;
       padding: 6px 12px;
     }
+    .contato-item {
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      padding: 10px;
+      width: 320px;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -30,7 +36,7 @@
 </head>
 <body>
 
-  <h2>Cadastro Simples de Prospect</h2>
+  <h2>Cadastro de Prospect</h2>
 
   <form id="formProspect">
     <label for="tipo">Tipo:</label>
@@ -39,6 +45,11 @@
     <label for="nome">Nome:</label>
     <input type="text" id="nome" required>
 
+    <h3>Contatos:</h3>
+    <div id="contatosContainer"></div>
+    <button type="button" onclick="adicionarContato()">+ Contato</button>
+
+    <br><br>
     <button type="submit">Salvar</button>
   </form>
 
@@ -61,18 +72,48 @@
       const nome = document.getElementById("nome").value.trim();
 
       if (!tipo || !nome) {
-        alert("Preencha todos os campos");
+        alert("Preencha os campos obrigatórios");
         return;
       }
 
-      const novo = { tipo, nome, criadoEm: new Date().toISOString() };
+      const contatos = [];
+      document.querySelectorAll('.contato-item').forEach(div => {
+        const nome = div.querySelector('.contato-nome').value.trim();
+        const telefone = div.querySelector('.contato-telefone').value.trim();
+        const email = div.querySelector('.contato-email').value.trim();
+        if (nome) contatos.push({ nome, telefone, email });
+      });
+
+      const novo = {
+        tipo,
+        nome,
+        contatos,
+        criadoEm: new Date().toISOString()
+      };
+
       db.push(novo).then(() => {
         alert("Salvo com sucesso!");
         document.getElementById("formProspect").reset();
+        document.getElementById("contatosContainer").innerHTML = '';
       }).catch((err) => {
         alert("Erro ao salvar: " + err.message);
       });
     });
+
+    function adicionarContato() {
+      const div = document.createElement("div");
+      div.className = "contato-item";
+      div.innerHTML = `
+        <label>Nome:</label>
+        <input type="text" class="contato-nome" placeholder="Nome do contato">
+        <label>Telefone:</label>
+        <input type="text" class="contato-telefone" placeholder="Telefone">
+        <label>Email:</label>
+        <input type="email" class="contato-email" placeholder="Email">
+        <button type="button" onclick="this.parentElement.remove()">Remover</button>
+      `;
+      document.getElementById("contatosContainer").appendChild(div);
+    }
   </script>
 
 </body>
