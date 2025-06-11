@@ -1,3 +1,4 @@
+
 const db = firebase.database();
 
 document.getElementById('formContato').addEventListener('submit', async (e) => {
@@ -17,7 +18,8 @@ document.getElementById('formContato').addEventListener('submit', async (e) => {
   const prospects = [];
   document.querySelectorAll('.prospect-item').forEach(div => {
     const nome = div.querySelector('.prospect-nome').value.trim();
-    if (nome) prospects.push({ nome });
+    const status = div.querySelector('.prospect-status').value;
+    if (nome) prospects.push({ nome, status });
   });
 
   const novoContato = {
@@ -47,6 +49,12 @@ function adicionarProspect() {
   div.className = 'prospect-item';
   div.innerHTML = `
     <input type="text" class="prospect-nome" placeholder="Nome do Prospect">
+    <select class="prospect-status">
+      <option value="Aberto">Aberto</option>
+      <option value="Negociando">Negociando</option>
+      <option value="Fechado">Fechado</option>
+      <option value="Perdido">Perdido</option>
+    </select>
     <button type="button" onclick="this.parentElement.remove()">Remover</button>
   `;
   document.getElementById('listaProspects').appendChild(div);
