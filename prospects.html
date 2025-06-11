@@ -9,259 +9,212 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
+  <style>
+    .kanban-container {
+      display: flex;
+      gap: 16px;
+      height: 400px;
+    }
+    .kanban-col {
+      flex: 1;
+      background: #f5f5f5;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 8px;
+      overflow-y: auto;
+    }
+    .kanban-col h3 {
+      text-align: center;
+      margin-top: 0;
+    }
+    .kanban-card {
+      background: white;
+      padding: 6px;
+      margin-bottom: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: grab;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .form-container {
+      flex: 1;
+      padding: 10px;
+      background: #fff8f0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .main-section {
+      display: flex;
+      gap: 20px;
+    }
+    form label {
+      display: block;
+      margin-top: 8px;
+    }
+    form input {
+      width: 100%;
+      padding: 4px;
+    }
+    .listas {
+      margin-top: 30px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 4px;
+    }
+    th {
+      background: #ff7f00;
+      color: white;
+    }
+    .btn-acao {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+  </style>
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar" id="menuLateral"></aside>
     <main class="main-content">
-      <h2>Cadastro de Prospect</h2>
+      <div class="main-section">
+        <div style="flex: 2">
+          <div class="kanban-container">
+            <div class="kanban-col" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="leads">
+              <h3>Leads</h3>
+              <div id="kanban-leads"></div>
+            </div>
+            <div class="kanban-col" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="Aberto">
+              <h3>Aberto</h3>
+              <div id="kanban-aberto"></div>
+            </div>
+            <div class="kanban-col" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="Negociando">
+              <h3>Negociando</h3>
+              <div id="kanban-negociando"></div>
+            </div>
+            <div class="kanban-col" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="Fechado">
+              <h3>Fechado</h3>
+              <div id="kanban-fechado"></div>
+            </div>
+          </div>
+        </div>
+        <div class="form-container">
+          <h3>Cadastro</h3>
+          <form id="formProspect">
+            <label>Tipo:</label>
+            <input type="text" id="tipo" required>
+            <label>Nome:</label>
+            <input type="text" id="nome" required>
+            <label>Contato Nome:</label>
+            <input type="text" id="contato-nome">
+            <label>Telefone:</label>
+            <input type="text" id="telefone">
+            <label>Email:</label>
+            <input type="text" id="email">
+            <br>
+            <button type="submit">Salvar</button>
+          </form>
+        </div>
+      </div>
 
-      <form id="formProspect">
-        <label>Tipo:</label>
-        <input type="text" id="tipo" required>
+      <div class="listas">
+        <h3>Lista de Ações Futuras</h3>
+        <table>
+          <thead>
+            <tr><th>Data</th><th>Prospect</th><th>Status</th><th>Atividade</th><th>Ações</th></tr>
+          </thead>
+          <tbody id="tabelaProspects"></tbody>
+        </table>
 
-        <label>Nome:</label>
-        <input type="text" id="nome" required>
-
-        <h3>Contatos:</h3>
-        <div id="contatosContainer"></div>
-        <button type="button" onclick="adicionarContato()">+ Contato</button>
-
-        <h3>Prospects:</h3>
-        <div id="prospectsContainer"></div>
-        <button type="button" onclick="adicionarProspect()">+ Prospect</button>
-
-        <br><br>
-        <button type="submit">Salvar</button>
-      </form>
-
-      <h2>Lista de Próximas Ações</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Data da Próxima Ação</th>
-            <th>Nome do Prospect</th>
-            <th>Status</th>
-            <th>Atividade</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaProspects"></tbody>
-      </table>
-
-      <h2>Lista de Leads</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Tipo</th>
-            <th>Nome</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaLeads"></tbody>
-      </table>
+        <h3>Lista de Leads</h3>
+        <table>
+          <thead>
+            <tr><th>Tipo</th><th>Nome</th><th>Ações</th></tr>
+          </thead>
+          <tbody id="tabelaLeads"></tbody>
+        </table>
+      </div>
     </main>
   </div>
 
   <script>
+    // Firebase init (config original aqui)
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
       projectId: "lepanapp"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database().ref("prospecao");
-    let editandoId = null;
 
-    document.getElementById("formProspect").addEventListener("submit", function (e) {
-      e.preventDefault();
-      const tipo = document.getElementById("tipo").value.trim();
-      const nome = document.getElementById("nome").value.trim();
-      if (!tipo || !nome) return alert("Preencha os campos obrigatórios");
-
-      const contatos = [];
-      document.querySelectorAll('.contato-item').forEach(div => {
-        const nome = div.querySelector('.contato-nome').value.trim();
-        const telefone = div.querySelector('.contato-telefone').value.trim();
-        const email = div.querySelector('.contato-email').value.trim();
-        if (nome) contatos.push({ nome, telefone, email });
-      });
-
-      const prospects = [];
-      document.querySelectorAll('.prospect-item').forEach(div => {
-        const nome = div.querySelector('.prospect-nome').value.trim();
-        const status = div.querySelector('.prospect-status').value;
-        const atividade = div.querySelector('.prospect-atividade').value.trim();
-        const acoes = [];
-        div.querySelectorAll('.acao-item').forEach(acaoDiv => {
-          const data = acaoDiv.querySelector('.acao-data').value;
-          const descricao = acaoDiv.querySelector('.acao-desc').value.trim();
-          const proximaData = acaoDiv.querySelector('.acao-prox').value;
-          const concluido = acaoDiv.querySelector('.acao-concluido').checked;
-          if (descricao) acoes.push({ data, descricao, proximaData, concluido });
-        });
-        acoes.sort((a, b) => new Date(b.proximaData) - new Date(a.proximaData));
-        if (nome) prospects.push({ nome, status, atividade, acoes });
-      });
-
-      const novo = { tipo, nome, contatos, prospects, criadoEm: new Date().toISOString() };
-      const ref = editandoId ? db.child(editandoId) : db.push();
-      ref.set(novo).then(() => {
-        alert("Salvo com sucesso!");
-        document.getElementById("formProspect").reset();
-        document.getElementById("contatosContainer").innerHTML = '';
-        document.getElementById("prospectsContainer").innerHTML = '';
-        editandoId = null;
-        carregarListaProspects();
-        carregarListaLeads();
-      });
-    });
-
-    function adicionarContato(contato = {}) {
-      const div = document.createElement("div");
-      div.className = "item contato-item";
-      div.innerHTML = `
-        <label>Nome:</label><input type="text" class="contato-nome" value="${contato.nome || ''}">
-        <label>Telefone:</label><input type="text" class="contato-telefone" value="${contato.telefone || ''}">
-        <label>Email:</label><input type="email" class="contato-email" value="${contato.email || ''}">
-        <button type="button" onclick="this.parentElement.remove()">Remover</button>
-      `;
-      document.getElementById("contatosContainer").appendChild(div);
+    function allowDrop(ev) {
+      ev.preventDefault();
     }
 
-    function adicionarProspect(p = {}) {
-      const div = document.createElement("div");
-      div.className = "item prospect-item";
-      const id = 'acoes_' + Date.now();
-      div.innerHTML = `
-        <label>Nome do Prospect:</label><input type="text" class="prospect-nome" value="${p.nome || ''}">
-        <label>Status:</label>
-        <select class="prospect-status">
-          <option ${p.status === 'Aberto' ? 'selected' : ''}>Aberto</option>
-          <option ${p.status === 'Negociando' ? 'selected' : ''}>Negociando</option>
-          <option ${p.status === 'Fechado' ? 'selected' : ''}>Fechado</option>
-          <option ${p.status === 'Perdido' ? 'selected' : ''}>Perdido</option>
-        </select>
-        <label>Atividade:</label><input type="text" class="prospect-atividade" value="${p.atividade || ''}">
-        <div class="acoes-container" id="${id}"></div>
-        <button type="button" onclick="adicionarAcao('${id}')">+ Ação</button>
-        <button type="button" onclick="this.parentElement.remove()">Remover Prospect</button>
-      `;
-      document.getElementById("prospectsContainer").appendChild(div);
-      (p.acoes || []).forEach(a => adicionarAcao(id, a));
+    function drag(ev) {
+      ev.dataTransfer.setData("text", ev.target.id);
     }
 
-    function adicionarAcao(containerId, a = {}) {
-      const container = document.getElementById(containerId);
-      const div = document.createElement("div");
-      div.className = "acao-item";
-      div.innerHTML = `
-        <hr>
-        <label>Data:</label><input type="date" class="acao-data" value="${a.data || ''}">
-        <label>Descritivo:</label><textarea class="acao-desc" rows="2">${a.descricao || ''}</textarea>
-        <label>Próxima Data:</label><input type="date" class="acao-prox" value="${a.proximaData || ''}">
-        <label><input type="checkbox" class="acao-concluido" ${a.concluido ? 'checked' : ''}> Concluído</label>
-        <button type="button" onclick="this.parentElement.remove()">Remover Ação</button>
-      `;
-      container.appendChild(div);
+    function drop(ev) {
+      ev.preventDefault();
+      const id = ev.dataTransfer.getData("text");
+      const el = document.getElementById(id);
+      const newStatus = ev.currentTarget.getAttribute("data-status");
+      const contatoId = el.getAttribute("data-contato-id");
+      const prospectIndex = el.getAttribute("data-prospect-index");
+      db.child(contatoId).once("value").then(snap => {
+        const val = snap.val();
+        if (val?.prospects?.[prospectIndex]) {
+          val.prospects[prospectIndex].status = newStatus;
+          db.child(contatoId).set(val).then(renderKanban);
+        }
+      });
     }
 
-    function carregarListaProspects() {
+    function renderKanban() {
+      document.getElementById("kanban-leads").innerHTML = "";
+      document.getElementById("kanban-aberto").innerHTML = "";
+      document.getElementById("kanban-negociando").innerHTML = "";
+      document.getElementById("kanban-fechado").innerHTML = "";
       db.once("value").then(snapshot => {
-        const lista = [];
         snapshot.forEach(child => {
           const id = child.key;
-          const contato = child.val();
-          (contato.prospects || []).forEach(p => {
-            const acoes = (p.acoes || []).sort((a, b) => new Date(b.proximaData) - new Date(a.proximaData));
-            const ultima = acoes[0];
-            if (ultima?.proximaData) {
-              lista.push({ id, data: ultima.proximaData, nome: p.nome, status: p.status, atividade: p.atividade, full: contato });
-            }
-          });
-        });
-        lista.sort((a, b) => new Date(b.data) - new Date(a.data));
-        document.getElementById("tabelaProspects").innerHTML = lista.map(p => `
-          <tr>
-            <td>${p.data}</td>
-            <td>${p.nome}</td>
-            <td>${p.status}</td>
-            <td>${p.atividade || ''}</td>
-            <td>
-              <button class="btn-acao" onclick='visualizar(${JSON.stringify(p.full).replace(/'/g, "\\'")})'>🔍</button>
-              <button class="btn-acao" onclick='editar("${p.id}")'>✏️</button>
-            </td>
-          </tr>
-        `).join("");
-      });
-    }
-
-    function carregarListaLeads() {
-      db.once("value").then(snapshot => {
-        const tbody = document.getElementById("tabelaLeads");
-        tbody.innerHTML = "";
-        snapshot.forEach(child => {
-          const id = child.key;
-          const c = child.val();
-          tbody.innerHTML += `
-            <tr>
-              <td>${c.tipo || ''}</td>
-              <td>${c.nome || ''}</td>
-              <td>
-                <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
-                <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
-              </td>
-            </tr>
-          `;
+          const data = child.val();
+          const nome = data.nome;
+          if (!data.prospects || data.prospects.length === 0) {
+            const card = document.createElement("div");
+            card.className = "kanban-card";
+            card.innerHTML = `${nome} <button class='btn-acao'>+</button>`;
+            document.getElementById("kanban-leads").appendChild(card);
+          } else {
+            data.prospects.forEach((p, i) => {
+              const div = document.createElement("div");
+              div.className = "kanban-card";
+              div.id = `card-${id}-${i}`;
+              div.setAttribute("draggable", "true");
+              div.setAttribute("data-contato-id", id);
+              div.setAttribute("data-prospect-index", i);
+              div.ondragstart = drag;
+              div.innerHTML = `${p.nome} <button class='btn-acao'>+</button>`;
+              const colId = "kanban-" + p.status.toLowerCase();
+              const col = document.getElementById(colId);
+              if (col) col.appendChild(div);
+            });
+          }
         });
       });
     }
 
-    function visualizar(dados) {
-      let texto = `Tipo: ${dados.tipo || ''}\nNome: ${dados.nome || ''}\n\nContatos:\n`;
-      (dados.contatos || []).forEach(c => {
-        texto += ` - ${c.nome} | ${c.telefone} | ${c.email}\n`;
-      });
-      texto += `\nProspects:\n`;
-      (dados.prospects || []).forEach(p => {
-        texto += `\nNome: ${p.nome}\nStatus: ${p.status}\nAtividade: ${p.atividade}\n`;
-        (p.acoes || []).sort((a, b) => new Date(a.proximaData) - new Date(b.proximaData)).forEach(a => {
-          texto += `  - ${a.data} | ${a.descricao} | Próxima: ${a.proximaData} | Concluído: ${a.concluido ? 'Sim' : 'Não'}\n`;
-        });
-      });
-      alert(texto);
-    }
-
-    function editar(id) {
-      db.child(id).once("value").then(snapshot => {
-        const c = snapshot.val();
-        if (!c) return;
-        document.getElementById("formProspect").reset();
-        document.getElementById("contatosContainer").innerHTML = '';
-        document.getElementById("prospectsContainer").innerHTML = '';
-        document.getElementById("tipo").value = c.tipo || '';
-        document.getElementById("nome").value = c.nome || '';
-        (c.contatos || []).forEach(adicionarContato);
-        (c.prospects || []).forEach(adicionarProspect);
-        editandoId = id;
-        window.scrollTo(0, 0);
-      });
-    }
-
-    function excluir(id) {
-      if (confirm("Tem certeza que deseja excluir este lead?")) {
-        db.child(id).remove().then(() => {
-          alert("Lead excluído.");
-          carregarListaProspects();
-          carregarListaLeads();
-        });
-      }
-    }
-
-    carregarListaProspects();
-    carregarListaLeads();
+    renderKanban();
   </script>
 </body>
 </html>
