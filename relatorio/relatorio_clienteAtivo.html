@@ -9,6 +9,26 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="../assets/menu.js" defer></script>
+  <style>
+    th {
+      cursor: pointer;
+      background-color: #ffcc80;
+    }
+    th:hover {
+      background-color: #ffc266;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+    }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -22,9 +42,10 @@
       <table>
         <thead>
           <tr>
-            <th>Nome do Condomínio</th>
-            <th>Região</th>
-            <th>Frequência</th>
+            <th>#</th>
+            <th onclick="ordenarPor('nome')">Nome do Condomínio ⬍</th>
+            <th onclick="ordenarPor('regiao')">Região ⬍</th>
+            <th onclick="ordenarPor('frequencia')">Frequência ⬍</th>
           </tr>
         </thead>
         <tbody id="tabelaClientes"></tbody>
@@ -32,49 +53,83 @@
     </div>
   </div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyCkYxrB-eu5XqB4h6m4j7H6qrUUJlzNrs4",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "1071636003040",
-      appId: "1:1071636003040:web:64bde2e9ad34e84c75e6a7"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCkYxrB-eu5XqB4h6m4j7H6qrUUJlzNrs4",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp",
+    storageBucket: "lepanapp.appspot.com",
+    messagingSenderId: "1071636003040",
+    appId: "1:1071636003040:web:64bde2e9ad34e84c75e6a7"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-    function gerarRelatorio() {
-      const tabela = document.getElementById('tabelaClientes');
-      tabela.innerHTML = '';
+  let dadosClientes = [];
+  let ordemAtual = { campo: '', crescente: true };
 
-      db.ref('clientes').once('value').then(snapshot => {
-        const clientes = snapshot.val();
-        for (let id in clientes) {
-          const cliente = clientes[id];
-          const ativo = cliente.clienteAtivo;
+  function gerarRelatorio() {
+    const tabela = document.getElementById('tabelaClientes');
+    tabela.innerHTML = '';
 
-          if (ativo && ativo.statusEvento === "Ativo") {
-            const nome = cliente.nome || '';
-            const regiao = cliente.regiao || '';
-            const frequencia = ativo.frequencia || '';
+    db.ref('clientes').once('value').then(snapshot => {
+      const clientes = snapshot.val();
+      dadosClientes = [];
 
-            const tr = document.createElement('tr');
+      for (let id in clientes) {
+        const cliente = clientes[id];
+        const ativo = cliente.clienteAtivo;
 
-            tr.innerHTML = `
-              <td>${nome}</td>
-              <td>${regiao}</td>
-              <td>${frequencia}</td>
-            `;
-
-            tabela.appendChild(tr);
-          }
+        if (ativo && ativo.statusEvento === "Ativo") {
+          dadosClientes.push({
+            nome: cliente.nome || '',
+            regiao: cliente.regiao || '',
+            frequencia: ativo.frequencia || ''
+          });
         }
-      });
+      }
+
+      ordenarPor('nome', true); // Ordena inicialmente por nome crescente
+    });
+  }
+
+  function ordenarPor(campo, inicial = false) {
+    if (ordemAtual.campo === campo && !inicial) {
+      ordemAtual.crescente = !ordemAtual.crescente;
+    } else {
+      ordemAtual = { campo: campo, crescente: true };
     }
 
-    window.onload = gerarRelatorio;
-  </script>
+    dadosClientes.sort((a, b) => {
+      const valorA = (a[campo] || '').toUpperCase();
+      const valorB = (b[campo] || '').toUpperCase();
+
+      if (valorA < valorB) return ordemAtual.crescente ? -1 : 1;
+      if (valorA > valorB) return ordemAtual.crescente ? 1 : -1;
+      return 0;
+    });
+
+    renderizarTabela();
+  }
+
+  function renderizarTabela() {
+    const tabela = document.getElementById('tabelaClientes');
+    tabela.innerHTML = '';
+
+    dadosClientes.forEach((cliente, index) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td>${cliente.nome}</td>
+        <td>${cliente.regiao}</td>
+        <td>${cliente.frequencia}</td>
+      `;
+      tabela.appendChild(tr);
+    });
+  }
+
+  window.onload = gerarRelatorio;
+</script>
 </body>
 </html>
