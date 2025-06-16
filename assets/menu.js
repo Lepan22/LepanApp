@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
               <a href="/LepanApp/relatorio/custos_eventos_relatorio.html">Relatório Custo Evento</a>
               <a href="/LepanApp/relatorio/equipe_relatorio.html">Análise por Equipe</a>
               <a href="/LepanApp/relatorio/eventos_relatorio.html">Análise por Cliente</a>
+              <a href="/LepanApp/relatorio/relatorio_clienteAtivo.html">Clientes Ativos</a>
               <a href="/LepanApp/relatorio/perda_prod_relatorio.html">Relatório Perda Produto</a>
             </div>
           </div>
