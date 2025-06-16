@@ -88,15 +88,6 @@
       margin-bottom: 5px;
       border-radius: 5px;
     }
-    .filtros {
-      margin-bottom: 10px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-    .filtros input, .filtros select {
-      padding: 4px;
-    }
     .header-form {
       display: flex;
       justify-content: space-between;
@@ -126,6 +117,21 @@
           <label>Nome do Prospect:</label>
           <input type="text" id="nomeProspect" required>
 
+          <label>Tipo de Cliente:</label>
+          <input type="text" id="tipoCliente">
+
+          <label>Perfil Econômico:</label>
+          <input type="text" id="perfilEconomico">
+
+          <label>Tamanho:</label>
+          <input type="text" id="tamanho">
+
+          <label>Endereço:</label>
+          <input type="text" id="endereco">
+
+          <label>Região:</label>
+          <input type="text" id="regiao">
+
           <label>Status:</label>
           <select id="status">
             <option>Leads</option>
@@ -145,25 +151,16 @@
       </section>
     </div>
 
-    <div class="filtros">
-      <input type="text" id="filtroNome" placeholder="Filtrar por Nome do Prospect">
-      <select id="filtroStatus">
-        <option value="">Todos Status</option>
-        <option>Leads</option>
-        <option>Aberto</option>
-        <option>Negociando</option>
-        <option>Fechado</option>
-        <option>Perdido</option>
-      </select>
-      <button onclick="carregarListaProspects()">Aplicar Filtro</button>
-    </div>
-
     <h2>Lista de Prospects</h2>
     <table>
       <thead>
         <tr>
           <th>Lead</th>
-          <th>Nome do Prospect</th>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Perfil</th>
+          <th>Tamanho</th>
+          <th>Região</th>
           <th>Data Cadastro</th>
           <th>Status</th>
           <th>Ações</th>
@@ -195,6 +192,11 @@
     const nomeLead = document.getElementById("leadSelect").selectedOptions[0].text;
     const nomeProspect = document.getElementById("nomeProspect").value.trim();
     const status = document.getElementById("status").value;
+    const tipoCliente = document.getElementById("tipoCliente").value.trim();
+    const perfilEconomico = document.getElementById("perfilEconomico").value.trim();
+    const tamanho = document.getElementById("tamanho").value.trim();
+    const endereco = document.getElementById("endereco").value.trim();
+    const regiao = document.getElementById("regiao").value.trim();
 
     if (!leadId || !nomeProspect) {
       return alert("Preencha os campos obrigatórios.");
@@ -215,6 +217,11 @@
       leadId,
       nomeLead,
       nomeProspect,
+      tipoCliente,
+      perfilEconomico,
+      tamanho,
+      endereco,
+      regiao,
       status,
       dataCadastro: editandoId ? undefined : new Date().toISOString(),
       acoes
@@ -261,32 +268,28 @@
   }
 
   function carregarListaProspects() {
-    const filtroNome = document.getElementById("filtroNome").value.trim().toLowerCase();
-    const filtroStatus = document.getElementById("filtroStatus").value;
-
     dbProspects.once("value").then(snapshot => {
       const tbody = document.getElementById("tabelaProspects");
       tbody.innerHTML = "";
       snapshot.forEach(child => {
         const id = child.key;
         const p = child.val();
-        const nomeMatch = !filtroNome || (p.nomeProspect || '').toLowerCase().includes(filtroNome);
-        const statusMatch = !filtroStatus || p.status === filtroStatus;
-
-        if (nomeMatch && statusMatch) {
-          tbody.innerHTML += `
-            <tr>
-              <td>${p.nomeLead || ''}</td>
-              <td>${p.nomeProspect || ''}</td>
-              <td>${(p.dataCadastro || '').split('T')[0]}</td>
-              <td>${p.status || ''}</td>
-              <td>
-                <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
-                <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
-              </td>
-            </tr>
-          `;
-        }
+        tbody.innerHTML += `
+          <tr>
+            <td>${p.nomeLead || ''}</td>
+            <td>${p.nomeProspect || ''}</td>
+            <td>${p.tipoCliente || ''}</td>
+            <td>${p.perfilEconomico || ''}</td>
+            <td>${p.tamanho || ''}</td>
+            <td>${p.regiao || ''}</td>
+            <td>${(p.dataCadastro || '').split('T')[0]}</td>
+            <td>${p.status || ''}</td>
+            <td>
+              <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
+              <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
+            </td>
+          </tr>
+        `;
       });
     });
   }
@@ -347,6 +350,11 @@
       document.getElementById("formProspect").reset();
       document.getElementById("leadSelect").value = p.leadId || '';
       document.getElementById("nomeProspect").value = p.nomeProspect || '';
+      document.getElementById("tipoCliente").value = p.tipoCliente || '';
+      document.getElementById("perfilEconomico").value = p.perfilEconomico || '';
+      document.getElementById("tamanho").value = p.tamanho || '';
+      document.getElementById("endereco").value = p.endereco || '';
+      document.getElementById("regiao").value = p.regiao || '';
       document.getElementById("status").value = p.status || '';
       document.getElementById("acoesContainer").innerHTML = '';
       (p.acoes || []).forEach(adicionarAcao);
