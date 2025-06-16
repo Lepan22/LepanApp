@@ -143,9 +143,13 @@
     const linhas = [];
 
     eventos.filter(e => {
+      const dataEvento = e.data ? new Date(e.data) : null;
+      const dataIni = dataInicio ? new Date(dataInicio) : null;
+      const dataFimObj = dataFim ? new Date(dataFim) : null;
+
       if (nomes.length && !nomes.includes(e.nomeEvento)) return false;
-      if (dataInicio && (!e.data || e.data < dataInicio)) return false;
-      if (dataFim && (!e.data || e.data > dataFim)) return false;
+      if (dataIni && (!dataEvento || dataEvento < dataIni)) return false;
+      if (dataFimObj && (!dataEvento || dataEvento > dataFimObj)) return false;
       if (status && e.status !== status) return false;
       return true;
     }).forEach(e => {
@@ -163,7 +167,7 @@
       });
     });
 
-    linhas.sort((a, b) => (a.data < b.data ? 1 : -1));
+    linhas.sort((a, b) => (new Date(a.data) < new Date(b.data) ? 1 : -1));
 
     exibirTabela(linhas);
   }
