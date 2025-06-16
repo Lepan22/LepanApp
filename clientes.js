@@ -11,7 +11,22 @@ const db = firebase.database().ref("clientes");
 const urlParams = new URLSearchParams(window.location.search);
 const clienteId = urlParams.get("id");
 
-// Preencher formulário se for edição
+// 👉 Se não for edição (não tem id), preencher com os dados da URL
+if (!clienteId) {
+  document.getElementById("nome").value = urlParams.get("nome") || "";
+  document.getElementById("nomeEvento").value = urlParams.get("nomeEvento") || "";
+  document.getElementById("dataCadastro").value = urlParams.get("dataCadastro") || "";
+  document.getElementById("indicadoPor").value = urlParams.get("indicadoPor") || "";
+  document.getElementById("tipoCliente").value = urlParams.get("tipoCliente") || "";
+  document.getElementById("perfilEconomico").value = urlParams.get("perfilEconomico") || "";
+  document.getElementById("tamanho").value = urlParams.get("tamanho") || "";
+  document.getElementById("endereco").value = urlParams.get("endereco") || "";
+  document.getElementById("regiao").value = urlParams.get("regiao") || "";
+  document.getElementById("status").value = urlParams.get("status") || "Aberto";
+  toggleClienteAtivo();
+}
+
+// 👉 Se for edição, carregar do Firebase
 if (clienteId) {
   db.child(clienteId).once("value").then(snapshot => {
     const c = snapshot.val();
@@ -47,10 +62,12 @@ if (clienteId) {
 
       document.getElementById("obsEvento").value = c.clienteAtivo.observacoes || "";
     }
+
+    toggleClienteAtivo();
   });
 }
 
-// Salvar cliente (novo ou edição)
+// 👉 Salvar cliente (novo ou edição)
 document.getElementById("clienteForm").addEventListener("submit", e => {
   e.preventDefault();
 
@@ -83,17 +100,17 @@ document.getElementById("clienteForm").addEventListener("submit", e => {
   const destino = clienteId ? db.child(clienteId) : db.push();
   destino.set(novoCliente).then(() => {
     alert("Cliente salvo com sucesso!");
-    if (!clienteId) location.reload();
+    if (!clienteId) location.href = "clientes.html";
   });
 });
 
-// Lógica de exibição do campo clienteAtivo
+// 👉 Lógica de exibição do campo clienteAtivo
 function toggleClienteAtivo() {
   const status = document.getElementById("status").value;
   document.getElementById("clientesAtivos").style.display = (status === "Fechado") ? "block" : "none";
 }
 
-// Contatos dinâmicos
+// 👉 Contatos dinâmicos
 function adicionarContato(contato = {}) {
   const div = document.createElement("div");
 
