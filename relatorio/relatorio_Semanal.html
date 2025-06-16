@@ -98,11 +98,13 @@
   function setDataPadrao() {
     const hoje = new Date();
     const diaSemana = hoje.getDay();
-    const diffSegundaPassada = diaSemana === 0 ? 6 : diaSemana - 1;
+    const diffParaSegunda = (diaSemana === 0) ? 6 : diaSemana - 1;
+
     const segundaPassada = new Date(hoje);
-    segundaPassada.setDate(hoje.getDate() - diffSegundaPassada - 7);
+    segundaPassada.setDate(hoje.getDate() - diffParaSegunda - 7);
+
     const segundaAtual = new Date(hoje);
-    segundaAtual.setDate(hoje.getDate() - diffSegundaPassada);
+    segundaAtual.setDate(hoje.getDate() - diffParaSegunda);
 
     document.getElementById('filtroDataInicio').value = segundaPassada.toISOString().split('T')[0];
     document.getElementById('filtroDataFim').value = segundaAtual.toISOString().split('T')[0];
