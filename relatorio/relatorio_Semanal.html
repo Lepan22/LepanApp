@@ -143,11 +143,11 @@
     const linhas = [];
 
     eventos.filter(e => {
-      const dataEvento = e.data || '';
+      if (!e.data) return false; // Ignora eventos sem data
 
       if (nomes.length && !nomes.includes(e.nomeEvento)) return false;
-      if (dataInicio && (!dataEvento || dataEvento < dataInicio)) return false;
-      if (dataFim && (!dataEvento || dataEvento > dataFim)) return false;
+      if (dataInicio && e.data < dataInicio) return false;
+      if (dataFim && e.data > dataFim) return false;
       if (status && e.status !== status) return false;
       return true;
     }).forEach(e => {
@@ -160,7 +160,7 @@
 
       linhas.push({
         nomeEvento: e.nomeEvento || '-',
-        data: e.data || '-',
+        data: e.data,
         vendaPDV, lucro, perda: custoPerda, equipe: custoEquipe, logistica: custoLogistica
       });
     });
