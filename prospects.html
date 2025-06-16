@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Gestão Prospects</title>
+  <title>Gestão de Prospects</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
@@ -183,6 +183,7 @@
   const dbLeads = firebase.database().ref("leads");
   const dbProspects = firebase.database().ref("prospects");
   let editandoId = null;
+  let dataCadastroOriginal = null;
 
   carregarLeads();
 
@@ -224,7 +225,7 @@
       endereco,
       regiao,
       status,
-      dataCadastro: editandoId ? (snapshotDataCadastro || new Date().toISOString()) : new Date().toISOString(),
+      dataCadastro: editandoId ? dataCadastroOriginal : new Date().toISOString(),
       acoes
     };
 
@@ -234,6 +235,7 @@
       document.getElementById("formProspect").reset();
       document.getElementById("acoesContainer").innerHTML = '';
       editandoId = null;
+      dataCadastroOriginal = null;
       carregarListaProspects();
       montarKanban();
     });
@@ -360,6 +362,7 @@
       document.getElementById("acoesContainer").innerHTML = '';
       (p.acoes || []).forEach(adicionarAcao);
       editandoId = id;
+      dataCadastroOriginal = p.dataCadastro || new Date().toISOString();
       window.scrollTo(0, 0);
     });
   }
