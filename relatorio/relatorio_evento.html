@@ -18,7 +18,6 @@
     .form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; align-items: flex-end; }
     .form-row > div { display: flex; flex-direction: column; }
     label, select, input { font-size: 12px; }
-    details summary { font-weight: bold; cursor: pointer; margin-top: 10px; background: #f0f0f0; padding: 5px; }
     tfoot td { font-weight: bold; background: #f9f9f9; }
   </style>
 </head>
@@ -150,14 +149,14 @@
     }).forEach(e => {
       const vendaPDV = parseFloat(e.vendaPDV) || 0;
       const lucro = parseFloat(e.lucroFinal) || 0;
-      const diferenca = parseFloat(e.diferencaVenda) || 0;
       const custoPerda = parseFloat(e.custoPerda) || 0;
       const custoEquipe = parseFloat(e.custoEquipe) || 0;
       const custoLogistica = parseFloat(e.custoLogistica) || 0;
 
       linhas.push({
         nomeEvento: e.nomeEvento || '-',
-        vendaPDV, lucro, diferenca, perda: custoPerda, equipe: custoEquipe, logistica: custoLogistica
+        data: e.data || '-',
+        vendaPDV, lucro, perda: custoPerda, equipe: custoEquipe, logistica: custoLogistica
       });
     });
 
@@ -165,73 +164,55 @@
   }
 
   function exibirTabela(linhas) {
-    const grupos = {};
-    linhas.forEach(l => {
-      if (!grupos[l.nomeEvento]) grupos[l.nomeEvento] = [];
-      grupos[l.nomeEvento].push(l);
-    });
-
     let html = '';
-    let total = { vendaPDV: 0, lucro: 0, diferenca: 0, perda: 0, equipe: 0, logistica: 0 };
 
     html += `<table><thead><tr>
-      <th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
-      <th>Diferença</th><th>% Diferença</th><th>Perda</th><th>% Perda</th>
-      <th>Custo Equipe</th><th>% Equipe</th><th>Custo Logística</th><th>% Logística</th>
-      </tr></thead><tbody><tr>`;
+      <th>Data</th><th>Nome Evento</th><th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
+      <th>Perda</th><th>% Perda</th><th>Custo Equipe</th><th>% Equipe</th><th>Custo Logística</th><th>% Logística</th>
+      </tr></thead><tbody>`;
+
+    let total = { vendaPDV: 0, lucro: 0, perda: 0, equipe: 0, logistica: 0 };
 
     linhas.forEach(l => {
       total.vendaPDV += l.vendaPDV;
       total.lucro += l.lucro;
-      total.diferenca += l.diferenca;
       total.perda += l.perda;
       total.equipe += l.equipe;
       total.logistica += l.logistica;
+
+      const perc = (v) => l.vendaPDV ? (v / l.vendaPDV * 100).toFixed(1) : '0.0';
+
+      html += `<tr>
+        <td>${l.data}</td>
+        <td>${l.nomeEvento}</td>
+        <td>R$ ${l.vendaPDV.toFixed(2)}</td>
+        <td>R$ ${l.lucro.toFixed(2)}</td>
+        <td>${perc(l.lucro)}%</td>
+        <td>R$ ${l.perda.toFixed(2)}</td>
+        <td>${perc(l.perda)}%</td>
+        <td>R$ ${l.equipe.toFixed(2)}</td>
+        <td>${perc(l.equipe)}%</td>
+        <td>R$ ${l.logistica.toFixed(2)}</td>
+        <td>${perc(l.logistica)}%</td>
+      </tr>`;
     });
 
     const percent = (v) => total.vendaPDV ? (v / total.vendaPDV * 100).toFixed(1) : '0.0';
 
-    html += `
+    html += `<tr style="font-weight:bold; background:#f9f9f9">
+      <td colspan="2">TOTAL</td>
       <td>R$ ${total.vendaPDV.toFixed(2)}</td>
       <td>R$ ${total.lucro.toFixed(2)}</td>
       <td>${percent(total.lucro)}%</td>
-      <td>R$ ${total.diferenca.toFixed(2)}</td>
-      <td>${percent(total.diferenca)}%</td>
       <td>R$ ${total.perda.toFixed(2)}</td>
       <td>${percent(total.perda)}%</td>
       <td>R$ ${total.equipe.toFixed(2)}</td>
       <td>${percent(total.equipe)}%</td>
       <td>R$ ${total.logistica.toFixed(2)}</td>
       <td>${percent(total.logistica)}%</td>
-    </tr></tbody></table>`;
+    </tr>`;
 
-    for (const nomeEvento in grupos) {
-      html += `<details><summary>${nomeEvento}</summary>`;
-      html += `<table><thead><tr>
-        <th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
-        <th>Diferença</th><th>% Diferença</th><th>Perda</th><th>% Perda</th>
-        <th>Custo Equipe</th><th>% Equipe</th><th>Custo Logística</th><th>% Logística</th>
-        </tr></thead><tbody>`;
-
-      grupos[nomeEvento].forEach(l => {
-        const { vendaPDV, lucro, diferenca, perda, equipe, logistica } = l;
-        const perc = (v) => vendaPDV ? (v / vendaPDV * 100).toFixed(1) : '0.0';
-        html += `<tr>
-          <td>R$ ${vendaPDV.toFixed(2)}</td>
-          <td>R$ ${lucro.toFixed(2)}</td>
-          <td>${perc(lucro)}%</td>
-          <td>R$ ${diferenca.toFixed(2)}</td>
-          <td>${perc(diferenca)}%</td>
-          <td>R$ ${perda.toFixed(2)}</td>
-          <td>${perc(perda)}%</td>
-          <td>R$ ${equipe.toFixed(2)}</td>
-          <td>${perc(equipe)}%</td>
-          <td>R$ ${logistica.toFixed(2)}</td>
-          <td>${perc(logistica)}%</td>
-        </tr>`;
-      });
-      html += '</tbody></table></details>';
-    }
+    html += `</tbody></table>`;
 
     document.getElementById('tabelaResultado').innerHTML = html;
   }
