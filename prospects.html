@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Gestão Prospects</title>
+  <title>Gestão de Prospects</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
@@ -12,21 +12,20 @@
   <style>
     .container-kanban {
       display: flex;
-      gap: 20px;
+      gap: 10px;
       margin-bottom: 20px;
     }
     .kanban {
       flex: 3;
       display: flex;
-      gap: 15px;
-      overflow-x: auto;
+      gap: 8px;
     }
     .kanban-column {
       background: #fff;
       border-radius: 8px;
       border: 1px solid #ccc;
       padding: 10px;
-      min-width: 220px;
+      min-width: 180px;
       display: flex;
       flex-direction: column;
     }
@@ -37,13 +36,14 @@
       border-radius: 5px;
       text-align: center;
       margin-bottom: 8px;
+      font-size: 16px;
     }
     .kanban-card {
       background: #fafafa;
       border: 1px solid #ddd;
       border-radius: 6px;
       padding: 8px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       cursor: grab;
     }
     .kanban-card:hover {
@@ -62,18 +62,6 @@
       margin-bottom: 8px;
       padding: 6px;
     }
-    .form-prospect button {
-      margin-top: 8px;
-    }
-    .acoes-container {
-      margin-bottom: 10px;
-    }
-    .acao-item {
-      border: 1px solid #ccc;
-      padding: 6px;
-      margin-bottom: 5px;
-      border-radius: 5px;
-    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -89,6 +77,15 @@
     }
     .btn-acao {
       margin-right: 5px;
+    }
+    .acoes-container {
+      margin-bottom: 10px;
+    }
+    .acao-item {
+      border: 1px solid #ccc;
+      padding: 6px;
+      margin-bottom: 5px;
+      border-radius: 5px;
     }
   </style>
 </head>
@@ -115,6 +112,7 @@
             <option>Aberto</option>
             <option>Negociando</option>
             <option>Fechado</option>
+            <option>Perdido</option>
           </select>
 
           <h4>Ações</h4>
@@ -253,7 +251,7 @@
   }
 
   function montarKanban() {
-    const colunas = ["Leads", "Aberto", "Negociando", "Fechado"];
+    const colunas = ["Leads", "Aberto", "Negociando", "Fechado", "Perdido"];
     const kanban = document.getElementById("kanbanBoard");
     kanban.innerHTML = '';
     const colRefs = {};
