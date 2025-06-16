@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Gestão  Prospects</title>
+  <title>Gestão Prospects</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
@@ -10,53 +10,67 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
   <style>
-    .kanban-layout {
+    .container-kanban {
       display: flex;
       gap: 20px;
+      margin-bottom: 20px;
     }
-    .form-container {
-      flex: 1;
-      max-width: 33%;
-    }
-    .kanban-container {
-      flex: 2;
+    .kanban {
+      flex: 3;
       display: flex;
-      gap: 10px;
+      gap: 15px;
       overflow-x: auto;
     }
     .kanban-column {
-      flex: 1;
-      background: #f9f9f9;
-      border: 1px solid #ccc;
+      background: #fff;
       border-radius: 8px;
+      border: 1px solid #ccc;
       padding: 10px;
-      min-width: 200px;
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
     }
     .kanban-column h3 {
-      text-align: center;
-      margin: 0 0 10px;
       background: orange;
       color: white;
-      padding: 5px;
+      padding: 6px;
       border-radius: 5px;
+      text-align: center;
+      margin-bottom: 8px;
     }
     .kanban-card {
-      background: #fff;
+      background: #fafafa;
+      border: 1px solid #ddd;
+      border-radius: 6px;
       padding: 8px;
       margin-bottom: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
       cursor: grab;
     }
     .kanban-card:hover {
       background: #f0f0f0;
+    }
+    .form-prospect {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 10px;
+      max-width: 320px;
+    }
+    .form-prospect input, .form-prospect select, .form-prospect textarea {
+      width: 100%;
+      margin-bottom: 8px;
+      padding: 6px;
+    }
+    .form-prospect button {
+      margin-top: 8px;
     }
     .acoes-container {
       margin-bottom: 10px;
     }
     .acao-item {
       border: 1px solid #ccc;
-      padding: 5px;
+      padding: 6px;
       margin-bottom: 5px;
       border-radius: 5px;
     }
@@ -65,7 +79,8 @@
       border-collapse: collapse;
     }
     th {
-      background-color: #eee;
+      background-color: orange;
+      color: white;
     }
     th, td {
       border: 1px solid #ccc;
@@ -78,240 +93,240 @@
   </style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
-    <main class="main-content">
-      <h1>Gestão de Prospects</h1>
+<div class="layout">
+  <aside class="sidebar" id="menuLateral"></aside>
+  <main class="main-content">
+    <h1>Gestão de Prospects</h1>
 
-      <div class="kanban-layout">
-        <section class="kanban-container" id="kanbanBoard"></section>
+    <div class="container-kanban">
+      <section class="kanban" id="kanbanBoard"></section>
 
-        <section class="form-container">
-          <form id="formProspect">
-            <label>Lead:</label>
-            <select id="leadSelect" required></select>
+      <section class="form-prospect">
+        <form id="formProspect">
+          <label>Lead:</label>
+          <select id="leadSelect" required></select>
 
-            <label>Nome do Prospect:</label>
-            <input type="text" id="nomeProspect" required>
+          <label>Nome do Prospect:</label>
+          <input type="text" id="nomeProspect" required>
 
-            <label>Status:</label>
-            <select id="status">
-              <option>Leads</option>
-              <option>Aberto</option>
-              <option>Negociando</option>
-              <option>Fechado</option>
-            </select>
+          <label>Status:</label>
+          <select id="status">
+            <option>Leads</option>
+            <option>Aberto</option>
+            <option>Negociando</option>
+            <option>Fechado</option>
+          </select>
 
-            <h3>Ações</h3>
-            <div id="acoesContainer"></div>
-            <button type="button" onclick="adicionarAcao()">+ Ação</button>
+          <h4>Ações</h4>
+          <div id="acoesContainer"></div>
+          <button type="button" onclick="adicionarAcao()">+ Ação</button>
 
-            <br><br>
-            <button type="submit">Salvar Prospect</button>
-          </form>
-        </section>
-      </div>
+          <br><br>
+          <button type="submit">Salvar Prospect</button>
+        </form>
+      </section>
+    </div>
 
-      <h2>Lista de Prospects</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Lead</th>
-            <th>Nome do Prospect</th>
-            <th>Data Cadastro</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaProspects"></tbody>
-      </table>
-    </main>
-  </div>
+    <h2>Lista de Prospects</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Lead</th>
+          <th>Nome do Prospect</th>
+          <th>Data Cadastro</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabelaProspects"></tbody>
+    </table>
+  </main>
+</div>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp"
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const dbLeads = firebase.database().ref("leads");
+  const dbProspects = firebase.database().ref("prospects");
+  let editandoId = null;
+
+  carregarLeads();
+
+  document.getElementById("formProspect").addEventListener("submit", function (e) {
+    e.preventDefault();
+    const leadId = document.getElementById("leadSelect").value;
+    const nomeLead = document.getElementById("leadSelect").selectedOptions[0].text;
+    const nomeProspect = document.getElementById("nomeProspect").value.trim();
+    const status = document.getElementById("status").value;
+
+    if (!leadId || !nomeProspect) {
+      return alert("Preencha os campos obrigatórios.");
+    }
+
+    const acoes = [];
+    document.querySelectorAll('.acao-item').forEach(div => {
+      const data = div.querySelector('.acao-data').value;
+      const descricao = div.querySelector('.acao-desc').value.trim();
+      const proximaData = div.querySelector('.acao-prox').value;
+      const concluido = div.querySelector('.acao-concluido').checked;
+      if (descricao) {
+        acoes.push({ data, descricao, proximaData, concluido });
+      }
+    });
+
+    const prospect = {
+      leadId,
+      nomeLead,
+      nomeProspect,
+      status,
+      dataCadastro: editandoId ? undefined : new Date().toISOString(),
+      acoes
     };
 
-    firebase.initializeApp(firebaseConfig);
-    const dbLeads = firebase.database().ref("leads");
-    const dbProspects = firebase.database().ref("prospects");
-    let editandoId = null;
+    const ref = editandoId ? dbProspects.child(editandoId) : dbProspects.push();
+    ref.set(prospect).then(() => {
+      alert("Salvo com sucesso!");
+      document.getElementById("formProspect").reset();
+      document.getElementById("acoesContainer").innerHTML = '';
+      editandoId = null;
+      carregarListaProspects();
+      montarKanban();
+    });
+  });
 
-    carregarLeads();
-
-    document.getElementById("formProspect").addEventListener("submit", function (e) {
-      e.preventDefault();
-      const leadId = document.getElementById("leadSelect").value;
-      const nomeLead = document.getElementById("leadSelect").selectedOptions[0].text;
-      const nomeProspect = document.getElementById("nomeProspect").value.trim();
-      const status = document.getElementById("status").value;
-
-      if (!leadId || !nomeProspect) {
-        return alert("Preencha os campos obrigatórios.");
-      }
-
-      const acoes = [];
-      document.querySelectorAll('.acao-item').forEach(div => {
-        const data = div.querySelector('.acao-data').value;
-        const descricao = div.querySelector('.acao-desc').value.trim();
-        const proximaData = div.querySelector('.acao-prox').value;
-        const concluido = div.querySelector('.acao-concluido').checked;
-        if (descricao) {
-          acoes.push({ data, descricao, proximaData, concluido });
-        }
+  function carregarLeads() {
+    const select = document.getElementById("leadSelect");
+    select.innerHTML = '<option value="">Selecione</option>';
+    dbLeads.once("value").then(snapshot => {
+      snapshot.forEach(child => {
+        const id = child.key;
+        const c = child.val();
+        const option = document.createElement("option");
+        option.value = id;
+        option.text = `${c.nome} (${c.tipo})`;
+        select.appendChild(option);
       });
+    });
+  }
 
-      const prospect = {
-        leadId,
-        nomeLead,
-        nomeProspect,
-        status,
-        dataCadastro: editandoId ? undefined : new Date().toISOString(),
-        acoes
+  function adicionarAcao(a = {}) {
+    const container = document.getElementById("acoesContainer");
+    const div = document.createElement("div");
+    div.className = "acao-item";
+    div.innerHTML = `
+      <label>Data:</label><input type="date" class="acao-data" value="${a.data || ''}">
+      <label>Descrição:</label><textarea class="acao-desc" rows="2">${a.descricao || ''}</textarea>
+      <label>Próxima Data:</label><input type="date" class="acao-prox" value="${a.proximaData || ''}">
+      <label><input type="checkbox" class="acao-concluido" ${a.concluido ? 'checked' : ''}> Concluído</label>
+      <button type="button" onclick="this.parentElement.remove()">Remover Ação</button>
+    `;
+    container.appendChild(div);
+  }
+
+  function carregarListaProspects() {
+    dbProspects.once("value").then(snapshot => {
+      const tbody = document.getElementById("tabelaProspects");
+      tbody.innerHTML = "";
+      snapshot.forEach(child => {
+        const id = child.key;
+        const p = child.val();
+        tbody.innerHTML += `
+          <tr>
+            <td>${p.nomeLead || ''}</td>
+            <td>${p.nomeProspect || ''}</td>
+            <td>${(p.dataCadastro || '').split('T')[0]}</td>
+            <td>${p.status || ''}</td>
+            <td>
+              <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
+              <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
+            </td>
+          </tr>
+        `;
+      });
+    });
+  }
+
+  function montarKanban() {
+    const colunas = ["Leads", "Aberto", "Negociando", "Fechado"];
+    const kanban = document.getElementById("kanbanBoard");
+    kanban.innerHTML = '';
+    const colRefs = {};
+
+    colunas.forEach(col => {
+      const div = document.createElement("div");
+      div.className = "kanban-column";
+      div.id = `coluna-${col}`;
+      div.innerHTML = `<h3>${col}</h3>`;
+      div.ondragover = e => e.preventDefault();
+      div.ondrop = e => {
+        const id = e.dataTransfer.getData("id");
+        const status = col;
+        dbProspects.child(id).once("value").then(snap => {
+          const prospect = snap.val();
+          if (!prospect) return;
+          prospect.status = status;
+          dbProspects.child(id).set(prospect).then(() => {
+            montarKanban();
+            carregarListaProspects();
+          });
+        });
       };
+      colRefs[col] = div;
+      kanban.appendChild(div);
+    });
 
-      const ref = editandoId ? dbProspects.child(editandoId) : dbProspects.push();
-      ref.set(prospect).then(() => {
-        alert("Salvo com sucesso!");
-        document.getElementById("formProspect").reset();
-        document.getElementById("acoesContainer").innerHTML = '';
-        editandoId = null;
+    dbProspects.once("value").then(snapshot => {
+      snapshot.forEach(child => {
+        const id = child.key;
+        const p = child.val();
+        const card = document.createElement("div");
+        card.className = "kanban-card";
+        card.draggable = true;
+        card.ondragstart = e => e.dataTransfer.setData("id", id);
+        card.innerHTML = `
+          <strong>${p.nomeProspect}</strong><br>
+          <small>${p.nomeLead || ''}</small><br>
+          <small>📅 ${(p.dataCadastro || '').split('T')[0]}</small><br>
+          <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
+        `;
+        colRefs[p.status]?.appendChild(card);
+      });
+    });
+  }
+
+  function editar(id) {
+    dbProspects.child(id).once("value").then(snapshot => {
+      const p = snapshot.val();
+      if (!p) return;
+      document.getElementById("formProspect").reset();
+      document.getElementById("leadSelect").value = p.leadId || '';
+      document.getElementById("nomeProspect").value = p.nomeProspect || '';
+      document.getElementById("status").value = p.status || '';
+      document.getElementById("acoesContainer").innerHTML = '';
+      (p.acoes || []).forEach(adicionarAcao);
+      editandoId = id;
+      window.scrollTo(0, 0);
+    });
+  }
+
+  function excluir(id) {
+    if (confirm("Tem certeza que deseja excluir este prospect?")) {
+      dbProspects.child(id).remove().then(() => {
+        alert("Prospect excluído.");
         carregarListaProspects();
         montarKanban();
       });
-    });
-
-    function carregarLeads() {
-      const select = document.getElementById("leadSelect");
-      select.innerHTML = '<option value="">Selecione</option>';
-      dbLeads.once("value").then(snapshot => {
-        snapshot.forEach(child => {
-          const id = child.key;
-          const c = child.val();
-          const option = document.createElement("option");
-          option.value = id;
-          option.text = `${c.nome} (${c.tipo})`;
-          select.appendChild(option);
-        });
-      });
     }
+  }
 
-    function adicionarAcao(a = {}) {
-      const container = document.getElementById("acoesContainer");
-      const div = document.createElement("div");
-      div.className = "acao-item";
-      div.innerHTML = `
-        <label>Data:</label><input type="date" class="acao-data" value="${a.data || ''}">
-        <label>Descrição:</label><textarea class="acao-desc" rows="2">${a.descricao || ''}</textarea>
-        <label>Próxima Data:</label><input type="date" class="acao-prox" value="${a.proximaData || ''}">
-        <label><input type="checkbox" class="acao-concluido" ${a.concluido ? 'checked' : ''}> Concluído</label>
-        <button type="button" onclick="this.parentElement.remove()">Remover Ação</button>
-      `;
-      container.appendChild(div);
-    }
-
-    function carregarListaProspects() {
-      dbProspects.once("value").then(snapshot => {
-        const tbody = document.getElementById("tabelaProspects");
-        tbody.innerHTML = "";
-        snapshot.forEach(child => {
-          const id = child.key;
-          const p = child.val();
-          tbody.innerHTML += `
-            <tr>
-              <td>${p.nomeLead || ''}</td>
-              <td>${p.nomeProspect || ''}</td>
-              <td>${(p.dataCadastro || '').split('T')[0]}</td>
-              <td>${p.status || ''}</td>
-              <td>
-                <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
-                <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
-              </td>
-            </tr>
-          `;
-        });
-      });
-    }
-
-    function montarKanban() {
-      const colunas = ["Leads", "Aberto", "Negociando", "Fechado"];
-      const kanban = document.getElementById("kanbanBoard");
-      kanban.innerHTML = '';
-      const colRefs = {};
-
-      colunas.forEach(col => {
-        const div = document.createElement("div");
-        div.className = "kanban-column";
-        div.id = `coluna-${col}`;
-        div.innerHTML = `<h3>${col}</h3>`;
-        div.ondragover = e => e.preventDefault();
-        div.ondrop = e => {
-          const id = e.dataTransfer.getData("id");
-          const status = col;
-          dbProspects.child(id).once("value").then(snap => {
-            const prospect = snap.val();
-            if (!prospect) return;
-            prospect.status = status;
-            dbProspects.child(id).set(prospect).then(() => {
-              montarKanban();
-              carregarListaProspects();
-            });
-          });
-        };
-        colRefs[col] = div;
-        kanban.appendChild(div);
-      });
-
-      dbProspects.once("value").then(snapshot => {
-        snapshot.forEach(child => {
-          const id = child.key;
-          const p = child.val();
-          const card = document.createElement("div");
-          card.className = "kanban-card";
-          card.draggable = true;
-          card.ondragstart = e => e.dataTransfer.setData("id", id);
-          card.innerHTML = `
-            <strong>${p.nomeProspect}</strong><br>
-            <small>${p.nomeLead || ''}</small><br>
-            <small>📅 ${(p.dataCadastro || '').split('T')[0]}</small><br>
-            <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
-          `;
-          colRefs[p.status]?.appendChild(card);
-        });
-      });
-    }
-
-    function editar(id) {
-      dbProspects.child(id).once("value").then(snapshot => {
-        const p = snapshot.val();
-        if (!p) return;
-        document.getElementById("formProspect").reset();
-        document.getElementById("leadSelect").value = p.leadId || '';
-        document.getElementById("nomeProspect").value = p.nomeProspect || '';
-        document.getElementById("status").value = p.status || '';
-        document.getElementById("acoesContainer").innerHTML = '';
-        (p.acoes || []).forEach(adicionarAcao);
-        editandoId = id;
-        window.scrollTo(0, 0);
-      });
-    }
-
-    function excluir(id) {
-      if (confirm("Tem certeza que deseja excluir este prospect?")) {
-        dbProspects.child(id).remove().then(() => {
-          alert("Prospect excluído.");
-          carregarListaProspects();
-          montarKanban();
-        });
-      }
-    }
-
-    carregarListaProspects();
-    montarKanban();
-  </script>
+  carregarListaProspects();
+  montarKanban();
+</script>
 </body>
 </html>
