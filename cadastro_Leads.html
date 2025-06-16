@@ -11,13 +11,13 @@
   <script src="assets/menu.js" defer></script>
   <style>
     .form-container {
-      max-width: 400px;
+      max-width: 500px;
       margin-bottom: 30px;
     }
-    .form-container input {
+    .form-container input, .form-container textarea {
       width: 100%;
       margin-bottom: 10px;
-      padding: 5px;
+      padding: 6px;
     }
     table {
       width: 100%;
@@ -46,10 +46,10 @@
         <form id="formLead">
           <label>Nome:</label>
           <input type="text" id="nome" required>
-          
+
           <label>Tipo:</label>
           <input type="text" id="tipo" required>
-          
+
           <label>Nome da Empresa:</label>
           <input type="text" id="empresa">
 
@@ -58,6 +58,12 @@
 
           <label>Telefone:</label>
           <input type="text" id="telefone">
+
+          <label>Origem:</label>
+          <input type="text" id="origem">
+
+          <label>Observação:</label>
+          <textarea id="observacao" rows="3"></textarea>
 
           <button type="submit">Salvar</button>
         </form>
@@ -72,6 +78,8 @@
             <th>Empresa</th>
             <th>Email</th>
             <th>Telefone</th>
+            <th>Origem</th>
+            <th>Observação</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -99,12 +107,14 @@
       const empresa = document.getElementById("empresa").value.trim();
       const email = document.getElementById("email").value.trim();
       const telefone = document.getElementById("telefone").value.trim();
+      const origem = document.getElementById("origem").value.trim();
+      const observacao = document.getElementById("observacao").value.trim();
 
       if (!nome || !tipo) {
         return alert("Preencha os campos obrigatórios: Nome e Tipo.");
       }
 
-      const lead = { nome, tipo, empresa, email, telefone, criadoEm: new Date().toISOString() };
+      const lead = { nome, tipo, empresa, email, telefone, origem, observacao, criadoEm: new Date().toISOString() };
       const ref = editandoId ? db.child(editandoId) : db.push();
 
       ref.set(lead).then(() => {
@@ -129,6 +139,8 @@
               <td>${c.empresa || ''}</td>
               <td>${c.email || ''}</td>
               <td>${c.telefone || ''}</td>
+              <td>${c.origem || ''}</td>
+              <td>${c.observacao || ''}</td>
               <td>
                 <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
                 <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
@@ -149,6 +161,8 @@
         document.getElementById("empresa").value = c.empresa || '';
         document.getElementById("email").value = c.email || '';
         document.getElementById("telefone").value = c.telefone || '';
+        document.getElementById("origem").value = c.origem || '';
+        document.getElementById("observacao").value = c.observacao || '';
         editandoId = id;
         window.scrollTo(0, 0);
       });
