@@ -14,6 +14,7 @@
       display: flex;
       gap: 10px;
       margin-bottom: 20px;
+      align-items: flex-start;
     }
     .kanban {
       flex: 3;
@@ -87,6 +88,21 @@
       margin-bottom: 5px;
       border-radius: 5px;
     }
+    .filtros {
+      margin-bottom: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .filtros input, .filtros select {
+      padding: 4px;
+    }
+    .header-form {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
   </style>
 </head>
 <body>
@@ -99,6 +115,10 @@
       <section class="kanban" id="kanbanBoard"></section>
 
       <section class="form-prospect">
+        <div class="header-form">
+          <h3>Cadastro</h3>
+          <button type="button" onclick="window.location.href='cadastro_Leads.html'">Criar Lead</button>
+        </div>
         <form id="formProspect">
           <label>Lead:</label>
           <select id="leadSelect" required></select>
@@ -123,6 +143,19 @@
           <button type="submit">Salvar Prospect</button>
         </form>
       </section>
+    </div>
+
+    <div class="filtros">
+      <input type="text" id="filtroNome" placeholder="Filtrar por Nome do Prospect">
+      <select id="filtroStatus">
+        <option value="">Todos Status</option>
+        <option>Leads</option>
+        <option>Aberto</option>
+        <option>Negociando</option>
+        <option>Fechado</option>
+        <option>Perdido</option>
+      </select>
+      <button onclick="carregarListaProspects()">Aplicar Filtro</button>
     </div>
 
     <h2>Lista de Prospects</h2>
@@ -228,30 +261,38 @@
   }
 
   function carregarListaProspects() {
+    const filtroNome = document.getElementById("filtroNome").value.trim().toLowerCase();
+    const filtroStatus = document.getElementById("filtroStatus").value;
+
     dbProspects.once("value").then(snapshot => {
       const tbody = document.getElementById("tabelaProspects");
       tbody.innerHTML = "";
       snapshot.forEach(child => {
         const id = child.key;
         const p = child.val();
-        tbody.innerHTML += `
-          <tr>
-            <td>${p.nomeLead || ''}</td>
-            <td>${p.nomeProspect || ''}</td>
-            <td>${(p.dataCadastro || '').split('T')[0]}</td>
-            <td>${p.status || ''}</td>
-            <td>
-              <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
-              <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
-            </td>
-          </tr>
-        `;
+        const nomeMatch = !filtroNome || (p.nomeProspect || '').toLowerCase().includes(filtroNome);
+        const statusMatch = !filtroStatus || p.status === filtroStatus;
+
+        if (nomeMatch && statusMatch) {
+          tbody.innerHTML += `
+            <tr>
+              <td>${p.nomeLead || ''}</td>
+              <td>${p.nomeProspect || ''}</td>
+              <td>${(p.dataCadastro || '').split('T')[0]}</td>
+              <td>${p.status || ''}</td>
+              <td>
+                <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
+                <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
+              </td>
+            </tr>
+          `;
+        }
       });
     });
   }
 
   function montarKanban() {
-    const colunas = ["Leads", "Aberto", "Negociando", "Fechado", "Perdido"];
+    const colunas = ["Leads", "Aberto", "Negociando", "Fechado"];
     const kanban = document.getElementById("kanbanBoard");
     kanban.innerHTML = '';
     const colRefs = {};
@@ -283,6 +324,7 @@
       snapshot.forEach(child => {
         const id = child.key;
         const p = child.val();
+        if (!colRefs[p.status]) return;
         const card = document.createElement("div");
         card.className = "kanban-card";
         card.draggable = true;
