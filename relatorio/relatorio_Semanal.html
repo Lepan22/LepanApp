@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Relatório E3vento</title>
+  <title>Relatório Evento</title>
   <link rel="stylesheet" href="../assets/base.css" />
   <link rel="stylesheet" href="../assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -68,7 +68,7 @@
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     carregarMenu('../');
-    setDataPadrao();
+    carregarEventos();
   });
 
   const firebaseConfig = {
@@ -91,13 +91,13 @@
         eventos.push(e);
       });
       popularFiltro();
+      setDataPadrao(); // ✅ Agora executa aqui, depois que tudo carrega
       aplicarFiltros();
     });
   }
 
   function setDataPadrao() {
     const hoje = new Date();
-
     const dataFim = hoje;
     const dataInicio = new Date();
     dataInicio.setDate(hoje.getDate() - 6);
