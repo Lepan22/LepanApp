@@ -189,17 +189,18 @@
   document.getElementById("formProspect").addEventListener("submit", function (e) {
     e.preventDefault();
     const leadId = document.getElementById("leadSelect").value;
-    const nomeLead = document.getElementById("leadSelect").selectedOptions[0].text;
+    const nomeLead = document.getElementById("leadSelect").selectedOptions[0]?.text || '';
     const nomeProspect = document.getElementById("nomeProspect").value.trim();
-    const status = document.getElementById("status").value;
     const tipoCliente = document.getElementById("tipoCliente").value.trim();
     const perfilEconomico = document.getElementById("perfilEconomico").value.trim();
     const tamanho = document.getElementById("tamanho").value.trim();
     const endereco = document.getElementById("endereco").value.trim();
     const regiao = document.getElementById("regiao").value.trim();
+    const status = document.getElementById("status").value;
 
     if (!leadId || !nomeProspect) {
-      return alert("Preencha os campos obrigatórios.");
+      alert("Preencha os campos obrigatórios.");
+      return;
     }
 
     const acoes = [];
@@ -223,7 +224,7 @@
       endereco,
       regiao,
       status,
-      dataCadastro: editandoId ? undefined : new Date().toISOString(),
+      dataCadastro: editandoId ? (snapshotDataCadastro || new Date().toISOString()) : new Date().toISOString(),
       acoes
     };
 
