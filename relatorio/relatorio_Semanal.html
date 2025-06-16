@@ -100,14 +100,21 @@
     const diaSemana = hoje.getDay();
     const diffParaSegunda = (diaSemana === 0) ? 6 : diaSemana - 1;
 
+    // Segunda passada
     const segundaPassada = new Date(hoje);
     segundaPassada.setDate(hoje.getDate() - diffParaSegunda - 7);
+    const yyyyIni = segundaPassada.getFullYear();
+    const mmIni = String(segundaPassada.getMonth() + 1).padStart(2, '0');
+    const ddIni = String(segundaPassada.getDate()).padStart(2, '0');
+    document.getElementById('filtroDataInicio').value = `${yyyyIni}-${mmIni}-${ddIni}`;
 
+    // Segunda atual
     const segundaAtual = new Date(hoje);
     segundaAtual.setDate(hoje.getDate() - diffParaSegunda);
-
-    document.getElementById('filtroDataInicio').value = segundaPassada.toISOString().split('T')[0];
-    document.getElementById('filtroDataFim').value = segundaAtual.toISOString().split('T')[0];
+    const yyyyFim = segundaAtual.getFullYear();
+    const mmFim = String(segundaAtual.getMonth() + 1).padStart(2, '0');
+    const ddFim = String(segundaAtual.getDate()).padStart(2, '0');
+    document.getElementById('filtroDataFim').value = `${yyyyFim}-${mmFim}-${ddFim}`;
   }
 
   function popularFiltro() {
@@ -143,7 +150,7 @@
     const linhas = [];
 
     eventos.filter(e => {
-      if (!e.data) return false; // Ignora eventos sem data
+      if (!e.data) return false;
 
       if (nomes.length && !nomes.includes(e.nomeEvento)) return false;
       if (dataInicio && e.data < dataInicio) return false;
