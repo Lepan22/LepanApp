@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Relatório Clientes Ativos</title>
+  <link rel="stylesheet" href="../assets/menu-styles.css">
+  <link rel="stylesheet" href="../assets/base.css">
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="../assets/menu.js"></script>
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+    }
+    th {
+      background-color: #ffcc80;
+    }
+    .btn-navegar {
+      background-color: #ff7f00;
+      color: white;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 5px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .btn-navegar:hover {
+      background-color: #e96f00;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <div class="sidebar" id="menuLateral"></div>
+    <div class="main-content">
+      <div class="page-header">
+        <h1>Relatório de Clientes Ativos</h1>
+      </div>
+
+      <div>
+        <button class="btn-navegar" onclick="carregarRelatorio()">Atualizar Relatório</button>
+      </div>
+
+      <div id="tabelaResultado"></div>
+    </div>
+  </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarMenu('../');
+    carregarRelatorio();
+  });
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  function carregarRelatorio() {
+    db.ref('clientes').once('value').then(snapshot => {
+      const dados = snapshot.val() || {};
+      const linhas = [];
+
+      Object.values(dados).forEach(cliente => {
+        const clienteAtivo = cliente.clientesAtivos;
+        if (clienteAtivo && clienteAtivo.statusEvento === 'Ativo') {
+          linhas.push({
+            nome: cliente.nome || '-',
+            regiao: cliente.regiao || '-',
+            frequencia: clienteAtivo.frequencia || '-'
+          });
+        }
+      });
+
+      linhas.sort((a, b) => a.nome.localeCompare(b.nome));
+
+      exibirTabela(linhas);
+    });
+  }
+
+  function exibirTabela(linhas) {
+    let html = '<table><thead><tr>' +
+      '<th>Nome do Condomínio</th>' +
+      '<th>Região</th>' +
+      '<th>Frequência</th>' +
+      '</tr></thead><tbody>';
+
+    linhas.forEach(l => {
+      html += `<tr>
+        <td>${l.nome}</td>
+        <td>${l.regiao}</td>
+        <td>${l.frequencia}</td>
+      </tr>`;
+    });
+
+    html += '</tbody></table>';
+
+    document.getElementById('tabelaResultado').innerHTML = html;
+  }
+</script>
+</body>
+</html>
