@@ -97,14 +97,10 @@
 
   function setDataPadrao() {
     const hoje = new Date();
-    const diaSemana = hoje.getDay();
-    const diffParaSegunda = (diaSemana === 0) ? 6 : diaSemana - 1;
 
-    const segundaAtual = new Date(hoje);
-    segundaAtual.setDate(hoje.getDate() - diffParaSegunda);
-
-    const segundaPassada = new Date(segundaAtual);
-    segundaPassada.setDate(segundaAtual.getDate() - 7);
+    const dataFim = hoje;
+    const dataInicio = new Date();
+    dataInicio.setDate(hoje.getDate() - 6);
 
     const formatarData = (data) => {
       const ano = data.getFullYear();
@@ -113,8 +109,8 @@
       return `${ano}-${mes}-${dia}`;
     };
 
-    document.getElementById('filtroDataInicio').value = formatarData(segundaPassada);
-    document.getElementById('filtroDataFim').value = formatarData(segundaAtual);
+    document.getElementById('filtroDataInicio').value = formatarData(dataInicio);
+    document.getElementById('filtroDataFim').value = formatarData(dataFim);
   }
 
   function popularFiltro() {
