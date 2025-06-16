@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Relatório de Evento</title>
+  <title>Relatório Evento</title>
   <link rel="stylesheet" href="../assets/base.css" />
   <link rel="stylesheet" href="../assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -106,8 +106,15 @@
     const segundaPassada = new Date(segundaAtual);
     segundaPassada.setDate(segundaAtual.getDate() - 7);
 
-    document.getElementById('filtroDataInicio').value = segundaPassada.toISOString().split('T')[0];
-    document.getElementById('filtroDataFim').value = segundaAtual.toISOString().split('T')[0];
+    const formatarData = (data) => {
+      const ano = data.getFullYear();
+      const mes = String(data.getMonth() + 1).padStart(2, '0');
+      const dia = String(data.getDate()).padStart(2, '0');
+      return `${ano}-${mes}-${dia}`;
+    };
+
+    document.getElementById('filtroDataInicio').value = formatarData(segundaPassada);
+    document.getElementById('filtroDataFim').value = formatarData(segundaAtual);
   }
 
   function popularFiltro() {
