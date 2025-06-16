@@ -150,8 +150,9 @@
       const vendaPDV = parseFloat(e.vendaPDV) || 0;
       const lucro = parseFloat(e.lucroFinal) || 0;
       const custoPerda = parseFloat(e.custoPerda) || 0;
-      const custoEquipe = parseFloat(e.custoEquipe) || 0;
-      const custoLogistica = parseFloat(e.custoLogistica) || 0;
+
+      const custoEquipe = (e.equipeAlocada || []).reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0);
+      const custoLogistica = (e.logisticaAlocada || []).reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0);
 
       linhas.push({
         nomeEvento: e.nomeEvento || '-',
