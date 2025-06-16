@@ -1,116 +1,80 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Relatório Clientes Ativos</title>
+  <meta charset="UTF-8">
+  <title>Relatório de Clientes Ativos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="../assets/menu-styles.css">
   <link rel="stylesheet" href="../assets/base.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="../assets/menu.js"></script>
-  <style>
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      font-size: 13px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 6px;
-      text-align: left;
-    }
-    th {
-      background-color: #ffcc80;
-    }
-    .btn-navegar {
-      background-color: #ff7f00;
-      color: white;
-      padding: 6px 10px;
-      border: none;
-      border-radius: 5px;
-      font-size: 12px;
-      cursor: pointer;
-      margin-bottom: 10px;
-    }
-    .btn-navegar:hover {
-      background-color: #e96f00;
-    }
-  </style>
+  <script src="../assets/menu.js" defer></script>
 </head>
 <body>
   <div class="layout">
-    <div class="sidebar" id="menuLateral"></div>
+    <div id="menuLateral" class="sidebar"></div>
+
     <div class="main-content">
-      <div class="page-header">
-        <h1>Relatório de Clientes Ativos</h1>
-      </div>
+      <h1>Relatório de Clientes Ativos</h1>
 
-      <div>
-        <button class="btn-navegar" onclick="carregarRelatorio()">Atualizar Relatório</button>
-      </div>
+      <button onclick="gerarRelatorio()">Atualizar Relatório</button>
 
-      <div id="tabelaResultado"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome do Condomínio</th>
+            <th>Região</th>
+            <th>Frequência</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaClientes"></tbody>
+      </table>
     </div>
   </div>
 
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    carregarMenu('../');
-    carregarRelatorio();
-  });
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCkYxrB-eu5XqB4h6m4j7H6qrUUJlzNrs4",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "1071636003040",
+      appId: "1:1071636003040:web:64bde2e9ad34e84c75e6a7"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-    authDomain: "lepanapp.firebaseapp.com",
-    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-    projectId: "lepanapp"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+    function gerarRelatorio() {
+      const tabela = document.getElementById('tabelaClientes');
+      tabela.innerHTML = '';
 
-  function carregarRelatorio() {
-    db.ref('clientes').once('value').then(snapshot => {
-      const dados = snapshot.val() || {};
-      const linhas = [];
+      db.ref('clientes').once('value').then(snapshot => {
+        const clientes = snapshot.val();
+        for (let id in clientes) {
+          const cliente = clientes[id];
+          const ativo = cliente.clienteAtivo;
 
-      Object.values(dados).forEach(cliente => {
-        const clienteAtivo = cliente.clientesAtivos;
-        if (clienteAtivo && clienteAtivo.statusEvento === 'Ativo') {
-          linhas.push({
-            nome: cliente.nome || '-',
-            regiao: cliente.regiao || '-',
-            frequencia: clienteAtivo.frequencia || '-'
-          });
+          if (ativo && ativo.statusEvento === "Ativo") {
+            const nome = cliente.nome || '';
+            const regiao = cliente.regiao || '';
+            const frequencia = ativo.frequencia || '';
+
+            const tr = document.createElement('tr');
+
+            tr.innerHTML = `
+              <td>${nome}</td>
+              <td>${regiao}</td>
+              <td>${frequencia}</td>
+            `;
+
+            tabela.appendChild(tr);
+          }
         }
       });
+    }
 
-      linhas.sort((a, b) => a.nome.localeCompare(b.nome));
-
-      exibirTabela(linhas);
-    });
-  }
-
-  function exibirTabela(linhas) {
-    let html = '<table><thead><tr>' +
-      '<th>Nome do Condomínio</th>' +
-      '<th>Região</th>' +
-      '<th>Frequência</th>' +
-      '</tr></thead><tbody>';
-
-    linhas.forEach(l => {
-      html += `<tr>
-        <td>${l.nome}</td>
-        <td>${l.regiao}</td>
-        <td>${l.frequencia}</td>
-      </tr>`;
-    });
-
-    html += '</tbody></table>';
-
-    document.getElementById('tabelaResultado').innerHTML = html;
-  }
-</script>
+    window.onload = gerarRelatorio;
+  </script>
 </body>
 </html>
