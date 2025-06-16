@@ -35,8 +35,10 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="clientes" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
+              <a href="/LepanApp/prospects.html">Prospects</a>
               <a href="/LepanApp/clientes.html">Cadastrar Cliente</a>
               <a href="/LepanApp/gestao_Cliente.html">Gestão de Cliente</a>
+
             </div>
           </div>
         </div>
