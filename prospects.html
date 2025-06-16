@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Prospecção</title>
+  <meta charset="UTF-8">
+  <title>Gestão de Prospects</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css">
+  <link rel="stylesheet" href="assets/base.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
@@ -51,6 +51,27 @@
     .kanban-card:hover {
       background: #f0f0f0;
     }
+    .acoes-container {
+      margin-bottom: 10px;
+    }
+    .acao-item {
+      border: 1px solid #ccc;
+      padding: 5px;
+      margin-bottom: 5px;
+      border-radius: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th {
+      background-color: #eee;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+    }
     .btn-acao {
       margin-right: 5px;
     }
@@ -60,57 +81,49 @@
   <div class="layout">
     <aside class="sidebar" id="menuLateral"></aside>
     <main class="main-content">
+      <h1>Gestão de Prospects</h1>
+
       <div class="kanban-layout">
-        <section class="kanban-container" id="kanbanBoard">
-          <!-- Colunas Kanban serão carregadas dinamicamente -->
-        </section>
+        <section class="kanban-container" id="kanbanBoard"></section>
 
         <section class="form-container">
-          <h2>Cadastro de Prospect</h2>
           <form id="formProspect">
-            <label>Tipo:</label>
-            <input type="text" id="tipo" required>
-            <label>Nome:</label>
-            <input type="text" id="nome" required>
+            <label>Lead:</label>
+            <select id="leadSelect" required></select>
 
-            <h3>Contatos:</h3>
-            <div id="contatosContainer"></div>
-            <button type="button" onclick="adicionarContato()">+ Contato</button>
+            <label>Nome do Prospect:</label>
+            <input type="text" id="nomeProspect" required>
 
-            <h3>Prospects:</h3>
-            <div id="prospectsContainer"></div>
-            <button type="button" onclick="adicionarProspect()">+ Prospect</button>
+            <label>Status:</label>
+            <select id="status">
+              <option>Leads</option>
+              <option>Aberto</option>
+              <option>Negociando</option>
+              <option>Fechado</option>
+            </select>
+
+            <h3>Ações</h3>
+            <div id="acoesContainer"></div>
+            <button type="button" onclick="adicionarAcao()">+ Ação</button>
 
             <br><br>
-            <button type="submit">Salvar</button>
+            <button type="submit">Salvar Prospect</button>
           </form>
         </section>
       </div>
 
-      <h2>Lista de Próximas Ações</h2>
+      <h2>Lista de Prospects</h2>
       <table>
         <thead>
           <tr>
-            <th>Data da Próxima Ação</th>
+            <th>Lead</th>
             <th>Nome do Prospect</th>
+            <th>Data Cadastro</th>
             <th>Status</th>
-            <th>Atividade</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody id="tabelaProspects"></tbody>
-      </table>
-
-      <h2>Lista de Leads</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Tipo</th>
-            <th>Nome</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="tabelaLeads"></tbody>
       </table>
     </main>
   </div>
@@ -124,96 +137,76 @@
     };
 
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database().ref("prospecao");
+    const dbLeads = firebase.database().ref("leads");
+    const dbProspects = firebase.database().ref("prospects");
     let editandoId = null;
+
+    carregarLeads();
 
     document.getElementById("formProspect").addEventListener("submit", function (e) {
       e.preventDefault();
-      const tipo = document.getElementById("tipo").value.trim();
-      const nome = document.getElementById("nome").value.trim();
-      if (!tipo || !nome) return alert("Preencha os campos obrigatórios");
+      const leadId = document.getElementById("leadSelect").value;
+      const nomeLead = document.getElementById("leadSelect").selectedOptions[0].text;
+      const nomeProspect = document.getElementById("nomeProspect").value.trim();
+      const status = document.getElementById("status").value;
 
-      const contatos = [];
-      document.querySelectorAll('.contato-item').forEach(div => {
-        const nome = div.querySelector('.contato-nome').value.trim();
-        const telefone = div.querySelector('.contato-telefone').value.trim();
-        const email = div.querySelector('.contato-email').value.trim();
-        if (nome) contatos.push({ nome, telefone, email });
+      if (!leadId || !nomeProspect) {
+        return alert("Preencha os campos obrigatórios.");
+      }
+
+      const acoes = [];
+      document.querySelectorAll('.acao-item').forEach(div => {
+        const data = div.querySelector('.acao-data').value;
+        const descricao = div.querySelector('.acao-desc').value.trim();
+        const proximaData = div.querySelector('.acao-prox').value;
+        const concluido = div.querySelector('.acao-concluido').checked;
+        if (descricao) {
+          acoes.push({ data, descricao, proximaData, concluido });
+        }
       });
 
-      const prospects = [];
-      document.querySelectorAll('.prospect-item').forEach(div => {
-        const nome = div.querySelector('.prospect-nome').value.trim();
-        const status = div.querySelector('.prospect-status').value;
-        const atividade = div.querySelector('.prospect-atividade').value.trim();
-        const acoes = [];
-        div.querySelectorAll('.acao-item').forEach(acaoDiv => {
-          const data = acaoDiv.querySelector('.acao-data').value;
-          const descricao = acaoDiv.querySelector('.acao-desc').value.trim();
-          const proximaData = acaoDiv.querySelector('.acao-prox').value;
-          const concluido = acaoDiv.querySelector('.acao-concluido').checked;
-          if (descricao) acoes.push({ data, descricao, proximaData, concluido });
-        });
-        acoes.sort((a, b) => new Date(b.proximaData) - new Date(a.proximaData));
-        if (nome) prospects.push({ nome, status, atividade, acoes });
-      });
+      const prospect = {
+        leadId,
+        nomeLead,
+        nomeProspect,
+        status,
+        dataCadastro: editandoId ? undefined : new Date().toISOString(),
+        acoes
+      };
 
-      const novo = { tipo, nome, contatos, prospects, criadoEm: new Date().toISOString() };
-      const ref = editandoId ? db.child(editandoId) : db.push();
-      ref.set(novo).then(() => {
+      const ref = editandoId ? dbProspects.child(editandoId) : dbProspects.push();
+      ref.set(prospect).then(() => {
         alert("Salvo com sucesso!");
         document.getElementById("formProspect").reset();
-        document.getElementById("contatosContainer").innerHTML = '';
-        document.getElementById("prospectsContainer").innerHTML = '';
+        document.getElementById("acoesContainer").innerHTML = '';
         editandoId = null;
         carregarListaProspects();
-        carregarListaLeads();
         montarKanban();
       });
     });
 
-    function adicionarContato(contato = {}) {
-      const div = document.createElement("div");
-      div.className = "item contato-item";
-      div.innerHTML = `
-        <label>Nome:</label><input type="text" class="contato-nome" value="${contato.nome || ''}">
-        <label>Telefone:</label><input type="text" class="contato-telefone" value="${contato.telefone || ''}">
-        <label>Email:</label><input type="email" class="contato-email" value="${contato.email || ''}">
-        <button type="button" onclick="this.parentElement.remove()">Remover</button>
-      `;
-      document.getElementById("contatosContainer").appendChild(div);
+    function carregarLeads() {
+      const select = document.getElementById("leadSelect");
+      select.innerHTML = '<option value="">Selecione</option>';
+      dbLeads.once("value").then(snapshot => {
+        snapshot.forEach(child => {
+          const id = child.key;
+          const c = child.val();
+          const option = document.createElement("option");
+          option.value = id;
+          option.text = `${c.nome} (${c.tipo})`;
+          select.appendChild(option);
+        });
+      });
     }
 
-    function adicionarProspect(p = {}) {
-      const div = document.createElement("div");
-      div.className = "item prospect-item";
-      const id = 'acoes_' + Date.now();
-      div.innerHTML = `
-        <label>Nome do Prospect:</label><input type="text" class="prospect-nome" value="${p.nome || ''}">
-        <label>Status:</label>
-        <select class="prospect-status">
-          <option ${p.status === 'Leads' ? 'selected' : ''}>Leads</option>
-          <option ${p.status === 'Aberto' ? 'selected' : ''}>Aberto</option>
-          <option ${p.status === 'Negociando' ? 'selected' : ''}>Negociando</option>
-          <option ${p.status === 'Fechado' ? 'selected' : ''}>Fechado</option>
-        </select>
-        <label>Atividade:</label><input type="text" class="prospect-atividade" value="${p.atividade || ''}">
-        <div class="acoes-container" id="${id}"></div>
-        <button type="button" onclick="adicionarAcao('${id}')">+ Ação</button>
-        <button type="button" onclick="this.parentElement.remove()">Remover Prospect</button>
-      `;
-      document.getElementById("prospectsContainer").appendChild(div);
-      (p.acoes || []).forEach(a => adicionarAcao(id, a));
-    }
-
-    function adicionarAcao(containerId, a = {}) {
-      const container = document.getElementById(containerId);
+    function adicionarAcao(a = {}) {
+      const container = document.getElementById("acoesContainer");
       const div = document.createElement("div");
       div.className = "acao-item";
       div.innerHTML = `
-        <hr>
         <label>Data:</label><input type="date" class="acao-data" value="${a.data || ''}">
-        <label>Descritivo:</label><textarea class="acao-desc" rows="2">${a.descricao || ''}</textarea>
+        <label>Descrição:</label><textarea class="acao-desc" rows="2">${a.descricao || ''}</textarea>
         <label>Próxima Data:</label><input type="date" class="acao-prox" value="${a.proximaData || ''}">
         <label><input type="checkbox" class="acao-concluido" ${a.concluido ? 'checked' : ''}> Concluído</label>
         <button type="button" onclick="this.parentElement.remove()">Remover Ação</button>
@@ -221,99 +214,19 @@
       container.appendChild(div);
     }
 
-    function montarKanban() {
-      const colunas = ["Leads", "Aberto", "Negociando", "Fechado"];
-      const kanban = document.getElementById("kanbanBoard");
-      kanban.innerHTML = '';
-      const colRefs = {};
-      colunas.forEach(col => {
-        const div = document.createElement("div");
-        div.className = "kanban-column";
-        div.id = `coluna-${col}`;
-        div.innerHTML = `<h3>${col}</h3>`;
-        div.ondragover = e => e.preventDefault();
-        div.ondrop = e => {
-          const id = e.dataTransfer.getData("id");
-          const status = col;
-          db.child(id).once("value").then(snap => {
-            const contato = snap.val();
-            if (!contato) return;
-            (contato.prospects || []).forEach(p => p.status = status);
-            db.child(id).set(contato).then(() => {
-              montarKanban();
-              carregarListaProspects();
-              carregarListaLeads();
-            });
-          });
-        };
-        colRefs[col] = div;
-        kanban.appendChild(div);
-      });
-
-      db.once("value").then(snapshot => {
-        snapshot.forEach(child => {
-          const id = child.key;
-          const contato = child.val();
-          (contato.prospects || []).forEach(p => {
-            const ultima = (p.acoes || []).sort((a, b) => new Date(b.proximaData) - new Date(a.proximaData))[0];
-            const card = document.createElement("div");
-            card.className = "kanban-card";
-            card.draggable = true;
-            card.ondragstart = e => e.dataTransfer.setData("id", id);
-            card.innerHTML = `
-              <strong>${p.nome}</strong><br>
-              <small>${p.atividade || ''}</small><br>
-              <small>📅 ${ultima?.proximaData || ''}</small><br>
-              <button class="btn-acao" onclick='visualizar(${JSON.stringify(contato).replace(/'/g, "\\'")})'>🔍</button>
-              <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
-            `;
-            colRefs[p.status]?.appendChild(card);
-          });
-        });
-      });
-    }
-
     function carregarListaProspects() {
-      db.once("value").then(snapshot => {
-        const lista = [];
-        snapshot.forEach(child => {
-          const id = child.key;
-          const contato = child.val();
-          (contato.prospects || []).forEach(p => {
-            const acoes = (p.acoes || []).sort((a, b) => new Date(b.proximaData) - new Date(a.proximaData));
-            const ultima = acoes[0];
-            if (ultima?.proximaData) {
-              lista.push({ id, data: ultima.proximaData, nome: p.nome, status: p.status, atividade: p.atividade, full: contato });
-            }
-          });
-        });
-        lista.sort((a, b) => new Date(b.data) - new Date(a.data));
-        document.getElementById("tabelaProspects").innerHTML = lista.map(p => `
-          <tr>
-            <td>${p.data}</td>
-            <td>${p.nome}</td>
-            <td>${p.status}</td>
-            <td>${p.atividade || ''}</td>
-            <td>
-              <button class="btn-acao" onclick='visualizar(${JSON.stringify(p.full).replace(/'/g, "\\'")})'>🔍</button>
-              <button class="btn-acao" onclick='editar("${p.id}")'>✏️</button>
-            </td>
-          </tr>
-        `).join("");
-      });
-    }
-
-    function carregarListaLeads() {
-      db.once("value").then(snapshot => {
-        const tbody = document.getElementById("tabelaLeads");
+      dbProspects.once("value").then(snapshot => {
+        const tbody = document.getElementById("tabelaProspects");
         tbody.innerHTML = "";
         snapshot.forEach(child => {
           const id = child.key;
-          const c = child.val();
+          const p = child.val();
           tbody.innerHTML += `
             <tr>
-              <td>${c.tipo || ''}</td>
-              <td>${c.nome || ''}</td>
+              <td>${p.nomeLead || ''}</td>
+              <td>${p.nomeProspect || ''}</td>
+              <td>${(p.dataCadastro || '').split('T')[0]}</td>
+              <td>${p.status || ''}</td>
               <td>
                 <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
                 <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
@@ -324,50 +237,80 @@
       });
     }
 
-    function visualizar(dados) {
-      let texto = `Tipo: ${dados.tipo || ''}\nNome: ${dados.nome || ''}\n\nContatos:\n`;
-      (dados.contatos || []).forEach(c => {
-        texto += ` - ${c.nome} | ${c.telefone} | ${c.email}\n`;
+    function montarKanban() {
+      const colunas = ["Leads", "Aberto", "Negociando", "Fechado"];
+      const kanban = document.getElementById("kanbanBoard");
+      kanban.innerHTML = '';
+      const colRefs = {};
+
+      colunas.forEach(col => {
+        const div = document.createElement("div");
+        div.className = "kanban-column";
+        div.id = `coluna-${col}`;
+        div.innerHTML = `<h3>${col}</h3>`;
+        div.ondragover = e => e.preventDefault();
+        div.ondrop = e => {
+          const id = e.dataTransfer.getData("id");
+          const status = col;
+          dbProspects.child(id).once("value").then(snap => {
+            const prospect = snap.val();
+            if (!prospect) return;
+            prospect.status = status;
+            dbProspects.child(id).set(prospect).then(() => {
+              montarKanban();
+              carregarListaProspects();
+            });
+          });
+        };
+        colRefs[col] = div;
+        kanban.appendChild(div);
       });
-      texto += `\nProspects:\n`;
-      (dados.prospects || []).forEach(p => {
-        texto += `\nNome: ${p.nome}\nStatus: ${p.status}\nAtividade: ${p.atividade}\n`;
-        (p.acoes || []).sort((a, b) => new Date(a.proximaData) - new Date(b.proximaData)).forEach(a => {
-          texto += `  - ${a.data} | ${a.descricao} | Próxima: ${a.proximaData} | Concluído: ${a.concluido ? 'Sim' : 'Não'}\n`;
+
+      dbProspects.once("value").then(snapshot => {
+        snapshot.forEach(child => {
+          const id = child.key;
+          const p = child.val();
+          const card = document.createElement("div");
+          card.className = "kanban-card";
+          card.draggable = true;
+          card.ondragstart = e => e.dataTransfer.setData("id", id);
+          card.innerHTML = `
+            <strong>${p.nomeProspect}</strong><br>
+            <small>${p.nomeLead || ''}</small><br>
+            <small>📅 ${(p.dataCadastro || '').split('T')[0]}</small><br>
+            <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
+          `;
+          colRefs[p.status]?.appendChild(card);
         });
       });
-      alert(texto);
     }
 
     function editar(id) {
-      db.child(id).once("value").then(snapshot => {
-        const c = snapshot.val();
-        if (!c) return;
+      dbProspects.child(id).once("value").then(snapshot => {
+        const p = snapshot.val();
+        if (!p) return;
         document.getElementById("formProspect").reset();
-        document.getElementById("contatosContainer").innerHTML = '';
-        document.getElementById("prospectsContainer").innerHTML = '';
-        document.getElementById("tipo").value = c.tipo || '';
-        document.getElementById("nome").value = c.nome || '';
-        (c.contatos || []).forEach(adicionarContato);
-        (c.prospects || []).forEach(adicionarProspect);
+        document.getElementById("leadSelect").value = p.leadId || '';
+        document.getElementById("nomeProspect").value = p.nomeProspect || '';
+        document.getElementById("status").value = p.status || '';
+        document.getElementById("acoesContainer").innerHTML = '';
+        (p.acoes || []).forEach(adicionarAcao);
         editandoId = id;
         window.scrollTo(0, 0);
       });
     }
 
     function excluir(id) {
-      if (confirm("Tem certeza que deseja excluir este lead?")) {
-        db.child(id).remove().then(() => {
-          alert("Lead excluído.");
+      if (confirm("Tem certeza que deseja excluir este prospect?")) {
+        dbProspects.child(id).remove().then(() => {
+          alert("Prospect excluído.");
           carregarListaProspects();
-          carregarListaLeads();
           montarKanban();
         });
       }
     }
 
     carregarListaProspects();
-    carregarListaLeads();
     montarKanban();
   </script>
 </body>
