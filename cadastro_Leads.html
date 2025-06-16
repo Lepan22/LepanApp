@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cadastro de Leads</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
+  <style>
+    .form-container {
+      max-width: 400px;
+      margin-bottom: 30px;
+    }
+    .form-container input {
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 5px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th {
+      background-color: #eee;
+      cursor: pointer;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: left;
+    }
+    .btn-acao {
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+    <main class="main-content">
+      <h1>Cadastro de Leads</h1>
+      <section class="form-container">
+        <form id="formLead">
+          <label>Nome:</label>
+          <input type="text" id="nome" required>
+          
+          <label>Tipo:</label>
+          <input type="text" id="tipo" required>
+          
+          <label>Nome da Empresa:</label>
+          <input type="text" id="empresa">
+
+          <label>Email:</label>
+          <input type="email" id="email">
+
+          <label>Telefone:</label>
+          <input type="text" id="telefone">
+
+          <button type="submit">Salvar</button>
+        </form>
+      </section>
+
+      <h2>Lista de Leads</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>Nome</th>
+            <th>Empresa</th>
+            <th>Email</th>
+            <th>Telefone</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaLeads"></tbody>
+      </table>
+    </main>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database().ref("leads");
+    let editandoId = null;
+
+    document.getElementById("formLead").addEventListener("submit", function (e) {
+      e.preventDefault();
+      const nome = document.getElementById("nome").value.trim();
+      const tipo = document.getElementById("tipo").value.trim();
+      const empresa = document.getElementById("empresa").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const telefone = document.getElementById("telefone").value.trim();
+
+      if (!nome || !tipo) {
+        return alert("Preencha os campos obrigatórios: Nome e Tipo.");
+      }
+
+      const lead = { nome, tipo, empresa, email, telefone, criadoEm: new Date().toISOString() };
+      const ref = editandoId ? db.child(editandoId) : db.push();
+
+      ref.set(lead).then(() => {
+        alert("Salvo com sucesso!");
+        document.getElementById("formLead").reset();
+        editandoId = null;
+        carregarListaLeads();
+      });
+    });
+
+    function carregarListaLeads() {
+      db.once("value").then(snapshot => {
+        const tbody = document.getElementById("tabelaLeads");
+        tbody.innerHTML = "";
+        snapshot.forEach(child => {
+          const id = child.key;
+          const c = child.val();
+          tbody.innerHTML += `
+            <tr>
+              <td>${c.tipo || ''}</td>
+              <td>${c.nome || ''}</td>
+              <td>${c.empresa || ''}</td>
+              <td>${c.email || ''}</td>
+              <td>${c.telefone || ''}</td>
+              <td>
+                <button class="btn-acao" onclick='editar("${id}")'>✏️</button>
+                <button class="btn-acao" onclick='excluir("${id}")'>🗑️</button>
+              </td>
+            </tr>
+          `;
+        });
+      });
+    }
+
+    function editar(id) {
+      db.child(id).once("value").then(snapshot => {
+        const c = snapshot.val();
+        if (!c) return;
+        document.getElementById("formLead").reset();
+        document.getElementById("nome").value = c.nome || '';
+        document.getElementById("tipo").value = c.tipo || '';
+        document.getElementById("empresa").value = c.empresa || '';
+        document.getElementById("email").value = c.email || '';
+        document.getElementById("telefone").value = c.telefone || '';
+        editandoId = id;
+        window.scrollTo(0, 0);
+      });
+    }
+
+    function excluir(id) {
+      if (confirm("Tem certeza que deseja excluir este lead?")) {
+        db.child(id).remove().then(() => {
+          alert("Lead excluído.");
+          carregarListaLeads();
+        });
+      }
+    }
+
+    carregarListaLeads();
+  </script>
+</body>
+</html>
