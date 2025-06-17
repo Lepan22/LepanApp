@@ -40,7 +40,6 @@ if (clienteId) {
     document.getElementById("tamanho").value = c.tamanho || "";
     document.getElementById("endereco").value = c.endereco || "";
     document.getElementById("regiao").value = c.regiao || "";
-    document.getElementById("ultimoContato").value = c.ultimoContato || "";
     document.getElementById("observacoes").value = c.observacoes || "";
     document.getElementById("status").value = c.status || "Aberto";
 
@@ -80,7 +79,6 @@ document.getElementById("clienteForm").addEventListener("submit", e => {
     tamanho: document.getElementById("tamanho").value.trim(),
     endereco: document.getElementById("endereco").value.trim(),
     regiao: document.getElementById("regiao").value.trim(),
-    ultimoContato: document.getElementById("ultimoContato").value,
     observacoes: document.getElementById("observacoes").value.trim(),
     status: document.getElementById("status").value,
     contatos: capturarContatos(),
