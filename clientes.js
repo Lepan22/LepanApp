@@ -11,7 +11,6 @@ const db = firebase.database().ref("clientes");
 const urlParams = new URLSearchParams(window.location.search);
 const clienteId = urlParams.get("id");
 
-// 👉 Se não for edição (não tem id), preencher com os dados da URL
 if (!clienteId) {
   document.getElementById("nome").value = urlParams.get("nome") || "";
   document.getElementById("nomeEvento").value = urlParams.get("nomeEvento") || "";
@@ -26,7 +25,6 @@ if (!clienteId) {
   toggleClienteAtivo();
 }
 
-// 👉 Se for edição, carregar do Firebase
 if (clienteId) {
   db.child(clienteId).once("value").then(snapshot => {
     const c = snapshot.val();
@@ -59,6 +57,11 @@ if (clienteId) {
         document.getElementById(dia).checked = dias.includes(dia);
       });
 
+      const eqNec = Array.isArray(c.clienteAtivo.equipamentosNecessarios) ? c.clienteAtivo.equipamentosNecessarios : [];
+      document.querySelectorAll(".equipamentoNecessario").forEach(chk => {
+        chk.checked = eqNec.includes(chk.value);
+      });
+
       document.getElementById("obsEvento").value = c.clienteAtivo.observacoes || "";
     }
 
@@ -66,7 +69,6 @@ if (clienteId) {
   });
 }
 
-// 👉 Salvar cliente (novo ou edição)
 document.getElementById("clienteForm").addEventListener("submit", e => {
   e.preventDefault();
 
@@ -91,6 +93,7 @@ document.getElementById("clienteForm").addEventListener("submit", e => {
       dataPrimeiroEvento: document.getElementById("dataPrimeiroEvento").value,
       statusEvento: document.getElementById("statusEvento").value,
       diasSemana: ["seg", "ter", "qua", "qui", "sex", "sab", "dom"].filter(dia => document.getElementById(dia).checked),
+      equipamentosNecessarios: Array.from(document.querySelectorAll(".equipamentoNecessario:checked")).map(el => el.value),
       observacoes: document.getElementById("obsEvento").value.trim()
     };
   }
@@ -102,13 +105,11 @@ document.getElementById("clienteForm").addEventListener("submit", e => {
   });
 });
 
-// 👉 Lógica de exibição do campo clienteAtivo
 function toggleClienteAtivo() {
   const status = document.getElementById("status").value;
   document.getElementById("clientesAtivos").style.display = (status === "Fechado") ? "block" : "none";
 }
 
-// 👉 Contatos dinâmicos
 function adicionarContato(contato = {}) {
   const div = document.createElement("div");
 
