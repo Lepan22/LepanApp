@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
               <a href="/LepanApp/equipe.html">Cadastrar Equipe</a>
               <a href="/LepanApp/logistica.html">Cadastrar Logística</a>
               <a href="/LepanApp/produto.html">Cadastro Produtos</a>
+              <a href="/LepanApp/equipamentos.html">Cadastro Equipamentos</a>
               <a href="/LepanApp/projecao_eventos.html">Gerar Previsão Eventos</a>
               <a href="/LepanApp/previsao_receita.html">Gerar Previsão Receita</a>
               <a href="/LepanApp/gestao_agenda.html">Gestão da Agenda</a>
