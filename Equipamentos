@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Equipamentos</title>
+
+  <link rel="stylesheet" href="assets/menu-styles.css">
+  <link rel="stylesheet" href="assets/base.css">
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+
+    <main class="main-content">
+      <h2>Cadastro de Equipamento</h2>
+
+      <form id="formEquipamento" style="display: flex; flex-wrap: wrap; gap: 10px;">
+        <input type="hidden" id="equipamentoId" />
+        <input type="text" id="nome" placeholder="Nome do equipamento" required />
+        <input type="text" id="categoria" placeholder="Categoria" />
+        <input type="text" id="modelo" placeholder="Modelo" />
+        <input type="text" id="numeroSerie" placeholder="Número de Série" />
+        <textarea id="observacao" placeholder="Observação" style="width: 100%; height: 40px;"></textarea>
+
+        <div style="width: 100%; display: flex; gap: 10px;">
+          <button type="submit">Salvar</button>
+          <button type="reset">Limpar</button>
+        </div>
+      </form>
+
+      <hr>
+
+      <h2>Lista de Equipamentos</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Categoria</th>
+            <th>Modelo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaEquipamentos"></tbody>
+      </table>
+    </main>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const form = document.getElementById('formEquipamento');
+    const tabela = document.getElementById('tabelaEquipamentos');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = document.getElementById('equipamentoId').value || db.ref('equipamentos').push().key;
+
+      const equipamento = {
+        nome: document.getElementById('nome').value,
+        categoria: document.getElementById('categoria').value,
+        modelo: document.getElementById('modelo').value,
+        numeroSerie: document.getElementById('numeroSerie').value,
+        observacao: document.getElementById('observacao').value
+      };
+
+      db.ref('equipamentos/' + id).set(equipamento).then(() => {
+        form.reset();
+        document.getElementById('equipamentoId').value = '';
+        carregarEquipamentos();
+      });
+    });
+
+    function carregarEquipamentos() {
+      db.ref('equipamentos').on('value', (snapshot) => {
+        tabela.innerHTML = '';
+        snapshot.forEach((child) => {
+          const id = child.key;
+          const e = child.val();
+          const row = `<tr>
+            <td>${e.nome || ''}</td>
+            <td>${e.categoria || ''}</td>
+            <td>${e.modelo || ''}</td>
+            <td>
+              <button onclick="editarEquipamento('${id}')">Editar</button>
+              <button onclick="excluirEquipamento('${id}')">Excluir</button>
+            </td>
+          </tr>`;
+          tabela.insertAdjacentHTML('beforeend', row);
+        });
+      });
+    }
+
+    window.editarEquipamento = (id) => {
+      db.ref('equipamentos/' + id).once('value').then(snapshot => {
+        const e = snapshot.val();
+        document.getElementById('equipamentoId').value = id;
+        document.getElementById('nome').value = e.nome || '';
+        document.getElementById('categoria').value = e.category || '';
+        document.getElementById('modelo').value = e.modelo || '';
+        document.getElementById('numeroSerie').value = e.numeroSerie || '';
+        document.getElementById('observacao').value = e.observacao || '';
+      });
+    };
+
+    window.excluirEquipamento = (id) => {
+      if (confirm('Deseja excluir este equipamento?')) {
+        db.ref('equipamentos/' + id).remove();
+      }
+    };
+
+    carregarEquipamentos();
+  </script>
+</body>
+</html>
