@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div class="accordion-body">
               <a href="/LepanApp/eventos.html">Eventos</a>
               <a href="/LepanApp/agenda.html">Agenda</a>
+              <a href="/LepanApp/planejamento_evento.html">Planejamento</a>
               <a href="/LepanApp/controle_etapas.html">Gestão Etapa</a>              
               <a href="/LepanApp/compra_evento.html">Gerar Compra</a>
               <a href="/LepanApp/VendaProd_evento.html">Consumo Prod Evento</a>
