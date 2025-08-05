@@ -2,205 +2,191 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Pnejamento da Semana</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planejamento da Semana</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #fdf5ee;
-      margin: 0;
-      padding: 20px;
-    }
-    h1 {
-      font-size: 1.8em;
-    }
-    .dia {
+    .evento-box {
       border-left: 5px solid orange;
-      padding-left: 10px;
-      margin-top: 30px;
-      font-weight: bold;
+      margin-bottom: 1rem;
+      padding-left: 1rem;
     }
     .evento {
-      margin-left: 20px;
-      margin-bottom: 20px;
+      margin-left: 1rem;
+      margin-bottom: 1.5rem;
     }
-    .evento label {
-      font-weight: bold;
-    }
-    .choices__inner {
-      width: 220px !important;
+    .equipe-select {
+      max-width: 250px;
     }
   </style>
 </head>
 <body>
-  <h1>Planejamento da Semana</h1>
-  <div id="container"></div>
+  <div class="layout">
+    <aside class="sidebar" id="menu"></aside>
+    <main>
+      <h1>Planejamento da Semana</h1>
+      <div id="planejamento-container"></div>
+    </main>
+  </div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+  <script src="assets/menu.js"></script>
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyCxLfQ-sS2f78fpVq9_hv4itTAJJtvkxoE",
-      authDomain: "lepanapp.firebaseapp.com",
+      apiKey: "AIzaSyBzDP7O1dglJrJyxV5ciRA-wJdy0kLdUfg",
+      authDomain: "lepanapp-default-rtdb.firebaseio.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
       projectId: "lepanapp",
       storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "255167327981",
-      appId: "1:255167327981:web:a13b1c2295c1c3d1e2c037"
+      messagingSenderId: "1006088740548",
+      appId: "1:1006088740548:web:25aa8c3f2c3b6dc1beef4e"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const container = document.getElementById("container");
-    const diaSemana = ["dom.", "seg.", "ter.", "qua.", "qui.", "sex.", "sáb."];
-    let membros = [];
-    let eventos = [];
+    async function carregarDados() {
+      const [eventosSnap, equipeSnap] = await Promise.all([
+        db.ref('eventos').once('value'),
+        db.ref('equipe').once('value')
+      ]);
 
-    async function carregarMembros() {
-      const snap = await db.ref("equipe").once("value");
-      const data = snap.val() || {};
-      membros = Object.entries(data).map(([id, info]) => ({
-        value: id,
-        apelido: info.apelido || info.nomeCompleto || "Sem nome"
+      const eventos = Object.entries(eventosSnap.val() || {}).map(([id, e]) => ({
+        id, ...e
       }));
+
+      const membros = Object.entries(equipeSnap.val() || {}).map(([id, e]) => ({
+        id, apelido: e.apelido || e.nome, nomeCompleto: e.nome
+      }));
+
+      return { eventos, membros };
     }
 
-    async function carregarEventos() {
+    function getSemanaAtual() {
       const hoje = new Date();
-      const segunda = new Date(hoje.setDate(hoje.getDate() - hoje.getDay() + 1));
-      const domingo = new Date(hoje.setDate(segunda.getDate() + 6));
-
-      const snap = await db.ref("eventos").once("value");
-      const data = snap.val() || {};
-
-      eventos = Object.entries(data).map(([id, ev]) => {
-        const dataObj = new Date(ev.data);
-        return {
-          id,
-          data: dataObj,
-          dataStr: `${diaSemana[dataObj.getDay()]}, ${String(dataObj.getDate()).padStart(2, '0')}/${String(dataObj.getMonth() + 1).padStart(2, '0')}`,
-          nomeEvento: ev.nomeEvento || "",
-          equipe: ev.equipeAlocada || []
-        };
-      }).filter(ev => {
-        return ev.data >= segunda && ev.data <= domingo;
-      }).sort((a, b) => a.data - b.data);
+      const diaSemana = hoje.getDay(); // 0 (domingo) a 6 (sábado)
+      const segunda = new Date(hoje);
+      segunda.setDate(hoje.getDate() - ((diaSemana + 6) % 7));
+      const domingo = new Date(segunda);
+      domingo.setDate(segunda.getDate() + 6);
+      return { segunda, domingo };
     }
 
-    function renderizar() {
-      container.innerHTML = "";
-      const porDia = {};
+    function formatarDataExtensa(date) {
+      return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    }
 
-      eventos.forEach(ev => {
-        if (!porDia[ev.dataStr]) porDia[ev.dataStr] = [];
-        porDia[ev.dataStr].push(ev);
+    function criarElemento(tag, classe, texto) {
+      const el = document.createElement(tag);
+      if (classe) el.className = classe;
+      if (texto) el.textContent = texto;
+      return el;
+    }
+
+    function agruparEventosPorDia(eventos) {
+      const grupos = {};
+      eventos.forEach(evento => {
+        const data = new Date(evento.data);
+        const dia = data.toISOString().split('T')[0];
+        if (!grupos[dia]) grupos[dia] = [];
+        grupos[dia].push(evento);
       });
+      return grupos;
+    }
 
-      for (const [dia, listaEventos] of Object.entries(porDia)) {
-        const divDia = document.createElement("div");
-        divDia.innerHTML = `<div class="dia">${dia}</div>`;
-        listaEventos.forEach(ev => {
-          const divEv = document.createElement("div");
-          divEv.className = "evento";
-          divEv.innerHTML = `<strong>${ev.nomeEvento}</strong><br/><label>Equipe:</label><select multiple class="select" data-dia="${dia}" data-evento="${ev.id}"></select>`;
-          divDia.appendChild(divEv);
+    function atualizarDisponibilidade(choicesMap, membrosPorDia) {
+      for (const [data, choicesList] of Object.entries(choicesMap)) {
+        const usados = membrosPorDia[data] || [];
+        choicesList.forEach(({ choices, membroId }) => {
+          choices.clearStore();
+          const listaAtualizada = allMembros
+            .filter(m => !usados.includes(m.id) || m.id === membroId)
+            .map(m => ({ value: m.id, label: m.apelido }));
+          choices.setChoices(listaAtualizada, 'value', 'label', true);
         });
-        container.appendChild(divDia);
       }
-
-      inicializarChoices();
     }
 
-    function inicializarChoices() {
-      const selects = document.querySelectorAll(".select");
+    let allMembros = [];
 
-      const usadosPorDia = {};
-      selects.forEach(sel => {
-        const dia = sel.dataset.dia;
-        if (!usadosPorDia[dia]) usadosPorDia[dia] = new Set();
-      });
+    async function montarPlanejamento() {
+      const { eventos, membros } = await carregarDados();
+      allMembros = membros;
 
-      // Primeiro passamos pelos eventos e registramos os membros alocados
-      eventos.forEach(ev => {
-        const dia = ev.dataStr;
-        ev.equipe.forEach(p => {
-          if (!usadosPorDia[dia]) usadosPorDia[dia] = new Set();
-          usadosPorDia[dia].add(p.membroId);
+      const { segunda, domingo } = getSemanaAtual();
+      const eventosSemana = eventos.filter(e => {
+        const data = new Date(e.data);
+        return data >= segunda && data <= domingo;
+      }).sort((a, b) => new Date(a.data) - new Date(b.data));
+
+      const container = document.getElementById('planejamento-container');
+      container.innerHTML = '';
+
+      const grupos = agruparEventosPorDia(eventosSemana);
+      const membrosPorDia = {};
+      const choicesMap = {};
+
+      Object.entries(grupos).forEach(([dataStr, eventos]) => {
+        const data = new Date(dataStr);
+        const box = criarElemento('div', 'evento-box');
+        const diaHeader = criarElemento('h3', null, formatarDataExtensa(data));
+        box.appendChild(diaHeader);
+
+        choicesMap[dataStr] = [];
+        membrosPorDia[dataStr] = [];
+
+        eventos.forEach(evento => {
+          const bloco = criarElemento('div', 'evento');
+          const titulo = criarElemento('div', null, evento.nomeEvento || 'Evento sem nome');
+          const labelEquipe = criarElemento('label', null, 'Equipe:');
+          const select = document.createElement('select');
+          select.className = 'equipe-select';
+          select.setAttribute('multiple', '');
+          select.id = `select-${evento.id}`;
+
+          // Adiciona membros alocados (já selecionados)
+          const alocados = evento.equipeAlocada || [];
+          alocados.forEach(m => {
+            const membro = membros.find(mem => mem.id === m.membroId);
+            if (membro) {
+              const opt = new Option(membro.apelido, membro.id, true, true);
+              select.appendChild(opt);
+              membrosPorDia[dataStr].push(membro.id);
+            }
+          });
+
+          bloco.appendChild(titulo);
+          bloco.appendChild(labelEquipe);
+          bloco.appendChild(select);
+          box.appendChild(bloco);
+
+          // Inicia Choices após opções adicionadas
+          const choices = new Choices(select, {
+            removeItemButton: true,
+            shouldSort: false,
+            placeholderValue: 'Selecione membros...'
+          });
+
+          choicesMap[dataStr].push({ choices, membroId: null });
+
+          select.addEventListener('change', () => {
+            const selecionados = Array.from(select.selectedOptions).map(o => o.value);
+            membrosPorDia[dataStr] = membrosPorDia[dataStr].filter(id => !alocados.includes(id));
+            membrosPorDia[dataStr].push(...selecionados);
+            atualizarDisponibilidade(choicesMap, membrosPorDia);
+          });
         });
+
+        container.appendChild(box);
       });
 
-      // Agora inicializamos os selects
-      selects.forEach(sel => {
-        const dia = sel.dataset.dia;
-        const eventoId = sel.dataset.evento;
-        const evento = eventos.find(e => e.id === eventoId);
-        const choices = new Choices(sel, {
-          removeItemButton: true,
-          placeholderValue: "Selecione membros...",
-          shouldSort: false,
-        });
-
-        const disponiveis = membros.filter(m =>
-          !usadosPorDia[dia].has(m.value) || evento.equipe.find(e => e.membroId === m.value)
-        );
-
-        choices.setChoices(disponiveis.map(m => ({
-          value: m.value,
-          label: m.apelido
-        })), 'value', 'label', false);
-
-        const selecionados = evento.equipe.map(e => e.membroId);
-        choices.setChoiceByValue(selecionados);
-
-        // evento dinâmico
-        sel.addEventListener("change", () => {
-          const novasSelecoes = Array.from(sel.selectedOptions).map(o => o.value);
-          evento.equipe = novasSelecoes.map(id => ({ membroId: id }));
-          atualizarRestricoes();
-        });
-
-        sel.choicesInstance = choices;
-      });
+      atualizarDisponibilidade(choicesMap, membrosPorDia);
     }
 
-    function atualizarRestricoes() {
-      const selects = document.querySelectorAll(".select");
-      const usados = {};
-
-      eventos.forEach(ev => {
-        if (!usados[ev.dataStr]) usados[ev.dataStr] = new Set();
-        ev.equipe.forEach(p => usados[ev.dataStr].add(p.membroId));
-      });
-
-      selects.forEach(sel => {
-        const dia = sel.dataset.dia;
-        const eventoId = sel.dataset.evento;
-        const evento = eventos.find(e => e.id === eventoId);
-        const choices = sel.choicesInstance;
-        const selecionados = evento.equipe.map(e => e.membroId);
-
-        const disponiveis = membros.filter(m =>
-          !usados[dia].has(m.value) || selecionados.includes(m.value)
-        );
-
-        choices.clearChoices();
-        choices.setChoices(disponiveis.map(m => ({
-          value: m.value,
-          label: m.apelido
-        })), 'value', 'label', false);
-        choices.setChoiceByValue(selecionados);
-      });
-    }
-
-    async function iniciar() {
-      await carregarMembros();
-      await carregarEventos();
-      renderizar();
-    }
-
-    iniciar();
+    window.addEventListener('DOMContentLoaded', montarPlanejamento);
   </script>
 </body>
 </html>
