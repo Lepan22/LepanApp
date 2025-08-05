@@ -5,7 +5,6 @@
   <title>Planejamento da Semana</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -16,25 +15,45 @@
 
     h1 {
       color: #333;
+      margin-bottom: 2rem;
     }
 
-    h2 {
-      font-size: 1.1rem;
-      margin-top: 1.5rem;
+    .data-bloco {
+      margin-bottom: 2rem;
+    }
+
+    .data-titulo {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 1rem;
+      border-left: 6px solid orange;
+      padding-left: 10px;
+    }
+
+    .evento-linha {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      background: #f8f8f8;
+      padding: 1rem;
       margin-bottom: 0.5rem;
+      border-radius: 4px;
+    }
+
+    .evento-nome {
+      font-weight: bold;
+      width: 200px;
+    }
+
+    .coluna-equipe {
+      width: 300px;
     }
 
     label {
-      font-weight: bold;
+      font-size: 0.9rem;
+      margin-bottom: 4px;
       display: block;
-      margin-bottom: 0.2rem;
-    }
-
-    .evento {
-      background: #f8f8f8;
-      border-left: 6px solid orange;
-      padding: 1rem;
-      margin-bottom: 1rem;
     }
 
     .choices__list--multiple .choices__item {
@@ -82,11 +101,6 @@
       return data.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' });
     }
 
-    function obterDiaDaSemanaIndexado(dataStr) {
-      const data = new Date(dataStr + "T03:00:00");
-      return data.getDay();
-    }
-
     async function carregarEquipe() {
       const snap = await db.ref("equipe").once("value");
       const equipeData = snap.val() || {};
@@ -102,85 +116,95 @@
       const snap = await db.ref("eventos").once("value");
       const eventos = snap.val() || {};
       const equipeMap = await carregarEquipe();
-      const lista = [];
+      const dias = {};
 
       for (const [id, evento] of Object.entries(eventos)) {
         const data = evento.data;
         const dataObj = new Date(data + "T03:00:00");
         if (dataObj >= segunda && dataObj <= domingo) {
+          const key = formatarDataBR(data);
           const equipeAlocada = (evento.equipe || []).map(e => e.membroId);
-          lista.push({
+          if (!dias[key]) dias[key] = [];
+          dias[key].push({
             id,
             nomeEvento: evento.nomeEvento || "Sem nome",
             data,
-            dataObj,
             equipeSelecionada: equipeAlocada,
             equipeMap
           });
         }
       }
 
-      const ordemDias = [6, 0, 1, 2, 3, 4, 5];
-      lista.sort((a, b) => {
-        const diaA = obterDiaDaSemanaIndexado(a.data);
-        const diaB = obterDiaDaSemanaIndexado(b.data);
-        const indexA = ordemDias.indexOf(diaA);
-        const indexB = ordemDias.indexOf(diaB);
-        if (indexA !== indexB) return indexA - indexB;
-        return new Date(a.dataObj) - new Date(b.dataObj);
-      });
-
-      exibirEventos(lista);
+      exibirEventos(dias);
     }
 
-    function exibirEventos(lista) {
+    function exibirEventos(dias) {
       const container = document.getElementById("listaEventos");
       container.innerHTML = "";
 
-      if (lista.length === 0) {
-        container.innerHTML = "<p>Nenhum evento encontrado nesta semana.</p>";
-        return;
-      }
+      const ordemDias = ["sáb", "dom", "seg", "ter", "qua", "qui", "sex"];
+      const chavesOrdenadas = Object.keys(dias).sort((a, b) => {
+        const da = ordemDias.indexOf(a.slice(0, 3).toLowerCase());
+        const db = ordemDias.indexOf(b.slice(0, 3).toLowerCase());
+        return da - db;
+      });
 
-      lista.forEach((evento, index) => {
-        const div = document.createElement("div");
-        div.className = "evento";
+      chavesOrdenadas.forEach((dia, idxDia) => {
+        const bloco = document.createElement("div");
+        bloco.className = "data-bloco";
 
-        const titulo = document.createElement("h2");
-        titulo.textContent = `${formatarDataBR(evento.data)} - ${evento.nomeEvento}`;
-        div.appendChild(titulo);
+        const titulo = document.createElement("div");
+        titulo.className = "data-titulo";
+        titulo.textContent = dia;
+        bloco.appendChild(titulo);
 
-        const label = document.createElement("label");
-        label.textContent = "Equipe:";
-        div.appendChild(label);
+        dias[dia].forEach((evento, index) => {
+          const linha = document.createElement("div");
+          linha.className = "evento-linha";
 
-        const select = document.createElement("select");
-        select.setAttribute("multiple", true);
-        select.id = `selectEquipe_${index}`;
-        select.dataset.eventoId = evento.id;
+          const nome = document.createElement("div");
+          nome.className = "evento-nome";
+          nome.textContent = evento.nomeEvento;
+          linha.appendChild(nome);
 
-        for (const [id, apelido] of Object.entries(evento.equipeMap)) {
-          const option = document.createElement("option");
-          option.value = id;
-          option.textContent = apelido;
-          if (evento.equipeSelecionada.includes(id)) {
-            option.setAttribute("selected", "selected");
+          const equipeColuna = document.createElement("div");
+          equipeColuna.className = "coluna-equipe";
+
+          const label = document.createElement("label");
+          label.textContent = "Equipe:";
+          equipeColuna.appendChild(label);
+
+          const select = document.createElement("select");
+          select.setAttribute("multiple", true);
+          select.id = `selectEquipe_${idxDia}_${index}`;
+          select.dataset.eventoId = evento.id;
+
+          for (const [id, apelido] of Object.entries(evento.equipeMap)) {
+            const option = document.createElement("option");
+            option.value = id;
+            option.textContent = apelido;
+            if (evento.equipeSelecionada.includes(id)) {
+              option.setAttribute("selected", "selected");
+            }
+            select.appendChild(option);
           }
-          select.appendChild(option);
-        }
 
-        div.appendChild(select);
-        container.appendChild(div);
+          equipeColuna.appendChild(select);
+          linha.appendChild(equipeColuna);
+          bloco.appendChild(linha);
 
-        setTimeout(() => {
-          new Choices(select, {
-            removeItemButton: true,
-            placeholder: true,
-            placeholderValue: 'Selecione membros...',
-            searchEnabled: true,
-            shouldSort: false
-          });
-        }, 0);
+          setTimeout(() => {
+            new Choices(select, {
+              removeItemButton: true,
+              placeholder: true,
+              placeholderValue: 'Selecione membros...',
+              searchEnabled: true,
+              shouldSort: false
+            });
+          }, 0);
+        });
+
+        container.appendChild(bloco);
       });
     }
 
