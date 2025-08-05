@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Xlanejamento da Semana</title>
+  <title>Planejamento da Semana</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
@@ -35,10 +35,16 @@
       margin-top: 10px;
       display: block;
     }
-    select {
-      width: 100%;
-      padding: 5px;
-      margin-top: 5px;
+    select[multiple] {
+      height: auto;
+      max-height: 35px;
+      overflow-y: auto;
+      background-color: #f8f8f8;
+      cursor: pointer;
+    }
+    select[multiple]:focus {
+      height: auto;
+      max-height: 150px;
     }
   </style>
 </head>
