@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Planejamento do Evento</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
+  <style>
+    .dia-header {
+      background-color: #eee;
+      padding: 10px;
+      font-weight: bold;
+      font-size: 18px;
+      border-top: 2px solid #ccc;
+    }
+    .evento {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      border-bottom: 1px solid #ccc;
+      padding: 8px 10px;
+    }
+    .evento div {
+      margin: 5px;
+      flex: 1;
+      min-width: 130px;
+    }
+    select, input {
+      width: 100%;
+      padding: 4px;
+    }
+    .highlight {
+      background-color: yellow;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+    <main class="main-content">
+      <h1>Planejamento dos Eventos da Semana</h1>
+      <div id="container"></div>
+    </main>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const diasSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    const container = document.getElementById("container");
+    const hoje = new Date();
+    const segunda = new Date(hoje.setDate(hoje.getDate() - hoje.getDay() + 1));
+    const domingo = new Date(segunda);
+    domingo.setDate(domingo.getDate() + 6);
+
+    const equipamentosPorDia = {};
+
+    async function carregarPlanejamento() {
+      const [eventosSnap, clientesSnap, equipamentosSnap, equipeSnap, logisticaSnap] = await Promise.all([
+        db.ref("eventos").once("value"),
+        db.ref("clientes").once("value"),
+        db.ref("equipamentos").once("value"),
+        db.ref("usuarios").orderByChild("tipo").equalTo("equipe").once("value"),
+        db.ref("logistica").once("value"),
+      ]);
+
+      const eventos = [];
+      eventosSnap.forEach(e => {
+        const data = e.val().data;
+        if (!data) return;
+        const d = new Date(data);
+        if (d >= segunda && d <= domingo) {
+          eventos.push({ id: e.key, ...e.val() });
+        }
+      });
+
+      eventos.sort((a, b) => (a.data + (a.horaEvento || '')).localeCompare(b.data + (b.horaEvento || '')));
+
+      const clientes = clientesSnap.val() || {};
+      const equipamentos = equipamentosSnap.val() || {};
+      const equipe = [];
+      equipeSnap.forEach(e => equipe.push(e.val().nome));
+      const logistica = [];
+      logisticaSnap.forEach(l => logistica.push(l.val().nome));
+
+      const equipamentosDisponiveis = {};
+      Object.values(equipamentos).forEach(e => {
+        if (!equipamentosDisponiveis[e.categoria]) equipamentosDisponiveis[e.categoria] = [];
+        equipamentosDisponiveis[e.categoria].push(e.nome);
+      });
+
+      const eventosPorDia = {};
+      eventos.forEach(evt => {
+        const dia = new Date(evt.data).getDay();
+        if (!eventosPorDia[dia]) eventosPorDia[dia] = [];
+        eventosPorDia[dia].push(evt);
+      });
+
+      for (let i = 1; i <= 6; i++) {
+        const titulo = document.createElement("div");
+        titulo.className = "dia-header";
+        titulo.textContent = diasSemana[i];
+        container.appendChild(titulo);
+
+        const eventosDia = eventosPorDia[i] || [];
+        const usadosHoje = {};
+
+        for (const evt of eventosDia) {
+          const cliente = clientes[evt.clienteId];
+          const necessidades = cliente?.clienteAtivo?.equipamentosNecessarios || [];
+
+          const div = document.createElement("div");
+          div.className = "evento";
+
+          const nomeEvt = document.createElement("div");
+          nomeEvt.innerHTML = `<strong>${evt.nomeEvento || "Sem Nome"}</strong><br>${evt.horaEvento || ""}`;
+          div.appendChild(nomeEvt);
+
+          // Equipamentos
+          const equipDiv = document.createElement("div");
+          necessidades.forEach(cat => {
+            const sel = document.createElement("select");
+            sel.innerHTML = `<option value="">[${cat}]</option>`;
+            (equipamentosDisponiveis[cat] || []).forEach(eq => {
+              const jaUsado = (usadosHoje[cat] || []).includes(eq);
+              const selected = evt.equipamentosAlocados?.[cat] === eq;
+              if (!jaUsado || selected) {
+                const opt = document.createElement("option");
+                opt.value = eq;
+                opt.textContent = eq;
+                if (selected) opt.selected = true;
+                sel.appendChild(opt);
+              }
+            });
+            sel.onchange = () => {
+              const value = sel.value;
+              if (!evt.equipamentosAlocados) evt.equipamentosAlocados = {};
+              evt.equipamentosAlocados[cat] = value;
+              db.ref("eventos/" + evt.id + "/equipamentosAlocados").set(evt.equipamentosAlocados);
+            };
+            if (!usadosHoje[cat]) usadosHoje[cat] = [];
+            if (evt.equipamentosAlocados?.[cat]) usadosHoje[cat].push(evt.equipamentosAlocados[cat]);
+            equipDiv.appendChild(sel);
+          });
+          div.appendChild(equipDiv);
+
+          // Equipe
+          const eqSel = document.createElement("select");
+          eqSel.innerHTML = `<option value="">[Equipe]</option>`;
+          equipe.forEach(e => {
+            const opt = document.createElement("option");
+            opt.value = e;
+            opt.textContent = e;
+            if ((evt.equipeAlocada || []).includes(e)) opt.selected = true;
+            eqSel.appendChild(opt);
+          });
+          eqSel.onchange = () => {
+            db.ref("eventos/" + evt.id + "/equipeAlocada").set([eqSel.value]);
+          };
+          const equipeDiv = document.createElement("div");
+          equipeDiv.appendChild(eqSel);
+          div.appendChild(equipeDiv);
+
+          // Levar
+          const levarDiv = document.createElement("div");
+          const levarResp = document.createElement("select");
+          levarResp.innerHTML = `<option value="">[Levar]</option>`;
+          logistica.forEach(l => {
+            const opt = document.createElement("option");
+            opt.value = l;
+            opt.textContent = l;
+            if (evt.logisticaAlocada?.levar?.responsavel === l) opt.selected = true;
+            levarResp.appendChild(opt);
+          });
+          const levarHora = document.createElement("input");
+          levarHora.type = "time";
+          levarHora.value = evt.logisticaAlocada?.levar?.horario || "";
+          levarResp.onchange = salvarLevar;
+          levarHora.onchange = salvarLevar;
+          function salvarLevar() {
+            db.ref("eventos/" + evt.id + "/logisticaAlocada/levar").set({
+              responsavel: levarResp.value,
+              horario: levarHora.value
+            });
+          }
+          levarDiv.appendChild(levarResp);
+          levarDiv.appendChild(levarHora);
+          div.appendChild(levarDiv);
+
+          // Retirar
+          const retDiv = document.createElement("div");
+          const retResp = document.createElement("select");
+          retResp.innerHTML = `<option value="">[Retirar]</option>`;
+          logistica.forEach(l => {
+            const opt = document.createElement("option");
+            opt.value = l;
+            opt.textContent = l;
+            if (evt.logisticaAlocada?.retirar?.responsavel === l) opt.selected = true;
+            retResp.appendChild(opt);
+          });
+          const retHora = document.createElement("input");
+          retHora.type = "time";
+          retHora.value = evt.logisticaAlocada?.retirar?.horario || "";
+          retResp.onchange = salvarRetirar;
+          retHora.onchange = salvarRetirar;
+          function salvarRetirar() {
+            db.ref("eventos/" + evt.id + "/logisticaAlocada/retirar").set({
+              responsavel: retResp.value,
+              horario: retHora.value
+            });
+          }
+          retDiv.appendChild(retResp);
+          retDiv.appendChild(retHora);
+          div.appendChild(retDiv);
+
+          container.appendChild(div);
+        }
+      }
+    }
+
+    carregarPlanejamento();
+  </script>
+</body>
+</html>
