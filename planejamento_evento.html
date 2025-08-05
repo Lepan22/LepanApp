@@ -64,13 +64,19 @@
     domingo.setDate(domingo.getDate() + 6);
 
     async function carregarPlanejamento() {
-      const [eventosSnap, clientesSnap, equipamentosSnap, equipeSnap, logisticaSnap] = await Promise.all([
+      const [eventosSnap, usuariosSnap] = await Promise.all([
         db.ref("eventos").once("value"),
-        db.ref("clientes").once("value"),
-        db.ref("equipamentos").once("value"),
-        db.ref("usuarios").orderByChild("tipo").equalTo("equipe").once("value"),
-        db.ref("logistica").once("value"),
+        db.ref("usuarios").once("value")
       ]);
+
+      const equipeList = [];
+      const logisticaList = [];
+
+      usuariosSnap.forEach(u => {
+        const val = u.val();
+        if (val.tipo === "equipe") equipeList.push(val.nome);
+        else if (val.tipo === "logistica") logisticaList.push(val.nome);
+      });
 
       const eventos = [];
       eventosSnap.forEach(e => {
@@ -83,12 +89,6 @@
       });
 
       eventos.sort((a, b) => (a.data + (a.horaEvento || '')).localeCompare(b.data + (b.horaEvento || '')));
-
-      const clientes = clientesSnap.val() || {};
-      const equipe = [];
-      equipeSnap.forEach(e => equipe.push(e.val().nome));
-      const logistica = [];
-      logisticaSnap.forEach(l => logistica.push(l.val().nome));
 
       const eventosPorDia = {};
       eventos.forEach(evt => {
@@ -114,25 +114,55 @@
           nomeEvt.innerHTML = `<strong>${evt.nomeEvento || "Sem Nome"}</strong><br>${evt.horaEvento || ""}`;
           div.appendChild(nomeEvt);
 
-          // Equipe
+          // EQUIPE
           const eqSel = document.createElement("select");
           eqSel.setAttribute("multiple", true);
-          equipe.forEach(e => {
+          equipeList.forEach(nome => {
             const opt = document.createElement("option");
-            opt.value = e;
-            opt.textContent = e;
-            if ((evt.equipeAlocada || []).includes(e)) opt.selected = true;
+            opt.value = nome;
+            opt.textContent = nome;
+            const alocados = (evt.equipe || []).map(m => m.nome);
+            if (alocados.includes(nome)) opt.selected = true;
             eqSel.appendChild(opt);
           });
           eqSel.onchange = () => {
-            const selecionados = Array.from(eqSel.selectedOptions).map(opt => opt.value);
-            db.ref("eventos/" + evt.id + "/equipeAlocada").set(selecionados);
+            const membros = Array.from(eqSel.selectedOptions).map(opt => ({
+              nome: opt.value,
+              membroId: usuariosSnap.val()
+                ? Object.entries(usuariosSnap.val()).find(([_, val]) => val.nome === opt.value)?.[0] || ""
+                : ""
+            }));
+            db.ref("eventos/" + evt.id + "/equipe").set(membros);
           };
           const equipeDiv = document.createElement("div");
           equipeDiv.appendChild(eqSel);
           div.appendChild(equipeDiv);
 
-          // Placeholder para Levar e Retirar
+          // LOGISTICA
+          const lgSel = document.createElement("select");
+          lgSel.setAttribute("multiple", true);
+          logisticaList.forEach(nome => {
+            const opt = document.createElement("option");
+            opt.value = nome;
+            opt.textContent = nome;
+            const alocados = (evt.logistica || []).map(m => m.nome);
+            if (alocados.includes(nome)) opt.selected = true;
+            lgSel.appendChild(opt);
+          });
+          lgSel.onchange = () => {
+            const membros = Array.from(lgSel.selectedOptions).map(opt => ({
+              nome: opt.value,
+              membroId: usuariosSnap.val()
+                ? Object.entries(usuariosSnap.val()).find(([_, val]) => val.nome === opt.value)?.[0] || ""
+                : ""
+            }));
+            db.ref("eventos/" + evt.id + "/logistica").set(membros);
+          };
+          const logDiv = document.createElement("div");
+          logDiv.appendChild(lgSel);
+          div.appendChild(logDiv);
+
+          // Placeholder Levar e Retirar
           const levarDiv = document.createElement("div");
           levarDiv.textContent = "[Levar]";
           const retDiv = document.createElement("div");
