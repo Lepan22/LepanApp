@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Planejamento dos Eventos Semana</title>
+  <title>Planejamento dos Eventos da Semana</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -55,13 +55,13 @@
     const db = firebase.database();
 
     const diasSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+    const diasOrdem = [1, 2, 3, 4, 5, 6, 0]; // Segunda a Domingo
+
     const container = document.getElementById("container");
     const hoje = new Date();
     const segunda = new Date(hoje.setDate(hoje.getDate() - hoje.getDay() + 1));
     const domingo = new Date(segunda);
     domingo.setDate(domingo.getDate() + 6);
-
-    const equipamentosPorDia = {};
 
     async function carregarPlanejamento() {
       const [eventosSnap, clientesSnap, equipamentosSnap, equipeSnap, logisticaSnap] = await Promise.all([
@@ -76,7 +76,7 @@
       eventosSnap.forEach(e => {
         const data = e.val().data;
         if (!data) return;
-        const d = new Date(data + "T03:00:00"); // Corrigindo fuso horário
+        const d = new Date(data + "T03:00:00");
         if (d >= segunda && d <= domingo) {
           eventos.push({ id: e.key, ...e.val(), diaSemana: d.getDay() });
         }
@@ -85,17 +85,10 @@
       eventos.sort((a, b) => (a.data + (a.horaEvento || '')).localeCompare(b.data + (b.horaEvento || '')));
 
       const clientes = clientesSnap.val() || {};
-      const equipamentos = equipamentosSnap.val() || {};
       const equipe = [];
       equipeSnap.forEach(e => equipe.push(e.val().nome));
       const logistica = [];
       logisticaSnap.forEach(l => logistica.push(l.val().nome));
-
-      const equipamentosDisponiveis = {};
-      Object.values(equipamentos).forEach(e => {
-        if (!equipamentosDisponiveis[e.categoria]) equipamentosDisponiveis[e.categoria] = [];
-        equipamentosDisponiveis[e.categoria].push(e.nome);
-      });
 
       const eventosPorDia = {};
       eventos.forEach(evt => {
@@ -104,19 +97,16 @@
         eventosPorDia[dia].push(evt);
       });
 
-      for (let i = 1; i <= 6; i++) {
+      diasOrdem.forEach(dia => {
+        const eventosDia = eventosPorDia[dia];
+        if (!eventosDia || eventosDia.length === 0) return;
+
         const titulo = document.createElement("div");
         titulo.className = "dia-header";
-        titulo.textContent = diasSemana[i];
+        titulo.textContent = diasSemana[dia];
         container.appendChild(titulo);
 
-        const eventosDia = eventosPorDia[i] || [];
-        const usadosHoje = {};
-
-        for (const evt of eventosDia) {
-          const cliente = clientes[evt.clienteId];
-          const necessidades = cliente?.clienteAtivo?.equipamentosNecessarios || [];
-
+        eventosDia.forEach(evt => {
           const div = document.createElement("div");
           div.className = "evento";
 
@@ -124,36 +114,9 @@
           nomeEvt.innerHTML = `<strong>${evt.nomeEvento || "Sem Nome"}</strong><br>${evt.horaEvento || ""}`;
           div.appendChild(nomeEvt);
 
-          // Equipamentos
-          const equipDiv = document.createElement("div");
-          necessidades.forEach(cat => {
-            const sel = document.createElement("select");
-            sel.innerHTML = `<option value="">[${cat}]</option>`;
-            (equipamentosDisponiveis[cat] || []).forEach(eq => {
-              const jaUsado = (usadosHoje[cat] || []).includes(eq);
-              const selected = evt.equipamentosAlocados?.[cat] === eq;
-              if (!jaUsado || selected) {
-                const opt = document.createElement("option");
-                opt.value = eq;
-                opt.textContent = eq;
-                if (selected) opt.selected = true;
-                sel.appendChild(opt);
-              }
-            });
-            sel.onchange = () => {
-              if (!evt.equipamentosAlocados) evt.equipamentosAlocados = {};
-              evt.equipamentosAlocados[cat] = sel.value;
-              db.ref("eventos/" + evt.id + "/equipamentosAlocados").set(evt.equipamentosAlocados);
-            };
-            if (!usadosHoje[cat]) usadosHoje[cat] = [];
-            if (evt.equipamentosAlocados?.[cat]) usadosHoje[cat].push(evt.equipamentosAlocados[cat]);
-            equipDiv.appendChild(sel);
-          });
-          div.appendChild(equipDiv);
-
           // Equipe
           const eqSel = document.createElement("select");
-          eqSel.innerHTML = `<option value="">[Equipe]</option>`;
+          eqSel.setAttribute("multiple", true);
           equipe.forEach(e => {
             const opt = document.createElement("option");
             opt.value = e;
@@ -162,67 +125,24 @@
             eqSel.appendChild(opt);
           });
           eqSel.onchange = () => {
-            db.ref("eventos/" + evt.id + "/equipeAlocada").set([eqSel.value]);
+            const selecionados = Array.from(eqSel.selectedOptions).map(opt => opt.value);
+            db.ref("eventos/" + evt.id + "/equipeAlocada").set(selecionados);
           };
           const equipeDiv = document.createElement("div");
           equipeDiv.appendChild(eqSel);
           div.appendChild(equipeDiv);
 
-          // Levar
+          // Placeholder para Levar e Retirar
           const levarDiv = document.createElement("div");
-          const levarResp = document.createElement("select");
-          levarResp.innerHTML = `<option value="">[Levar]</option>`;
-          logistica.forEach(l => {
-            const opt = document.createElement("option");
-            opt.value = l;
-            opt.textContent = l;
-            if (evt.logisticaAlocada?.levar?.responsavel === l) opt.selected = true;
-            levarResp.appendChild(opt);
-          });
-          const levarHora = document.createElement("input");
-          levarHora.type = "time";
-          levarHora.value = evt.logisticaAlocada?.levar?.horario || "";
-          levarResp.onchange = salvarLevar;
-          levarHora.onchange = salvarLevar;
-          function salvarLevar() {
-            db.ref("eventos/" + evt.id + "/logisticaAlocada/levar").set({
-              responsavel: levarResp.value,
-              horario: levarHora.value
-            });
-          }
-          levarDiv.appendChild(levarResp);
-          levarDiv.appendChild(levarHora);
-          div.appendChild(levarDiv);
-
-          // Retirar
+          levarDiv.textContent = "[Levar]";
           const retDiv = document.createElement("div");
-          const retResp = document.createElement("select");
-          retResp.innerHTML = `<option value="">[Retirar]</option>`;
-          logistica.forEach(l => {
-            const opt = document.createElement("option");
-            opt.value = l;
-            opt.textContent = l;
-            if (evt.logisticaAlocada?.retirar?.responsavel === l) opt.selected = true;
-            retResp.appendChild(opt);
-          });
-          const retHora = document.createElement("input");
-          retHora.type = "time";
-          retHora.value = evt.logisticaAlocada?.retirar?.horario || "";
-          retResp.onchange = salvarRetirar;
-          retHora.onchange = salvarRetirar;
-          function salvarRetirar() {
-            db.ref("eventos/" + evt.id + "/logisticaAlocada/retirar").set({
-              responsavel: retResp.value,
-              horario: retHora.value
-            });
-          }
-          retDiv.appendChild(retResp);
-          retDiv.appendChild(retHora);
+          retDiv.textContent = "[Retirar]";
+          div.appendChild(levarDiv);
           div.appendChild(retDiv);
 
           container.appendChild(div);
-        }
-      }
+        });
+      });
     }
 
     carregarPlanejamento();
