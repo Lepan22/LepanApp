@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Planejamento dos Eventos da Semana</title>
+  <title>P1lanejamento dos Eventos da Semana</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -29,9 +29,13 @@
       flex: 1;
       min-width: 130px;
     }
-    select, input {
-      width: 100%;
-      padding: 4px;
+    .tag {
+      background: #f5f5f5;
+      border: 1px solid #ccc;
+      padding: 4px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin: 2px;
     }
   </style>
 </head>
@@ -56,35 +60,23 @@
 
     const diasSemana = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
     const diasOrdem = [1, 2, 3, 4, 5, 6, 0]; // Segunda a Domingo
-
     const container = document.getElementById("container");
+
     const hoje = new Date();
     const segunda = new Date(hoje.setDate(hoje.getDate() - hoje.getDay() + 1));
     const domingo = new Date(segunda);
     domingo.setDate(domingo.getDate() + 6);
 
     async function carregarPlanejamento() {
-      const [eventosSnap, usuariosSnap] = await Promise.all([
-        db.ref("eventos").once("value"),
-        db.ref("usuarios").once("value")
-      ]);
-
-      const equipeList = [];
-      const logisticaList = [];
-
-      usuariosSnap.forEach(u => {
-        const val = u.val();
-        if (val.tipo === "equipe") equipeList.push(val.nome);
-        else if (val.tipo === "logistica") logisticaList.push(val.nome);
-      });
-
+      const snapshot = await db.ref("eventos").once("value");
       const eventos = [];
-      eventosSnap.forEach(e => {
-        const data = e.val().data;
-        if (!data) return;
-        const d = new Date(data + "T03:00:00");
-        if (d >= segunda && d <= domingo) {
-          eventos.push({ id: e.key, ...e.val(), diaSemana: d.getDay() });
+
+      snapshot.forEach(e => {
+        const val = e.val();
+        if (!val.data) return;
+        const data = new Date(val.data + "T03:00:00");
+        if (data >= segunda && data <= domingo) {
+          eventos.push({ id: e.key, ...val, diaSemana: data.getDay() });
         }
       });
 
@@ -114,61 +106,10 @@
           nomeEvt.innerHTML = `<strong>${evt.nomeEvento || "Sem Nome"}</strong><br>${evt.horaEvento || ""}`;
           div.appendChild(nomeEvt);
 
-          // EQUIPE
-          const eqSel = document.createElement("select");
-          eqSel.setAttribute("multiple", true);
-          equipeList.forEach(nome => {
-            const opt = document.createElement("option");
-            opt.value = nome;
-            opt.textContent = nome;
-            const alocados = (evt.equipe || []).map(m => m.nome);
-            if (alocados.includes(nome)) opt.selected = true;
-            eqSel.appendChild(opt);
-          });
-          eqSel.onchange = () => {
-            const membros = Array.from(eqSel.selectedOptions).map(opt => ({
-              nome: opt.value,
-              membroId: usuariosSnap.val()
-                ? Object.entries(usuariosSnap.val()).find(([_, val]) => val.nome === opt.value)?.[0] || ""
-                : ""
-            }));
-            db.ref("eventos/" + evt.id + "/equipe").set(membros);
-          };
           const equipeDiv = document.createElement("div");
-          equipeDiv.appendChild(eqSel);
+          const equipeAlocada = (evt.equipe || []).map(m => `<span class="tag">${m.nome}</span>`).join("");
+          equipeDiv.innerHTML = equipeAlocada || "<em>Sem equipe</em>";
           div.appendChild(equipeDiv);
-
-          // LOGISTICA
-          const lgSel = document.createElement("select");
-          lgSel.setAttribute("multiple", true);
-          logisticaList.forEach(nome => {
-            const opt = document.createElement("option");
-            opt.value = nome;
-            opt.textContent = nome;
-            const alocados = (evt.logistica || []).map(m => m.nome);
-            if (alocados.includes(nome)) opt.selected = true;
-            lgSel.appendChild(opt);
-          });
-          lgSel.onchange = () => {
-            const membros = Array.from(lgSel.selectedOptions).map(opt => ({
-              nome: opt.value,
-              membroId: usuariosSnap.val()
-                ? Object.entries(usuariosSnap.val()).find(([_, val]) => val.nome === opt.value)?.[0] || ""
-                : ""
-            }));
-            db.ref("eventos/" + evt.id + "/logistica").set(membros);
-          };
-          const logDiv = document.createElement("div");
-          logDiv.appendChild(lgSel);
-          div.appendChild(logDiv);
-
-          // Placeholder Levar e Retirar
-          const levarDiv = document.createElement("div");
-          levarDiv.textContent = "[Levar]";
-          const retDiv = document.createElement("div");
-          retDiv.textContent = "[Retirar]";
-          div.appendChild(levarDiv);
-          div.appendChild(retDiv);
 
           container.appendChild(div);
         });
