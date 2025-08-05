@@ -1,6 +1,5 @@
 // planejamento_evento.js
 
-// Configuração do Firebase
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
   authDomain: "SUA_AUTH_DOMAIN",
@@ -53,11 +52,13 @@ async function carregarEventosSemana() {
     const data = evento.data;
     const dataObj = new Date(data);
     if (dataObj >= segunda && dataObj <= domingo) {
-      const equipe = (evento.equipe || []).map(e => equipeMap[e.membroId] || "Desconhecido");
+      const equipeAlocada = (evento.equipe || []).map(e => e.membroId);
       lista.push({
+        id,
         nomeEvento: evento.nomeEvento || "Sem nome",
         data,
-        equipe: equipe.join(", ")
+        equipeSelecionada: equipeAlocada,
+        equipeMap
       });
     }
   }
@@ -78,10 +79,30 @@ function exibirEventos(lista) {
   lista.forEach(evento => {
     const div = document.createElement("div");
     div.className = "evento";
-    div.innerHTML = `
-      <h2>${formatarDataBR(evento.data)} - ${evento.nomeEvento}</h2>
-      <p><strong>Equipe:</strong> ${evento.equipe || "Nenhuma equipe alocada"}</p>
-    `;
+
+    const titulo = document.createElement("h2");
+    titulo.textContent = `${formatarDataBR(evento.data)} - ${evento.nomeEvento}`;
+    div.appendChild(titulo);
+
+    const label = document.createElement("label");
+    label.textContent = "Equipe:";
+    div.appendChild(label);
+
+    const select = document.createElement("select");
+    select.setAttribute("multiple", true);
+    select.dataset.eventoId = evento.id;
+
+    for (const [id, nome] of Object.entries(evento.equipeMap)) {
+      const option = document.createElement("option");
+      option.value = id;
+      option.textContent = nome;
+      if (evento.equipeSelecionada.includes(id)) {
+        option.selected = true;
+      }
+      select.appendChild(option);
+    }
+
+    div.appendChild(select);
     container.appendChild(div);
   });
 }
