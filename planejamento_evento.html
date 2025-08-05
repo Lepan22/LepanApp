@@ -1,192 +1,293 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Planejamento da Semana</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="assets/base.css" />
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
-  <style>
-    .evento-box {
-      border-left: 1px solid orange;
-      margin-bottom: 1rem;
-      padding-left: 1rem;
-    }
-    .evento {
-      margin-left: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    .equipe-select {
-      max-width: 250px;
-    }
-  </style>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Página de Planejamento de Eventos</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        .layout {
+            max-width: 1200px;
+            margin: auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05 );
+            overflow: hidden;
+        }
+        .main-content {
+            padding: 20px;
+        }
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+        .date-header {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #e67e22;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .equipe-col {
+            width: 250px;
+            max-width: 250px;
+        }
+        .equipe-alocada-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 0 0 10px 0;
+        }
+        .equipe-alocada-list li {
+            padding: 2px 0;
+        }
+        select[multiple] {
+            width: 100%;
+            min-height: 100px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        select[multiple]:focus {
+            border-color: #e67e22;
+            outline: none;
+        }
+    </style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar" id="menu"></aside>
-    <main>
-      <h1>Planejamento da Semana</h1>
-      <div id="planejamento-container"></div>
-    </main>
-  </div>
+    <div class="layout">
+        <main class="main-content">
+            <h2>Planejamento de Eventos da Semana</h2>
+            <div id="eventos-container">
+                <p>Carregando eventos...</p>
+            </div>
+        </main>
+    </div>
 
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-  <script src="assets/menu.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBzDP7O1dglJrJyxV5ciRA-wJdy0kLdUfg",
-      authDomain: "lepanapp-default-rtdb.firebaseio.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "1006088740548",
-      appId: "1:1006088740548:web:25aa8c3f2c3b6dc1beef4e"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+            authDomain: "lepanapp.firebaseapp.com",
+            databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+            projectId: "lepanapp",
+            storageBucket: "lepanapp.appspot.com",
+            messagingSenderId: "542989944344",
+            appId: "1:542989944344:web:576e28199960fd5440a56d"
+        };
 
-    async function carregarDados() {
-      const [eventosSnap, equipeSnap] = await Promise.all([
-        db.ref('eventos').once('value'),
-        db.ref('equipe').once('value')
-      ]);
+        firebase.initializeApp(firebaseConfig );
+        const db = firebase.database();
 
-      const eventos = Object.entries(eventosSnap.val() || {}).map(([id, e]) => ({
-        id, ...e
-      }));
+        let allEquipe = {};
+        let allEventos = [];
 
-      const membros = Object.entries(equipeSnap.val() || {}).map(([id, e]) => ({
-        id, apelido: e.apelido || e.nome, nomeCompleto: e.nome
-      }));
+        // --- Funções de Data ---
+        function getWeekRange() {
+            const today = new Date();
+            const dayOfWeek = today.getDay(); // 0 (Dom) a 6 (Sáb)
+            
+            // Ajusta para a semana começar na segunda-feira (day 1)
+            const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const monday = new Date(today);
+            monday.setDate(today.getDate() + diffToMonday);
+            monday.setHours(0, 0, 0, 0);
 
-      return { eventos, membros };
-    }
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23, 59, 59, 999);
 
-    function getSemanaAtual() {
-      const hoje = new Date();
-      const diaSemana = hoje.getDay(); // 0 (domingo) a 6 (sábado)
-      const segunda = new Date(hoje);
-      segunda.setDate(hoje.getDate() - ((diaSemana + 6) % 7));
-      const domingo = new Date(segunda);
-      domingo.setDate(segunda.getDate() + 6);
-      return { segunda, domingo };
-    }
+            return { start: monday, end: sunday };
+        }
 
-    function formatarDataExtensa(date) {
-      return date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
-    }
+        function formatDate(dateString) {
+            const date = new Date(dateString + 'T00:00:00'); // Adiciona T00:00:00 para evitar problemas de fuso
+            const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
+            return new Intl.DateTimeFormat('pt-BR', options).format(date);
+        }
 
-    function criarElemento(tag, classe, texto) {
-      const el = document.createElement(tag);
-      if (classe) el.className = classe;
-      if (texto) el.textContent = texto;
-      return el;
-    }
+        // --- Funções de Busca de Dados ---
+        async function fetchEquipe() {
+            const snapshot = await db.ref('equipe').once('value');
+            allEquipe = snapshot.val() || {};
+            return allEquipe;
+        }
 
-    function agruparEventosPorDia(eventos) {
-      const grupos = {};
-      eventos.forEach(evento => {
-        const data = new Date(evento.data);
-        const dia = data.toISOString().split('T')[0];
-        if (!grupos[dia]) grupos[dia] = [];
-        grupos[dia].push(evento);
-      });
-      return grupos;
-    }
+        async function fetchEventos() {
+            try {
+                await fetchEquipe();
+                const snapshot = await db.ref('eventos').once('value');
+                const eventosData = snapshot.val() || {};
+                
+                const { start, end } = getWeekRange();
 
-    function atualizarDisponibilidade(choicesMap, membrosPorDia) {
-      for (const [data, choicesList] of Object.entries(choicesMap)) {
-        const usados = membrosPorDia[data] || [];
-        choicesList.forEach(({ choices, membroId }) => {
-          choices.clearStore();
-          const listaAtualizada = allMembros
-            .filter(m => !usados.includes(m.id) || m.id === membroId)
-            .map(m => ({ value: m.id, label: m.apelido }));
-          choices.setChoices(listaAtualizada, 'value', 'label', true);
-        });
-      }
-    }
+                allEventos = Object.keys(eventosData)
+                    .map(key => ({ id: key, ...eventosData[key] }))
+                    .filter(evento => {
+                        if (!evento.data) return false;
+                        const eventoDate = new Date(evento.data + 'T00:00:00');
+                        return eventoDate >= start && eventoDate <= end;
+                    })
+                    .sort((a, b) => new Date(a.data) - new Date(b.data));
 
-    let allMembros = [];
-
-    async function montarPlanejamento() {
-      const { eventos, membros } = await carregarDados();
-      allMembros = membros;
-
-      const { segunda, domingo } = getSemanaAtual();
-      const eventosSemana = eventos.filter(e => {
-        const data = new Date(e.data);
-        return data >= segunda && data <= domingo;
-      }).sort((a, b) => new Date(a.data) - new Date(b.data));
-
-      const container = document.getElementById('planejamento-container');
-      container.innerHTML = '';
-
-      const grupos = agruparEventosPorDia(eventosSemana);
-      const membrosPorDia = {};
-      const choicesMap = {};
-
-      Object.entries(grupos).forEach(([dataStr, eventos]) => {
-        const data = new Date(dataStr);
-        const box = criarElemento('div', 'evento-box');
-        const diaHeader = criarElemento('h3', null, formatarDataExtensa(data));
-        box.appendChild(diaHeader);
-
-        choicesMap[dataStr] = [];
-        membrosPorDia[dataStr] = [];
-
-        eventos.forEach(evento => {
-          const bloco = criarElemento('div', 'evento');
-          const titulo = criarElemento('div', null, evento.nomeEvento || 'Evento sem nome');
-          const labelEquipe = criarElemento('label', null, 'Equipe:');
-          const select = document.createElement('select');
-          select.className = 'equipe-select';
-          select.setAttribute('multiple', '');
-          select.id = `select-${evento.id}`;
-
-          // Adiciona membros alocados (já selecionados)
-          const alocados = evento.equipeAlocada || [];
-          alocados.forEach(m => {
-            const membro = membros.find(mem => mem.id === m.membroId);
-            if (membro) {
-              const opt = new Option(membro.apelido, membro.id, true, true);
-              select.appendChild(opt);
-              membrosPorDia[dataStr].push(membro.id);
+                renderEventos();
+            } catch (error) {
+                console.error("Erro ao buscar eventos:", error);
+                document.getElementById('eventos-container').innerHTML = '<p>Erro ao carregar os eventos. Verifique o console.</p>';
             }
-          });
+        }
 
-          bloco.appendChild(titulo);
-          bloco.appendChild(labelEquipe);
-          bloco.appendChild(select);
-          box.appendChild(bloco);
+        // --- Funções de Renderização ---
+        function renderEventos() {
+            const container = document.getElementById('eventos-container');
+            container.innerHTML = '';
 
-          // Inicia Choices após opções adicionadas
-          const choices = new Choices(select, {
-            removeItemButton: true,
-            shouldSort: false,
-            placeholderValue: 'Selecione membros...'
-          });
+            if (allEventos.length === 0) {
+                container.innerHTML = '<p>Nenhum evento encontrado para a semana atual.</p>';
+                return;
+            }
 
-          choicesMap[dataStr].push({ choices, membroId: null });
+            const eventosAgrupados = allEventos.reduce((acc, evento) => {
+                const data = evento.data;
+                if (!acc[data]) {
+                    acc[data] = [];
+                }
+                acc[data].push(evento);
+                return acc;
+            }, {});
 
-          select.addEventListener('change', () => {
-            const selecionados = Array.from(select.selectedOptions).map(o => o.value);
-            membrosPorDia[dataStr] = membrosPorDia[dataStr].filter(id => !alocados.includes(id));
-            membrosPorDia[dataStr].push(...selecionados);
-            atualizarDisponibilidade(choicesMap, membrosPorDia);
-          });
-        });
+            for (const data in eventosAgrupados) {
+                const header = document.createElement('div');
+                header.className = 'date-header';
+                header.textContent = formatDate(data);
+                container.appendChild(header);
 
-        container.appendChild(box);
-      });
+                const table = document.createElement('table');
+                const thead = `<thead><tr><th>Evento</th><th class="equipe-col">Equipe Alocada</th><th class="equipe-col">Editar Equipe</th></tr></thead>`;
+                table.innerHTML = thead;
+                const tbody = document.createElement('tbody');
 
-      atualizarDisponibilidade(choicesMap, membrosPorDia);
-    }
+                eventosAgrupados[data].forEach(evento => {
+                    const row = document.createElement('tr');
+                    
+                    // Coluna Nome do Evento
+                    const nomeTd = document.createElement('td');
+                    nomeTd.textContent = evento.nomeEvento || 'Sem nome';
+                    row.appendChild(nomeTd);
 
-    window.addEventListener('DOMContentLoaded', montarPlanejamento);
-  </script>
+                    // Coluna Equipe Alocada
+                    const equipeAlocadaTd = document.createElement('td');
+                    equipeAlocadaTd.className = 'equipe-col';
+                    const equipeList = document.createElement('ul');
+                    equipeList.className = 'equipe-alocada-list';
+                    if (evento.equipeAlocada && evento.equipeAlocada.length > 0) {
+                        evento.equipeAlocada.forEach(membro => {
+                            const li = document.createElement('li');
+                            li.textContent = allEquipe[membro.membroId]?.apelido || 'Membro não encontrado';
+                            equipeList.appendChild(li);
+                        });
+                    } else {
+                        const li = document.createElement('li');
+                        li.textContent = 'Nenhuma equipe alocada';
+                        equipeList.appendChild(li);
+                    }
+                    equipeAlocadaTd.appendChild(equipeList);
+                    row.appendChild(equipeAlocadaTd);
+
+                    // Coluna Editar Equipe (Select)
+                    const selectTd = document.createElement('td');
+                    selectTd.className = 'equipe-col';
+                    const select = document.createElement('select');
+                    select.multiple = true;
+                    select.dataset.eventoId = evento.id;
+                    
+                    populateSelect(select, evento, eventosAgrupados[data]);
+
+                    select.addEventListener('change', () => updateEquipe(evento.id, select));
+                    
+                    selectTd.appendChild(select);
+                    row.appendChild(selectTd);
+
+                    tbody.appendChild(row);
+                });
+                table.appendChild(tbody);
+                container.appendChild(table);
+            }
+        }
+
+        function populateSelect(selectElement, eventoAtual, eventosDoDia) {
+            selectElement.innerHTML = '';
+
+            const membrosAlocadosNoDia = new Set();
+            eventosDoDia.forEach(e => {
+                if (e.id !== eventoAtual.id && e.equipeAlocada) {
+                    e.equipeAlocada.forEach(m => membrosAlocadosNoDia.add(m.membroId));
+                }
+            });
+
+            const membrosAlocadosNesteEvento = new Set(
+                eventoAtual.equipeAlocada ? eventoAtual.equipeAlocada.map(m => m.membroId) : []
+            );
+
+            for (const membroId in allEquipe) {
+                // Adiciona a opção se o membro não estiver alocado em OUTRO evento no mesmo dia
+                if (!membrosAlocadosNoDia.has(membroId)) {
+                    const option = document.createElement('option');
+                    option.value = membroId;
+                    option.textContent = allEquipe[membroId].apelido || allEquipe[membroId].nomeCompleto;
+                    
+                    // Pré-seleciona se ele já estiver neste evento
+                    if (membrosAlocadosNesteEvento.has(membroId)) {
+                        option.selected = true;
+                    }
+                    selectElement.appendChild(option);
+                }
+            }
+        }
+
+        // --- Função de Atualização ---
+        async function updateEquipe(eventoId, selectElement) {
+            const selectedOptions = Array.from(selectElement.selectedOptions);
+            const novaEquipe = selectedOptions.map(option => ({ membroId: option.value }));
+
+            try {
+                await db.ref(`eventos/${eventoId}/equipeAlocada`).set(novaEquipe);
+                console.log(`Equipe do evento ${eventoId} atualizada com sucesso.`);
+                // Recarrega tudo para garantir a consistência dos selects
+                fetchEventos(); 
+            } catch (error) {
+                console.error("Erro ao atualizar a equipe:", error);
+                alert("Ocorreu um erro ao salvar a equipe. Tente novamente.");
+            }
+        }
+
+        // --- Inicialização ---
+        document.addEventListener('DOMContentLoaded', fetchEventos);
+    </script>
 </body>
 </html>
