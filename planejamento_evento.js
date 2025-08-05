@@ -26,9 +26,13 @@ function obterInicioEFimDaSemana() {
 }
 
 function formatarDataBR(dataStr) {
-  const data = new Date(dataStr);
-  if (isNaN(data)) return "Data inválida";
+  const data = new Date(dataStr + "T03:00:00"); // Corrige UTC para fuso horário do Brasil
   return data.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' });
+}
+
+function obterDiaDaSemanaIndexado(dataStr) {
+  const data = new Date(dataStr + "T03:00:00"); // Corrige UTC para Brasil
+  return data.getDay(); // 0 = Domingo, ..., 6 = Sábado
 }
 
 async function carregarEquipe() {
@@ -50,20 +54,31 @@ async function carregarEventosSemana() {
 
   for (const [id, evento] of Object.entries(eventos)) {
     const data = evento.data;
-    const dataObj = new Date(data);
+    const dataObj = new Date(data + "T03:00:00");
     if (dataObj >= segunda && dataObj <= domingo) {
       const equipeAlocada = (evento.equipe || []).map(e => e.membroId);
       lista.push({
         id,
         nomeEvento: evento.nomeEvento || "Sem nome",
         data,
+        dataObj,
         equipeSelecionada: equipeAlocada,
         equipeMap
       });
     }
   }
 
-  lista.sort((a, b) => new Date(a.data) - new Date(b.data));
+  // Ordena por dia da semana (Sábado = 6, Domingo = 0, Segunda = 1, ...)
+  const ordemDias = [6, 0, 1, 2, 3, 4, 5];
+  lista.sort((a, b) => {
+    const diaA = obterDiaDaSemanaIndexado(a.data);
+    const diaB = obterDiaDaSemanaIndexado(b.data);
+    const indexA = ordemDias.indexOf(diaA);
+    const indexB = ordemDias.indexOf(diaB);
+    if (indexA !== indexB) return indexA - indexB;
+    return new Date(a.dataObj) - new Date(b.dataObj);
+  });
+
   exibirEventos(lista);
 }
 
@@ -106,7 +121,7 @@ function exibirEventos(lista) {
     div.appendChild(select);
     container.appendChild(div);
 
-    // Inicializar Choices.js após garantir que os selected estão no DOM
+    // Inicializar Choices.js após DOM pronto
     setTimeout(() => {
       new Choices(select, {
         removeItemButton: true,
