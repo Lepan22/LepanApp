@@ -2,14 +2,14 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Pl3anejamento dos Eventos da Semana</title>
+  <title>2lanejamento dos Eventos da Semana</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
   <style>
     main {
       padding: 20px;
-      margin-left: 240px; /* compensar menu lateral */
+      margin-left: 240px; /* Compensa a largura do menu lateral */
     }
     .dia-semana {
       background-color: #eee;
@@ -24,19 +24,22 @@
       background: #f8f8f8;
       border-bottom: 1px solid #ccc;
       padding: 10px;
+      flex-wrap: wrap;
     }
     .evento span {
       margin-right: 20px;
+      min-width: 150px;
     }
     .equipe {
       display: flex;
       flex-wrap: wrap;
-      gap: 5px;
+      gap: 6px;
     }
     .equipe div {
       background: #ddd;
-      padding: 4px 8px;
+      padding: 4px 10px;
       border-radius: 4px;
+      font-size: 0.9em;
     }
   </style>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -87,12 +90,13 @@
       const planejamento = document.getElementById("planejamento");
       planejamento.innerHTML = "";
 
-      const snapshot = await db.ref("eventos").once("value");
-      const eventos = snapshot.val();
+      const [eventosSnap, equipeSnap] = await Promise.all([
+        db.ref("eventos").once("value"),
+        db.ref("equipe").once("value")
+      ]);
 
-      const equipeSnapshot = await db.ref("equipe").once("value");
-      const equipeGlobal = equipeSnapshot.val() || {};
-
+      const eventos = eventosSnap.val() || {};
+      const equipeData = equipeSnap.val() || {};
       const eventosPorDia = {};
 
       for (const id in eventos) {
@@ -109,6 +113,8 @@
         }
       }
 
+      const ordem = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
       for (const dataKey of Object.keys(semana)) {
         const eventosDia = eventosPorDia[dataKey];
         if (!eventosDia || eventosDia.length === 0) continue;
@@ -122,14 +128,14 @@
           const div = document.createElement("div");
           div.className = "evento";
 
-          const equipeAlocada = evento.equipe || [];
+          const equipeAlocada = Array.isArray(evento.equipe) ? evento.equipe : [];
           const nomes = equipeAlocada.map(m => {
-            const membro = equipeGlobal[m.membroId];
+            const membro = equipeData[m.membroId];
             return membro ? membro.nome : "(sem nome)";
           });
 
           div.innerHTML = `
-            <span>${evento.nomeEvento || "(Sem nome)"}</span>
+            <span><strong>${evento.nomeEvento || "(Sem nome)"}</strong></span>
             <div class="equipe">
               ${nomes.map(nome => `<div>${nome}</div>`).join("")}
             </div>
