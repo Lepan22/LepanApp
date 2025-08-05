@@ -7,55 +7,35 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #fff6ee;
+      font-family: sans-serif;
+      background: #fef7f0;
       margin: 0;
-      padding: 2rem;
+      padding: 0 20px;
     }
-
     h1 {
-      color: #333;
-      margin-bottom: 2rem;
+      font-size: 1.5rem;
+      margin-top: 20px;
     }
-
-    .data-bloco {
-      margin-bottom: 2rem;
-    }
-
-    .data-titulo {
-      font-size: 1.2rem;
+    .dia-header {
+      border-left: 4px solid orange;
+      padding-left: 8px;
+      margin-top: 40px;
       font-weight: bold;
       color: #333;
-      margin-bottom: 1rem;
-      border-left: 6px solid orange;
-      padding-left: 10px;
     }
-
-    .evento-linha {
+    .evento {
       display: flex;
       align-items: flex-start;
-      gap: 1rem;
-      background: #f8f8f8;
-      padding: 1rem;
-      margin-bottom: 0.5rem;
-      border-radius: 4px;
+      padding: 10px 0;
+      border-bottom: 1px solid #ccc;
     }
-
     .evento-nome {
+      width: 180px;
       font-weight: bold;
-      width: 200px;
     }
-
-    .coluna-equipe {
+    .coluna {
       width: 300px;
     }
-
-    label {
-      font-size: 0.9rem;
-      margin-bottom: 4px;
-      display: block;
-    }
-
     .choices__list--multiple .choices__item {
       display: block;
       width: 100%;
@@ -66,154 +46,177 @@
   <h1>Planejamento da Semana</h1>
   <div id="listaEventos"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-
   <script>
     const firebaseConfig = {
-      apiKey: "SUA_API_KEY",
-      authDomain: "SUA_AUTH_DOMAIN",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "SUA_STORAGE_BUCKET",
-      messagingSenderId: "SUA_SENDER_ID",
-      appId: "SUA_APP_ID"
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    function obterInicioEFimDaSemana() {
-      const hoje = new Date();
-      const diaSemana = hoje.getDay();
-      const diferencaSegunda = hoje.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
-      const segunda = new Date(hoje.setDate(diferencaSegunda));
-      segunda.setHours(0, 0, 0, 0);
-      const domingo = new Date(segunda);
-      domingo.setDate(segunda.getDate() + 6);
-      domingo.setHours(23, 59, 59, 999);
-      return { segunda, domingo };
-    }
+    const semana = obterSemanaAtual();
+    const choicesInstances = {};
+    const selectsPorDia = {};
 
-    function formatarDataBR(dataStr) {
-      const data = new Date(dataStr + "T03:00:00");
-      return data.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' });
-    }
+    async function carregarDados() {
+      const [eventosSnap, equipeSnap] = await Promise.all([
+        db.ref("eventos").once("value"),
+        db.ref("equipe").once("value")
+      ]);
+      const eventos = eventosSnap.val() || {};
+      const equipe = equipeSnap.val() || {};
 
-    async function carregarEquipe() {
-      const snap = await db.ref("equipe").once("value");
-      const equipeData = snap.val() || {};
-      const mapaEquipe = {};
-      for (const [id, dados] of Object.entries(equipeData)) {
-        mapaEquipe[id] = dados.apelido?.trim() || "Sem apelido";
-      }
-      return mapaEquipe;
-    }
+      const equipeMap = {};
+      Object.entries(equipe).forEach(([id, dados]) => {
+        equipeMap[id] = dados.apelido || "Sem apelido";
+      });
 
-    async function carregarEventosSemana() {
-      const { segunda, domingo } = obterInicioEFimDaSemana();
-      const snap = await db.ref("eventos").once("value");
-      const eventos = snap.val() || {};
-      const equipeMap = await carregarEquipe();
-      const dias = {};
-
-      for (const [id, evento] of Object.entries(eventos)) {
-        const data = evento.data;
-        const dataObj = new Date(data + "T03:00:00");
-        if (dataObj >= segunda && dataObj <= domingo) {
-          const key = formatarDataBR(data);
-          const equipeAlocada = (evento.equipe || []).map(e => e.membroId);
-          if (!dias[key]) dias[key] = [];
-          dias[key].push({
+      const eventosSemana = Object.entries(eventos)
+        .map(([id, dados]) => {
+          const dataObj = new Date(dados.data);
+          const dataLocal = new Date(dataObj.getTime() + 3 * 60 * 60 * 1000);
+          return {
             id,
-            nomeEvento: evento.nomeEvento || "Sem nome",
-            data,
-            equipeSelecionada: equipeAlocada,
-            equipeMap
-          });
-        }
-      }
+            dataISO: dados.data,
+            data: dataLocal,
+            diaStr: dataLocal.toISOString().slice(0, 10),
+            nomeEvento: dados.nomeEvento,
+            equipe: (dados.equipe || []).map(m => m.membroId).filter(Boolean)
+          };
+        })
+        .filter(ev => ev.data >= semana.inicio && ev.data <= semana.fim)
+        .sort((a, b) => a.data - b.data);
 
-      exibirEventos(dias);
+      exibirEventos(eventosSemana, equipeMap);
     }
 
-    function exibirEventos(dias) {
+    function exibirEventos(lista, equipeMap) {
       const container = document.getElementById("listaEventos");
       container.innerHTML = "";
 
-      const ordemDias = ["sáb", "dom", "seg", "ter", "qua", "qui", "sex"];
-      const chavesOrdenadas = Object.keys(dias).sort((a, b) => {
-        const da = ordemDias.indexOf(a.slice(0, 3).toLowerCase());
-        const db = ordemDias.indexOf(b.slice(0, 3).toLowerCase());
-        return da - db;
-      });
+      const eventosPorDia = {};
+      for (const ev of lista) {
+        if (!eventosPorDia[ev.diaStr]) eventosPorDia[ev.diaStr] = [];
+        eventosPorDia[ev.diaStr].push(ev);
+      }
 
-      chavesOrdenadas.forEach((dia, idxDia) => {
-        const bloco = document.createElement("div");
-        bloco.className = "data-bloco";
+      Object.entries(eventosPorDia).forEach(([diaStr, eventosDoDia]) => {
+        const data = new Date(diaStr + "T00:00:00-03:00");
+        const diaFormatado = data.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' });
 
-        const titulo = document.createElement("div");
-        titulo.className = "data-titulo";
-        titulo.textContent = dia;
-        bloco.appendChild(titulo);
+        const header = document.createElement("div");
+        header.className = "dia-header";
+        header.textContent = `${diaFormatado}`;
+        container.appendChild(header);
 
-        const membrosAlocados = new Set();
+        selectsPorDia[diaStr] = [];
 
-        dias[dia].forEach((evento, index) => {
-          const linha = document.createElement("div");
-          linha.className = "evento-linha";
+        eventosDoDia.forEach(evento => {
+          const div = document.createElement("div");
+          div.className = "evento";
 
           const nome = document.createElement("div");
           nome.className = "evento-nome";
           nome.textContent = evento.nomeEvento;
-          linha.appendChild(nome);
+          div.appendChild(nome);
 
-          const equipeColuna = document.createElement("div");
-          equipeColuna.className = "coluna-equipe";
+          const colunaEquipe = document.createElement("div");
+          colunaEquipe.className = "coluna";
 
           const label = document.createElement("label");
           label.textContent = "Equipe:";
-          equipeColuna.appendChild(label);
+          colunaEquipe.appendChild(label);
 
           const select = document.createElement("select");
           select.setAttribute("multiple", true);
-          select.id = `selectEquipe_${idxDia}_${index}`;
           select.dataset.eventoId = evento.id;
+          select.dataset.dia = diaStr;
 
-          for (const [id, apelido] of Object.entries(evento.equipeMap)) {
-            if (!membrosAlocados.has(id) || evento.equipeSelecionada.includes(id)) {
-              const option = document.createElement("option");
-              option.value = id;
-              option.textContent = apelido;
-              if (evento.equipeSelecionada.includes(id)) {
-                option.setAttribute("selected", "selected");
-                membrosAlocados.add(id);
-              }
-              select.appendChild(option);
+          Object.entries(equipeMap).forEach(([id, apelido]) => {
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = apelido;
+            if (evento.equipe.includes(id)) {
+              opt.setAttribute("selected", "selected");
             }
-          }
+            select.appendChild(opt);
+          });
 
-          equipeColuna.appendChild(select);
-          linha.appendChild(equipeColuna);
-          bloco.appendChild(linha);
+          colunaEquipe.appendChild(select);
+          div.appendChild(colunaEquipe);
+          container.appendChild(div);
 
-          setTimeout(() => {
-            new Choices(select, {
+          selectsPorDia[diaStr].push(select);
+        });
+      });
+
+      setTimeout(() => {
+        Object.entries(selectsPorDia).forEach(([diaStr, selects]) => {
+          selects.forEach(select => {
+            const choices = new Choices(select, {
               removeItemButton: true,
-              placeholder: true,
-              placeholderValue: 'Selecione membros...',
+              placeholderValue: "Selecione membros...",
               searchEnabled: true,
               shouldSort: false
             });
-          }, 0);
+            choicesInstances[select.dataset.eventoId] = choices;
+
+            select.addEventListener("change", () => atualizarRestricoes(diaStr));
+          });
+          atualizarRestricoes(diaStr);
+        });
+      }, 0);
+    }
+
+    function atualizarRestricoes(diaStr) {
+      const selects = selectsPorDia[diaStr];
+      const todosSelecionados = new Set();
+
+      // Coleta os membros alocados em todos os selects do dia
+      selects.forEach(select => {
+        const selected = Array.from(select.options)
+          .filter(opt => opt.selected)
+          .map(opt => opt.value);
+        selected.forEach(id => todosSelecionados.add(id));
+      });
+
+      // Atualiza cada select removendo os nomes já usados (exceto os que já estão selecionados nele)
+      selects.forEach(select => {
+        const choices = choicesInstances[select.dataset.eventoId];
+        const selecionadosNeste = new Set(
+          Array.from(select.options).filter(opt => opt.selected).map(opt => opt.value)
+        );
+
+        // Refaz a lista com base nos que ainda podem ser escolhidos
+        const novaLista = [];
+        Array.from(select.options).forEach(opt => {
+          const id = opt.value;
+          const nome = opt.textContent;
+          if (selecionadosNeste.has(id) || !todosSelecionados.has(id)) {
+            novaLista.push({ value: id, label: nome, selected: selecionadosNeste.has(id) });
+          }
         });
 
-        container.appendChild(bloco);
+        choices.clearChoices();
+        choices.setChoices(novaLista, 'value', 'label', true);
       });
     }
 
-    window.addEventListener("DOMContentLoaded", carregarEventosSemana);
+    function obterSemanaAtual() {
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const segunda = new Date(hoje);
+      segunda.setDate(hoje.getDate() - ((diaSemana + 6) % 7));
+      segunda.setHours(0, 0, 0, 0);
+      const domingo = new Date(segunda);
+      domingo.setDate(segunda.getDate() + 6);
+      domingo.setHours(23, 59, 59, 999);
+      return { inicio: segunda, fim: domingo };
+    }
+
+    carregarDados();
   </script>
 </body>
 </html>
