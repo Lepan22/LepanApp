@@ -106,7 +106,7 @@ function exibirEventos(lista) {
     div.appendChild(select);
     container.appendChild(div);
 
-    // Ativar Choices.js
+    // Inicializa Choices depois de preencher corretamente os <option selected>
     new Choices(select, {
       removeItemButton: true,
       placeholder: true,
