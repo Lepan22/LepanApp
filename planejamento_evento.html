@@ -6,10 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
+
+  <!-- Choices.js CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
   <script src="assets/menu.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
   <script src="planejamento_evento.js" defer></script>
+
   <style>
     .container {
       margin-left: 260px;
@@ -34,17 +41,6 @@
       font-weight: bold;
       margin-top: 10px;
       display: block;
-    }
-    select[multiple] {
-      height: auto;
-      max-height: 35px;
-      overflow-y: auto;
-      background-color: #f8f8f8;
-      cursor: pointer;
-    }
-    select[multiple]:focus {
-      height: auto;
-      max-height: 150px;
     }
   </style>
 </head>
