@@ -161,7 +161,7 @@
         }
 
         function getEquipeDoEvento(evento) {
-            // <-- ALTERAÇÃO INÍCIO: Verifica os dois caminhos possíveis para a equipe
+            // Continua lendo de ambos os caminhos para compatibilidade
             if (evento.equipeAlocada && Array.isArray(evento.equipeAlocada)) {
                 return evento.equipeAlocada;
             }
@@ -169,7 +169,6 @@
                 return evento.equipe;
             }
             return [];
-            // <-- ALTERAÇÃO FIM
         }
 
         function renderEventos() {
@@ -209,7 +208,7 @@
                     const equipeList = document.createElement('ul');
                     equipeList.className = 'equipe-alocada-list';
                     
-                    const equipeDoEvento = getEquipeDoEvento(evento); // <-- ALTERAÇÃO: Usa a nova função
+                    const equipeDoEvento = getEquipeDoEvento(evento);
 
                     if (equipeDoEvento.length > 0) {
                         equipeDoEvento.forEach(membro => {
@@ -250,12 +249,12 @@
             const membrosAlocadosNoDia = new Set();
             eventosDoDia.forEach(e => {
                 if (e.id !== eventoAtual.id) {
-                    const equipe = getEquipeDoEvento(e); // <-- ALTERAÇÃO: Usa a nova função
+                    const equipe = getEquipeDoEvento(e);
                     equipe.forEach(m => membrosAlocadosNoDia.add(m.membroId));
                 }
             });
 
-            const equipeAtualDoEvento = getEquipeDoEvento(eventoAtual); // <-- ALTERAÇÃO: Usa a nova função
+            const equipeAtualDoEvento = getEquipeDoEvento(eventoAtual);
             const membrosAlocadosNesteEvento = new Set(equipeAtualDoEvento.map(m => m.membroId));
 
             for (const membroId in allEquipe) {
@@ -266,7 +265,6 @@
                 if (membrosAlocadosNesteEvento.has(membroId)) {
                     option.selected = true;
                 } else if (membrosAlocadosNoDia.has(membroId)) {
-                    // <-- MELHORIA: Desabilita a opção se já estiver em outro evento
                     option.disabled = true; 
                 }
                 selectElement.appendChild(option);
@@ -278,12 +276,12 @@
             const novaEquipe = selectedOptions.map(option => ({ membroId: option.value }));
 
             try {
-                // <-- ALTERAÇÃO: Atualiza sempre para o novo formato 'equipeAlocada'
-                await db.ref(`eventos/${eventoId}/equipeAlocada`).set(novaEquipe);
-                // Remove o campo antigo 'equipe' se ele existir, para manter a consistência
-                await db.ref(`eventos/${eventoId}/equipe`).remove();
-
-                console.log(`Equipe do evento ${eventoId} atualizada com sucesso.`);
+                // <-- ALTERAÇÃO CRÍTICA: Salva sempre no caminho '/equipe' para manter a compatibilidade.
+                await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
+                
+                console.log(`Equipe do evento ${eventoId} atualizada com sucesso no caminho '/equipe'.`);
+                
+                // Recarrega a interface para refletir a mudança e atualizar os selects
                 fetchEventos(); 
             } catch (error) {
                 console.error("Erro ao atualizar a equipe:", error);
