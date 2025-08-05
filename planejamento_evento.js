@@ -26,13 +26,13 @@ function obterInicioEFimDaSemana() {
 }
 
 function formatarDataBR(dataStr) {
-  const data = new Date(dataStr + "T03:00:00"); // Corrige UTC para fuso horário do Brasil
+  const data = new Date(dataStr + "T03:00:00");
   return data.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' });
 }
 
 function obterDiaDaSemanaIndexado(dataStr) {
-  const data = new Date(dataStr + "T03:00:00"); // Corrige UTC para Brasil
-  return data.getDay(); // 0 = Domingo, ..., 6 = Sábado
+  const data = new Date(dataStr + "T03:00:00");
+  return data.getDay();
 }
 
 async function carregarEquipe() {
@@ -40,7 +40,7 @@ async function carregarEquipe() {
   const equipeData = snap.val() || {};
   const mapaEquipe = {};
   for (const [id, dados] of Object.entries(equipeData)) {
-    mapaEquipe[id] = dados.nomeCompleto || "Sem nome";
+    mapaEquipe[id] = dados.apelido?.trim() || "Sem apelido";
   }
   return mapaEquipe;
 }
@@ -68,7 +68,6 @@ async function carregarEventosSemana() {
     }
   }
 
-  // Ordena por dia da semana (Sábado = 6, Domingo = 0, Segunda = 1, ...)
   const ordemDias = [6, 0, 1, 2, 3, 4, 5];
   lista.sort((a, b) => {
     const diaA = obterDiaDaSemanaIndexado(a.data);
@@ -108,10 +107,10 @@ function exibirEventos(lista) {
     select.id = `selectEquipe_${index}`;
     select.dataset.eventoId = evento.id;
 
-    for (const [id, nome] of Object.entries(evento.equipeMap)) {
+    for (const [id, apelido] of Object.entries(evento.equipeMap)) {
       const option = document.createElement("option");
       option.value = id;
-      option.textContent = nome;
+      option.textContent = apelido;
       if (evento.equipeSelecionada.includes(id)) {
         option.setAttribute("selected", "selected");
       }
@@ -121,7 +120,7 @@ function exibirEventos(lista) {
     div.appendChild(select);
     container.appendChild(div);
 
-    // Inicializar Choices.js após DOM pronto
+    // Inicializa Choices.js depois do DOM montar o select corretamente
     setTimeout(() => {
       new Choices(select, {
         removeItemButton: true,
@@ -134,5 +133,4 @@ function exibirEventos(lista) {
   });
 }
 
-// Inicializar ao carregar a página
 window.addEventListener("DOMContentLoaded", carregarEventosSemana);
