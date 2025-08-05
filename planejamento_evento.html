@@ -161,12 +161,13 @@
         }
 
         function getEquipeDoEvento(evento) {
-            // Continua lendo de ambos os caminhos para compatibilidade
-            if (evento.equipeAlocada && Array.isArray(evento.equipeAlocada)) {
-                return evento.equipeAlocada;
-            }
-            if (evento.equipe && Array.isArray(evento.equipe)) {
+            // <-- CORREÇÃO: Prioriza 'equipe' e verifica se é um array válido.
+            if (evento && evento.equipe && Array.isArray(evento.equipe)) {
                 return evento.equipe;
+            }
+            // Fallback para o outro nome, caso exista em algum evento.
+            if (evento && evento.equipeAlocada && Array.isArray(evento.equipeAlocada)) {
+                return evento.equipeAlocada;
             }
             return [];
         }
@@ -212,15 +213,21 @@
 
                     if (equipeDoEvento.length > 0) {
                         equipeDoEvento.forEach(membro => {
-                            const li = document.createElement('li');
-                            li.textContent = allEquipe[membro.membroId]?.apelido || 'Membro não encontrado';
-                            equipeList.appendChild(li);
+                            // Verifica se o membroId existe antes de tentar acessar o apelido
+                            if (membro && membro.membroId && allEquipe[membro.membroId]) {
+                                const li = document.createElement('li');
+                                li.textContent = allEquipe[membro.membroId].apelido;
+                                equipeList.appendChild(li);
+                            }
                         });
-                    } else {
+                    } 
+                    
+                    if (equipeList.children.length === 0) {
                         const li = document.createElement('li');
                         li.textContent = 'Nenhuma equipe alocada';
                         equipeList.appendChild(li);
                     }
+
                     equipeAlocadaTd.appendChild(equipeList);
                     row.appendChild(equipeAlocadaTd);
 
@@ -228,7 +235,6 @@
                     selectTd.className = 'equipe-col';
                     const select = document.createElement('select');
                     select.multiple = true;
-                    select.dataset.eventoId = evento.id;
                     
                     populateSelect(select, evento, eventosAgrupados[data]);
 
@@ -250,7 +256,9 @@
             eventosDoDia.forEach(e => {
                 if (e.id !== eventoAtual.id) {
                     const equipe = getEquipeDoEvento(e);
-                    equipe.forEach(m => membrosAlocadosNoDia.add(m.membroId));
+                    equipe.forEach(m => {
+                        if (m && m.membroId) membrosAlocadosNoDia.add(m.membroId)
+                    });
                 }
             });
 
@@ -276,12 +284,11 @@
             const novaEquipe = selectedOptions.map(option => ({ membroId: option.value }));
 
             try {
-                // <-- ALTERAÇÃO CRÍTICA: Salva sempre no caminho '/equipe' para manter a compatibilidade.
+                // <-- CORREÇÃO FINAL: Salva no caminho correto e recarrega a interface.
                 await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
+                console.log(`Equipe do evento ${eventoId} salva com sucesso.`);
                 
-                console.log(`Equipe do evento ${eventoId} atualizada com sucesso no caminho '/equipe'.`);
-                
-                // Recarrega a interface para refletir a mudança e atualizar os selects
+                // Força a releitura dos dados e a renderização da tela para garantir consistência.
                 fetchEventos(); 
             } catch (error) {
                 console.error("Erro ao atualizar a equipe:", error);
