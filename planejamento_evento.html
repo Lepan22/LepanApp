@@ -158,6 +158,8 @@
         titulo.textContent = dia;
         bloco.appendChild(titulo);
 
+        const membrosAlocados = new Set();
+
         dias[dia].forEach((evento, index) => {
           const linha = document.createElement("div");
           linha.className = "evento-linha";
@@ -180,13 +182,16 @@
           select.dataset.eventoId = evento.id;
 
           for (const [id, apelido] of Object.entries(evento.equipeMap)) {
-            const option = document.createElement("option");
-            option.value = id;
-            option.textContent = apelido;
-            if (evento.equipeSelecionada.includes(id)) {
-              option.setAttribute("selected", "selected");
+            if (!membrosAlocados.has(id) || evento.equipeSelecionada.includes(id)) {
+              const option = document.createElement("option");
+              option.value = id;
+              option.textContent = apelido;
+              if (evento.equipeSelecionada.includes(id)) {
+                option.setAttribute("selected", "selected");
+                membrosAlocados.add(id);
+              }
+              select.appendChild(option);
             }
-            select.appendChild(option);
           }
 
           equipeColuna.appendChild(select);
