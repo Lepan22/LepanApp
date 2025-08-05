@@ -76,7 +76,7 @@ function exibirEventos(lista) {
     return;
   }
 
-  lista.forEach(evento => {
+  lista.forEach((evento, index) => {
     const div = document.createElement("div");
     div.className = "evento";
 
@@ -90,6 +90,7 @@ function exibirEventos(lista) {
 
     const select = document.createElement("select");
     select.setAttribute("multiple", true);
+    select.id = `selectEquipe_${index}`;
     select.dataset.eventoId = evento.id;
 
     for (const [id, nome] of Object.entries(evento.equipeMap)) {
@@ -104,6 +105,15 @@ function exibirEventos(lista) {
 
     div.appendChild(select);
     container.appendChild(div);
+
+    // Ativar Choices.js
+    new Choices(select, {
+      removeItemButton: true,
+      placeholder: true,
+      placeholderValue: 'Selecione membros...',
+      searchEnabled: true,
+      shouldSort: false
+    });
   });
 }
 
