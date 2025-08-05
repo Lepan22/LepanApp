@@ -1,54 +1,132 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Planejamento dos Eventos</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <title>Planejamento dos Eventos da Semana</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="assets/menu.js" defer></script>
-  <script defer src="planejamento_evento.js"></script>
   <style>
-    .dia-semana {
-      background: #e5e5e5;
+    .dia-header {
+      background: #eee;
       font-weight: bold;
-      padding: 8px;
+      padding: 10px;
       margin-top: 20px;
     }
-    .evento {
-      padding: 6px 12px;
-      border-bottom: 1px solid #ddd;
+    .evento-linha {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: wrap;
+      padding: 8px 12px;
+      border-bottom: 1px solid #ccc;
     }
-    .evento span {
-      min-width: 120px;
-      margin-right: 10px;
+    .evento-nome {
+      font-weight: 600;
     }
-    .evento .nomes {
+    .equipe-box {
       display: flex;
+      gap: 8px;
       flex-wrap: wrap;
-      gap: 6px;
     }
-    .evento .nome-box {
-      background-color: #f0f0f0;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-size: 0.9em;
+    .equipe-membro {
+      background: #f0f0f0;
+      padding: 4px 10px;
+      border-radius: 4px;
     }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar" id="menu"></aside>
+    <aside class="sidebar" id="menuLateral"></aside>
     <main class="content">
       <h1>Planejamento dos Eventos da Semana</h1>
-      <div id="planejamento"></div>
+      <div id="containerEventos"></div>
     </main>
   </div>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAE-PLACEHOLDER",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "000000000000",
+      appId: "1:000000000000:web:placeholder"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+    function getDataLimitesDaSemana() {
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const segunda = new Date(hoje);
+      segunda.setDate(hoje.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1));
+      const domingo = new Date(segunda);
+      domingo.setDate(segunda.getDate() + 6);
+      return [segunda, domingo];
+    }
+
+    function formatarDataISO(data) {
+      const ano = data.getFullYear();
+      const mes = String(data.getMonth() + 1).padStart(2, '0');
+      const dia = String(data.getDate()).padStart(2, '0');
+      return `${ano}-${mes}-${dia}`;
+    }
+
+    async function carregarEventos() {
+      const container = document.getElementById("containerEventos");
+      container.innerHTML = "";
+      const [inicio, fim] = getDataLimitesDaSemana();
+      const eventosSnap = await db.ref("eventos").once("value");
+      const equipeSnap = await db.ref("equipe").once("value");
+      const equipeData = equipeSnap.val() || {};
+      const eventosPorDia = {};
+
+      eventosSnap.forEach(snap => {
+        const evento = snap.val();
+        const data = evento.data;
+        const dataEvento = new Date(data);
+        if (dataEvento >= inicio && dataEvento <= fim) {
+          const dia = diasSemana[dataEvento.getDay()];
+          if (!eventosPorDia[dia]) eventosPorDia[dia] = [];
+          eventosPorDia[dia].push({ id: snap.key, ...evento });
+        }
+      });
+
+      const ordem = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+
+      ordem.forEach(dia => {
+        const eventos = eventosPorDia[dia];
+        if (eventos && eventos.length > 0) {
+          const bloco = document.createElement("div");
+          bloco.innerHTML = `<div class="dia-header">${dia}</div>`;
+          eventos.sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
+          eventos.forEach(ev => {
+            const equipeAlocada = (ev.equipe || []).map(m => {
+              const membro = equipeData[m.membroId];
+              return membro ? membro.nome : "Indefinido";
+            });
+            const equipeHTML = equipeAlocada.map(nome => `<span class="equipe-membro">${nome}</span>`).join("");
+            bloco.innerHTML += `
+              <div class="evento-linha">
+                <div class="evento-nome">${ev.nomeEvento}</div>
+                <div class="equipe-box">${equipeHTML}</div>
+              </div>
+            `;
+          });
+          container.appendChild(bloco);
+        }
+      });
+    }
+
+    window.onload = carregarEventos;
+  </script>
 </body>
 </html>
