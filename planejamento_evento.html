@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Planejamento de Eventos</title>
+    <title>Página de Planejamento de Eventos</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -217,6 +217,30 @@
                     equipeAlocadaTd.className = 'equipe-col';
                     const equipeList = document.createElement('ul');
                     equipeList.className = 'equipe-alocada-list';
+                    
+                    // Lógica de renderização movida para cá
+                    const equipeDoEvento = getEquipeDoEvento(evento);
+                    if (equipeDoEvento.length > 0) {
+                        equipeDoEvento.forEach(membro => {
+                            if (membro && membro.membroId && allEquipe[membro.membroId]) {
+                                const li = document.createElement('li');
+                                const label = document.createElement('label');
+                                label.textContent = allEquipe[membro.membroId].apelido;
+                                const input = document.createElement('input');
+                                input.type = 'number';
+                                input.dataset.membroId = membro.membroId;
+                                input.placeholder = "R$";
+                                input.step = "0.01";
+                                input.value = membro.valor ? parseFloat(membro.valor).toFixed(2) : (allEquipe[membro.membroId].valorDiaria || '');
+                                input.addEventListener('change', () => updateEquipe(evento.id));
+                                li.appendChild(label);
+                                li.appendChild(input);
+                                equipeList.appendChild(li);
+                            }
+                        });
+                    } else {
+                        equipeList.innerHTML = '<li>Nenhuma equipe alocada</li>';
+                    }
                     equipeAlocadaTd.appendChild(equipeList);
                     row.appendChild(equipeAlocadaTd);
 
@@ -228,13 +252,9 @@
                     selectTd.appendChild(select);
                     row.appendChild(selectTd);
                     
-                    select.addEventListener('change', () => {
-                        updateEquipeAlocadaUI(evento.id);
-                        updateEquipe(evento.id);
-                    });
+                    select.addEventListener('change', () => updateEquipe(evento.id));
 
                     tbody.appendChild(row);
-                    updateEquipeAlocadaUI(evento.id);
                 });
                 table.appendChild(tbody);
                 container.appendChild(table);
@@ -269,75 +289,32 @@
             }
         }
 
-        function updateEquipeAlocadaUI(eventoId) {
-            const row = document.getElementById(`row-${eventoId}`);
-            if (!row) return;
-
-            const equipeList = row.querySelector('.equipe-alocada-list');
-            const selectElement = row.querySelector('select');
-            equipeList.innerHTML = '';
-
-            const evento = allEventos.find(e => e.id === eventoId);
-            const equipeSalva = getEquipeDoEvento(evento);
-            
-            // A fonte da verdade agora é o que está selecionado no <select>
-            const selectedOptions = Array.from(selectElement.selectedOptions);
-
-            if (selectedOptions.length === 0) {
-                equipeList.innerHTML = '<li>Nenhuma equipe alocada</li>';
-                return;
-            }
-
-            selectedOptions.forEach(option => {
-                const membroId = option.value;
-                const membroInfo = allEquipe[membroId];
-
-                const li = document.createElement('li');
-                const label = document.createElement('label');
-                label.textContent = membroInfo.apelido;
-                label.htmlFor = `valor-${eventoId}-${membroId}`;
-
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.id = `valor-${eventoId}-${membroId}`;
-                input.dataset.membroId = membroId;
-                input.placeholder = "R$";
-                input.step = "0.01";
-
-                const membroSalvo = equipeSalva.find(m => m.membroId === membroId);
-                if (membroSalvo && membroSalvo.valor) {
-                    input.value = parseFloat(membroSalvo.valor).toFixed(2);
-                } else if (membroInfo.valorDiaria) {
-                    input.value = parseFloat(membroInfo.valorDiaria).toFixed(2);
-                }
-
-                input.addEventListener('change', () => updateEquipe(eventoId));
-
-                li.appendChild(label);
-                li.appendChild(input);
-                equipeList.appendChild(li);
-            });
-        }
-
         async function updateEquipe(eventoId) {
             const row = document.getElementById(`row-${eventoId}`);
             if (!row) return;
-            const valorInputs = row.querySelectorAll('.equipe-alocada-list input');
             
-            const novaEquipe = Array.from(valorInputs).map(input => ({
-                membroId: input.dataset.membroId,
-                valor: parseFloat(input.value) || 0
-            }));
+            const selectElement = row.querySelector('select');
+            const selectedOptions = Array.from(selectElement.selectedOptions);
+            
+            const novaEquipe = selectedOptions.map(option => {
+                const membroId = option.value;
+                const inputValor = row.querySelector(`input[data-membro-id="${membroId}"]`);
+                let valor = 0;
+                if (inputValor) {
+                    valor = parseFloat(inputValor.value) || 0;
+                } else {
+                    // Se o input não existe ainda (acabou de ser selecionado), pega o valor padrão
+                    valor = allEquipe[membroId]?.valorDiaria || 0;
+                }
+                return { membroId, valor };
+            });
 
             try {
                 await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
                 console.log(`Equipe e valores do evento ${eventoId} salvos com sucesso.`);
                 
-                const eventoIndex = allEventos.findIndex(e => e.id === eventoId);
-                if (eventoIndex > -1) {
-                    allEventos[eventoIndex].equipe = novaEquipe;
-                }
-
+                // Recarrega tudo para garantir a consistência da interface
+                fetchEventos();
             } catch (error) {
                 console.error("Erro ao atualizar a equipe:", error);
                 alert("Ocorreu um erro ao salvar a equipe. Tente novamente.");
