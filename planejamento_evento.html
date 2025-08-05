@@ -1,36 +1,41 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Planejamento dos Eventos da Semana</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
   <style>
-    .dia-header {
-      background: #eee;
+    main {
+      padding: 20px;
+      margin-left: 240px; /* compensar menu lateral */
+    }
+    .dia-semana {
+      background-color: #eee;
       font-weight: bold;
       padding: 10px;
       margin-top: 20px;
     }
-    .evento-linha {
+    .evento {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 12px;
+      background: #f8f8f8;
       border-bottom: 1px solid #ccc;
+      padding: 10px;
     }
-    .evento-nome {
-      font-weight: 600;
+    .evento span {
+      margin-right: 20px;
     }
-    .equipe-box {
+    .equipe {
       display: flex;
-      gap: 8px;
       flex-wrap: wrap;
+      gap: 5px;
     }
-    .equipe-membro {
-      background: #f0f0f0;
-      padding: 4px 10px;
+    .equipe div {
+      background: #ddd;
+      padding: 4px 8px;
       border-radius: 4px;
     }
   </style>
@@ -40,90 +45,100 @@
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
-    <main class="content">
-      <h1>Planejamento dos Eventos da Semana</h1>
-      <div id="containerEventos"></div>
+    <aside class="sidebar" id="sidebar"></aside>
+    <main>
+      <h2>Eventos da Semana</h2>
+      <div id="planejamento"></div>
     </main>
   </div>
 
   <script>
-    // Firebase config
     const firebaseConfig = {
-      apiKey: "AIzaSyAE-PLACEHOLDER",
+      apiKey: "AIzaSyBSzLAsFbYTBb9IpKO7ckDwjsFGEWytz4A",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
       projectId: "lepanapp",
       storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "000000000000",
-      appId: "1:000000000000:web:placeholder"
+      messagingSenderId: "934663015322",
+      appId: "1:934663015322:web:efdaab0b6f46d78619a2a3"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-
-    function getDataLimitesDaSemana() {
+    function getSemanaAtual() {
       const hoje = new Date();
-      const diaSemana = hoje.getDay();
+      const diaSemana = hoje.getDay(); // 0=domingo
       const segunda = new Date(hoje);
-      segunda.setDate(hoje.getDate() - (diaSemana === 0 ? 6 : diaSemana - 1));
-      const domingo = new Date(segunda);
-      domingo.setDate(segunda.getDate() + 6);
-      return [segunda, domingo];
-    }
-
-    function formatarDataISO(data) {
-      const ano = data.getFullYear();
-      const mes = String(data.getMonth() + 1).padStart(2, '0');
-      const dia = String(data.getDate()).padStart(2, '0');
-      return `${ano}-${mes}-${dia}`;
+      segunda.setDate(hoje.getDate() - ((diaSemana + 6) % 7));
+      segunda.setHours(0, 0, 0, 0);
+      const semana = {};
+      for (let i = 0; i < 7; i++) {
+        const data = new Date(segunda);
+        data.setDate(segunda.getDate() + i);
+        const key = data.toISOString().split("T")[0];
+        semana[key] = data.toLocaleDateString("pt-BR", { weekday: 'long' });
+      }
+      return semana;
     }
 
     async function carregarEventos() {
-      const container = document.getElementById("containerEventos");
-      container.innerHTML = "";
-      const [inicio, fim] = getDataLimitesDaSemana();
-      const eventosSnap = await db.ref("eventos").once("value");
-      const equipeSnap = await db.ref("equipe").once("value");
-      const equipeData = equipeSnap.val() || {};
+      const semana = getSemanaAtual();
+      const planejamento = document.getElementById("planejamento");
+      planejamento.innerHTML = "";
+
+      const snapshot = await db.ref("eventos").once("value");
+      const eventos = snapshot.val();
+
+      const equipeSnapshot = await db.ref("equipe").once("value");
+      const equipeGlobal = equipeSnapshot.val() || {};
+
       const eventosPorDia = {};
 
-      eventosSnap.forEach(snap => {
-        const evento = snap.val();
-        const data = evento.data;
-        const dataEvento = new Date(data);
-        if (dataEvento >= inicio && dataEvento <= fim) {
-          const dia = diasSemana[dataEvento.getDay()];
-          if (!eventosPorDia[dia]) eventosPorDia[dia] = [];
-          eventosPorDia[dia].push({ id: snap.key, ...evento });
+      for (const id in eventos) {
+        const evento = eventos[id];
+        if (!evento.data) continue;
+
+        const data = new Date(evento.data);
+        data.setHours(0, 0, 0, 0);
+        const dataKey = data.toISOString().split("T")[0];
+
+        if (semana[dataKey]) {
+          if (!eventosPorDia[dataKey]) eventosPorDia[dataKey] = [];
+          eventosPorDia[dataKey].push({ id, ...evento });
         }
-      });
+      }
 
-      const ordem = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
+      for (const dataKey of Object.keys(semana)) {
+        const eventosDia = eventosPorDia[dataKey];
+        if (!eventosDia || eventosDia.length === 0) continue;
 
-      ordem.forEach(dia => {
-        const eventos = eventosPorDia[dia];
-        if (eventos && eventos.length > 0) {
-          const bloco = document.createElement("div");
-          bloco.innerHTML = `<div class="dia-header">${dia}</div>`;
-          eventos.sort((a, b) => (a.horario || '').localeCompare(b.horario || ''));
-          eventos.forEach(ev => {
-            const equipeAlocada = (ev.equipe || []).map(m => {
-              const membro = equipeData[m.membroId];
-              return membro ? membro.nome : "Indefinido";
-            });
-            const equipeHTML = equipeAlocada.map(nome => `<span class="equipe-membro">${nome}</span>`).join("");
-            bloco.innerHTML += `
-              <div class="evento-linha">
-                <div class="evento-nome">${ev.nomeEvento}</div>
-                <div class="equipe-box">${equipeHTML}</div>
-              </div>
-            `;
+        const diaNome = semana[dataKey];
+        const bloco = document.createElement("div");
+        bloco.innerHTML = `<div class="dia-semana">${diaNome.charAt(0).toUpperCase() + diaNome.slice(1)}</div>`;
+        eventosDia.sort((a, b) => (a.nomeEvento || "").localeCompare(b.nomeEvento || ""));
+
+        eventosDia.forEach(evento => {
+          const div = document.createElement("div");
+          div.className = "evento";
+
+          const equipeAlocada = evento.equipe || [];
+          const nomes = equipeAlocada.map(m => {
+            const membro = equipeGlobal[m.membroId];
+            return membro ? membro.nome : "(sem nome)";
           });
-          container.appendChild(bloco);
-        }
-      });
+
+          div.innerHTML = `
+            <span>${evento.nomeEvento || "(Sem nome)"}</span>
+            <div class="equipe">
+              ${nomes.map(nome => `<div>${nome}</div>`).join("")}
+            </div>
+          `;
+          bloco.appendChild(div);
+        });
+
+        planejamento.appendChild(bloco);
+      }
     }
 
     window.onload = carregarEventos;
