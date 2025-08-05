@@ -3,52 +3,188 @@
 <head>
   <meta charset="UTF-8" />
   <title>Planejamento da Semana</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="assets/base.css" />
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-
-  <!-- Choices.js CSS -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
-
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
-  <script src="assets/menu.js" defer></script>
-  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
-  <script src="planejamento_evento.js" defer></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
   <style>
-    .container {
-      margin-left: 260px;
-      padding: 20px;
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff6ee;
+      margin: 0;
+      padding: 2rem;
     }
+
     h1 {
-      margin-bottom: 20px;
-    }
-    .evento {
-      border: 1px solid #ccc;
-      border-left: 5px solid orange;
-      padding: 15px;
-      margin-bottom: 15px;
-      background-color: #fff;
-    }
-    .evento h2 {
-      margin: 0 0 10px;
-      font-size: 1.2em;
       color: #333;
     }
-    .evento label {
+
+    h2 {
+      font-size: 1.1rem;
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    label {
       font-weight: bold;
-      margin-top: 10px;
       display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .evento {
+      background: #f8f8f8;
+      border-left: 6px solid orange;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .choices__list--multiple .choices__item {
+      display: block;
+      width: 100%;
     }
   </style>
 </head>
 <body>
-  <div class="sidebar" id="menu"></div>
-  <div class="container">
-    <h1>Planejamento da Semana</h1>
-    <div id="listaEventos"></div>
-  </div>
+  <h1>Planejamento da Semana</h1>
+  <div id="listaEventos"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "SUA_AUTH_DOMAIN",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "SUA_STORAGE_BUCKET",
+      messagingSenderId: "SUA_SENDER_ID",
+      appId: "SUA_APP_ID"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function obterInicioEFimDaSemana() {
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const diferencaSegunda = hoje.getDate() - diaSemana + (diaSemana === 0 ? -6 : 1);
+      const segunda = new Date(hoje.setDate(diferencaSegunda));
+      segunda.setHours(0, 0, 0, 0);
+      const domingo = new Date(segunda);
+      domingo.setDate(segunda.getDate() + 6);
+      domingo.setHours(23, 59, 59, 999);
+      return { segunda, domingo };
+    }
+
+    function formatarDataBR(dataStr) {
+      const data = new Date(dataStr + "T03:00:00");
+      return data.toLocaleDateString("pt-BR", { weekday: 'short', day: '2-digit', month: '2-digit' });
+    }
+
+    function obterDiaDaSemanaIndexado(dataStr) {
+      const data = new Date(dataStr + "T03:00:00");
+      return data.getDay();
+    }
+
+    async function carregarEquipe() {
+      const snap = await db.ref("equipe").once("value");
+      const equipeData = snap.val() || {};
+      const mapaEquipe = {};
+      for (const [id, dados] of Object.entries(equipeData)) {
+        mapaEquipe[id] = dados.apelido?.trim() || "Sem apelido";
+      }
+      return mapaEquipe;
+    }
+
+    async function carregarEventosSemana() {
+      const { segunda, domingo } = obterInicioEFimDaSemana();
+      const snap = await db.ref("eventos").once("value");
+      const eventos = snap.val() || {};
+      const equipeMap = await carregarEquipe();
+      const lista = [];
+
+      for (const [id, evento] of Object.entries(eventos)) {
+        const data = evento.data;
+        const dataObj = new Date(data + "T03:00:00");
+        if (dataObj >= segunda && dataObj <= domingo) {
+          const equipeAlocada = (evento.equipe || []).map(e => e.membroId);
+          lista.push({
+            id,
+            nomeEvento: evento.nomeEvento || "Sem nome",
+            data,
+            dataObj,
+            equipeSelecionada: equipeAlocada,
+            equipeMap
+          });
+        }
+      }
+
+      const ordemDias = [6, 0, 1, 2, 3, 4, 5];
+      lista.sort((a, b) => {
+        const diaA = obterDiaDaSemanaIndexado(a.data);
+        const diaB = obterDiaDaSemanaIndexado(b.data);
+        const indexA = ordemDias.indexOf(diaA);
+        const indexB = ordemDias.indexOf(diaB);
+        if (indexA !== indexB) return indexA - indexB;
+        return new Date(a.dataObj) - new Date(b.dataObj);
+      });
+
+      exibirEventos(lista);
+    }
+
+    function exibirEventos(lista) {
+      const container = document.getElementById("listaEventos");
+      container.innerHTML = "";
+
+      if (lista.length === 0) {
+        container.innerHTML = "<p>Nenhum evento encontrado nesta semana.</p>";
+        return;
+      }
+
+      lista.forEach((evento, index) => {
+        const div = document.createElement("div");
+        div.className = "evento";
+
+        const titulo = document.createElement("h2");
+        titulo.textContent = `${formatarDataBR(evento.data)} - ${evento.nomeEvento}`;
+        div.appendChild(titulo);
+
+        const label = document.createElement("label");
+        label.textContent = "Equipe:";
+        div.appendChild(label);
+
+        const select = document.createElement("select");
+        select.setAttribute("multiple", true);
+        select.id = `selectEquipe_${index}`;
+        select.dataset.eventoId = evento.id;
+
+        for (const [id, apelido] of Object.entries(evento.equipeMap)) {
+          const option = document.createElement("option");
+          option.value = id;
+          option.textContent = apelido;
+          if (evento.equipeSelecionada.includes(id)) {
+            option.setAttribute("selected", "selected");
+          }
+          select.appendChild(option);
+        }
+
+        div.appendChild(select);
+        container.appendChild(div);
+
+        setTimeout(() => {
+          new Choices(select, {
+            removeItemButton: true,
+            placeholder: true,
+            placeholderValue: 'Selecione membros...',
+            searchEnabled: true,
+            shouldSort: false
+          });
+        }, 0);
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", carregarEventosSemana);
+  </script>
 </body>
 </html>
