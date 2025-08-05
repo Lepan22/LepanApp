@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Planejamento de Eventos</title>
+    <title>Página de Planejamento de Eventos</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -48,6 +48,7 @@
             padding: 12px;
             text-align: left;
             border-bottom: 1px solid #ddd;
+            vertical-align: top;
         }
         th {
             background-color: #f8f9fa;
@@ -78,6 +79,10 @@
             border-color: #e67e22;
             outline: none;
         }
+        option:disabled {
+            background-color: #e9ecef;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -107,31 +112,25 @@
         let allEquipe = {};
         let allEventos = [];
 
-        // --- Funções de Data ---
         function getWeekRange() {
             const today = new Date();
-            const dayOfWeek = today.getDay(); // 0 (Dom) a 6 (Sáb)
-            
-            // Ajusta para a semana começar na segunda-feira (day 1)
+            const dayOfWeek = today.getDay();
             const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
             const monday = new Date(today);
             monday.setDate(today.getDate() + diffToMonday);
             monday.setHours(0, 0, 0, 0);
-
             const sunday = new Date(monday);
             sunday.setDate(monday.getDate() + 6);
             sunday.setHours(23, 59, 59, 999);
-
             return { start: monday, end: sunday };
         }
 
         function formatDate(dateString) {
-            const date = new Date(dateString + 'T00:00:00'); // Adiciona T00:00:00 para evitar problemas de fuso
+            const date = new Date(dateString + 'T00:00:00');
             const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
             return new Intl.DateTimeFormat('pt-BR', options).format(date);
         }
 
-        // --- Funções de Busca de Dados ---
         async function fetchEquipe() {
             const snapshot = await db.ref('equipe').once('value');
             allEquipe = snapshot.val() || {};
@@ -143,7 +142,6 @@
                 await fetchEquipe();
                 const snapshot = await db.ref('eventos').once('value');
                 const eventosData = snapshot.val() || {};
-                
                 const { start, end } = getWeekRange();
 
                 allEventos = Object.keys(eventosData)
@@ -162,7 +160,18 @@
             }
         }
 
-        // --- Funções de Renderização ---
+        function getEquipeDoEvento(evento) {
+            // <-- ALTERAÇÃO INÍCIO: Verifica os dois caminhos possíveis para a equipe
+            if (evento.equipeAlocada && Array.isArray(evento.equipeAlocada)) {
+                return evento.equipeAlocada;
+            }
+            if (evento.equipe && Array.isArray(evento.equipe)) {
+                return evento.equipe;
+            }
+            return [];
+            // <-- ALTERAÇÃO FIM
+        }
+
         function renderEventos() {
             const container = document.getElementById('eventos-container');
             container.innerHTML = '';
@@ -174,9 +183,7 @@
 
             const eventosAgrupados = allEventos.reduce((acc, evento) => {
                 const data = evento.data;
-                if (!acc[data]) {
-                    acc[data] = [];
-                }
+                if (!acc[data]) acc[data] = [];
                 acc[data].push(evento);
                 return acc;
             }, {});
@@ -188,25 +195,24 @@
                 container.appendChild(header);
 
                 const table = document.createElement('table');
-                const thead = `<thead><tr><th>Evento</th><th class="equipe-col">Equipe Alocada</th><th class="equipe-col">Editar Equipe</th></tr></thead>`;
-                table.innerHTML = thead;
+                table.innerHTML = `<thead><tr><th>Evento</th><th class="equipe-col">Equipe Alocada</th><th class="equipe-col">Editar Equipe</th></tr></thead>`;
                 const tbody = document.createElement('tbody');
 
                 eventosAgrupados[data].forEach(evento => {
                     const row = document.createElement('tr');
-                    
-                    // Coluna Nome do Evento
                     const nomeTd = document.createElement('td');
                     nomeTd.textContent = evento.nomeEvento || 'Sem nome';
                     row.appendChild(nomeTd);
 
-                    // Coluna Equipe Alocada
                     const equipeAlocadaTd = document.createElement('td');
                     equipeAlocadaTd.className = 'equipe-col';
                     const equipeList = document.createElement('ul');
                     equipeList.className = 'equipe-alocada-list';
-                    if (evento.equipeAlocada && evento.equipeAlocada.length > 0) {
-                        evento.equipeAlocada.forEach(membro => {
+                    
+                    const equipeDoEvento = getEquipeDoEvento(evento); // <-- ALTERAÇÃO: Usa a nova função
+
+                    if (equipeDoEvento.length > 0) {
+                        equipeDoEvento.forEach(membro => {
                             const li = document.createElement('li');
                             li.textContent = allEquipe[membro.membroId]?.apelido || 'Membro não encontrado';
                             equipeList.appendChild(li);
@@ -219,7 +225,6 @@
                     equipeAlocadaTd.appendChild(equipeList);
                     row.appendChild(equipeAlocadaTd);
 
-                    // Coluna Editar Equipe (Select)
                     const selectTd = document.createElement('td');
                     selectTd.className = 'equipe-col';
                     const select = document.createElement('select');
@@ -232,7 +237,6 @@
                     
                     selectTd.appendChild(select);
                     row.appendChild(selectTd);
-
                     tbody.appendChild(row);
                 });
                 table.appendChild(tbody);
@@ -245,40 +249,41 @@
 
             const membrosAlocadosNoDia = new Set();
             eventosDoDia.forEach(e => {
-                if (e.id !== eventoAtual.id && e.equipeAlocada) {
-                    e.equipeAlocada.forEach(m => membrosAlocadosNoDia.add(m.membroId));
+                if (e.id !== eventoAtual.id) {
+                    const equipe = getEquipeDoEvento(e); // <-- ALTERAÇÃO: Usa a nova função
+                    equipe.forEach(m => membrosAlocadosNoDia.add(m.membroId));
                 }
             });
 
-            const membrosAlocadosNesteEvento = new Set(
-                eventoAtual.equipeAlocada ? eventoAtual.equipeAlocada.map(m => m.membroId) : []
-            );
+            const equipeAtualDoEvento = getEquipeDoEvento(eventoAtual); // <-- ALTERAÇÃO: Usa a nova função
+            const membrosAlocadosNesteEvento = new Set(equipeAtualDoEvento.map(m => m.membroId));
 
             for (const membroId in allEquipe) {
-                // Adiciona a opção se o membro não estiver alocado em OUTRO evento no mesmo dia
-                if (!membrosAlocadosNoDia.has(membroId)) {
-                    const option = document.createElement('option');
-                    option.value = membroId;
-                    option.textContent = allEquipe[membroId].apelido || allEquipe[membroId].nomeCompleto;
-                    
-                    // Pré-seleciona se ele já estiver neste evento
-                    if (membrosAlocadosNesteEvento.has(membroId)) {
-                        option.selected = true;
-                    }
-                    selectElement.appendChild(option);
+                const option = document.createElement('option');
+                option.value = membroId;
+                option.textContent = allEquipe[membroId].apelido || allEquipe[membroId].nomeCompleto;
+
+                if (membrosAlocadosNesteEvento.has(membroId)) {
+                    option.selected = true;
+                } else if (membrosAlocadosNoDia.has(membroId)) {
+                    // <-- MELHORIA: Desabilita a opção se já estiver em outro evento
+                    option.disabled = true; 
                 }
+                selectElement.appendChild(option);
             }
         }
 
-        // --- Função de Atualização ---
         async function updateEquipe(eventoId, selectElement) {
             const selectedOptions = Array.from(selectElement.selectedOptions);
             const novaEquipe = selectedOptions.map(option => ({ membroId: option.value }));
 
             try {
+                // <-- ALTERAÇÃO: Atualiza sempre para o novo formato 'equipeAlocada'
                 await db.ref(`eventos/${eventoId}/equipeAlocada`).set(novaEquipe);
+                // Remove o campo antigo 'equipe' se ele existir, para manter a consistência
+                await db.ref(`eventos/${eventoId}/equipe`).remove();
+
                 console.log(`Equipe do evento ${eventoId} atualizada com sucesso.`);
-                // Recarrega tudo para garantir a consistência dos selects
                 fetchEventos(); 
             } catch (error) {
                 console.error("Erro ao atualizar a equipe:", error);
@@ -286,7 +291,6 @@
             }
         }
 
-        // --- Inicialização ---
         document.addEventListener('DOMContentLoaded', fetchEventos);
     </script>
 </body>
