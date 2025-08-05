@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title> de Planejamento de Eventos</title>
+    <title>Página de Planejamento de Eventos</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -15,7 +15,7 @@
             padding: 20px;
         }
         .layout {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: auto;
             background-color: #fff;
             border-radius: 8px;
@@ -57,20 +57,29 @@
             background-color: #f5f5f5;
         }
         .equipe-col {
-            width: 250px;
-            max-width: 250px;
-        }
-        .valor-col {
-            width: 150px;
-            max-width: 150px;
+            width: 300px; /* Ajustado para dar mais espaço */
         }
         .equipe-alocada-list {
             list-style-type: none;
             padding: 0;
             margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
         .equipe-alocada-list li {
-            padding: 2px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .equipe-alocada-list label {
+            flex: 1;
+        }
+        .equipe-alocada-list input {
+            width: 80px;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
         }
         select[multiple] {
             width: 100%;
@@ -79,33 +88,9 @@
             border-radius: 4px;
             padding: 5px;
         }
-        select[multiple]:focus {
-            border-color: #e67e22;
-            outline: none;
-        }
         option:disabled {
             background-color: #e9ecef;
             color: #6c757d;
-        }
-        .valor-input-container {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .valor-input-item {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .valor-input-item label {
-            flex-basis: 60%;
-            font-size: 0.9em;
-        }
-        .valor-input-item input {
-            width: 100%;
-            padding: 4px;
-            border: 1px solid #ccc;
-            border-radius: 3px;
         }
     </style>
 </head>
@@ -217,7 +202,7 @@
                 container.appendChild(header);
 
                 const table = document.createElement('table');
-                table.innerHTML = `<thead><tr><th>Evento</th><th class="equipe-col">Equipe Alocada</th><th class="equipe-col">Editar Equipe</th><th class="valor-col">Valor da Diária</th></tr></thead>`;
+                table.innerHTML = `<thead><tr><th>Evento</th><th class="equipe-col">Equipe Alocada</th><th class="equipe-col">Editar Equipe</th></tr></thead>`;
                 const tbody = document.createElement('tbody');
 
                 eventosAgrupados[data].forEach(evento => {
@@ -232,20 +217,6 @@
                     equipeAlocadaTd.className = 'equipe-col';
                     const equipeList = document.createElement('ul');
                     equipeList.className = 'equipe-alocada-list';
-                    const equipeDoEvento = getEquipeDoEvento(evento);
-                    if (equipeDoEvento.length > 0) {
-                        equipeDoEvento.forEach(membro => {
-                            if (membro && membro.membroId && allEquipe[membro.membroId]) {
-                                const li = document.createElement('li');
-                                const valorFormatado = membro.valor ? ` (R$ ${parseFloat(membro.valor).toFixed(2)})` : '';
-                                li.textContent = `${allEquipe[membro.membroId].apelido}${valorFormatado}`;
-                                equipeList.appendChild(li);
-                            }
-                        });
-                    }
-                    if (equipeList.children.length === 0) {
-                        equipeList.innerHTML = '<li>Nenhuma equipe alocada</li>';
-                    }
                     equipeAlocadaTd.appendChild(equipeList);
                     row.appendChild(equipeAlocadaTd);
 
@@ -256,21 +227,14 @@
                     populateSelect(select, evento, eventosAgrupados[data]);
                     selectTd.appendChild(select);
                     row.appendChild(selectTd);
-
-                    const valorTd = document.createElement('td');
-                    valorTd.className = 'valor-col';
-                    const valorContainer = document.createElement('div');
-                    valorContainer.className = 'valor-input-container';
-                    valorTd.appendChild(valorContainer);
-                    row.appendChild(valorTd);
                     
                     select.addEventListener('change', () => {
-                        updateValorInputs(evento.id);
+                        updateEquipeAlocadaUI(evento.id);
                         updateEquipe(evento.id);
                     });
 
                     tbody.appendChild(row);
-                    updateValorInputs(evento.id);
+                    updateEquipeAlocadaUI(evento.id);
                 });
                 table.appendChild(tbody);
                 container.appendChild(table);
@@ -305,24 +269,28 @@
             }
         }
 
-        function updateValorInputs(eventoId) {
+        function updateEquipeAlocadaUI(eventoId) {
             const row = document.getElementById(`row-${eventoId}`);
             if (!row) return;
+
+            const equipeList = row.querySelector('.equipe-alocada-list');
             const selectElement = row.querySelector('select');
-            const valorContainer = row.querySelector('.valor-input-container');
-            valorContainer.innerHTML = '';
+            equipeList.innerHTML = '';
 
             const evento = allEventos.find(e => e.id === eventoId);
-            const equipeAtual = getEquipeDoEvento(evento);
+            const equipeSalva = getEquipeDoEvento(evento);
             const selectedOptions = Array.from(selectElement.selectedOptions);
+
+            if (selectedOptions.length === 0) {
+                equipeList.innerHTML = '<li>Nenhuma equipe alocada</li>';
+                return;
+            }
 
             selectedOptions.forEach(option => {
                 const membroId = option.value;
                 const membroInfo = allEquipe[membroId];
-                
-                const itemContainer = document.createElement('div');
-                itemContainer.className = 'valor-input-item';
 
+                const li = document.createElement('li');
                 const label = document.createElement('label');
                 label.textContent = membroInfo.apelido;
                 label.htmlFor = `valor-${eventoId}-${membroId}`;
@@ -334,25 +302,25 @@
                 input.placeholder = "R$";
                 input.step = "0.01";
 
-                const membroExistente = equipeAtual.find(m => m.membroId === membroId);
-                if (membroExistente && membroExistente.valor) {
-                    input.value = parseFloat(membroExistente.valor).toFixed(2);
+                const membroSalvo = equipeSalva.find(m => m.membroId === membroId);
+                if (membroSalvo && membroSalvo.valor) {
+                    input.value = parseFloat(membroSalvo.valor).toFixed(2);
                 } else if (membroInfo.valorDiaria) {
                     input.value = parseFloat(membroInfo.valorDiaria).toFixed(2);
                 }
-                
+
                 input.addEventListener('change', () => updateEquipe(eventoId));
 
-                itemContainer.appendChild(label);
-                itemContainer.appendChild(input);
-                valorContainer.appendChild(itemContainer);
+                li.appendChild(label);
+                li.appendChild(input);
+                equipeList.appendChild(li);
             });
         }
 
         async function updateEquipe(eventoId) {
             const row = document.getElementById(`row-${eventoId}`);
             if (!row) return;
-            const valorInputs = row.querySelectorAll('.valor-input-container input');
+            const valorInputs = row.querySelectorAll('.equipe-alocada-list input');
             
             const novaEquipe = Array.from(valorInputs).map(input => ({
                 membroId: input.dataset.membroId,
@@ -362,8 +330,13 @@
             try {
                 await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
                 console.log(`Equipe e valores do evento ${eventoId} salvos com sucesso.`);
-                // Não recarrega mais a tela inteira, apenas atualiza os dados em memória
-                // para evitar a perda de foco. A atualização visual acontecerá na próxima carga.
+                
+                // Atualiza o objeto em memória para que a próxima renderização seja consistente
+                const eventoIndex = allEventos.findIndex(e => e.id === eventoId);
+                if (eventoIndex > -1) {
+                    allEventos[eventoIndex].equipe = novaEquipe;
+                }
+
             } catch (error) {
                 console.error("Erro ao atualizar a equipe:", error);
                 alert("Ocorreu um erro ao salvar a equipe. Tente novamente.");
