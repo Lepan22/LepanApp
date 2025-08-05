@@ -1,62 +1,46 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Eventos da Semana</title>
+  <meta charset="UTF-8" />
+  <title>Planejamento da Semana</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
+  <script src="planejamento_evento.js" defer></script>
+  <style>
+    .container {
+      margin-left: 260px;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .evento {
+      border: 1px solid #ccc;
+      border-left: 5px solid orange;
+      padding: 15px;
+      margin-bottom: 15px;
+      background-color: #fff;
+    }
+    .evento h2 {
+      margin: 0 0 10px;
+      font-size: 1.2em;
+      color: #333;
+    }
+    .evento p {
+      margin: 4px 0;
+      color: #555;
+    }
+  </style>
 </head>
 <body>
-  <h1>Eventos da Semana</h1>
-  <ul id="listaEventos"></ul>
-
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyDGEwrH1wbqzYKt2kPfwCMIMFbdAYV_pis",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "1092412781669",
-      appId: "1:1092412781669:web:a1fd648b9c03be53885eb5"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    function getSegundaEProxima() {
-      const hoje = new Date();
-      const dia = hoje.getDay();
-      const segunda = new Date(hoje);
-      segunda.setDate(hoje.getDate() - ((dia + 6) % 7));
-      segunda.setHours(0, 0, 0, 0);
-
-      const proximaSegunda = new Date(segunda);
-      proximaSegunda.setDate(segunda.getDate() + 7);
-      return { segunda, proximaSegunda };
-    }
-
-    function listarEventosSemana() {
-      const { segunda, proximaSegunda } = getSegundaEProxima();
-      db.ref('eventos').once('value').then(snapshot => {
-        const eventos = snapshot.val();
-        const lista = document.getElementById('listaEventos');
-        lista.innerHTML = '';
-
-        for (const id in eventos) {
-          const evento = eventos[id];
-          if (!evento.data || !evento.nomeEvento) continue;
-
-          const dataEvento = new Date(evento.data);
-          if (dataEvento >= segunda && dataEvento < proximaSegunda) {
-            const item = document.createElement('li');
-            item.textContent = `${evento.nomeEvento} - ${evento.data}`;
-            lista.appendChild(item);
-          }
-        }
-      });
-    }
-
-    window.onload = listarEventosSemana;
-  </script>
+  <div class="sidebar" id="menu"></div>
+  <div class="container">
+    <h1>Planejamento da Semana</h1>
+    <div id="listaEventos"></div>
+  </div>
 </body>
 </html>
