@@ -92,12 +92,23 @@
       background-color: #e9ecef;
       color: #6c757d;
     }
+    .save-button {
+      margin-bottom: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #2ecc71;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
   <div class="layout">
     <main class="main-content">
       <h2>Planejamento de Eventos da Semana</h2>
+      <button onclick="salvarTodasAlocacoes()" class="save-button">💾 Salvar Alterações</button>
       <div id="eventos-container">
         <p>Carregando eventos...</p>
       </div>
@@ -112,220 +123,3 @@
       projectId: "lepanapp",
       storageBucket: "lepanapp.appspot.com",
       messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let allEquipe = {};
-    let allLogistica = {};
-    let allEventos = [];
-
-    function getWeekRange() {
-      const today = new Date();
-      const dayOfWeek = today.getDay();
-      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const monday = new Date(today);
-      monday.setDate(today.getDate() + diffToMonday);
-      monday.setHours(0, 0, 0, 0);
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
-      sunday.setHours(23, 59, 59, 999);
-      return { start: monday, end: sunday };
-    }
-
-    function formatDate(dateString) {
-      const date = new Date(dateString + 'T00:00:00');
-      const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
-      return new Intl.DateTimeFormat('pt-BR', options).format(date);
-    }
-
-    async function fetchEquipe() {
-      const snapshot = await db.ref('equipe').once('value');
-      allEquipe = snapshot.val() || {};
-    }
-
-    async function fetchLogistica() {
-      const snapshot = await db.ref('logistica').once('value');
-      allLogistica = snapshot.val() || {};
-    }
-
-    async function fetchEventos() {
-      try {
-        await fetchEquipe();
-        await fetchLogistica();
-        const snapshot = await db.ref('eventos').once('value');
-        const eventosData = snapshot.val() || {};
-        const { start, end } = getWeekRange();
-
-        allEventos = Object.keys(eventosData)
-          .map(key => ({ id: key, ...eventosData[key] }))
-          .filter(evento => {
-            if (!evento.data) return false;
-            const eventoDate = new Date(evento.data + 'T00:00:00');
-            return eventoDate >= start && eventoDate <= end;
-          })
-          .sort((a, b) => new Date(a.data) - new Date(b.data));
-
-        renderEventos();
-      } catch (error) {
-        console.error("Erro ao buscar eventos:", error);
-        document.getElementById('eventos-container').innerHTML = '<p>Erro ao carregar os eventos. Verifique o console.</p>';
-      }
-    }
-
-    function getEquipeDoEvento(evento) {
-      return Array.isArray(evento.equipe) ? evento.equipe : [];
-    }
-
-    function getLogisticaDoEvento(evento) {
-      return Array.isArray(evento.logistica) ? evento.logistica : [];
-    }
-
-    function renderEventos() {
-      const container = document.getElementById('eventos-container');
-      container.innerHTML = '';
-
-      if (allEventos.length === 0) {
-        container.innerHTML = '<p>Nenhum evento encontrado para a semana atual.</p>';
-        return;
-      }
-
-      const eventosAgrupados = allEventos.reduce((acc, evento) => {
-        const data = evento.data;
-        if (!acc[data]) acc[data] = [];
-        acc[data].push(evento);
-        return acc;
-      }, {});
-
-      for (const data in eventosAgrupados) {
-        const header = document.createElement('div');
-        header.className = 'date-header';
-        header.textContent = formatDate(data);
-        container.appendChild(header);
-
-        const table = document.createElement('table');
-        table.innerHTML = `
-          <thead>
-            <tr>
-              <th>Evento</th>
-              <th class="equipe-col">Equipe</th>
-              <th class="equipe-col">Editar Equipe</th>
-              <th class="equipe-col">Logística</th>
-              <th class="equipe-col">Editar Logística</th>
-            </tr>
-          </thead>`;
-        const tbody = document.createElement('tbody');
-
-        eventosAgrupados[data].forEach(evento => {
-          const row = document.createElement('tr');
-          row.id = `row-${evento.id}`;
-          row.innerHTML = `<td>${evento.nomeEvento || 'Sem nome'}</td>`;
-
-          const equipeList = renderList(getEquipeDoEvento(evento), allEquipe, 'membroId');
-          const equipeSelect = renderSelect(getEquipeDoEvento(evento), eventosAgrupados[data], evento.id, allEquipe, 'membroId', true);
-
-          const logisticaList = renderList(getLogisticaDoEvento(evento), allLogistica, 'prestadorId');
-          const logisticaSelect = renderSelect(getLogisticaDoEvento(evento), eventosAgrupados[data], evento.id, allLogistica, 'prestadorId', false);
-
-          row.appendChild(wrapTd(equipeList));
-          row.appendChild(wrapTd(equipeSelect));
-          row.appendChild(wrapTd(logisticaList));
-          row.appendChild(wrapTd(logisticaSelect));
-
-          tbody.appendChild(row);
-        });
-
-        table.appendChild(tbody);
-        container.appendChild(table);
-      }
-    }
-
-    function wrapTd(content) {
-      const td = document.createElement('td');
-      td.className = 'equipe-col';
-      td.appendChild(content);
-      return td;
-    }
-
-    function renderList(lista, base, idField) {
-      const ul = document.createElement('ul');
-      ul.className = 'equipe-alocada-list';
-      if (lista.length === 0) {
-        ul.innerHTML = '<li>Nenhum alocado</li>';
-        return ul;
-      }
-      lista.forEach(item => {
-        if (item && item[idField] && base[item[idField]]) {
-          const li = document.createElement('li');
-          li.innerHTML = `
-            <label>${base[item[idField]].apelido || base[item[idField]].nome}</label>
-            <input type="number" data-${idField.toLowerCase()}="${item[idField]}" step="0.01" value="${item.valor ? parseFloat(item.valor).toFixed(2) : (base[item[idField]].valorDiaria || base[item[idField]].valorFrete || '')}" />
-          `;
-          ul.appendChild(li);
-        }
-      });
-      return ul;
-    }
-
-    function renderSelect(listaAtual, eventosDia, eventoId, base, idField, bloquear) {
-      const select = document.createElement('select');
-      select.multiple = true;
-
-      const usados = new Set();
-      if (bloquear) {
-        eventosDia.forEach(e => {
-          if (e.id !== eventoId) {
-            (Array.isArray(e[idField === 'membroId' ? 'equipe' : 'logistica']) ? e[idField === 'membroId' ? 'equipe' : 'logistica'] : []).forEach(item => {
-              usados.add(item[idField]);
-            });
-          }
-        });
-      }
-
-      const atuais = new Set(listaAtual.map(i => i[idField]));
-      for (const id in base) {
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = base[id].apelido || base[id].nome;
-        if (atuais.has(id)) opt.selected = true;
-        else if (bloquear && usados.has(id)) opt.disabled = true;
-        select.appendChild(opt);
-      }
-
-      select.addEventListener('change', () => salvarAlocacao(eventoId));
-      return select;
-    }
-
-    async function salvarAlocacao(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      const membroIds = Array.from(row.querySelectorAll('select')[0].selectedOptions).map(o => o.value);
-      const prestadorIds = Array.from(row.querySelectorAll('select')[1].selectedOptions).map(o => o.value);
-
-      const equipe = membroIds.map(id => {
-        const input = row.querySelector(`input[data-membroid="${id}"]`);
-        const valor = input ? parseFloat(input.value) : (allEquipe[id]?.valorDiaria || 0);
-        return { membroId: id, valor };
-      });
-
-      const logistica = prestadorIds.map(id => {
-        const input = row.querySelector(`input[data-prestadorid="${id}"]`);
-        const valor = input ? parseFloat(input.value) : (allLogistica[id]?.valorFrete || 0);
-        return { prestadorId: id, valor };
-      });
-
-      try {
-        await db.ref(`eventos/${eventoId}/equipe`).set(equipe);
-        await db.ref(`eventos/${eventoId}/logistica`).set(logistica);
-        fetchEventos();
-      } catch (e) {
-        console.error("Erro ao salvar:", e);
-        alert("Erro ao salvar alterações.");
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', fetchEventos);
-  </script>
-</body>
-</html>
