@@ -1,21 +1,136 @@
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Planejamento de Eventos da Semana</title>
-  <link rel="stylesheet" href="assets/base.css" />
+  <title>GestãoEvento</title>
+
   <link rel="stylesheet" href="assets/menu-styles.css" />
-  <script src="assets/menu.js" defer></script>
+  <link rel="stylesheet" href="assets/base.css" />
+
+  <style>
+    body {
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    input, select, textarea, button {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      background-color: #198754;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #146c43;
+    }
+
+    .btn-cinza {
+      background-color: #eee;
+      color: #333;
+      border: 1px solid #ccc;
+    }
+
+    .btn-cinza:hover {
+      background-color: #ddd;
+    }
+
+    .totais-resumo {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 13px;
+      padding: 8px;
+      background: #f5f5f5;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+
+    .totais-resumo span {
+      min-width: 180px;
+    }
+
+    .grupo-flex {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+
+    .grupo-flex > div {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .grupo-inline {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    #tabelaProdutos input {
+      text-align: right;
+      font-size: 12px;
+      padding: 2px 4px;
+      height: 26px;
+      width: 60px;
+    }
+
+    #tabelaProdutos td:first-child input {
+      text-align: left;
+      width: 200px;
+    }
+
+    #tabelaProdutos td {
+      padding: 2px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 13px;
+    }
+
+    th {
+      background-color: #ff7f00;
+      color: white;
+      padding: 6px;
+    }
+
+    td {
+      border: 1px solid #ddd;
+    }
+
+    .section-title {
+      font-weight: bold;
+      font-size: 15px;
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    datalist {
+      display: none;
+    }
+  </style>
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="assets/menu.js" defer></script>
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar" id="menu-lateral">
-      <!-- Menu será carregado por menu.js -->
-    </aside>
+    <aside class="sidebar" id="menuLateral"></aside>
+
+    <main class="main-content">
     <main class="main-content">
       <h2>Planejamento de Eventos da Semana</h2>
       <div id="eventos-container">
@@ -23,6 +138,7 @@
       </div>
     </main>
   </div>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -34,7 +150,358 @@
       appId: "1:542989944344:web:576e28199960fd5440a56d"
     };
     firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let allEquipe = {};
+    let allLogistica = {};
+    let allEquipamentos = {};
+    let allEventos = [];
+
+    function getWeekRange() {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + diffToMonday);
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      return { start: monday, end: sunday };
+    }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString + 'T00:00:00');
+      const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
+      return new Intl.DateTimeFormat('pt-BR', options).format(date);
+    }
+
+    async function fetchEquipe() {
+      const snapshot = await db.ref('equipe').once('value');
+      allEquipe = snapshot.val() || {};
+    }
+
+    async function fetchLogistica() {
+      const snapshot = await db.ref('logistica').once('value');
+      allLogistica = snapshot.val() || {};
+    }
+
+    async function fetchEquipamentos() {
+      const snapshot = await db.ref('equipamentos').once('value');
+      allEquipamentos = snapshot.val() || {};
+    }
+
+    async function fetchEventos() {
+      try {
+        await fetchEquipe();
+        await fetchLogistica();
+        await fetchEquipamentos();
+        const snapshot = await db.ref('eventos').once('value');
+        const eventosData = snapshot.val() || {};
+        const { start, end } = getWeekRange();
+
+        allEventos = Object.keys(eventosData)
+          .map(key => ({ id: key, ...eventosData[key] }))
+          .filter(evento => {
+            if (!evento.data) return false;
+            const eventoDate = new Date(evento.data + 'T00:00:00');
+            return eventoDate >= start && eventoDate <= end;
+          })
+          .sort((a, b) => new Date(a.data) - new Date(b.data));
+
+        renderEventos();
+      } catch (error) {
+        console.error("Erro ao buscar eventos:", error);
+        document.getElementById('eventos-container').innerHTML = '<p>Erro ao carregar os eventos. Verifique o console.</p>';
+      }
+    }
+    function getEquipeDoEvento(evento) {
+      if (evento && Array.isArray(evento.equipe)) return evento.equipe;
+      if (evento && Array.isArray(evento.equipeAlocada)) return evento.equipeAlocada;
+      return [];
+    }
+
+    function getLogisticaDoEvento(evento) {
+      return Array.isArray(evento.logistica) ? evento.logistica : [];
+    }
+
+    function getEquipamentosDoEvento(evento) {
+      return Array.isArray(evento.equipamentos) ? evento.equipamentos : [];
+    }
+
+    function renderEventos() {
+      const container = document.getElementById('eventos-container');
+      container.innerHTML = '';
+
+      if (allEventos.length === 0) {
+        container.innerHTML = '<p>Nenhum evento encontrado para a semana atual.</p>';
+        return;
+      }
+
+      const eventosAgrupados = allEventos.reduce((acc, evento) => {
+        const data = evento.data;
+        if (!acc[data]) acc[data] = [];
+        acc[data].push(evento);
+        return acc;
+      }, {});
+
+      for (const data in eventosAgrupados) {
+        const header = document.createElement('div');
+        header.className = 'date-header';
+        header.textContent = formatDate(data);
+        container.appendChild(header);
+
+        const table = document.createElement('table');
+        table.innerHTML = `<thead><tr>
+            <th>Evento</th>
+            <th class="equipe-col">Equipe Alocada</th>
+            <th class="equipe-col">Editar Equipe</th>
+            <th class="equipe-col">Logística Alocada</th>
+            <th class="equipe-col">Editar Logística</th>
+            <th class="equipe-col">Equipamento Alocado</th>
+            <th class="equipe-col">Equipamento</th>
+            <th class="equipe-col">OBS</th>
+          </tr></thead>`;
+        const tbody = document.createElement('tbody');
+
+        const equipamentosUsadosNoDia = new Set();
+        eventosAgrupados[data].forEach(e => {
+          if (e.equipamentos) {
+            e.equipamentos.forEach(eq => equipamentosUsadosNoDia.add(eq.equipamentoId));
+          }
+        });
+
+        eventosAgrupados[data].forEach(evento => {
+          const row = document.createElement('tr');
+          row.id = `row-${evento.id}`;
+
+          const nomeTd = document.createElement('td');
+          nomeTd.textContent = evento.nomeEvento || 'Sem nome';
+          row.appendChild(nomeTd);
+          // Equipe Alocada
+          const equipeTd = document.createElement('td');
+          equipeTd.className = 'equipe-col';
+          const equipeList = document.createElement('ul');
+          equipeList.className = 'equipe-alocada-list';
+          const equipeDoEvento = getEquipeDoEvento(evento);
+          if (equipeDoEvento.length > 0) {
+            equipeDoEvento.forEach(membro => {
+              if (membro?.membroId && allEquipe[membro.membroId]) {
+                const li = document.createElement('li');
+                const label = document.createElement('label');
+                label.textContent = allEquipe[membro.membroId].apelido;
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.dataset.membroId = membro.membroId;
+                input.placeholder = "R$";
+                input.step = "0.01";
+                input.value = membro.valor ? parseFloat(membro.valor).toFixed(2) : (allEquipe[membro.membroId].valorDiaria || '');
+                input.addEventListener('change', () => updateEquipe(evento.id));
+                li.appendChild(label);
+                li.appendChild(input);
+                equipeList.appendChild(li);
+              }
+            });
+          } else {
+            equipeList.innerHTML = '<li>Nenhuma equipe alocada</li>';
+          }
+          equipeTd.appendChild(equipeList);
+          row.appendChild(equipeTd);
+
+          // Editar Equipe
+          const equipeSelectTd = document.createElement('td');
+          equipeSelectTd.className = 'equipe-col';
+          const equipeSelect = document.createElement('select');
+          equipeSelect.multiple = true;
+          populateSelect(equipeSelect, evento, eventosAgrupados[data]);
+          equipeSelect.addEventListener('change', () => updateEquipe(evento.id));
+          equipeSelectTd.appendChild(equipeSelect);
+          row.appendChild(equipeSelectTd);
+
+          // Logística Alocada
+          const logisticaTd = document.createElement('td');
+          logisticaTd.className = 'equipe-col';
+          const logisticaList = document.createElement('ul');
+          logisticaList.className = 'equipe-alocada-list';
+          const logisticaDoEvento = getLogisticaDoEvento(evento);
+          if (logisticaDoEvento.length > 0) {
+            logisticaDoEvento.forEach(prestador => {
+              if (prestador?.prestadorId && allLogistica[prestador.prestadorId]) {
+                const li = document.createElement('li');
+                const label = document.createElement('label');
+                label.textContent = allLogistica[prestador.prestadorId].nome;
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.dataset.prestadorId = prestador.prestadorId;
+                input.placeholder = "R$";
+                input.step = "0.01";
+                input.value = prestador.valor ? parseFloat(prestador.valor).toFixed(2) : '';
+                input.addEventListener('change', () => updateLogistica(evento.id));
+                li.appendChild(label);
+                li.appendChild(input);
+                logisticaList.appendChild(li);
+              }
+            });
+          } else {
+            logisticaList.innerHTML = '<li>Nenhuma logística alocada</li>';
+          }
+          logisticaTd.appendChild(logisticaList);
+          row.appendChild(logisticaTd);
+
+          // Editar Logística
+          const logisticaSelectTd = document.createElement('td');
+          logisticaSelectTd.className = 'equipe-col';
+          const logisticaSelect = document.createElement('select');
+          logisticaSelect.multiple = true;
+          for (const id in allLogistica) {
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = allLogistica[id].nome;
+            if (logisticaDoEvento.find(p => p.prestadorId === id)) {
+              option.selected = true;
+            }
+            logisticaSelect.appendChild(option);
+          }
+          logisticaSelect.addEventListener('change', () => updateLogistica(evento.id));
+          logisticaSelectTd.appendChild(logisticaSelect);
+          row.appendChild(logisticaSelectTd);
+
+          // Equipamento Alocado
+          const equipamentoAlocadoTd = document.createElement('td');
+          equipamentoAlocadoTd.className = 'equipe-col';
+          const equipamentoList = document.createElement('ul');
+          equipamentoList.className = 'equipe-alocada-list';
+          const equipamentosDoEvento = getEquipamentosDoEvento(evento);
+          if (equipamentosDoEvento.length > 0) {
+            equipamentosDoEvento.forEach(eq => {
+              if (eq?.equipamentoId && allEquipamentos[eq.equipamentoId]) {
+                const li = document.createElement('li');
+                li.textContent = allEquipamentos[eq.equipamentoId].nome;
+                equipamentoList.appendChild(li);
+              }
+            });
+          } else {
+            equipamentoList.innerHTML = '<li>Nenhum equipamento alocado</li>';
+          }
+          equipamentoAlocadoTd.appendChild(equipamentoList);
+          row.appendChild(equipamentoAlocadoTd);
+
+          // Editar Equipamento
+          const equipamentoTd = document.createElement('td');
+          equipamentoTd.className = 'equipe-col';
+          const equipamentoSelect = document.createElement('select');
+          equipamentoSelect.multiple = true;
+          const usadosNesteEvento = new Set(equipamentosDoEvento.map(e => e.equipamentoId));
+
+          for (const id in allEquipamentos) {
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = allEquipamentos[id].nome;
+            if (usadosNesteEvento.has(id)) {
+              option.selected = true;
+            } else if (equipamentosUsadosNoDia.has(id)) {
+              option.disabled = true;
+            }
+            equipamentoSelect.appendChild(option);
+          }
+          equipamentoSelect.addEventListener('change', () => updateEquipamento(evento.id));
+          equipamentoTd.appendChild(equipamentoSelect);
+          row.appendChild(equipamentoTd);
+
+          // OBSERVAÇÃO
+          const obsTd = document.createElement('td');
+          obsTd.className = 'equipe-col';
+          const obsTextarea = document.createElement('textarea');
+          obsTextarea.className = 'observacao';
+          obsTextarea.placeholder = 'OBS';
+          obsTextarea.value = evento.observacao || '';
+          obsTextarea.addEventListener('change', () => {
+            const texto = obsTextarea.value;
+            db.ref(`eventos/${evento.id}/observacao`).set(texto);
+          });
+          obsTd.appendChild(obsTextarea);
+          row.appendChild(obsTd);
+
+          tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        container.appendChild(table);
+      }
+    }
+    function populateSelect(selectElement, eventoAtual, eventosDoDia) {
+      selectElement.innerHTML = '';
+      const membrosAlocadosNoDia = new Set();
+      eventosDoDia.forEach(e => {
+        if (e.id !== eventoAtual.id) {
+          getEquipeDoEvento(e).forEach(m => {
+            if (m?.membroId) membrosAlocadosNoDia.add(m.membroId);
+          });
+        }
+      });
+
+      const equipeAtual = getEquipeDoEvento(eventoAtual);
+      const membrosAlocadosNesteEvento = new Set(equipeAtual.map(m => m.membroId));
+
+      for (const membroId in allEquipe) {
+        const option = document.createElement('option');
+        option.value = membroId;
+        option.textContent = allEquipe[membroId].apelido || allEquipe[membroId].nomeCompleto;
+
+        if (membrosAlocadosNesteEvento.has(membroId)) {
+          option.selected = true;
+        } else if (membrosAlocadosNoDia.has(membroId)) {
+          option.disabled = true;
+        }
+        selectElement.appendChild(option);
+      }
+    }
+
+    async function updateEquipe(eventoId) {
+      const row = document.getElementById(`row-${eventoId}`);
+      if (!row) return;
+      const select = row.querySelectorAll('select')[0];
+      const options = Array.from(select.selectedOptions);
+      const novaEquipe = options.map(opt => {
+        const membroId = opt.value;
+        const input = row.querySelector(`input[data-membro-id="${membroId}"]`);
+        let valor = input ? parseFloat(input.value) || 0 : (allEquipe[membroId]?.valorDiaria || 0);
+        return { membroId, valor };
+      });
+
+      await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
+      fetchEventos();
+    }
+
+    async function updateLogistica(eventoId) {
+      const row = document.getElementById(`row-${eventoId}`);
+      if (!row) return;
+      const select = row.querySelectorAll('select')[1];
+      const options = Array.from(select.selectedOptions);
+      const novaLogistica = options.map(opt => {
+        const prestadorId = opt.value;
+        const input = row.querySelector(`input[data-prestador-id="${prestadorId}"]`);
+        let valor = input ? parseFloat(input.value) || 0 : 0;
+        return { prestadorId, valor };
+      });
+
+      await db.ref(`eventos/${eventoId}/logistica`).set(novaLogistica);
+      fetchEventos();
+    }
+
+    async function updateEquipamento(eventoId) {
+      const row = document.getElementById(`row-${eventoId}`);
+      if (!row) return;
+      const select = row.querySelectorAll('select')[2];
+      const options = Array.from(select.selectedOptions);
+      const novosEquipamentos = options.map(opt => ({
+        equipamentoId: opt.value
+      }));
+      await db.ref(`eventos/${eventoId}/equipamentos`).set(novosEquipamentos);
+      fetchEventos();
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchEventos);
   </script>
-  <script src="assets/planejamento_eventos.js" defer></script>
 </body>
 </html>
