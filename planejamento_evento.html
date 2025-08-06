@@ -19,7 +19,7 @@
       margin: auto;
       background-color: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05 );
       overflow: hidden;
     }
     .main-content {
@@ -164,6 +164,7 @@
         const snapshot = await db.ref('eventos').once('value');
         const eventosData = snapshot.val() || {};
         const { start, end } = getWeekRange();
+
         allEventos = Object.keys(eventosData)
           .map(key => ({ id: key, ...eventosData[key] }))
           .filter(evento => {
@@ -172,6 +173,7 @@
             return eventoDate >= start && eventoDate <= end;
           })
           .sort((a, b) => new Date(a.data) - new Date(b.data));
+
         renderEventos();
       } catch (error) {
         console.error("Erro ao buscar eventos:", error);
@@ -179,8 +181,8 @@
       }
     }
     function getEquipeDoEvento(evento) {
-      if (evento && evento.equipe && Array.isArray(evento.equipe)) return evento.equipe;
-      if (evento && evento.equipeAlocada && Array.isArray(evento.equipeAlocada)) return evento.equipeAlocada;
+      if (evento && Array.isArray(evento.equipe)) return evento.equipe;
+      if (evento && Array.isArray(evento.equipeAlocada)) return evento.equipeAlocada;
       return [];
     }
 
@@ -221,11 +223,11 @@
             <th class="equipe-col">Editar Equipe</th>
             <th class="equipe-col">Logística Alocada</th>
             <th class="equipe-col">Editar Logística</th>
+            <th class="equipe-col">Equipamento Alocado</th>
             <th class="equipe-col">Equipamento</th>
           </tr></thead>`;
         const tbody = document.createElement('tbody');
 
-        // bloquear equipamento já usado nesse dia
         const equipamentosUsadosNoDia = new Set();
         eventosAgrupados[data].forEach(e => {
           if (e.equipamentos) {
@@ -241,7 +243,7 @@
           nomeTd.textContent = evento.nomeEvento || 'Sem nome';
           row.appendChild(nomeTd);
 
-          // EQUIPE ALOCADA
+          // Equipe Alocada
           const equipeTd = document.createElement('td');
           equipeTd.className = 'equipe-col';
           const equipeList = document.createElement('ul');
@@ -271,7 +273,7 @@
           equipeTd.appendChild(equipeList);
           row.appendChild(equipeTd);
 
-          // EDITAR EQUIPE
+          // Editar Equipe
           const equipeSelectTd = document.createElement('td');
           equipeSelectTd.className = 'equipe-col';
           const equipeSelect = document.createElement('select');
@@ -281,7 +283,7 @@
           equipeSelectTd.appendChild(equipeSelect);
           row.appendChild(equipeSelectTd);
 
-          // LOGÍSTICA ALOCADA
+          // Logística Alocada
           const logisticaTd = document.createElement('td');
           logisticaTd.className = 'equipe-col';
           const logisticaList = document.createElement('ul');
@@ -310,8 +312,7 @@
           }
           logisticaTd.appendChild(logisticaList);
           row.appendChild(logisticaTd);
-
-          // EDITAR LOGÍSTICA
+          // Editar Logística
           const logisticaSelectTd = document.createElement('td');
           logisticaSelectTd.className = 'equipe-col';
           const logisticaSelect = document.createElement('select');
@@ -329,12 +330,31 @@
           logisticaSelectTd.appendChild(logisticaSelect);
           row.appendChild(logisticaSelectTd);
 
-          // EQUIPAMENTO
+          // Equipamento Alocado
+          const equipamentoAlocadoTd = document.createElement('td');
+          equipamentoAlocadoTd.className = 'equipe-col';
+          const equipamentoList = document.createElement('ul');
+          equipamentoList.className = 'equipe-alocada-list';
+          const equipamentosDoEvento = getEquipamentosDoEvento(evento);
+          if (equipamentosDoEvento.length > 0) {
+            equipamentosDoEvento.forEach(eq => {
+              if (eq?.equipamentoId && allEquipamentos[eq.equipamentoId]) {
+                const li = document.createElement('li');
+                li.textContent = allEquipamentos[eq.equipamentoId].nome;
+                equipamentoList.appendChild(li);
+              }
+            });
+          } else {
+            equipamentoList.innerHTML = '<li>Nenhum equipamento alocado</li>';
+          }
+          equipamentoAlocadoTd.appendChild(equipamentoList);
+          row.appendChild(equipamentoAlocadoTd);
+
+          // Editar Equipamento
           const equipamentoTd = document.createElement('td');
           equipamentoTd.className = 'equipe-col';
           const equipamentoSelect = document.createElement('select');
           equipamentoSelect.multiple = true;
-          const equipamentosDoEvento = getEquipamentosDoEvento(evento);
           const usadosNesteEvento = new Set(equipamentosDoEvento.map(e => e.equipamentoId));
 
           for (const id in allEquipamentos) {
@@ -362,6 +382,7 @@
         container.appendChild(table);
       }
     }
+
     function populateSelect(selectElement, eventoAtual, eventosDoDia) {
       selectElement.innerHTML = '';
       const membrosAlocadosNoDia = new Set();
