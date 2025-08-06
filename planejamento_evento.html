@@ -88,6 +88,15 @@
       border-radius: 4px;
       padding: 5px;
     }
+    textarea.observacao {
+      width: 100%;
+      height: 80px;
+      resize: vertical;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: inherit;
+    }
     option:disabled {
       background-color: #e9ecef;
       color: #6c757d;
@@ -225,6 +234,7 @@
             <th class="equipe-col">Editar Logística</th>
             <th class="equipe-col">Equipamento Alocado</th>
             <th class="equipe-col">Equipamento</th>
+            <th class="equipe-col">OBS</th>
           </tr></thead>`;
         const tbody = document.createElement('tbody');
 
@@ -242,7 +252,6 @@
           const nomeTd = document.createElement('td');
           nomeTd.textContent = evento.nomeEvento || 'Sem nome';
           row.appendChild(nomeTd);
-
           // Equipe Alocada
           const equipeTd = document.createElement('td');
           equipeTd.className = 'equipe-col';
@@ -312,6 +321,7 @@
           }
           logisticaTd.appendChild(logisticaList);
           row.appendChild(logisticaTd);
+
           // Editar Logística
           const logisticaSelectTd = document.createElement('td');
           logisticaSelectTd.className = 'equipe-col';
@@ -361,19 +371,30 @@
             const option = document.createElement('option');
             option.value = id;
             option.textContent = allEquipamentos[id].nome;
-
             if (usadosNesteEvento.has(id)) {
               option.selected = true;
             } else if (equipamentosUsadosNoDia.has(id)) {
               option.disabled = true;
             }
-
             equipamentoSelect.appendChild(option);
           }
-
           equipamentoSelect.addEventListener('change', () => updateEquipamento(evento.id));
           equipamentoTd.appendChild(equipamentoSelect);
           row.appendChild(equipamentoTd);
+
+          // OBSERVAÇÃO
+          const obsTd = document.createElement('td');
+          obsTd.className = 'equipe-col';
+          const obsTextarea = document.createElement('textarea');
+          obsTextarea.className = 'observacao';
+          obsTextarea.placeholder = 'OBS';
+          obsTextarea.value = evento.observacao || '';
+          obsTextarea.addEventListener('change', () => {
+            const texto = obsTextarea.value;
+            db.ref(`eventos/${evento.id}/observacao`).set(texto);
+          });
+          obsTd.appendChild(obsTextarea);
+          row.appendChild(obsTd);
 
           tbody.appendChild(row);
         });
@@ -382,7 +403,6 @@
         container.appendChild(table);
       }
     }
-
     function populateSelect(selectElement, eventoAtual, eventosDoDia) {
       selectElement.innerHTML = '';
       const membrosAlocadosNoDia = new Set();
