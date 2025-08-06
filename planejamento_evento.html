@@ -223,15 +223,14 @@
           row.id = `row-${evento.id}`;
           row.innerHTML = `<td>${evento.nomeEvento || 'Sem nome'}</td>`;
 
-          // EQUIPE
           const equipeList = renderList(getEquipeDoEvento(evento), allEquipe, 'membroId');
-          const equipeSelect = renderSelect(getEquipeDoEvento(evento), eventosAgrupados[data], evento.id, allEquipe, 'membroId');
+          const equipeSelect = renderSelect(getEquipeDoEvento(evento), eventosAgrupados[data], evento.id, allEquipe, 'membroId', true);
+
+          const logisticaList = renderList(getLogisticaDoEvento(evento), allLogistica, 'prestadorId');
+          const logisticaSelect = renderSelect(getLogisticaDoEvento(evento), eventosAgrupados[data], evento.id, allLogistica, 'prestadorId', false);
+
           row.appendChild(wrapTd(equipeList));
           row.appendChild(wrapTd(equipeSelect));
-
-          // LOGISTICA
-          const logisticaList = renderList(getLogisticaDoEvento(evento), allLogistica, 'prestadorId');
-          const logisticaSelect = renderSelect(getLogisticaDoEvento(evento), eventosAgrupados[data], evento.id, allLogistica, 'prestadorId');
           row.appendChild(wrapTd(logisticaList));
           row.appendChild(wrapTd(logisticaSelect));
 
@@ -262,7 +261,7 @@
           const li = document.createElement('li');
           li.innerHTML = `
             <label>${base[item[idField]].apelido || base[item[idField]].nome}</label>
-            <input type="number" data-${idField}="${item[idField]}" step="0.01" value="${item.valor ? parseFloat(item.valor).toFixed(2) : (base[item[idField]].valorDiaria || '')}" />
+            <input type="number" data-${idField.toLowerCase()}="${item[idField]}" step="0.01" value="${item.valor ? parseFloat(item.valor).toFixed(2) : (base[item[idField]].valorDiaria || base[item[idField]].valorFrete || '')}" />
           `;
           ul.appendChild(li);
         }
@@ -270,18 +269,20 @@
       return ul;
     }
 
-    function renderSelect(listaAtual, eventosDia, eventoId, base, idField) {
+    function renderSelect(listaAtual, eventosDia, eventoId, base, idField, bloquear) {
       const select = document.createElement('select');
       select.multiple = true;
 
       const usados = new Set();
-      eventosDia.forEach(e => {
-        if (e.id !== eventoId) {
-          (Array.isArray(e[idField === 'membroId' ? 'equipe' : 'logistica']) ? e[idField === 'membroId' ? 'equipe' : 'logistica'] : []).forEach(item => {
-            usados.add(item[idField]);
-          });
-        }
-      });
+      if (bloquear) {
+        eventosDia.forEach(e => {
+          if (e.id !== eventoId) {
+            (Array.isArray(e[idField === 'membroId' ? 'equipe' : 'logistica']) ? e[idField === 'membroId' ? 'equipe' : 'logistica'] : []).forEach(item => {
+              usados.add(item[idField]);
+            });
+          }
+        });
+      }
 
       const atuais = new Set(listaAtual.map(i => i[idField]));
       for (const id in base) {
@@ -289,7 +290,7 @@
         opt.value = id;
         opt.textContent = base[id].apelido || base[id].nome;
         if (atuais.has(id)) opt.selected = true;
-        else if (usados.has(id)) opt.disabled = true;
+        else if (bloquear && usados.has(id)) opt.disabled = true;
         select.appendChild(opt);
       }
 
@@ -304,18 +305,19 @@
 
       const equipe = membroIds.map(id => {
         const input = row.querySelector(`input[data-membroid="${id}"]`);
-        return { membroId: id, valor: input ? parseFloat(input.value) || 0 : (allEquipe[id]?.valorDiaria || 0) };
+        const valor = input ? parseFloat(input.value) : (allEquipe[id]?.valorDiaria || 0);
+        return { membroId: id, valor };
       });
 
       const logistica = prestadorIds.map(id => {
         const input = row.querySelector(`input[data-prestadorid="${id}"]`);
-        return { prestadorId: id, valor: input ? parseFloat(input.value) || 0 : (allLogistica[id]?.valorFrete || 0) };
+        const valor = input ? parseFloat(input.value) : (allLogistica[id]?.valorFrete || 0);
+        return { prestadorId: id, valor };
       });
 
       try {
         await db.ref(`eventos/${eventoId}/equipe`).set(equipe);
         await db.ref(`eventos/${eventoId}/logistica`).set(logistica);
-        console.log(`Evento ${eventoId} atualizado.`);
         fetchEventos();
       } catch (e) {
         console.error("Erro ao salvar:", e);
