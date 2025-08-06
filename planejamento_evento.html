@@ -57,7 +57,7 @@
       background-color: #f5f5f5;
     }
     .equipe-col {
-      width: 250px;
+      width: 220px;
     }
     .equipe-alocada-list {
       list-style-type: none;
@@ -81,9 +81,8 @@
       border: 1px solid #ccc;
       border-radius: 3px;
     }
-    select[multiple] {
+    select {
       width: 100%;
-      min-height: 120px;
       border: 1px solid #ccc;
       border-radius: 4px;
       padding: 5px;
@@ -120,6 +119,7 @@
 
     let allEquipe = {};
     let allLogistica = {};
+    let allEquipamentos = {};
     let allEventos = [];
 
     function getWeekRange() {
@@ -151,10 +151,16 @@
       allLogistica = snapshot.val() || {};
     }
 
+    async function fetchEquipamentos() {
+      const snapshot = await db.ref('equipamentos').once('value');
+      allEquipamentos = snapshot.val() || {};
+    }
+
     async function fetchEventos() {
       try {
         await fetchEquipe();
         await fetchLogistica();
+        await fetchEquipamentos();
         const snapshot = await db.ref('eventos').once('value');
         const eventosData = snapshot.val() || {};
         const { start, end } = getWeekRange();
@@ -173,14 +179,6 @@
         console.error("Erro ao buscar eventos:", error);
         document.getElementById('eventos-container').innerHTML = '<p>Erro ao carregar os eventos. Verifique o console.</p>';
       }
-    }
-
-    function getEquipeDoEvento(evento) {
-      return Array.isArray(evento.equipe) ? evento.equipe : [];
-    }
-
-    function getLogisticaDoEvento(evento) {
-      return Array.isArray(evento.logistica) ? evento.logistica : [];
     }
 
     function renderEventos() {
@@ -211,9 +209,8 @@
             <tr>
               <th>Evento</th>
               <th class="equipe-col">Equipe</th>
-              <th class="equipe-col">Editar Equipe</th>
               <th class="equipe-col">Logística</th>
-              <th class="equipe-col">Editar Logística</th>
+              <th class="equipe-col">Equipamento</th>
             </tr>
           </thead>`;
         const tbody = document.createElement('tbody');
@@ -221,19 +218,65 @@
         eventosAgrupados[data].forEach(evento => {
           const row = document.createElement('tr');
           row.id = `row-${evento.id}`;
-          row.innerHTML = `<td>${evento.nomeEvento || 'Sem nome'}</td>`;
+
+          const tdEvento = document.createElement('td');
+          tdEvento.textContent = evento.nomeEvento || 'Sem nome';
+          row.appendChild(tdEvento);
 
           // EQUIPE
-          const equipeList = renderList(getEquipeDoEvento(evento), allEquipe, 'membroId');
-          const equipeSelect = renderSelect(getEquipeDoEvento(evento), eventosAgrupados[data], evento.id, allEquipe, 'membroId');
-          row.appendChild(wrapTd(equipeList));
-          row.appendChild(wrapTd(equipeSelect));
+          const equipeUl = document.createElement('ul');
+          equipeUl.className = 'equipe-alocada-list';
+          if (Array.isArray(evento.equipe) && evento.equipe.length > 0) {
+            evento.equipe.forEach(membro => {
+              const nome = allEquipe[membro.membroId]?.apelido || allEquipe[membro.membroId]?.nomeCompleto || 'Desconhecido';
+              const li = document.createElement('li');
+              li.textContent = nome;
+              equipeUl.appendChild(li);
+            });
+          } else {
+            equipeUl.innerHTML = '<li>Nenhum</li>';
+          }
+          const tdEquipe = document.createElement('td');
+          tdEquipe.appendChild(equipeUl);
+          row.appendChild(tdEquipe);
 
           // LOGISTICA
-          const logisticaList = renderList(getLogisticaDoEvento(evento), allLogistica, 'prestadorId');
-          const logisticaSelect = renderSelect(getLogisticaDoEvento(evento), eventosAgrupados[data], evento.id, allLogistica, 'prestadorId');
-          row.appendChild(wrapTd(logisticaList));
-          row.appendChild(wrapTd(logisticaSelect));
+          const logisticaUl = document.createElement('ul');
+          logisticaUl.className = 'equipe-alocada-list';
+          if (Array.isArray(evento.logistica) && evento.logistica.length > 0) {
+            evento.logistica.forEach(prestador => {
+              const nome = allLogistica[prestador.prestadorId]?.nome || 'Desconhecido';
+              const li = document.createElement('li');
+              li.textContent = nome;
+              logisticaUl.appendChild(li);
+            });
+          } else {
+            logisticaUl.innerHTML = '<li>Nenhum</li>';
+          }
+          const tdLogistica = document.createElement('td');
+          tdLogistica.appendChild(logisticaUl);
+          row.appendChild(tdLogistica);
+
+          // EQUIPAMENTO
+          const tdEquipamento = document.createElement('td');
+          const selectEquip = document.createElement('select');
+          const equipamentosUsados = new Set(eventosAgrupados[data].filter(e => e.id !== evento.id).map(e => e.equipamento));
+          const selected = evento.equipamento || '';
+          const defaultOpt = document.createElement('option');
+          defaultOpt.value = '';
+          defaultOpt.textContent = 'Selecione...';
+          selectEquip.appendChild(defaultOpt);
+          for (const id in allEquipamentos) {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = allEquipamentos[id].nome || 'Sem nome';
+            if (equipamentosUsados.has(id)) opt.disabled = true;
+            if (id === selected) opt.selected = true;
+            selectEquip.appendChild(opt);
+          }
+          selectEquip.addEventListener('change', () => salvarEquipamento(evento.id, selectEquip.value));
+          tdEquipamento.appendChild(selectEquip);
+          row.appendChild(tdEquipamento);
 
           tbody.appendChild(row);
         });
@@ -243,83 +286,14 @@
       }
     }
 
-    function wrapTd(content) {
-      const td = document.createElement('td');
-      td.className = 'equipe-col';
-      td.appendChild(content);
-      return td;
-    }
-
-    function renderList(lista, base, idField) {
-      const ul = document.createElement('ul');
-      ul.className = 'equipe-alocada-list';
-      if (lista.length === 0) {
-        ul.innerHTML = '<li>Nenhum alocado</li>';
-        return ul;
-      }
-      lista.forEach(item => {
-        if (item && item[idField] && base[item[idField]]) {
-          const li = document.createElement('li');
-          li.innerHTML = `
-            <label>${base[item[idField]].apelido || base[item[idField]].nome}</label>
-            <input type="number" data-${idField}="${item[idField]}" step="0.01" value="${item.valor ? parseFloat(item.valor).toFixed(2) : (base[item[idField]].valorDiaria || '')}" />
-          `;
-          ul.appendChild(li);
-        }
-      });
-      return ul;
-    }
-
-    function renderSelect(listaAtual, eventosDia, eventoId, base, idField) {
-      const select = document.createElement('select');
-      select.multiple = true;
-
-      const usados = new Set();
-      eventosDia.forEach(e => {
-        if (e.id !== eventoId) {
-          (Array.isArray(e[idField === 'membroId' ? 'equipe' : 'logistica']) ? e[idField === 'membroId' ? 'equipe' : 'logistica'] : []).forEach(item => {
-            usados.add(item[idField]);
-          });
-        }
-      });
-
-      const atuais = new Set(listaAtual.map(i => i[idField]));
-      for (const id in base) {
-        const opt = document.createElement('option');
-        opt.value = id;
-        opt.textContent = base[id].apelido || base[id].nome;
-        if (atuais.has(id)) opt.selected = true;
-        else if (usados.has(id)) opt.disabled = true;
-        select.appendChild(opt);
-      }
-
-      select.addEventListener('change', () => salvarAlocacao(eventoId));
-      return select;
-    }
-
-    async function salvarAlocacao(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      const membroIds = Array.from(row.querySelectorAll('select')[0].selectedOptions).map(o => o.value);
-      const prestadorIds = Array.from(row.querySelectorAll('select')[1].selectedOptions).map(o => o.value);
-
-      const equipe = membroIds.map(id => {
-        const input = row.querySelector(`input[data-membroid="${id}"]`);
-        return { membroId: id, valor: input ? parseFloat(input.value) || 0 : (allEquipe[id]?.valorDiaria || 0) };
-      });
-
-      const logistica = prestadorIds.map(id => {
-        const input = row.querySelector(`input[data-prestadorid="${id}"]`);
-        return { prestadorId: id, valor: input ? parseFloat(input.value) || 0 : (allLogistica[id]?.valorFrete || 0) };
-      });
-
+    async function salvarEquipamento(eventoId, equipamentoId) {
       try {
-        await db.ref(`eventos/${eventoId}/equipe`).set(equipe);
-        await db.ref(`eventos/${eventoId}/logistica`).set(logistica);
-        console.log(`Evento ${eventoId} atualizado.`);
+        await db.ref(`eventos/${eventoId}/equipamento`).set(equipamentoId || null);
+        console.log(`Equipamento salvo para evento ${eventoId}`);
         fetchEventos();
       } catch (e) {
-        console.error("Erro ao salvar:", e);
-        alert("Erro ao salvar alterações.");
+        console.error("Erro ao salvar equipamento:", e);
+        alert("Erro ao salvar o equipamento.");
       }
     }
 
