@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Planejamento de Eventos da Semana</title>
+  <title>Página de Planejamento de Eventos</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
@@ -57,7 +57,7 @@
       background-color: #f5f5f5;
     }
     .equipe-col {
-      width: 250px;
+      width: 300px;
     }
     .equipe-alocada-list {
       list-style-type: none;
@@ -81,12 +81,21 @@
       border: 1px solid #ccc;
       border-radius: 3px;
     }
-    select[multiple], select {
+    select[multiple] {
       width: 100%;
-      min-height: 40px;
+      min-height: 120px;
       border: 1px solid #ccc;
       border-radius: 4px;
       padding: 5px;
+    }
+    textarea.observacao {
+      width: 100%;
+      height: 80px;
+      resize: vertical;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: inherit;
     }
     option:disabled {
       background-color: #e9ecef;
@@ -158,30 +167,50 @@
 
     async function fetchEventos() {
       try {
-        await Promise.all([fetchEquipe(), fetchLogistica(), fetchEquipamentos()]);
+        await fetchEquipe();
+        await fetchLogistica();
+        await fetchEquipamentos();
         const snapshot = await db.ref('eventos').once('value');
         const eventosData = snapshot.val() || {};
         const { start, end } = getWeekRange();
-        allEventos = Object.keys(eventosData).map(id => ({ id, ...eventosData[id] }))
-          .filter(e => e.data && new Date(e.data + 'T00:00:00') >= start && new Date(e.data + 'T00:00:00') <= end)
+
+        allEventos = Object.keys(eventosData)
+          .map(key => ({ id: key, ...eventosData[key] }))
+          .filter(evento => {
+            if (!evento.data) return false;
+            const eventoDate = new Date(evento.data + 'T00:00:00');
+            return eventoDate >= start && eventoDate <= end;
+          })
           .sort((a, b) => new Date(a.data) - new Date(b.data));
+
         renderEventos();
-      } catch (e) {
-        console.error("Erro ao carregar dados:", e);
+      } catch (error) {
+        console.error("Erro ao buscar eventos:", error);
+        document.getElementById('eventos-container').innerHTML = '<p>Erro ao carregar os eventos. Verifique o console.</p>';
       }
     }
-
     function getEquipeDoEvento(evento) {
-      return Array.isArray(evento.equipe) ? evento.equipe : [];
+      if (evento && Array.isArray(evento.equipe)) return evento.equipe;
+      if (evento && Array.isArray(evento.equipeAlocada)) return evento.equipeAlocada;
+      return [];
     }
 
     function getLogisticaDoEvento(evento) {
       return Array.isArray(evento.logistica) ? evento.logistica : [];
     }
 
+    function getEquipamentosDoEvento(evento) {
+      return Array.isArray(evento.equipamentos) ? evento.equipamentos : [];
+    }
+
     function renderEventos() {
       const container = document.getElementById('eventos-container');
       container.innerHTML = '';
+
+      if (allEventos.length === 0) {
+        container.innerHTML = '<p>Nenhum evento encontrado para a semana atual.</p>';
+        return;
+      }
 
       const eventosAgrupados = allEventos.reduce((acc, evento) => {
         const data = evento.data;
@@ -198,67 +227,174 @@
 
         const table = document.createElement('table');
         table.innerHTML = `<thead><tr>
-          <th>Evento</th>
-          <th class="equipe-col">Equipe</th>
-          <th class="equipe-col">Editar Equipe</th>
-          <th class="equipe-col">Logística</th>
-          <th class="equipe-col">Editar Logística</th>
-          <th class="equipe-col">Equipamento</th>
-        </tr></thead>`;
+            <th>Evento</th>
+            <th class="equipe-col">Equipe Alocada</th>
+            <th class="equipe-col">Editar Equipe</th>
+            <th class="equipe-col">Logística Alocada</th>
+            <th class="equipe-col">Editar Logística</th>
+            <th class="equipe-col">Equipamento Alocado</th>
+            <th class="equipe-col">Equipamento</th>
+            <th class="equipe-col">OBS</th>
+          </tr></thead>`;
         const tbody = document.createElement('tbody');
 
-        const equipamentosUsados = new Set();
+        const equipamentosUsadosNoDia = new Set();
         eventosAgrupados[data].forEach(e => {
-          if (e.equipamento?.equipamentoId) equipamentosUsados.add(e.equipamento.equipamentoId);
+          if (e.equipamentos) {
+            e.equipamentos.forEach(eq => equipamentosUsadosNoDia.add(eq.equipamentoId));
+          }
         });
 
         eventosAgrupados[data].forEach(evento => {
           const row = document.createElement('tr');
           row.id = `row-${evento.id}`;
-          const equipe = getEquipeDoEvento(evento);
-          const logistica = getLogisticaDoEvento(evento);
 
-          row.innerHTML = `
-            <td>${evento.nomeEvento || 'Sem nome'}</td>
-            <td class="equipe-col">${equipe.map(m => allEquipe[m.membroId]?.apelido + ' R$' + m.valor).join('<br>') || '---'}</td>
-            <td class="equipe-col"><select multiple>${Object.entries(allEquipe).map(([id, v]) => {
-              const selected = equipe.find(m => m.membroId === id);
-              const disabled = eventosAgrupados[data].some(e => e.id !== evento.id && getEquipeDoEvento(e).some(m => m.membroId === id));
-              return `<option value="${id}" ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${v.apelido}</option>`;
-            }).join('')}</select></td>
-            <td class="equipe-col">${logistica.map(l => allLogistica[l.prestadorId]?.nome + ' R$' + l.valor).join('<br>') || '---'}</td>
-            <td class="equipe-col"><select multiple>${Object.entries(allLogistica).map(([id, v]) => {
-              const selected = logistica.find(p => p.prestadorId === id);
-              return `<option value="${id}" ${selected ? 'selected' : ''}>${v.nome}</option>`;
-            }).join('')}</select></td>
-            <td class="equipe-col"><select>${Object.entries(allEquipamentos).map(([id, v]) => {
-              const selected = evento.equipamento?.equipamentoId === id;
-              const disabled = !selected && equipamentosUsados.has(id);
-              return `<option value="${id}" ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${v.nome}</option>`;
-            }).join('<option value="">---</option>')}</select></td>
-          `;
+          const nomeTd = document.createElement('td');
+          nomeTd.textContent = evento.nomeEvento || 'Sem nome';
+          row.appendChild(nomeTd);
+          // Equipe Alocada
+          const equipeTd = document.createElement('td');
+          equipeTd.className = 'equipe-col';
+          const equipeList = document.createElement('ul');
+          equipeList.className = 'equipe-alocada-list';
+          const equipeDoEvento = getEquipeDoEvento(evento);
+          if (equipeDoEvento.length > 0) {
+            equipeDoEvento.forEach(membro => {
+              if (membro?.membroId && allEquipe[membro.membroId]) {
+                const li = document.createElement('li');
+                const label = document.createElement('label');
+                label.textContent = allEquipe[membro.membroId].apelido;
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.dataset.membroId = membro.membroId;
+                input.placeholder = "R$";
+                input.step = "0.01";
+                input.value = membro.valor ? parseFloat(membro.valor).toFixed(2) : (allEquipe[membro.membroId].valorDiaria || '');
+                input.addEventListener('change', () => updateEquipe(evento.id));
+                li.appendChild(label);
+                li.appendChild(input);
+                equipeList.appendChild(li);
+              }
+            });
+          } else {
+            equipeList.innerHTML = '<li>Nenhuma equipe alocada</li>';
+          }
+          equipeTd.appendChild(equipeList);
+          row.appendChild(equipeTd);
 
-          const selects = row.querySelectorAll('select');
-          selects[0].addEventListener('change', () => {
-            const novaEquipe = Array.from(selects[0].selectedOptions).map(opt => ({
-              membroId: opt.value,
-              valor: allEquipe[opt.value]?.valorDiaria || 0
-            }));
-            db.ref(`eventos/${evento.id}/equipe`).set(novaEquipe).then(fetchEventos);
+          // Editar Equipe
+          const equipeSelectTd = document.createElement('td');
+          equipeSelectTd.className = 'equipe-col';
+          const equipeSelect = document.createElement('select');
+          equipeSelect.multiple = true;
+          populateSelect(equipeSelect, evento, eventosAgrupados[data]);
+          equipeSelect.addEventListener('change', () => updateEquipe(evento.id));
+          equipeSelectTd.appendChild(equipeSelect);
+          row.appendChild(equipeSelectTd);
+
+          // Logística Alocada
+          const logisticaTd = document.createElement('td');
+          logisticaTd.className = 'equipe-col';
+          const logisticaList = document.createElement('ul');
+          logisticaList.className = 'equipe-alocada-list';
+          const logisticaDoEvento = getLogisticaDoEvento(evento);
+          if (logisticaDoEvento.length > 0) {
+            logisticaDoEvento.forEach(prestador => {
+              if (prestador?.prestadorId && allLogistica[prestador.prestadorId]) {
+                const li = document.createElement('li');
+                const label = document.createElement('label');
+                label.textContent = allLogistica[prestador.prestadorId].nome;
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.dataset.prestadorId = prestador.prestadorId;
+                input.placeholder = "R$";
+                input.step = "0.01";
+                input.value = prestador.valor ? parseFloat(prestador.valor).toFixed(2) : '';
+                input.addEventListener('change', () => updateLogistica(evento.id));
+                li.appendChild(label);
+                li.appendChild(input);
+                logisticaList.appendChild(li);
+              }
+            });
+          } else {
+            logisticaList.innerHTML = '<li>Nenhuma logística alocada</li>';
+          }
+          logisticaTd.appendChild(logisticaList);
+          row.appendChild(logisticaTd);
+
+          // Editar Logística
+          const logisticaSelectTd = document.createElement('td');
+          logisticaSelectTd.className = 'equipe-col';
+          const logisticaSelect = document.createElement('select');
+          logisticaSelect.multiple = true;
+          for (const id in allLogistica) {
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = allLogistica[id].nome;
+            if (logisticaDoEvento.find(p => p.prestadorId === id)) {
+              option.selected = true;
+            }
+            logisticaSelect.appendChild(option);
+          }
+          logisticaSelect.addEventListener('change', () => updateLogistica(evento.id));
+          logisticaSelectTd.appendChild(logisticaSelect);
+          row.appendChild(logisticaSelectTd);
+
+          // Equipamento Alocado
+          const equipamentoAlocadoTd = document.createElement('td');
+          equipamentoAlocadoTd.className = 'equipe-col';
+          const equipamentoList = document.createElement('ul');
+          equipamentoList.className = 'equipe-alocada-list';
+          const equipamentosDoEvento = getEquipamentosDoEvento(evento);
+          if (equipamentosDoEvento.length > 0) {
+            equipamentosDoEvento.forEach(eq => {
+              if (eq?.equipamentoId && allEquipamentos[eq.equipamentoId]) {
+                const li = document.createElement('li');
+                li.textContent = allEquipamentos[eq.equipamentoId].nome;
+                equipamentoList.appendChild(li);
+              }
+            });
+          } else {
+            equipamentoList.innerHTML = '<li>Nenhum equipamento alocado</li>';
+          }
+          equipamentoAlocadoTd.appendChild(equipamentoList);
+          row.appendChild(equipamentoAlocadoTd);
+
+          // Editar Equipamento
+          const equipamentoTd = document.createElement('td');
+          equipamentoTd.className = 'equipe-col';
+          const equipamentoSelect = document.createElement('select');
+          equipamentoSelect.multiple = true;
+          const usadosNesteEvento = new Set(equipamentosDoEvento.map(e => e.equipamentoId));
+
+          for (const id in allEquipamentos) {
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = allEquipamentos[id].nome;
+            if (usadosNesteEvento.has(id)) {
+              option.selected = true;
+            } else if (equipamentosUsadosNoDia.has(id)) {
+              option.disabled = true;
+            }
+            equipamentoSelect.appendChild(option);
+          }
+          equipamentoSelect.addEventListener('change', () => updateEquipamento(evento.id));
+          equipamentoTd.appendChild(equipamentoSelect);
+          row.appendChild(equipamentoTd);
+
+          // OBSERVAÇÃO
+          const obsTd = document.createElement('td');
+          obsTd.className = 'equipe-col';
+          const obsTextarea = document.createElement('textarea');
+          obsTextarea.className = 'observacao';
+          obsTextarea.placeholder = 'OBS';
+          obsTextarea.value = evento.observacao || '';
+          obsTextarea.addEventListener('change', () => {
+            const texto = obsTextarea.value;
+            db.ref(`eventos/${evento.id}/observacao`).set(texto);
           });
-
-          selects[1].addEventListener('change', () => {
-            const novaLog = Array.from(selects[1].selectedOptions).map(opt => ({
-              prestadorId: opt.value,
-              valor: 0
-            }));
-            db.ref(`eventos/${evento.id}/logistica`).set(novaLog).then(fetchEventos);
-          });
-
-          selects[2].addEventListener('change', () => {
-            const equipamentoId = selects[2].value;
-            db.ref(`eventos/${evento.id}/equipamento`).set({ equipamentoId }).then(fetchEventos);
-          });
+          obsTd.appendChild(obsTextarea);
+          row.appendChild(obsTd);
 
           tbody.appendChild(row);
         });
@@ -266,6 +402,77 @@
         table.appendChild(tbody);
         container.appendChild(table);
       }
+    }
+    function populateSelect(selectElement, eventoAtual, eventosDoDia) {
+      selectElement.innerHTML = '';
+      const membrosAlocadosNoDia = new Set();
+      eventosDoDia.forEach(e => {
+        if (e.id !== eventoAtual.id) {
+          getEquipeDoEvento(e).forEach(m => {
+            if (m?.membroId) membrosAlocadosNoDia.add(m.membroId);
+          });
+        }
+      });
+
+      const equipeAtual = getEquipeDoEvento(eventoAtual);
+      const membrosAlocadosNesteEvento = new Set(equipeAtual.map(m => m.membroId));
+
+      for (const membroId in allEquipe) {
+        const option = document.createElement('option');
+        option.value = membroId;
+        option.textContent = allEquipe[membroId].apelido || allEquipe[membroId].nomeCompleto;
+
+        if (membrosAlocadosNesteEvento.has(membroId)) {
+          option.selected = true;
+        } else if (membrosAlocadosNoDia.has(membroId)) {
+          option.disabled = true;
+        }
+        selectElement.appendChild(option);
+      }
+    }
+
+    async function updateEquipe(eventoId) {
+      const row = document.getElementById(`row-${eventoId}`);
+      if (!row) return;
+      const select = row.querySelectorAll('select')[0];
+      const options = Array.from(select.selectedOptions);
+      const novaEquipe = options.map(opt => {
+        const membroId = opt.value;
+        const input = row.querySelector(`input[data-membro-id="${membroId}"]`);
+        let valor = input ? parseFloat(input.value) || 0 : (allEquipe[membroId]?.valorDiaria || 0);
+        return { membroId, valor };
+      });
+
+      await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
+      fetchEventos();
+    }
+
+    async function updateLogistica(eventoId) {
+      const row = document.getElementById(`row-${eventoId}`);
+      if (!row) return;
+      const select = row.querySelectorAll('select')[1];
+      const options = Array.from(select.selectedOptions);
+      const novaLogistica = options.map(opt => {
+        const prestadorId = opt.value;
+        const input = row.querySelector(`input[data-prestador-id="${prestadorId}"]`);
+        let valor = input ? parseFloat(input.value) || 0 : 0;
+        return { prestadorId, valor };
+      });
+
+      await db.ref(`eventos/${eventoId}/logistica`).set(novaLogistica);
+      fetchEventos();
+    }
+
+    async function updateEquipamento(eventoId) {
+      const row = document.getElementById(`row-${eventoId}`);
+      if (!row) return;
+      const select = row.querySelectorAll('select')[2];
+      const options = Array.from(select.selectedOptions);
+      const novosEquipamentos = options.map(opt => ({
+        equipamentoId: opt.value
+      }));
+      await db.ref(`eventos/${eventoId}/equipamentos`).set(novosEquipamentos);
+      fetchEventos();
     }
 
     document.addEventListener('DOMContentLoaded', fetchEventos);
