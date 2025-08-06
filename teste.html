@@ -2,84 +2,104 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Le Pan pan - Dash</title>
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-  <link rel="stylesheet" href="assets/base.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Planejamento de Eventos da Semana</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="assets/menu.js" defer></script>
   <style>
-    .kpi-linha {
-      display: flex;
-      gap: 16px;
-      padding: 0 20px;
-      margin-bottom: 2px;
-      flex-wrap: wrap;
-    }
-    .kpi {
-      background-color: #fff3e0;
-      border-left: 4px solid #ff9800;
-      padding: 6px 10px;
-      border-radius: 6px;
-      min-width: 180px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      height: 60px;
-    }
-    .kpi h2 {
-      margin: 0 0 2px;
-      font-size: 12px;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f4f7f6;
       color: #333;
-    }
-    .kpi p {
-      font-size: 16px;
       margin: 0;
-      font-weight: bold;
-      color: #ff9800;
-    }
-    .graficos-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
       padding: 20px;
     }
-    .grafico {
-      width: 48%;
-      min-width: 300px;
+    .layout {
+      max-width: 1200px;
+      margin: auto;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05 );
+      overflow: hidden;
     }
-    canvas {
-      background-color: white;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 10px;
+    .main-content {
+      padding: 20px;
+    }
+    h2 {
+      color: #2c3e50;
+      border-bottom: 2px solid #e0e0e0;
+      padding-bottom: 10px;
+    }
+    .date-header {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #e67e22;
+      margin-top: 20px;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+      vertical-align: top;
+    }
+    th {
+      background-color: #f8f9fa;
+    }
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+    .equipe-col {
+      width: 250px;
+    }
+    .equipe-alocada-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .equipe-alocada-list li {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .equipe-alocada-list label {
+      flex: 1;
+    }
+    .equipe-alocada-list input {
+      width: 80px;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+    }
+    select[multiple], select {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 5px;
+    }
+    option:disabled {
+      background-color: #e9ecef;
+      color: #6c757d;
     }
   </style>
 </head>
 <body>
   <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
     <main class="main-content">
-
-      <!-- [KPIs mantidos aqui, igual versão anterior] -->
-
-      <!-- Gráficos -->
-      <div class="graficos-container">
-        <div class="grafico">
-          <canvas id="graficoVenda"></canvas>
-        </div>
-        <div class="grafico">
-          <canvas id="graficoLucro"></canvas>
-        </div>
-        <div class="grafico">
-          <canvas id="graficoPerdaAssado"></canvas>
-        </div>
-        <div class="grafico">
-          <canvas id="graficoEventos"></canvas>
-        </div>
+      <h2>Planejamento de Eventos da Semana</h2>
+      <div id="eventos-container">
+        <p>Carregando eventos...</p>
       </div>
     </main>
   </div>
@@ -89,106 +109,166 @@
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp"
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const currentYear = new Date().getFullYear();
-    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-    const dadosMes = Array.from({ length: 12 }, (_, i) => ({
-      mes: meses[i],
-      venda: 0,
-      perda: 0,
-      assado: 0,
-      eventos: 0
-    }));
+    let allEquipe = {};
+    let allLogistica = {};
+    let allEquipamentos = {};
+    let allEventos = [];
 
-    db.ref('eventos').once('value').then(snapshot => {
-      const eventos = snapshot.val();
-      if (!eventos) return;
-
-      Object.values(eventos).forEach(e => {
-        if (!e.data) return;
-        const data = new Date(e.data);
-        if (data.getFullYear() !== currentYear) return;
-        const m = data.getMonth();
-        dadosMes[m].venda += Number(e.vendaPDV || 0);
-        dadosMes[m].perda += Number(e.produtos?.reduce((s, p) => s + (Number(p.perda || 0)), 0) || 0);
-        dadosMes[m].assado += Number(e.produtos?.reduce((s, p) => s + (Number(p.assado || 0)), 0) || 0);
-        dadosMes[m].eventos += 1;
-      });
-
-      desenharGraficos(dadosMes);
-    });
-
-    function desenharGraficos(data) {
-      new Chart(document.getElementById('graficoVenda'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{
-            label: 'Venda PDV',
-            data: data.map(d => d.venda),
-            borderWidth: 2,
-            fill: false,
-            tension: 0.2
-          }]
-        }
-      });
-
-      new Chart(document.getElementById('graficoLucro'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{
-            label: 'Lucro (em breve)',
-            data: [],
-            borderWidth: 2,
-            borderDash: [5, 5],
-            fill: false
-          }]
-        }
-      });
-
-      new Chart(document.getElementById('graficoPerdaAssado'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [
-            {
-              label: 'Perda',
-              data: data.map(d => d.perda),
-              borderWidth: 2,
-              fill: false,
-              tension: 0.2
-            },
-            {
-              label: 'Assado',
-              data: data.map(d => d.assado),
-              borderWidth: 2,
-              fill: false,
-              tension: 0.2
-            }
-          ]
-        }
-      });
-
-      new Chart(document.getElementById('graficoEventos'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{
-            label: 'Eventos',
-            data: data.map(d => d.eventos),
-            borderWidth: 2,
-            fill: false,
-            tension: 0.2
-          }]
-        }
-      });
+    function getWeekRange() {
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + diffToMonday);
+      monday.setHours(0, 0, 0, 0);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      sunday.setHours(23, 59, 59, 999);
+      return { start: monday, end: sunday };
     }
+
+    function formatDate(dateString) {
+      const date = new Date(dateString + 'T00:00:00');
+      const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
+      return new Intl.DateTimeFormat('pt-BR', options).format(date);
+    }
+
+    async function fetchEquipe() {
+      const snapshot = await db.ref('equipe').once('value');
+      allEquipe = snapshot.val() || {};
+    }
+
+    async function fetchLogistica() {
+      const snapshot = await db.ref('logistica').once('value');
+      allLogistica = snapshot.val() || {};
+    }
+
+    async function fetchEquipamentos() {
+      const snapshot = await db.ref('equipamentos').once('value');
+      allEquipamentos = snapshot.val() || {};
+    }
+
+    async function fetchEventos() {
+      try {
+        await Promise.all([fetchEquipe(), fetchLogistica(), fetchEquipamentos()]);
+        const snapshot = await db.ref('eventos').once('value');
+        const eventosData = snapshot.val() || {};
+        const { start, end } = getWeekRange();
+        allEventos = Object.keys(eventosData).map(id => ({ id, ...eventosData[id] }))
+          .filter(e => e.data && new Date(e.data + 'T00:00:00') >= start && new Date(e.data + 'T00:00:00') <= end)
+          .sort((a, b) => new Date(a.data) - new Date(b.data));
+        renderEventos();
+      } catch (e) {
+        console.error("Erro ao carregar dados:", e);
+      }
+    }
+
+    function getEquipeDoEvento(evento) {
+      return Array.isArray(evento.equipe) ? evento.equipe : [];
+    }
+
+    function getLogisticaDoEvento(evento) {
+      return Array.isArray(evento.logistica) ? evento.logistica : [];
+    }
+
+    function renderEventos() {
+      const container = document.getElementById('eventos-container');
+      container.innerHTML = '';
+
+      const eventosAgrupados = allEventos.reduce((acc, evento) => {
+        const data = evento.data;
+        if (!acc[data]) acc[data] = [];
+        acc[data].push(evento);
+        return acc;
+      }, {});
+
+      for (const data in eventosAgrupados) {
+        const header = document.createElement('div');
+        header.className = 'date-header';
+        header.textContent = formatDate(data);
+        container.appendChild(header);
+
+        const table = document.createElement('table');
+        table.innerHTML = `<thead><tr>
+          <th>Evento</th>
+          <th class="equipe-col">Equipe</th>
+          <th class="equipe-col">Editar Equipe</th>
+          <th class="equipe-col">Logística</th>
+          <th class="equipe-col">Editar Logística</th>
+          <th class="equipe-col">Equipamento</th>
+        </tr></thead>`;
+        const tbody = document.createElement('tbody');
+
+        const equipamentosUsados = new Set();
+        eventosAgrupados[data].forEach(e => {
+          if (e.equipamento?.equipamentoId) equipamentosUsados.add(e.equipamento.equipamentoId);
+        });
+
+        eventosAgrupados[data].forEach(evento => {
+          const row = document.createElement('tr');
+          row.id = `row-${evento.id}`;
+          const equipe = getEquipeDoEvento(evento);
+          const logistica = getLogisticaDoEvento(evento);
+
+          row.innerHTML = `
+            <td>${evento.nomeEvento || 'Sem nome'}</td>
+            <td class="equipe-col">${equipe.map(m => allEquipe[m.membroId]?.apelido + ' R$' + m.valor).join('<br>') || '---'}</td>
+            <td class="equipe-col"><select multiple>${Object.entries(allEquipe).map(([id, v]) => {
+              const selected = equipe.find(m => m.membroId === id);
+              const disabled = eventosAgrupados[data].some(e => e.id !== evento.id && getEquipeDoEvento(e).some(m => m.membroId === id));
+              return `<option value="${id}" ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${v.apelido}</option>`;
+            }).join('')}</select></td>
+            <td class="equipe-col">${logistica.map(l => allLogistica[l.prestadorId]?.nome + ' R$' + l.valor).join('<br>') || '---'}</td>
+            <td class="equipe-col"><select multiple>${Object.entries(allLogistica).map(([id, v]) => {
+              const selected = logistica.find(p => p.prestadorId === id);
+              return `<option value="${id}" ${selected ? 'selected' : ''}>${v.nome}</option>`;
+            }).join('')}</select></td>
+            <td class="equipe-col"><select>${Object.entries(allEquipamentos).map(([id, v]) => {
+              const selected = evento.equipamento?.equipamentoId === id;
+              const disabled = !selected && equipamentosUsados.has(id);
+              return `<option value="${id}" ${selected ? 'selected' : ''} ${disabled ? 'disabled' : ''}>${v.nome}</option>`;
+            }).join('<option value="">---</option>')}</select></td>
+          `;
+
+          const selects = row.querySelectorAll('select');
+          selects[0].addEventListener('change', () => {
+            const novaEquipe = Array.from(selects[0].selectedOptions).map(opt => ({
+              membroId: opt.value,
+              valor: allEquipe[opt.value]?.valorDiaria || 0
+            }));
+            db.ref(`eventos/${evento.id}/equipe`).set(novaEquipe).then(fetchEventos);
+          });
+
+          selects[1].addEventListener('change', () => {
+            const novaLog = Array.from(selects[1].selectedOptions).map(opt => ({
+              prestadorId: opt.value,
+              valor: 0
+            }));
+            db.ref(`eventos/${evento.id}/logistica`).set(novaLog).then(fetchEventos);
+          });
+
+          selects[2].addEventListener('change', () => {
+            const equipamentoId = selects[2].value;
+            db.ref(`eventos/${evento.id}/equipamento`).set({ equipamentoId }).then(fetchEventos);
+          });
+
+          tbody.appendChild(row);
+        });
+
+        table.appendChild(tbody);
+        container.appendChild(table);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchEventos);
   </script>
 </body>
 </html>
