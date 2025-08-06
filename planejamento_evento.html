@@ -115,10 +115,11 @@
             appId: "1:542989944344:web:576e28199960fd5440a56d"
         };
 
-        firebase.initializeApp(firebaseConfig );
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
         let allEquipe = {};
+        let allLogistica = {};
         let allEventos = [];
 
         function getWeekRange() {
@@ -143,12 +144,17 @@
         async function fetchEquipe() {
             const snapshot = await db.ref('equipe').once('value');
             allEquipe = snapshot.val() || {};
-            return allEquipe;
+        }
+
+        async function fetchLogistica() {
+            const snapshot = await db.ref('logistica').once('value');
+            allLogistica = snapshot.val() || {};
         }
 
         async function fetchEventos() {
             try {
                 await fetchEquipe();
+                await fetchLogistica();
                 const snapshot = await db.ref('eventos').once('value');
                 const eventosData = snapshot.val() || {};
                 const { start, end } = getWeekRange();
@@ -179,6 +185,10 @@
             return [];
         }
 
+        function getLogisticaDoEvento(evento) {
+            return Array.isArray(evento.logistica) ? evento.logistica : [];
+        }
+
         function renderEventos() {
             const container = document.getElementById('eventos-container');
             container.innerHTML = '';
@@ -202,7 +212,13 @@
                 container.appendChild(header);
 
                 const table = document.createElement('table');
-                table.innerHTML = `<thead><tr><th>Evento</th><th class="equipe-col">Equipe Alocada</th><th class="equipe-col">Editar Equipe</th></tr></thead>`;
+                table.innerHTML = `<thead><tr>
+                    <th>Evento</th>
+                    <th class="equipe-col">Equipe Alocada</th>
+                    <th class="equipe-col">Editar Equipe</th>
+                    <th class="equipe-col">Logística Alocada</th>
+                    <th class="equipe-col">Editar Logística</th>
+                </tr></thead>`;
                 const tbody = document.createElement('tbody');
 
                 eventosAgrupados[data].forEach(evento => {
@@ -213,16 +229,15 @@
                     nomeTd.textContent = evento.nomeEvento || 'Sem nome';
                     row.appendChild(nomeTd);
 
-                    const equipeAlocadaTd = document.createElement('td');
-                    equipeAlocadaTd.className = 'equipe-col';
+                    // Equipe
+                    const equipeTd = document.createElement('td');
+                    equipeTd.className = 'equipe-col';
                     const equipeList = document.createElement('ul');
                     equipeList.className = 'equipe-alocada-list';
-                    
-                    // Lógica de renderização movida para cá
                     const equipeDoEvento = getEquipeDoEvento(evento);
                     if (equipeDoEvento.length > 0) {
                         equipeDoEvento.forEach(membro => {
-                            if (membro && membro.membroId && allEquipe[membro.membroId]) {
+                            if (membro?.membroId && allEquipe[membro.membroId]) {
                                 const li = document.createElement('li');
                                 const label = document.createElement('label');
                                 label.textContent = allEquipe[membro.membroId].apelido;
@@ -241,21 +256,68 @@
                     } else {
                         equipeList.innerHTML = '<li>Nenhuma equipe alocada</li>';
                     }
-                    equipeAlocadaTd.appendChild(equipeList);
-                    row.appendChild(equipeAlocadaTd);
+                    equipeTd.appendChild(equipeList);
+                    row.appendChild(equipeTd);
 
-                    const selectTd = document.createElement('td');
-                    selectTd.className = 'equipe-col';
-                    const select = document.createElement('select');
-                    select.multiple = true;
-                    populateSelect(select, evento, eventosAgrupados[data]);
-                    selectTd.appendChild(select);
-                    row.appendChild(selectTd);
-                    
-                    select.addEventListener('change', () => updateEquipe(evento.id));
+                    const equipeSelectTd = document.createElement('td');
+                    equipeSelectTd.className = 'equipe-col';
+                    const equipeSelect = document.createElement('select');
+                    equipeSelect.multiple = true;
+                    populateSelect(equipeSelect, evento, eventosAgrupados[data]);
+                    equipeSelect.addEventListener('change', () => updateEquipe(evento.id));
+                    equipeSelectTd.appendChild(equipeSelect);
+                    row.appendChild(equipeSelectTd);
+
+                    // Logística
+                    const logisticaTd = document.createElement('td');
+                    logisticaTd.className = 'equipe-col';
+                    const logisticaList = document.createElement('ul');
+                    logisticaList.className = 'equipe-alocada-list';
+                    const logisticaDoEvento = getLogisticaDoEvento(evento);
+                    if (logisticaDoEvento.length > 0) {
+                        logisticaDoEvento.forEach(prestador => {
+                            if (prestador?.prestadorId && allLogistica[prestador.prestadorId]) {
+                                const li = document.createElement('li');
+                                const label = document.createElement('label');
+                                label.textContent = allLogistica[prestador.prestadorId].nome;
+                                const input = document.createElement('input');
+                                input.type = 'number';
+                                input.dataset.prestadorId = prestador.prestadorId;
+                                input.placeholder = "R$";
+                                input.step = "0.01";
+                                input.value = prestador.valor ? parseFloat(prestador.valor).toFixed(2) : '';
+                                input.addEventListener('change', () => updateLogistica(evento.id));
+                                li.appendChild(label);
+                                li.appendChild(input);
+                                logisticaList.appendChild(li);
+                            }
+                        });
+                    } else {
+                        logisticaList.innerHTML = '<li>Nenhuma logística alocada</li>';
+                    }
+                    logisticaTd.appendChild(logisticaList);
+                    row.appendChild(logisticaTd);
+
+                    const logisticaSelectTd = document.createElement('td');
+                    logisticaSelectTd.className = 'equipe-col';
+                    const logisticaSelect = document.createElement('select');
+                    logisticaSelect.multiple = true;
+                    for (const id in allLogistica) {
+                        const option = document.createElement('option');
+                        option.value = id;
+                        option.textContent = allLogistica[id].nome;
+                        if (logisticaDoEvento.find(p => p.prestadorId === id)) {
+                            option.selected = true;
+                        }
+                        logisticaSelect.appendChild(option);
+                    }
+                    logisticaSelect.addEventListener('change', () => updateLogistica(evento.id));
+                    logisticaSelectTd.appendChild(logisticaSelect);
+                    row.appendChild(logisticaSelectTd);
 
                     tbody.appendChild(row);
                 });
+
                 table.appendChild(tbody);
                 container.appendChild(table);
             }
@@ -267,13 +329,13 @@
             eventosDoDia.forEach(e => {
                 if (e.id !== eventoAtual.id) {
                     getEquipeDoEvento(e).forEach(m => {
-                        if (m && m.membroId) membrosAlocadosNoDia.add(m.membroId);
+                        if (m?.membroId) membrosAlocadosNoDia.add(m.membroId);
                     });
                 }
             });
 
-            const equipeAtualDoEvento = getEquipeDoEvento(eventoAtual);
-            const membrosAlocadosNesteEvento = new Set(equipeAtualDoEvento.map(m => m.membroId));
+            const equipeAtual = getEquipeDoEvento(eventoAtual);
+            const membrosAlocadosNesteEvento = new Set(equipeAtual.map(m => m.membroId));
 
             for (const membroId in allEquipe) {
                 const option = document.createElement('option');
@@ -292,33 +354,33 @@
         async function updateEquipe(eventoId) {
             const row = document.getElementById(`row-${eventoId}`);
             if (!row) return;
-            
-            const selectElement = row.querySelector('select');
-            const selectedOptions = Array.from(selectElement.selectedOptions);
-            
-            const novaEquipe = selectedOptions.map(option => {
-                const membroId = option.value;
-                const inputValor = row.querySelector(`input[data-membro-id="${membroId}"]`);
-                let valor = 0;
-                if (inputValor) {
-                    valor = parseFloat(inputValor.value) || 0;
-                } else {
-                    // Se o input não existe ainda (acabou de ser selecionado), pega o valor padrão
-                    valor = allEquipe[membroId]?.valorDiaria || 0;
-                }
+            const select = row.querySelector('select');
+            const options = Array.from(select.selectedOptions);
+            const novaEquipe = options.map(opt => {
+                const membroId = opt.value;
+                const input = row.querySelector(`input[data-membro-id="${membroId}"]`);
+                let valor = input ? parseFloat(input.value) || 0 : (allEquipe[membroId]?.valorDiaria || 0);
                 return { membroId, valor };
             });
 
-            try {
-                await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
-                console.log(`Equipe e valores do evento ${eventoId} salvos com sucesso.`);
-                
-                // Recarrega tudo para garantir a consistência da interface
-                fetchEventos();
-            } catch (error) {
-                console.error("Erro ao atualizar a equipe:", error);
-                alert("Ocorreu um erro ao salvar a equipe. Tente novamente.");
-            }
+            await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
+            fetchEventos();
+        }
+
+        async function updateLogistica(eventoId) {
+            const row = document.getElementById(`row-${eventoId}`);
+            if (!row) return;
+            const select = row.querySelectorAll('select')[1];
+            const options = Array.from(select.selectedOptions);
+            const novaLogistica = options.map(opt => {
+                const prestadorId = opt.value;
+                const input = row.querySelector(`input[data-prestador-id="${prestadorId}"]`);
+                let valor = input ? parseFloat(input.value) || 0 : 0;
+                return { prestadorId, valor };
+            });
+
+            await db.ref(`eventos/${eventoId}/logistica`).set(novaLogistica);
+            fetchEventos();
         }
 
         document.addEventListener('DOMContentLoaded', fetchEventos);
