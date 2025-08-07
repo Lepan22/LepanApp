@@ -10,6 +10,15 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
+  <style>
+    input[type="number"] {
+      width: 60px;
+    }
+    .save-button {
+      margin-top: 10px;
+      background-color: #0d6efd;
+    }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -45,6 +54,7 @@
           </thead>
           <tbody></tbody>
         </table>
+        <button class="save-button" onclick="salvarAlteracoes()">Salvar Alterações</button>
       </div>
     </main>
   </div>
@@ -65,6 +75,7 @@
     let eventos = [];
     let produtosDB = {};
     let dadosTabela = {};
+    let eventosFiltrados = [];
 
     function formatDateBR(dataISO) {
       if (!dataISO) return '';
@@ -108,7 +119,7 @@
       const filtroStatus = document.getElementById('filtroStatus').value;
       const filtroDataFim = document.getElementById('filtroDataFim').value;
 
-      const eventosFiltrados = eventos.filter(e => {
+      eventosFiltrados = eventos.filter(e => {
         const statusOk = (e.status || '').toLowerCase() === filtroStatus;
         const dataOk = !filtroDataFim || !e.data || e.data <= filtroDataFim;
         return statusOk && dataOk;
@@ -124,7 +135,7 @@
           const info = produtosDB[prodId];
           const prodNome = info ? info.nome : prodId;
           if (!dadosTabela[prodNome]) dadosTabela[prodNome] = { total: 0, quantidadePorCaixa: info?.quantidadePorCaixa || 0 };
-          dadosTabela[prodNome][nomeData] = produto.quantidade || 0;
+          dadosTabela[prodNome][nomeData] = { quantidade: produto.quantidade || 0, produtoId: prodId, eventoId: evento.id };
           dadosTabela[prodNome].total += produto.quantidade || 0;
         });
       });
@@ -148,8 +159,11 @@
         const tr = document.createElement('tr');
         let row = `<td>${produto}</td>`;
         eventosNomes.forEach(nome => {
-          const enviada = dados[nome] || 0;
-          row += `<td>${Number(enviada).toFixed(1).replace('.', ',')}</td>`;
+          const item = dados[nome] || { quantidade: 0 };
+          row += `<td><input type="number" min="0" step="0.1" value="${item.quantidade}" 
+            data-evento="${item.eventoId || ''}" 
+            data-produto="${item.produtoId || ''}" 
+            data-nome="${nome}"></td>`;
         });
         const total = dados.total || 0;
         const qtdCaixa = Number(dados.quantidadePorCaixa || 0);
@@ -161,6 +175,40 @@
         tr.innerHTML = row;
         tbody.appendChild(tr);
       });
+    }
+
+    async function salvarAlteracoes() {
+      const inputs = document.querySelectorAll('#tabelaProdutos input[type="number"]');
+      const updates = {};
+
+      inputs.forEach(input => {
+        const eventoId = input.dataset.evento;
+        const produtoId = input.dataset.produto;
+        const novaQuantidade = parseFloat(input.value) || 0;
+
+        if (!updates[eventoId]) updates[eventoId] = [];
+        updates[eventoId].push({ produtoId, quantidade: novaQuantidade });
+      });
+
+      for (const eventoId in updates) {
+        const snapshot = await db.ref(`eventos/${eventoId}/produtos`).once('value');
+        const produtosOriginais = snapshot.val() || [];
+
+        const novos = updates[eventoId];
+        novos.forEach(novo => {
+          const index = produtosOriginais.findIndex(p => p.produtoId === novo.produtoId);
+          if (index >= 0) {
+            produtosOriginais[index].quantidade = novo.quantidade;
+          } else {
+            produtosOriginais.push({ produtoId: novo.produtoId, quantidade: novo.quantidade });
+          }
+        });
+
+        await db.ref(`eventos/${eventoId}/produtos`).set(produtosOriginais);
+      }
+
+      alert("Alterações salvas com sucesso!");
+      carregarDados();
     }
 
     function renderTotaisEventos(eventosFiltrados) {
@@ -206,7 +254,7 @@
         const row = [produto];
         let total = 0;
         eventosNomes.forEach(nome => {
-          const enviada = dados[nome] || 0;
+          const enviada = dados[nome]?.quantidade || 0;
           total += enviada;
           row.push(Number(enviada).toFixed(1).replace('.', ','));
         });
