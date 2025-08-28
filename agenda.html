@@ -9,95 +9,68 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
-    /* ---- Layout geral ---- */
     :root{
-      --gap:8px;
-      --kpi-h:82px;         /* faixa dos KPIs */
-      --header-h:44px;      /* barra com navegação do mês */
-      --botao-h:40px;       /* área do "Duplicar Mês" */
-      --chrome: calc(var(--kpi-h) + var(--header-h) + var(--botao-h) + 40px); /* paddings/margens */
-      --day-font: 10px;     /* texto dia/evento */
-      --event-font: 8px;
-      --accent:#ff7f00;
+      --brand:#ff7f00;
+      --bg:#f5f6f8;
+      --line:#e8e9ed;
+      --text:#2a2d34;
+      --muted:#6b7280;
+      --kpiH:74px;
+      --navH:44px;
+      --footH:36px;
+      --g:8px;
+      --dayPad:6px;
+      --eventSize:11px;
     }
+    html,body{height:100%;}
+    body{background:var(--bg); color:var(--text); margin:0;}
 
-    .card-dashboard{
-      background:#fff; border-radius:8px; padding:12px; box-shadow:0 2px 5px rgba(0,0,0,.08);
-    }
+    .card {background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 4px rgba(16,24,40,.05)}
 
-    /* ---- KPIs ---- */
-    .kpi-wrap{
-      display:grid;
-      grid-template-columns: repeat(4, minmax(0,1fr));
-      gap: var(--gap);
-      margin-bottom: var(--gap);
-      height: var(--kpi-h);
-    }
-    .kpi{
-      display:flex; flex-direction:column; justify-content:center; align-items:flex-start;
-      background:#fafafa; border:1px solid #eee; border-radius:10px; padding:10px;
-    }
-    .kpi small{ color:#777; font-weight:600; }
-    .kpi strong{ font-size:18px; line-height:1.1; margin-top:4px; }
+    /* KPIs */
+    .kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--g);margin-bottom:var(--g);height:var(--kpiH)}
+    .kpi{padding:10px 12px;border-radius:10px}
+    .kpi small{display:block;color:var(--muted);font-weight:600}
+    .kpi strong{display:block;font-size:18px;margin-top:4px}
 
-    /* ---- Navegação do mês ---- */
-    .topbar{
-      display:flex; align-items:center; justify-content:center; gap:8px;
-      height: var(--header-h);
-    }
-    .btn-navegar{
-      background-color: var(--accent);
-      color:#fff; padding:6px 10px; border:none; cursor:pointer; border-radius:6px; font-size:12px;
-    }
-    .btn-navegar:hover{ background:#e96f00; }
-    #mesAtual{ font-weight:700; text-transform:capitalize; }
+    /* Navegação */
+    .topnav{display:flex;align-items:center;justify-content:center;gap:10px;height:var(--navH);margin-bottom:var(--g)}
+    .btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer}
+    .btn:hover{filter:brightness(.95)}
+    #mesAtual{font-weight:700;text-transform:capitalize}
 
-    /* ---- Calendário ---- */
-    .calendario{
-      /* 7 colunas x 6 linhas fixas, calculando a altura para caber na viewport */
-      display:grid;
-      grid-template-columns: repeat(7, 1fr);
-      grid-auto-rows: calc((100vh - var(--chrome) - 6px - 6px) / 6); /* 6 linhas visíveis sem rolagem */
-      gap: 6px;
-      margin-top: 6px;
-      user-select:none;
-    }
-    .dia{
-      border:1px solid #ddd; border-radius:6px; padding:4px;
-      display:flex; flex-direction:column; overflow:hidden;
-      font-size: var(--day-font); background:#fff;
-    }
-    .cabecalho{
-      background:#f2f2f2; font-weight:700; display:flex; align-items:center; justify-content:center;
-      font-size:11px;
-    }
-    .dia .numero{
-      font-weight:700; color:#444; margin-bottom:2px;
-    }
-    .semana-atual{ box-shadow: inset 0 0 0 2px #ffe0b2; }
-    .dia-indisponivel{ background:#f9f9f9; border:2px dashed #d9534f; }
-    .motivo-indisponivel{ font-size:8px; color:#d9534f; margin:2px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    /* Cabeçalho dias da semana */
+    .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:6px 0}
+    .dow div{background:#fff;border:1px solid var(--line);border-radius:8px;text-align:center;font-weight:700;padding:8px 0}
 
-    .evento-dia{
-      margin-top:2px; background: var(--accent); color:#fff; border-radius:4px;
-      padding:2px 4px; font-size: var(--event-font); display:flex; align-items:center; justify-content:space-between;
-      min-height:16px;
+    /* Grade do mês (6 semanas fixas, ocupa a viewport sem rolar) */
+    .grid{
+      display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
+      grid-auto-rows: calc( (100vh - (var(--kpiH)+var(--navH)+var(--footH)+100px)) / 6 );
+      /* 100px ~ margem/cabecalho/espacamentos do container */
+      min-height:calc( (100vh - (var(--kpiH)+var(--navH)+var(--footH)+100px)) );
     }
-    .evento-dia span.label{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .botao-duplicar{ margin-left:6px; font-size:11px; cursor:pointer; }
+    .day{
+      background:#fff;border:1px solid var(--line);border-radius:10px;
+      padding:var(--dayPad);display:flex;flex-direction:column;overflow:hidden
+    }
+    .day .n{font-weight:700;color:#111;margin-bottom:4px}
+    .is-week{box-shadow: inset 0 0 0 2px #ffe0b2}
+    .is-blocked{background:#fafafa;border-style:dashed}
+    .blocked-msg{font-size:10px;color:#d9534f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-    /* ---- Rodapé botão ---- */
-    .rodape-acoes{ margin-top:8px; text-align:center; height:var(--botao-h); }
+    .evt{
+      margin-top:4px;background:var(--brand);color:#fff;border-radius:6px;padding:2px 6px;
+      display:flex;align-items:center;justify-content:space-between;font-size:var(--eventSize);min-height:20px
+    }
+    .evt .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .dup{margin-left:8px;cursor:pointer;font-weight:700}
 
-    /* ---- Responsivo: em telas menores, empilha KPIs ---- */
-    @media (max-width: 980px){
-      .kpi-wrap{ grid-template-columns: repeat(2, minmax(0,1fr)); height: calc(var(--kpi-h) * 2 + var(--gap)); }
-      :root{ --chrome: calc((var(--kpi-h)*2 + var(--gap)) + var(--header-h) + var(--botao-h) + 40px); }
-    }
-    @media (max-width: 640px){
-      .kpi-wrap{ grid-template-columns: 1fr; height: calc(var(--kpi-h)*4 + var(--gap)*3); }
-      :root{ --chrome: calc((var(--kpi-h)*4 + var(--gap)*3) + var(--header-h) + var(--botao-h) + 40px); }
-    }
+    .foot{height:var(--footH);display:flex;justify-content:center;align-items:center;margin-top:8px}
+
+    /* Responsivo */
+    @media (max-width: 980px){ .kpi-row{grid-template-columns:repeat(2,1fr); height:calc(var(--kpiH)*2 + var(--g)); } }
+    @media (max-width: 640px){ .kpi-row{grid-template-columns:1fr; height:calc(var(--kpiH)*4 + var(--g)*3);} }
   </style>
 </head>
 <body>
@@ -105,49 +78,38 @@
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <div class="card-dashboard">
+      <!-- KPIs -->
+      <div class="kpi-row">
+        <div class="kpi card"><small>Vendas Real Mês Anterior</small><strong id="kpiRealAnt">—</strong></div>
+        <div class="kpi card"><small>Vendas Real Mês</small><strong id="kpiRealMes">—</strong></div>
+        <div class="kpi card"><small>Venda Prevista Mês</small><strong id="kpiPrevMes">—</strong></div>
+        <div class="kpi card"><small>Venda Prevista Próx. Mês</small><strong id="kpiPrevProx">—</strong></div>
+      </div>
 
-        <!-- KPIs -->
-        <section class="kpi-wrap">
-          <div class="kpi">
-            <small>Vendas Real Mês Anterior</small>
-            <strong id="kpiRealAnterior">—</strong>
-          </div>
-          <div class="kpi">
-            <small>Vendas Real Mês</small>
-            <strong id="kpiRealAtual">—</strong>
-          </div>
-          <div class="kpi">
-            <small>Venda Prevista Mês</small>
-            <strong id="kpiPrevistaAtual">—</strong>
-          </div>
-          <div class="kpi">
-            <small>Venda Prevista Próx. Mês</small>
-            <strong id="kpiPrevistaProx">—</strong>
-          </div>
-        </section>
+      <!-- Navegação -->
+      <div class="topnav">
+        <button class="btn" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
+        <span id="mesAtual">Mês Atual</span>
+        <button class="btn" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
+      </div>
 
-        <!-- Navegação -->
-        <div class="topbar">
-          <button class="btn-navegar" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
-          <span id="mesAtual">Mês Atual</span>
-          <button class="btn-navegar" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
-        </div>
+      <!-- Cabeçalho dos dias -->
+      <div class="dow">
+        <div>DOM</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>SAB</div>
+      </div>
 
-        <!-- Calendário -->
-        <div class="calendario" id="calendario"></div>
+      <!-- Calendário -->
+      <div class="grid" id="grid"></div>
 
-        <!-- Ações -->
-        <div class="rodape-acoes">
-          <button class="btn-navegar" onclick="duplicarMes()">📅 Duplicar Mês</button>
-        </div>
+      <div class="foot">
+        <button class="btn" onclick="duplicarMes()">📅 Duplicar Mês</button>
       </div>
     </main>
   </div>
 
   <script src="assets/menu.js" defer></script>
   <script>
-    // ===== Firebase =====
+    // === Firebase ===
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
@@ -157,262 +119,228 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // ===== Estado =====
-    let mesAtual = new Date();
+    // === Estado ===
+    let mesRef = new Date();
     let eventos = [];
-    let mapaIndisponiveis = {};
+    let indis = {};
 
-    // ===== Utils =====
-    const pad2 = (n)=> String(n).padStart(2,'0');
-    const ym = (d)=> `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+    // === Utils ===
+    const pad2 = n => String(n).padStart(2,'0');
+    const ym   = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+    const brl  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+    const toISO = d => new Date(d).toISOString().split('T')[0];
+    const parseNumber = v => {
+      if (v==null) return 0;
+      if (typeof v==='number') return v;
+      const s = String(v).replace(/\./g,'').replace(',','.');
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    };
+    const vendaDoEvento = ev => {
+      // cobre diferentes nomes/casos
+      const cands = [
+        ev.totalVendasEvento,
+        ev.totalVendas,
+        ev.vendaReal,
+        ev.financeiro && ev.financeiro.totalVendasEvento,
+        ev.financeiro && ev.financeiro.totalVendas
+      ];
+      for (const c of cands) {
+        const n = parseNumber(c);
+        if (n>0) return n;
+      }
+      return 0;
+    };
 
+    // === Navegação ===
     function mudarMes(delta){
-      mesAtual.setMonth(mesAtual.getMonth() + delta);
-      carregarDados();
+      mesRef.setMonth(mesRef.getMonth()+delta);
+      carregar();
     }
 
-    // ===== Carga =====
-    async function carregarDados(){
-      // Eventos
-      const eventosSnap = await db.ref('eventos').once('value');
+    // === Carga principal ===
+    async function carregar(){
+      // eventos
+      const snap = await db.ref('eventos').once('value');
       eventos = [];
-      eventosSnap.forEach(child=>{
-        const ev = child.val(); ev.id = child.key; eventos.push(ev);
-      });
+      snap.forEach(ch=>{ const v=ch.val(); v.id=ch.key; eventos.push(v); });
 
-      // Indisponíveis
-      const indisSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
-      mapaIndisponiveis = {};
-      indisSnap.forEach(child=>{
-        const item = child.val();
-        if (item?.tipo === 'único' && item?.data){
-          mapaIndisponiveis[item.data] = item.motivo || 'Indisponível';
-        } else if (item?.tipo === 'período' && item?.inicio && item?.fim){
-          const ini = new Date(item.inicio), fim = new Date(item.fim);
-          for (let d=new Date(ini); d<=fim; d.setDate(d.getDate()+1)){
-            const s = d.toISOString().split('T')[0];
-            mapaIndisponiveis[s] = item.motivo || 'Indisponível';
+      // indisponíveis
+      const iSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
+      indis={};
+      iSnap.forEach(ch=>{
+        const it=ch.val();
+        if (it?.tipo==='único' && it?.data) {
+          indis[it.data]=it.motivo||'Indisponível';
+        } else if (it?.tipo==='período' && it?.inicio && it?.fim){
+          const i=new Date(it.inicio), f=new Date(it.fim);
+          for(let d=new Date(i); d<=f; d.setDate(d.getDate()+1)){
+            indis[toISO(d)] = it.motivo||'Indisponível';
           }
         }
       });
 
-      atualizarInterface();
+      desenhar();
       atualizarKPIs();
     }
 
-    function atualizarInterface(){
-      // Nome do mês
+    function desenhar(){
       document.getElementById('mesAtual').textContent =
-        mesAtual.toLocaleString('pt-BR', { month:'long', year:'numeric' });
+        mesRef.toLocaleString('pt-BR',{month:'long',year:'numeric'});
 
-      renderizarCalendario();
-    }
+      const grid = document.getElementById('grid');
+      grid.innerHTML='';
 
-    function renderizarCalendario(){
-      const cal = document.getElementById('calendario');
-      cal.innerHTML = '';
+      const ano = mesRef.getFullYear();
+      const mes = mesRef.getMonth();
+      const first = new Date(ano, mes, 1);
+      const last  = new Date(ano, mes+1, 0);
 
-      // Cabeçalho (fixo fora das 6 linhas)
-      const cab = ['DOM','S','T','Q','Q','S','SAB'];
-      cab.forEach(txt=>{
-        const div = document.createElement('div');
-        div.className = 'dia cabecalho';
-        div.textContent = txt;
-        cal.appendChild(div);
-      });
+      const offset = first.getDay(); // 0..6
+      const daysInMonth = last.getDate();
 
-      const ano = mesAtual.getFullYear();
-      const mes = mesAtual.getMonth();
-      const primeiro = new Date(ano, mes, 1);
-      const ultimo = new Date(ano, mes+1, 0);
-      const offset = primeiro.getDay(); // 0=Dom
+      // espaços iniciais até o 1º dia
+      for (let i=0;i<offset;i++) grid.appendChild(document.createElement('div'));
 
-      // Preenche dias: always 6 weeks (42 boxes)
-      const totalBoxes = 42;
-      const prevDays = offset;
-      const daysInMonth = ultimo.getDate();
+      const semanaAtual = semanaISO();
 
-      // Dias anteriores (em branco)
-      for (let i=0; i<prevDays; i++) cal.appendChild(document.createElement('div'));
+      // dias do mês
+      for (let d=1; d<=daysInMonth; d++){
+        const data = new Date(ano,mes,d);
+        const iso = toISO(data);
 
-      // Semana atual (segunda a domingo)
-      const semanaAtual = getSemanaAtualISO();
+        const el = document.createElement('div');
+        el.className='day card';
+        if (semanaAtual.includes(iso)) el.classList.add('is-week');
+        if (indis[iso]) el.classList.add('is-blocked');
+        el.dataset.data=iso;
+        el.addEventListener('dragover', e=>e.preventDefault());
+        el.addEventListener('drop', onDropMove);
 
-      // Dias do mês
-      for (let dia=1; dia<=daysInMonth; dia++){
-        const data = new Date(ano, mes, dia);
-        const dataStr = data.toISOString().split('T')[0];
+        const n = document.createElement('div');
+        n.className='n'; n.textContent=d;
+        el.appendChild(n);
 
-        const box = document.createElement('div');
-        box.classList.add('dia');
-        box.dataset.data = dataStr;
-
-        if (semanaAtual.includes(dataStr)) box.classList.add('semana-atual');
-        if (mapaIndisponiveis[dataStr]) box.classList.add('dia-indisponivel');
-
-        box.addEventListener('dragover', e=>e.preventDefault());
-        box.addEventListener('drop', onDropMoverEvento);
-
-        const numero = document.createElement('div');
-        numero.className = 'numero';
-        numero.textContent = dia;
-        box.appendChild(numero);
-
-        if (mapaIndisponiveis[dataStr]){
-          const motivo = document.createElement('div');
-          motivo.className = 'motivo-indisponivel';
-          motivo.textContent = mapaIndisponiveis[dataStr];
-          box.appendChild(motivo);
+        if (indis[iso]){
+          const m = document.createElement('div');
+          m.className='blocked-msg'; m.textContent=indis[iso];
+          el.appendChild(m);
         }
 
-        // Eventos do dia
-        eventos.filter(ev => ev.data === dataStr).forEach(ev=>{
-          const eventoDiv = document.createElement('div');
-          eventoDiv.className = 'evento-dia';
-          eventoDiv.setAttribute('draggable', true);
-          eventoDiv.dataset.eventoId = ev.id;
+        eventos.filter(ev=>ev.data===iso).forEach(ev=>{
+          const evt = document.createElement('div');
+          evt.className='evt';
+          evt.draggable=true;
+          evt.dataset.eventoId=ev.id;
 
-          const label = document.createElement('span');
-          label.className = 'label';
-          label.textContent = ev.nomeEvento || 'Sem nome';
+          const t = document.createElement('span');
+          t.className='t'; t.textContent=ev.nomeEvento || 'Sem nome';
 
           const dup = document.createElement('span');
-          dup.className = 'botao-duplicar';
-          dup.title = 'Duplicar Evento';
-          dup.textContent = '➕';
+          dup.className='dup'; dup.title='Duplicar evento'; dup.textContent='＋';
           dup.onclick = ()=>duplicarEvento(ev);
 
-          eventoDiv.appendChild(label);
-          eventoDiv.appendChild(dup);
+          evt.appendChild(t); evt.appendChild(dup);
 
-          eventoDiv.addEventListener('dragstart', e=>{
-            e.dataTransfer.setData('eventoId', ev.id);
-          });
-
-          box.appendChild(eventoDiv);
+          evt.addEventListener('dragstart', e=> e.dataTransfer.setData('eventoId', ev.id));
+          el.appendChild(evt);
         });
 
-        cal.appendChild(box);
+        grid.appendChild(el);
       }
 
-      // Dias posteriores (em branco) para fechar 42
-      const used = prevDays + daysInMonth;
-      for (let i=used; i<42; i++) cal.appendChild(document.createElement('div'));
+      // completa até 42
+      const usados = offset + daysInMonth;
+      for (let i=usados; i<42; i++) grid.appendChild(document.createElement('div'));
     }
 
-    function onDropMoverEvento(e){
-      const eventoId = e.dataTransfer.getData('eventoId');
-      const novaData = this.dataset.data;
-      if (!eventoId || !novaData) return;
-
-      db.ref(`eventos/${eventoId}`).update({ data: novaData })
-        .then(()=>{ alert("Evento movido para " + novaData); carregarDados(); })
-        .catch(err=> alert("Erro ao mover evento: " + err.message));
+    function onDropMove(e){
+      const id = e.dataTransfer.getData('eventoId');
+      const data = this.dataset.data;
+      if (!id || !data) return;
+      db.ref(`eventos/${id}`).update({data})
+        .then(()=>carregar())
+        .catch(err=>alert('Erro ao mover: '+err.message));
     }
 
-    function getSemanaAtualISO(){
-      const hoje = new Date();
-      const dow = hoje.getDay();      // 0..6 (Dom..Sáb)
+    function semanaISO(){
+      const hoje=new Date();
+      const dw=hoje.getDay();
       const inicio = new Date(hoje);
-      // começar segunda (1); alinhar segunda-domingo
-      const delta = (dow === 0 ? -6 : 1 - dow);
-      inicio.setDate(hoje.getDate() + delta);
-      const out = [];
-      for (let i=0; i<7; i++){
-        const d = new Date(inicio); d.setDate(inicio.getDate()+i);
-        out.push(d.toISOString().split('T')[0]);
-      }
+      const delta = (dw===0? -6 : 1-dw);
+      inicio.setDate(hoje.getDate()+delta);
+      const out=[];
+      for(let i=0;i<7;i++){const d=new Date(inicio);d.setDate(inicio.getDate()+i);out.push(toISO(d));}
       return out;
     }
 
     async function duplicarEvento(ev){
-      if(!confirm("Deseja duplicar este evento?")) return;
-      const novo = { ...ev }; delete novo.id;
+      if(!confirm('Duplicar este evento?')) return;
+      const novo={...ev}; delete novo.id;
       await db.ref('eventos').push(novo);
-      alert("Evento duplicado com sucesso!");
-      carregarDados();
+      carregar();
     }
 
     async function duplicarMes(){
-      if (!confirm("Deseja realmente duplicar todos os eventos do mês para o mês seguinte?")) return;
+      if(!confirm('Duplicar todos os eventos do mês para o próximo?')) return;
 
-      const ano = mesAtual.getFullYear();
-      const mes = mesAtual.getMonth();
-
-      const eventosDoMes = eventos.filter(ev=>{
-        const d = new Date(ev.data);
-        return d.getMonth() === mes && d.getFullYear() === ano;
+      const ano=mesRef.getFullYear(), mes=mesRef.getMonth();
+      const doMes = eventos.filter(ev=>{
+        const d=new Date(ev.data);
+        return d.getMonth()===mes && d.getFullYear()===ano;
       });
 
-      const tasks = eventosDoMes.map(ev=>{
-        const nova = new Date(ev.data);
-        nova.setMonth(nova.getMonth()+1);
+      await Promise.all(doMes.map(ev=>{
+        const nova = new Date(ev.data); nova.setMonth(nova.getMonth()+1);
         const ultimoNovo = new Date(nova.getFullYear(), nova.getMonth()+1, 0).getDate();
-        if (nova.getDate() > ultimoNovo) nova.setDate(ultimoNovo);
+        if (nova.getDate()>ultimoNovo) nova.setDate(ultimoNovo);
 
-        const novoEvento = { ...ev };
-        delete novoEvento.id;
-        novoEvento.data = nova.toISOString().split('T')[0];
-        novoEvento.status = 'aberto';
+        const n={...ev}; delete n.id;
+        n.data = toISO(nova); n.status='aberto';
+        delete n.vendaPDV;
+        if (n.produtos){ n.produtos = n.produtos.map(p=>{const {congelado,assado,perda,...r}=p;return r;}); }
+        return db.ref('eventos').push(n);
+      }));
 
-        delete novoEvento.vendaPDV;
-        if (novoEvento.produtos){
-          novoEvento.produtos = novoEvento.produtos.map(p=>{
-            const { congelado, assado, perda, ...rest } = p;
-            return rest;
-          });
-        }
-        return db.ref('eventos').push(novoEvento);
-      });
-
-      await Promise.all(tasks);
-      alert("Eventos duplicados com sucesso!");
-      carregarDados();
+      carregar();
     }
 
-    // ===== KPIs =====
+    // === KPIs ===
     async function atualizarKPIs(){
-      const atualYM = ym(mesAtual);
-      const prevDate = new Date(mesAtual); prevDate.setMonth(prevDate.getMonth()-1);
-      const nextDate = new Date(mesAtual); nextDate.setMonth(nextDate.getMonth()+1);
-      const prevYM = ym(prevDate);
-      const nextYM = ym(nextDate);
+      const ymAtual = ym(mesRef);
+      const dAnt = new Date(mesRef); dAnt.setMonth(dAnt.getMonth()-1);
+      const dProx= new Date(mesRef); dProx.setMonth(dProx.getMonth()+1);
+      const ymAnt = ym(dAnt);
+      const ymProx= ym(dProx);
 
-      // Real mês atual e anterior (somatório dos eventos)
-      const somaReal = (ymStr)=>{
-        let total = 0;
+      const somaMes = (ymKey)=>{
+        let tot=0;
         eventos.forEach(ev=>{
-          if (!ev?.data) return;
-          const d = new Date(ev.data);
-          const str = `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
-          if (str === ymStr){
-            const v = Number(ev.totalVendasEvento ?? ev.totalVendas ?? 0);
-            if (!isNaN(v)) total += v;
-          }
+          if(!ev?.data) return;
+          const d=new Date(ev.data);
+          const key=`${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+          if(key===ymKey) tot += vendaDoEvento(ev);
         });
-        return total;
+        return tot;
       };
 
-      const realAtual = somaReal(atualYM);
-      const realAnterior = somaReal(prevYM);
+      const realAnt  = somaMes(ymAnt);
+      const realAtu  = somaMes(ymAtual);
 
-      // Previsão mês atual e próximo: /previsao_receita/{AAAA-MM}/total
-      const lerPrev = async (ymKey)=>{
-        const snap = await db.ref(`previsao_receita/${ymKey}/total`).once('value');
-        const v = Number(snap.val() ?? 0);
-        return isNaN(v) ? 0 : v;
+      const previsao = async (ymKey)=>{
+        const s = await db.ref(`previsao_receita/${ymKey}/total`).once('value');
+        return parseNumber(s.val());
       };
-      const [prevAtual, prevProx] = await Promise.all([ lerPrev(atualYM), lerPrev(nextYM) ]);
 
-      // Atualiza tela
-      const brl = (n)=> n.toLocaleString('pt-BR', { style:'currency', currency:'BRL', maximumFractionDigits:0 });
-      document.getElementById('kpiRealAnterior').textContent = brl(realAnterior);
-      document.getElementById('kpiRealAtual').textContent    = brl(realAtual);
-      document.getElementById('kpiPrevistaAtual').textContent= brl(prevAtual);
-      document.getElementById('kpiPrevistaProx').textContent = brl(prevProx);
+      const [prevAtu, prevProx] = await Promise.all([previsao(ymAtual), previsao(ymProx)]);
+
+      document.getElementById('kpiRealAnt').textContent = brl(realAnt);
+      document.getElementById('kpiRealMes').textContent = brl(realAtu);
+      document.getElementById('kpiPrevMes').textContent = brl(prevAtu);
+      document.getElementById('kpiPrevProx').textContent = brl(prevProx);
     }
 
-    document.addEventListener('DOMContentLoaded', carregarDados);
+    document.addEventListener('DOMContentLoaded', carregar);
   </script>
 </body>
 </html>
