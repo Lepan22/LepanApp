@@ -13,6 +13,7 @@
   <script src="assets/menu.js" defer></script>
 
   <style>
+    /* KPIs */
     .kpi-linha {
       display: flex;
       gap: 16px;
@@ -32,20 +33,35 @@
       justify-content: center;
       height: 60px;
     }
-    .kpi h2 {
-      margin: 0 0 2px;
-      font-size: 12px;
-      color: #333;
+    .kpi h2 { margin: 0 0 2px; font-size: 12px; color: #333; }
+    .kpi p { font-size: 16px; margin: 0; font-weight: bold; color: #ff9800; }
+
+    /* Tabela */
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left;
+      padding: 10px 8px;
+      background: #fff8ef;
+      border-bottom: 1px solid #eee;
+      font-weight: 600;
     }
-    .kpi p {
-      font-size: 16px;
-      margin: 0;
-      font-weight: bold;
-      color: #ff9800;
+    tbody td {
+      padding: 8px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
     }
-    /* destaque do Venda PDV */
-    .pdv-verde { color: green; font-weight: bold; }
-    .pdv-vermelho { color: red; font-weight: bold; }
+    tbody tr:nth-child(odd) { background: #fff; }
+    tbody tr:nth-child(even) { background: #fcfcfc; }
+
+    /* Controles */
+    .status-select {
+      padding: 4px 8px;
+      font-size: 13px;
+      max-width: 140px;
+    }
+    .pdv-verde { color: #1b7f1b; font-weight: 700; }
+    .pdv-vermelho { color: #c62828; font-weight: 700; }
+    .acoes button { margin-right: 6px; }
   </style>
 </head>
 <body>
@@ -136,9 +152,13 @@
     </main>
   </div>
 
+  <!-- Valores padrão dos filtros -->
   <script>
     window.addEventListener('DOMContentLoaded', () => {
+      // Por padrão no seu fluxo deixamos "Aberto" selecionado aqui. :contentReference[oaicite:0]{index=0}
       document.getElementById('filtroStatus').value = 'Aberto';
+
+      // Define data fim para a próxima segunda-feira
       const hoje = new Date();
       const diaSemana = hoje.getDay();
       const diasAteSegunda = (8 - diaSemana) % 7 || 7;
