@@ -27,7 +27,7 @@
 
     .wrap{padding:10px}
 
-    /* KPIs compactos */
+    /* KPIs */
     .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);margin-bottom:var(--gap)}
     .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;min-height:52px}
     .kpi small{color:var(--muted);font-size:11px;font-weight:600}
@@ -53,12 +53,31 @@
     .day{
       background:#fff;border:1px solid var(--line);border-radius:10px;
       padding:var(--padDay);display:flex;flex-direction:column;overflow:hidden;font-size:var(--fontDay);
-      position: relative; /* necessário para o badge +N */
+      position: relative;
     }
-    .n{font-weight:700;margin-bottom:2px}
+    /* cabeçalho do dia (número e contador) */
+    .head-dia{display:flex;align-items:center;justify-content:space-between}
+    .n{font-weight:700}
+    .count{
+      min-width:18px;height:18px;line-height:18px;
+      border-radius:9px;border:1px solid var(--line);
+      background:#fff;color:#555;font-size:10px;text-align:center;
+      margin-left:6px;
+    }
+
+    /* lista de eventos rola dentro do dia */
+    .lista{
+      margin-top:3px; flex:1 1 auto; overflow:auto; padding-right:2px;
+    }
+
+    /* scrollbar discreto dentro do dia */
+    .lista::-webkit-scrollbar{width:6px}
+    .lista::-webkit-scrollbar-thumb{background:#ddd;border-radius:8px}
+    .lista{scrollbar-width:thin; scrollbar-color:#ddd transparent;}
+
     .is-week{box-shadow: inset 0 0 0 2px #ffe0b2}
     .is-blocked{background:#fafafa;border-style:dashed}
-    .blocked{font-size:9px;color:#d9534f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .blocked{font-size:9px;color:#d9534f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
 
     .evt{
       margin-top:3px;background:var(--brand);color:#fff;border-radius:6px;padding:1px 5px;
@@ -66,14 +85,6 @@
     }
     .evt .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dup{margin-left:6px;cursor:pointer;font-weight:700}
-
-    /* badge “+N” quando ocultar eventos excedentes */
-    .more {
-      position: absolute; right: 6px; bottom: 4px;
-      background: #fff; border: 1px solid var(--line);
-      border-radius: 10px; padding: 0 6px; font-size: 10px; color: #555;
-      pointer-events: none;
-    }
 
     .foot{display:flex;align-items:center;justify-content:center;margin-top:6px}
 
@@ -143,7 +154,7 @@
     const brl  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
     const num = v => { if (v==null) return 0; if (typeof v==='number') return v; const s=String(v).replace(/\./g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?0:n; };
 
-    // ===== Ajuste de altura (sem scroll) =====
+    // ===== Ajuste de altura (sem scroll na página) =====
     function ajustarAlturaLinhas(){
       const grid = document.getElementById('grid');
       const vb = document.documentElement.clientHeight;   // altura viewport
@@ -158,43 +169,11 @@
       const extras = 26;
 
       const disponivel = vb - (rectWrap.top + kpisH + navH + dowH + footH + extras);
-      const rowH = Math.max(76, Math.floor((disponivel - (5*4)) / 6)); // 5 gaps de 4px
+      const rowH = Math.max(84, Math.floor((disponivel - (5*4)) / 6)); // 5 gaps de 4px
 
       grid.style.setProperty('--rowH', rowH + 'px');
-      // re-clampa depois do relayout
-      requestAnimationFrame(clampAllDays);
     }
-    window.addEventListener('resize', () => {
-      ajustarAlturaLinhas();
-      clampAllDays();
-    });
-
-    // ===== Clamp de eventos por dia (esconde o 3º+ quando não couber) =====
-    function clampAllDays(){
-      const cells = document.querySelectorAll('.day');
-      cells.forEach(cell=>{
-        // reset: mostra tudo e remove badge antigo
-        cell.querySelectorAll('.evt').forEach(e => e.style.display = '');
-        const old = cell.querySelector('.more'); if (old) old.remove();
-
-        let hidden = 0;
-        const evts = Array.from(cell.querySelectorAll('.evt'));
-
-        // Se estourar a altura, esconde do fim para o começo até caber
-        while (cell.scrollHeight > cell.clientHeight && evts.length > 0){
-          const last = evts.pop();
-          last.style.display = 'none';
-          hidden++;
-        }
-        // badge opcional com a contagem ocultada
-        if (hidden > 0){
-          const b = document.createElement('span');
-          b.className = 'more';
-          b.textContent = `+${hidden}`;
-          cell.appendChild(b);
-        }
-      });
-    }
+    window.addEventListener('resize', ajustarAlturaLinhas);
 
     // ===== Navegar mês =====
     function mudarMes(delta){
@@ -264,17 +243,30 @@
         el.addEventListener('dragover', e=>e.preventDefault());
         el.addEventListener('drop', onDropMove);
 
+        // Cabeçalho do dia: número + contador
+        const head = document.createElement('div');
+        head.className = 'head-dia';
         const nEl = document.createElement('div');
         nEl.className='n'; nEl.textContent=d;
-        el.appendChild(nEl);
 
+        const cnt = document.createElement('span');
+        cnt.className='count'; cnt.textContent='';
+        head.appendChild(nEl); head.appendChild(cnt);
+        el.appendChild(head);
+
+        // Mensagem de indisponível (se houver)
         if (indis[iso]){
           const b = document.createElement('div');
           b.className='blocked'; b.textContent=indis[iso];
           el.appendChild(b);
         }
 
-        eventos.filter(ev=>ev.data===iso).forEach(ev=>{
+        // Lista de eventos (rolagem interna)
+        const lista = document.createElement('div');
+        lista.className = 'lista';
+
+        const doDia = eventos.filter(ev=>ev.data===iso);
+        doDia.forEach(ev=>{
           const evt = document.createElement('div');
           evt.className='evt';
           evt.draggable=true;
@@ -289,18 +281,19 @@
 
           evt.appendChild(t); evt.appendChild(dup);
           evt.addEventListener('dragstart', e=> e.dataTransfer.setData('eventoId', ev.id));
-          el.appendChild(evt);
+          lista.appendChild(evt);
         });
 
+        // contador de eventos
+        if (doDia.length > 0) cnt.textContent = doDia.length;
+
+        el.appendChild(lista);
         grid.appendChild(el);
       }
 
       // completa até 42 boxes
       const usados = offset + daysInMonth;
       for (let i=usados;i<42;i++) grid.appendChild(document.createElement('div'));
-
-      // Após montar tudo, faz o clamp dos dias que estourarem
-      clampAllDays();
     }
 
     function onDropMove(e){
