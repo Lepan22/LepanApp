@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Produtos por Evento</title>
+  <title>Le Pan pan - Compra - Produtos por Evento</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
@@ -25,6 +25,14 @@
     #tabelaProdutos { width: 100%; border-collapse: collapse; }
     #tabelaProdutos th, #tabelaProdutos td { border: 1px solid #ddd; padding: 4px 6px; }
     #tabelaProdutos thead th { background: #ffa24a30; }
+    .add-bar {
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      background:#fff7f0; border:1px solid #ffd6ac; padding:8px 10px; border-radius:8px; margin:10px 0;
+    }
+    .add-bar select, .add-bar input { padding:6px 8px; border:1px solid #ccc; border-radius:6px; }
+    .btn { padding:6px 10px; border-radius:6px; border:1px solid transparent; cursor:pointer; }
+    .btn-primary { background:#198754; color:#fff; }
+    .btn-primary:hover { background:#146c43; }
   </style>
 </head>
 <body>
@@ -45,7 +53,22 @@
         <label for="filtroDataFim">Data Fim:</label>
         <input type="date" id="filtroDataFim">
 
-        <button onclick="exportarXLSX()">Exportar XLSX</button>
+        <button class="btn btn-primary" onclick="exportarXLSX()">Exportar XLSX</button>
+      </div>
+
+      <!-- Adição rápida de produto a evento -->
+      <div class="add-bar">
+        <strong>Adicionar produto</strong>
+        <label for="addEvento">Evento:</label>
+        <select id="addEvento"></select>
+
+        <label for="addProduto">Produto:</label>
+        <select id="addProduto"></select>
+
+        <label for="addQtd">Qtd:</label>
+        <input type="number" id="addQtd" min="0" step="0.1" value="0">
+
+        <button class="btn btn-primary" onclick="adicionarProduto()">Adicionar</button>
       </div>
 
       <div>
@@ -82,10 +105,11 @@
 
     // --- Estado
     let eventos = [];
-    let produtosDB = {};
-    let dadosTabela = {};
+    let produtosDB = {};          // { produtoId: { nome, quantidadePorCaixa, ... } }
+    let dadosTabela = {};         // { prodNome: { total, quantidadePorCaixa, baseProdutoId, [colunaEvento]:{quantidade,produtoId,eventoId} } }
     let eventosFiltrados = [];
     let mapaColunaParaEventoId = {}; // "NomeEvento dd/mm/aaaa" -> eventoId
+    let eventosNomes = [];        // nomes de coluna (== chaves de dados)
 
     // --- Utils
     function formatDateBR(dataISO) {
@@ -124,7 +148,7 @@
       processarDados();
     }
 
-    // --- Preparar tabela considerando apenas produtos já existentes em ALGUM evento
+    // --- Preparar tabela considerando produtos que aparecem em pelo menos um evento filtrado
     function processarDados() {
       dadosTabela = {};
       mapaColunaParaEventoId = {};
@@ -138,13 +162,13 @@
         return statusOk && dataOk;
       });
 
-      const eventosNomes = eventosFiltrados.map(e => {
+      eventosNomes = eventosFiltrados.map(e => {
         const nomeData = `${e.nomeEvento || e.id} ${e.data ? formatDateBR(e.data) : ""}`;
         mapaColunaParaEventoId[nomeData] = e.id;
         return nomeData;
       });
 
-      // Traça os produtos que aparecem em pelo menos um evento filtrado
+      // Monta a matriz a partir do que já existe
       eventosFiltrados.forEach(evento => {
         const nomeData = `${evento.nomeEvento || evento.id} ${evento.data ? formatDateBR(evento.data) : ""}`;
         (evento.produtos || []).forEach(prod => {
@@ -156,7 +180,7 @@
             dadosTabela[prodNome] = {
               total: 0,
               quantidadePorCaixa: info?.quantidadePorCaixa || 0,
-              baseProdutoId: prodId // referência master para uso nas colunas onde não existe
+              baseProdutoId: prodId
             };
           }
           if (!dadosTabela[prodNome].baseProdutoId) dadosTabela[prodNome].baseProdutoId = prodId;
@@ -170,12 +194,84 @@
         });
       });
 
-      renderTabela(eventosNomes);
-      renderTotaisEventos(eventosFiltrados);
+      preencherAddBars();   // popula selects do bloco "Adicionar produto"
+      renderTabela();
+      renderTotaisEventos();
+    }
+
+    // --- Popular selects da "add-bar"
+    function preencherAddBars() {
+      const selEvento = document.getElementById("addEvento");
+      selEvento.innerHTML = "";
+      eventosNomes.forEach(n => {
+        const opt = document.createElement("option");
+        opt.value = n;
+        opt.textContent = n;
+        selEvento.appendChild(opt);
+      });
+
+      const selProduto = document.getElementById("addProduto");
+      selProduto.innerHTML = "";
+      // lista de produtos ordenada por nome
+      const lista = Object.entries(produtosDB)
+        .map(([id, info]) => ({ id, nome: info?.nome || id, quantidadePorCaixa: info?.quantidadePorCaixa || 0 }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+      lista.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.nome;
+        selProduto.appendChild(opt);
+      });
+    }
+
+    // --- Adicionar produto (em memória) antes do salvar
+    function adicionarProduto() {
+      const nomeCol = document.getElementById("addEvento").value;
+      const eventoId = mapaColunaParaEventoId[nomeCol];
+      const produtoId = document.getElementById("addProduto").value;
+      const qtd = Number(document.getElementById("addQtd").value || 0);
+
+      if (!eventoId || !produtoId) return;
+      if (qtd <= 0) { alert("Informe uma quantidade maior que zero."); return; }
+
+      const info = produtosDB[produtoId] || {};
+      const prodNome = info.nome || produtoId;
+
+      // Garante a linha do produto
+      if (!dadosTabela[prodNome]) {
+        dadosTabela[prodNome] = {
+          total: 0,
+          quantidadePorCaixa: info.quantidadePorCaixa || 0,
+          baseProdutoId: produtoId
+        };
+      }
+      if (!dadosTabela[prodNome].baseProdutoId) dadosTabela[prodNome].baseProdutoId = produtoId;
+
+      // Se já existe em outro(s) evento(s), mantém total anterior
+      const anterior = dadosTabela[prodNome][nomeCol]?.quantidade || 0;
+
+      // Atualiza célula do evento escolhido
+      dadosTabela[prodNome][nomeCol] = {
+        quantidade: anterior + qtd,
+        produtoId: produtoId,
+        eventoId: eventoId
+      };
+
+      // Recalcula total dessa linha
+      let novoTotal = 0;
+      eventosNomes.forEach(n => {
+        novoTotal += Number(dadosTabela[prodNome][n]?.quantidade || 0);
+      });
+      dadosTabela[prodNome].total = novoTotal;
+
+      // Re-render para aparecer o input com data-evento/data-produto corretos
+      renderTabela();
+      // zera campo qtd para próxima adição
+      document.getElementById("addQtd").value = 0;
     }
 
     // --- Desenhar tabela
-    function renderTabela(eventosNomes) {
+    function renderTabela() {
       const headerRow = document.getElementById("headerRow");
       headerRow.innerHTML = `<th>Produto</th>`;
       eventosNomes.forEach(nome => { headerRow.innerHTML += `<th>${nome}</th>`; });
@@ -189,7 +285,6 @@
         let row = `<td>${produto}</td>`;
 
         eventosNomes.forEach(nome => {
-          // Se não existe no evento, ainda assim criamos input com mapeamento correto
           const itemExistente = dados[nome];
           const eventoId = mapaColunaParaEventoId[nome];
           const produtoId = dados.baseProdutoId || itemExistente?.produtoId || "";
@@ -223,38 +318,32 @@
       inputs.forEach(input => {
         const eventoId = input.dataset.evento;
         const produtoId = input.dataset.produto;
-        if (!eventoId || !produtoId) return; // segurança
+        if (!eventoId || !produtoId) return;
 
         const quantidade = parseFloat(input.value) || 0;
         if (!updates[eventoId]) updates[eventoId] = {};
-        // mantém o último valor digitado para cada produto no evento
         updates[eventoId][produtoId] = quantidade;
       });
 
       for (const eventoId in updates) {
-        // Lê produtos atuais
         const snap = await db.ref(`eventos/${eventoId}/produtos`).once("value");
         const produtosOriginais = snap.val() || [];
         const mapa = {};
         produtosOriginais.forEach(p => { mapa[p.produtoId] = p; });
 
-        // Aplica as alterações
-        const alteracoes = updates[eventoId];
-        Object.entries(alteracoes).forEach(([produtoId, quantidade]) => {
+        Object.entries(updates[eventoId]).forEach(([produtoId, quantidade]) => {
           if (quantidade > 0) {
-            // Incluir/editar e ZERAR retornos sempre
             if (!mapa[produtoId]) mapa[produtoId] = { produtoId: produtoId };
             mapa[produtoId].quantidade = quantidade;
+            // eventos futuros: retornos sempre 0
             mapa[produtoId].congelado = 0;
             mapa[produtoId].assado = 0;
             mapa[produtoId].perda = 0;
           } else {
-            // quantidade == 0 => excluir, se existir
-            if (mapa[produtoId]) delete mapa[produtoId];
+            if (mapa[produtoId]) delete mapa[produtoId]; // excluir quando 0
           }
         });
 
-        // Converte em array e grava
         const novoArray = Object.values(mapa);
         await db.ref(`eventos/${eventoId}/produtos`).set(novoArray);
       }
@@ -264,7 +353,7 @@
     }
 
     // --- Totais por evento (potencial)
-    function renderTotaisEventos(eventosFiltrados) {
+    function renderTotaisEventos() {
       const div = document.getElementById("totaisEventos");
       div.innerHTML = "";
 
@@ -298,17 +387,17 @@
       const ws_data = [];
       const header = ["Produto"];
       const umProduto = Object.keys(dadosTabela)[0];
-      const eventosNomes = umProduto
+      const cols = umProduto
         ? Object.keys(dadosTabela[umProduto]).filter(k => !["total","quantidadePorCaixa","baseProdutoId"].includes(k))
         : [];
-      eventosNomes.forEach(nome => header.push(nome));
+      cols.forEach(nome => header.push(nome));
       header.push("Total", "Qtd/Caixa", "Pedido");
       ws_data.push(header);
 
       Object.entries(dadosTabela).forEach(([produto, dados]) => {
         const row = [produto];
         let total = 0;
-        eventosNomes.forEach(nome => {
+        cols.forEach(nome => {
           const enviada = dados[nome]?.quantidade || 0;
           total += enviada;
           row.push(Number(enviada).toFixed(1).replace(".", ","));
