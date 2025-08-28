@@ -10,67 +10,73 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
     :root{
+      /* dimensões super compactas para caber 6 semanas sem rolar */
       --brand:#ff7f00;
-      --bg:#f5f6f8;
-      --line:#e8e9ed;
-      --text:#2a2d34;
+      --line:#e7e7ea;
       --muted:#6b7280;
-      --kpiH:74px;
-      --navH:44px;
-      --footH:36px;
-      --g:8px;
-      --dayPad:6px;
-      --eventSize:11px;
-    }
-    html,body{height:100%;}
-    body{background:var(--bg); color:var(--text); margin:0;}
 
-    .card {background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 1px 4px rgba(16,24,40,.05)}
+      --kpiH:56px;   /* altura da faixa de KPIs (compacta) */
+      --navH:36px;   /* navegação do mês */
+      --dowH:28px;   /* cabeçalho DOM..SAB */
+      --footH:34px;  /* rodapé (botão) */
+      --outer:24px;  /* somatório de pequenas margens internas */
+
+      --gap:6px;
+      --fontDay:11px;
+      --fontEvt:10px;
+      --padDay:4px;
+    }
+
+    body{background:#f6f7f9;margin:0;color:#222}
 
     /* KPIs */
-    .kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--g);margin-bottom:var(--g);height:var(--kpiH)}
-    .kpi{padding:10px 12px;border-radius:10px}
-    .kpi small{display:block;color:var(--muted);font-weight:600}
-    .kpi strong{display:block;font-size:18px;margin-top:4px}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);height:var(--kpiH);margin-bottom:var(--gap)}
+    .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center}
+    .kpi small{color:var(--muted);font-size:11px;font-weight:600}
+    .kpi strong{font-size:16px;margin-top:2px}
 
     /* Navegação */
-    .topnav{display:flex;align-items:center;justify-content:center;gap:10px;height:var(--navH);margin-bottom:var(--g)}
-    .btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer}
+    .topbar{height:var(--navH);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:var(--gap)}
+    .btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
     .btn:hover{filter:brightness(.95)}
     #mesAtual{font-weight:700;text-transform:capitalize}
 
-    /* Cabeçalho dias da semana */
-    .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:6px 0}
-    .dow div{background:#fff;border:1px solid var(--line);border-radius:8px;text-align:center;font-weight:700;padding:8px 0}
+    /* Dias da semana */
+    .dow{height:var(--dowH);display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+    .dow div{background:#fff;border:1px solid var(--line);border-radius:8px;text-align:center;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
 
-    /* Grade do mês (6 semanas fixas, ocupa a viewport sem rolar) */
+    /* Grade do mês (6 semanas fixas) — ocupa toda a viewport sem rolagem */
     .grid{
-      display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
-      grid-auto-rows: calc( (100vh - (var(--kpiH)+var(--navH)+var(--footH)+100px)) / 6 );
-      /* 100px ~ margem/cabecalho/espacamentos do container */
-      min-height:calc( (100vh - (var(--kpiH)+var(--navH)+var(--footH)+100px)) );
+      display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
+      grid-auto-rows: calc(
+        (100vh - (var(--kpiH) + var(--navH) + var(--dowH) + var(--footH) + var(--outer))) / 6
+      );
+      min-height: calc(
+        100vh - (var(--kpiH) + var(--navH) + var(--dowH) + var(--footH) + var(--outer))
+      );
     }
+
     .day{
       background:#fff;border:1px solid var(--line);border-radius:10px;
-      padding:var(--dayPad);display:flex;flex-direction:column;overflow:hidden
+      padding:var(--padDay);display:flex;flex-direction:column;overflow:hidden;font-size:var(--fontDay)
     }
-    .day .n{font-weight:700;color:#111;margin-bottom:4px}
+    .n{font-weight:700;margin-bottom:2px}
     .is-week{box-shadow: inset 0 0 0 2px #ffe0b2}
     .is-blocked{background:#fafafa;border-style:dashed}
-    .blocked-msg{font-size:10px;color:#d9534f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .blocked{font-size:9px;color:#d9534f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
     .evt{
-      margin-top:4px;background:var(--brand);color:#fff;border-radius:6px;padding:2px 6px;
-      display:flex;align-items:center;justify-content:space-between;font-size:var(--eventSize);min-height:20px
+      margin-top:3px;background:var(--brand);color:#fff;border-radius:6px;padding:1px 5px;
+      display:flex;align-items:center;justify-content:space-between;font-size:var(--fontEvt);min-height:18px
     }
     .evt .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .dup{margin-left:8px;cursor:pointer;font-weight:700}
+    .dup{margin-left:6px;cursor:pointer;font-weight:700}
 
-    .foot{height:var(--footH);display:flex;justify-content:center;align-items:center;margin-top:8px}
+    .foot{height:var(--footH);display:flex;align-items:center;justify-content:center;margin-top:6px}
 
-    /* Responsivo */
-    @media (max-width: 980px){ .kpi-row{grid-template-columns:repeat(2,1fr); height:calc(var(--kpiH)*2 + var(--g)); } }
-    @media (max-width: 640px){ .kpi-row{grid-template-columns:1fr; height:calc(var(--kpiH)*4 + var(--g)*3);} }
+    /* Responsivo: se apertar muito, empilha os KPIs */
+    @media (max-width: 980px){ .kpis{grid-template-columns:repeat(2,1fr); height:calc(var(--kpiH)*2 + var(--gap)); } }
+    @media (max-width: 640px){ .kpis{grid-template-columns:1fr; height:calc(var(--kpiH)*4 + var(--gap)*3);} }
   </style>
 </head>
 <body>
@@ -78,38 +84,41 @@
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <!-- KPIs -->
-      <div class="kpi-row">
-        <div class="kpi card"><small>Vendas Real Mês Anterior</small><strong id="kpiRealAnt">—</strong></div>
-        <div class="kpi card"><small>Vendas Real Mês</small><strong id="kpiRealMes">—</strong></div>
-        <div class="kpi card"><small>Venda Prevista Mês</small><strong id="kpiPrevMes">—</strong></div>
-        <div class="kpi card"><small>Venda Prevista Próx. Mês</small><strong id="kpiPrevProx">—</strong></div>
-      </div>
+      <div class="card-dashboard" style="padding:12px;border:1px solid #eee;border-radius:10px;background:#fff">
+        <!-- KPIs -->
+        <section class="kpis">
+          <div class="kpi"><small>Vendas Real Mês Anterior</small><strong id="kpiRealAnterior">—</strong></div>
+          <div class="kpi"><small>Vendas Real Mês</small><strong id="kpiRealMes">—</strong></div>
+          <div class="kpi"><small>Venda Prevista Mês</small><strong id="kpiPrevMes">—</strong></div>
+          <div class="kpi"><small>Venda Prevista Próx. Mês</small><strong id="kpiPrevProx">—</strong></div>
+        </section>
 
-      <!-- Navegação -->
-      <div class="topnav">
-        <button class="btn" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
-        <span id="mesAtual">Mês Atual</span>
-        <button class="btn" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
-      </div>
+        <!-- Navegação -->
+        <div class="topbar">
+          <button class="btn" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
+          <span id="mesAtual">Mês Atual</span>
+          <button class="btn" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
+        </div>
 
-      <!-- Cabeçalho dos dias -->
-      <div class="dow">
-        <div>DOM</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>SAB</div>
-      </div>
+        <!-- Cabeçalho dos dias -->
+        <div class="dow">
+          <div>DOM</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>SAB</div>
+        </div>
 
-      <!-- Calendário -->
-      <div class="grid" id="grid"></div>
+        <!-- Calendário -->
+        <div class="grid" id="grid"></div>
 
-      <div class="foot">
-        <button class="btn" onclick="duplicarMes()">📅 Duplicar Mês</button>
+        <!-- Rodapé -->
+        <div class="foot">
+          <button class="btn" onclick="duplicarMes()">📅 Duplicar Mês</button>
+        </div>
       </div>
     </main>
   </div>
 
   <script src="assets/menu.js" defer></script>
   <script>
-    // === Firebase ===
+    // ===== Firebase =====
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
@@ -119,46 +128,33 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // === Estado ===
+    // ===== Estado =====
     let mesRef = new Date();
     let eventos = [];
     let indis = {};
 
-    // === Utils ===
+    // ===== Utils =====
     const pad2 = n => String(n).padStart(2,'0');
     const ym   = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
-    const brl  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
     const toISO = d => new Date(d).toISOString().split('T')[0];
-    const parseNumber = v => {
+    const brl  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+
+    // vendaPDV/estimativaVenda com tolerância a string/virgula
+    const num = v => {
       if (v==null) return 0;
-      if (typeof v==='number') return v;
+      if (typeof v === 'number') return v;
       const s = String(v).replace(/\./g,'').replace(',','.');
       const n = parseFloat(s);
-      return isNaN(n) ? 0 : n;
-    };
-    const vendaDoEvento = ev => {
-      // cobre diferentes nomes/casos
-      const cands = [
-        ev.totalVendasEvento,
-        ev.totalVendas,
-        ev.vendaReal,
-        ev.financeiro && ev.financeiro.totalVendasEvento,
-        ev.financeiro && ev.financeiro.totalVendas
-      ];
-      for (const c of cands) {
-        const n = parseNumber(c);
-        if (n>0) return n;
-      }
-      return 0;
+      return isNaN(n)?0:n;
     };
 
-    // === Navegação ===
+    // ===== Navegar mês =====
     function mudarMes(delta){
       mesRef.setMonth(mesRef.getMonth()+delta);
       carregar();
     }
 
-    // === Carga principal ===
+    // ===== Carga =====
     async function carregar(){
       // eventos
       const snap = await db.ref('eventos').once('value');
@@ -167,7 +163,7 @@
 
       // indisponíveis
       const iSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
-      indis={};
+      indis = {};
       iSnap.forEach(ch=>{
         const it=ch.val();
         if (it?.tipo==='único' && it?.data) {
@@ -184,6 +180,7 @@
       atualizarKPIs();
     }
 
+    // ===== Calendário =====
     function desenhar(){
       document.getElementById('mesAtual').textContent =
         mesRef.toLocaleString('pt-BR',{month:'long',year:'numeric'});
@@ -195,14 +192,13 @@
       const mes = mesRef.getMonth();
       const first = new Date(ano, mes, 1);
       const last  = new Date(ano, mes+1, 0);
-
-      const offset = first.getDay(); // 0..6
+      const offset = first.getDay(); // 0..6 (Dom..Sáb)
       const daysInMonth = last.getDate();
 
-      // espaços iniciais até o 1º dia
+      // espaços iniciais antes do dia 1
       for (let i=0;i<offset;i++) grid.appendChild(document.createElement('div'));
 
-      const semanaAtual = semanaISO();
+      const semanaAtual = semanaSegADom();
 
       // dias do mês
       for (let d=1; d<=daysInMonth; d++){
@@ -210,21 +206,23 @@
         const iso = toISO(data);
 
         const el = document.createElement('div');
-        el.className='day card';
+        el.className='day';
+        el.dataset.data=iso;
+
         if (semanaAtual.includes(iso)) el.classList.add('is-week');
         if (indis[iso]) el.classList.add('is-blocked');
-        el.dataset.data=iso;
+
         el.addEventListener('dragover', e=>e.preventDefault());
         el.addEventListener('drop', onDropMove);
 
-        const n = document.createElement('div');
-        n.className='n'; n.textContent=d;
-        el.appendChild(n);
+        const nEl = document.createElement('div');
+        nEl.className='n'; nEl.textContent=d;
+        el.appendChild(nEl);
 
         if (indis[iso]){
-          const m = document.createElement('div');
-          m.className='blocked-msg'; m.textContent=indis[iso];
-          el.appendChild(m);
+          const b = document.createElement('div');
+          b.className='blocked'; b.textContent=indis[iso];
+          el.appendChild(b);
         }
 
         eventos.filter(ev=>ev.data===iso).forEach(ev=>{
@@ -237,11 +235,10 @@
           t.className='t'; t.textContent=ev.nomeEvento || 'Sem nome';
 
           const dup = document.createElement('span');
-          dup.className='dup'; dup.title='Duplicar evento'; dup.textContent='＋';
+          dup.className='dup'; dup.title='Duplicar'; dup.textContent='＋';
           dup.onclick = ()=>duplicarEvento(ev);
 
           evt.appendChild(t); evt.appendChild(dup);
-
           evt.addEventListener('dragstart', e=> e.dataTransfer.setData('eventoId', ev.id));
           el.appendChild(evt);
         });
@@ -249,9 +246,9 @@
         grid.appendChild(el);
       }
 
-      // completa até 42
+      // completa até 42 boxes
       const usados = offset + daysInMonth;
-      for (let i=usados; i<42; i++) grid.appendChild(document.createElement('div'));
+      for (let i=usados;i<42;i++) grid.appendChild(document.createElement('div'));
     }
 
     function onDropMove(e){
@@ -263,11 +260,11 @@
         .catch(err=>alert('Erro ao mover: '+err.message));
     }
 
-    function semanaISO(){
-      const hoje=new Date();
-      const dw=hoje.getDay();
+    function semanaSegADom(){
+      const hoje = new Date();
+      const dw = hoje.getDay(); // 0..6
       const inicio = new Date(hoje);
-      const delta = (dw===0? -6 : 1-dw);
+      const delta = (dw===0 ? -6 : 1-dw);
       inicio.setDate(hoje.getDate()+delta);
       const out=[];
       for(let i=0;i<7;i++){const d=new Date(inicio);d.setDate(inicio.getDate()+i);out.push(toISO(d));}
@@ -296,48 +293,51 @@
         if (nova.getDate()>ultimoNovo) nova.setDate(ultimoNovo);
 
         const n={...ev}; delete n.id;
-        n.data = toISO(nova); n.status='aberto';
+        n.data = toISO(nova); n.status='Aberto';
         delete n.vendaPDV;
-        if (n.produtos){ n.produtos = n.produtos.map(p=>{const {congelado,assado,perda,...r}=p;return r;}); }
+        if (n.produtos){ n.produtos = n.produtos.map(p=>{ const {congelado,assado,perda,...r}=p; return r; }); }
         return db.ref('eventos').push(n);
       }));
 
       carregar();
     }
 
-    // === KPIs ===
-    async function atualizarKPIs(){
-      const ymAtual = ym(mesRef);
+    // ===== KPIs (mesma lógica da página de Eventos) =====
+    function atualizarKPIs(){
+      const atualYM = ym(mesRef);
       const dAnt = new Date(mesRef); dAnt.setMonth(dAnt.getMonth()-1);
       const dProx= new Date(mesRef); dProx.setMonth(dProx.getMonth()+1);
-      const ymAnt = ym(dAnt);
-      const ymProx= ym(dProx);
+      const antYM  = ym(dAnt);
+      const proxYM = ym(dProx);
 
-      const somaMes = (ymKey)=>{
-        let tot=0;
-        eventos.forEach(ev=>{
-          if(!ev?.data) return;
-          const d=new Date(ev.data);
-          const key=`${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
-          if(key===ymKey) tot += vendaDoEvento(ev);
-        });
-        return tot;
+      const dentroYM = (e, ymKey)=>{
+        if(!e?.data) return false;
+        const d = new Date(e.data);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        return key === ymKey;
       };
 
-      const realAnt  = somaMes(ymAnt);
-      const realAtu  = somaMes(ymAtual);
-
-      const previsao = async (ymKey)=>{
-        const s = await db.ref(`previsao_receita/${ymKey}/total`).once('value');
-        return parseNumber(s.val());
+      const isFechado = (e)=>{
+        const s = String(e.status||'').toLowerCase();
+        return s==='fechado' || s==='finalizado';
       };
 
-      const [prevAtu, prevProx] = await Promise.all([previsao(ymAtual), previsao(ymProx)]);
+      // Vendas Reais: soma vendaPDV de Fechado/Finalizado
+      const realAtual    = eventos.filter(e=>dentroYM(e, atualYM) && isFechado(e))
+                                  .reduce((s,e)=> s + num(e.vendaPDV), 0);
+      const realAnterior = eventos.filter(e=>dentroYM(e, antYM) && isFechado(e))
+                                  .reduce((s,e)=> s + num(e.vendaPDV), 0);
 
-      document.getElementById('kpiRealAnt').textContent = brl(realAnt);
-      document.getElementById('kpiRealMes').textContent = brl(realAtu);
-      document.getElementById('kpiPrevMes').textContent = brl(prevAtu);
-      document.getElementById('kpiPrevProx').textContent = brl(prevProx);
+      // Previstas: soma estimativaVenda no mês e no próximo mês
+      const prevMes  = eventos.filter(e=>dentroYM(e, atualYM))
+                              .reduce((s,e)=> s + num(e.estimativaVenda), 0);
+      const prevProx = eventos.filter(e=>dentroYM(e, proxYM))
+                              .reduce((s,e)=> s + num(e.estimativaVenda), 0);
+
+      document.getElementById('kpiRealAnterior').textContent = brl(realAnterior);
+      document.getElementById('kpiRealMes').textContent      = brl(realAtual);
+      document.getElementById('kpiPrevMes').textContent      = brl(prevMes);
+      document.getElementById('kpiPrevProx').textContent     = brl(prevProx);
     }
 
     document.addEventListener('DOMContentLoaded', carregar);
