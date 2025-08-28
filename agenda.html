@@ -16,7 +16,7 @@
 
       --gap:6px;
       --fontDay:11px;
-      --fontEvt:10px;
+      --fontEvt:7px;       /* <<< tamanho dos nomes dos eventos */
       --padDay:4px;
 
       /* altura da linha das 6 semanas — definida por JS para caber na viewport */
@@ -55,33 +55,44 @@
       padding:var(--padDay);display:flex;flex-direction:column;overflow:hidden;font-size:var(--fontDay);
       position: relative;
     }
+    /* dias fora do mês atual */
+    .other-month{
+      background:#f3f5f8;
+      color:#6b7280;
+    }
+
+    /* destaque de FUNDO da semana atual */
+    .is-week{
+      background:#fff5e6 !important;                 /* fundo suave */
+      box-shadow: inset 0 0 0 1px #ffd199;           /* fino contorno */
+    }
+    .other-month.is-week{
+      background:#fff1d6 !important;                 /* variação para fora do mês */
+    }
+
     /* cabeçalho do dia (número e contador) */
     .head-dia{display:flex;align-items:center;justify-content:space-between}
     .n{font-weight:700}
     .count{
       min-width:18px;height:18px;line-height:18px;
       border-radius:9px;border:1px solid var(--line);
-      background:#fff;color:#555;font-size:10px;text-align:center;
-      margin-left:6px;
+      background:#fff;color:#555;font-size:10px;text-align:center;margin-left:6px;
     }
 
     /* lista de eventos rola dentro do dia */
     .lista{
       margin-top:3px; flex:1 1 auto; overflow:auto; padding-right:2px;
     }
-
-    /* scrollbar discreto dentro do dia */
     .lista::-webkit-scrollbar{width:6px}
     .lista::-webkit-scrollbar-thumb{background:#ddd;border-radius:8px}
     .lista{scrollbar-width:thin; scrollbar-color:#ddd transparent;}
 
-    .is-week{box-shadow: inset 0 0 0 2px #ffe0b2}
     .is-blocked{background:#fafafa;border-style:dashed}
     .blocked{font-size:9px;color:#d9534f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
 
     .evt{
       margin-top:3px;background:var(--brand);color:#fff;border-radius:6px;padding:1px 5px;
-      display:flex;align-items:center;justify-content:space-between;font-size:var(--fontEvt);min-height:18px
+      display:flex;align-items:center;justify-content:space-between;font-size:var(--fontEvt);min-height:16px
     }
     .evt .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dup{margin-left:6px;cursor:pointer;font-weight:700}
@@ -218,25 +229,26 @@
 
       const ano = mesRef.getFullYear();
       const mes = mesRef.getMonth();
-      const first = new Date(ano, mes, 1);
-      const last  = new Date(ano, mes+1, 0);
-      const offset = first.getDay(); // 0..6 (Dom..Sáb)
-      const daysInMonth = last.getDate();
 
-      // espaços iniciais antes do dia 1
-      for (let i=0;i<offset;i++) grid.appendChild(document.createElement('div'));
+      // 1º dia do mês e início do grid (domingo da 1ª semana)
+      const first = new Date(ano, mes, 1);
+      const inicioGrid = new Date(first);
+      inicioGrid.setDate(first.getDate() - first.getDay()); // começa no DOM
 
       const semanaAtual = semanaSegADom();
 
-      // dias do mês
-      for (let d=1; d<=daysInMonth; d++){
-        const data = new Date(ano,mes,d);
+      // 42 dias (6 semanas)
+      for (let i=0; i<42; i++){
+        const data = new Date(inicioGrid);
+        data.setDate(inicioGrid.getDate()+i);
         const iso = toISO(data);
 
         const el = document.createElement('div');
         el.className='day';
         el.dataset.data=iso;
 
+        const isOther = data.getMonth() !== mes;
+        if (isOther) el.classList.add('other-month');
         if (semanaAtual.includes(iso)) el.classList.add('is-week');
         if (indis[iso]) el.classList.add('is-blocked');
 
@@ -247,7 +259,7 @@
         const head = document.createElement('div');
         head.className = 'head-dia';
         const nEl = document.createElement('div');
-        nEl.className='n'; nEl.textContent=d;
+        nEl.className='n'; nEl.textContent=data.getDate();
 
         const cnt = document.createElement('span');
         cnt.className='count'; cnt.textContent='';
@@ -290,10 +302,6 @@
         el.appendChild(lista);
         grid.appendChild(el);
       }
-
-      // completa até 42 boxes
-      const usados = offset + daysInMonth;
-      for (let i=usados;i<42;i++) grid.appendChild(document.createElement('div'));
     }
 
     function onDropMove(e){
