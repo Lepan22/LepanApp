@@ -27,10 +27,8 @@
       background:#fff8ef;
       border-bottom:1px solid #eee;
       font-weight:600;
-      /* força preto nos títulos das colunas */
       color:#000 !important;
     }
-    /* redundância com mais especificidade, à prova de tema */
     .main-content table thead th,
     .main-content table thead tr th{color:#000 !important}
     .main-content table thead th *{color:inherit !important}
@@ -44,6 +42,19 @@
     .pdv-verde{color:#1b7f1b;font-weight:700}
     .pdv-vermelho{color:#c62828;font-weight:700}
     .acoes button{margin-right:6px}
+
+    /* Inputs de dinheiro inline */
+    .money-input{
+      width: 120px;
+      padding: 4px 6px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 13px;
+      text-align: right;
+      outline: none;
+    }
+    .money-input:focus{border-color:#ff9800; box-shadow:0 0 0 2px rgba(255,152,0,.15)}
 
     /* Título da página em preto (mantém) */
     .main-content > h2{color:#000 !important}
@@ -138,17 +149,13 @@
   </div>
 
   <script>
-    // Valores padrão dos filtros
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('filtroStatus').value = 'Aberto';
-
-      // Define data fim para a próxima segunda-feira
       const hoje = new Date();
       const diaSemana = hoje.getDay();
       const diasAteSegunda = (8 - diaSemana) % 7 || 7;
       const proximaSegunda = new Date(hoje);
       proximaSegunda.setDate(hoje.getDate() + diasAteSegunda);
-
       const yyyy = proximaSegunda.getFullYear();
       const mm = String(proximaSegunda.getMonth() + 1).padStart(2, '0');
       const dd = String(proximaSegunda.getDate()).padStart(2, '0');
