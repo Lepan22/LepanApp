@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Agend a</title>
+  <title>Agenda</title>
   <link rel="stylesheet" href="assets/base.css">
   <link rel="stylesheet" href="assets/menu-styles.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -19,7 +19,7 @@
       --fontEvt:10px;
       --padDay:4px;
 
-      /* será definida via JS p/ caber na viewport */
+      /* altura da linha das 6 semanas — definida por JS para caber na viewport */
       --rowH: 120px;
     }
 
@@ -47,12 +47,13 @@
     .grid{
       display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
       grid-auto-rows: var(--rowH);
-      min-height: calc(var(--rowH) * 6 + 5 * 4px); /* 6 linhas + gaps */
+      min-height: calc(var(--rowH) * 6 + 5 * 4px); /* 6 linhas + 5 gaps */
     }
 
     .day{
       background:#fff;border:1px solid var(--line);border-radius:10px;
-      padding:var(--padDay);display:flex;flex-direction:column;overflow:hidden;font-size:var(--fontDay)
+      padding:var(--padDay);display:flex;flex-direction:column;overflow:hidden;font-size:var(--fontDay);
+      position: relative; /* necessário para o badge +N */
     }
     .n{font-weight:700;margin-bottom:2px}
     .is-week{box-shadow: inset 0 0 0 2px #ffe0b2}
@@ -65,6 +66,14 @@
     }
     .evt .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .dup{margin-left:6px;cursor:pointer;font-weight:700}
+
+    /* badge “+N” quando ocultar eventos excedentes */
+    .more {
+      position: absolute; right: 6px; bottom: 4px;
+      background: #fff; border: 1px solid var(--line);
+      border-radius: 10px; padding: 0 6px; font-size: 10px; color: #555;
+      pointer-events: none;
+    }
 
     .foot{display:flex;align-items:center;justify-content:center;margin-top:6px}
 
@@ -134,7 +143,7 @@
     const brl  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
     const num = v => { if (v==null) return 0; if (typeof v==='number') return v; const s=String(v).replace(/\./g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?0:n; };
 
-    // ===== Fit-to-viewport (sem scroll) =====
+    // ===== Ajuste de altura (sem scroll) =====
     function ajustarAlturaLinhas(){
       const grid = document.getElementById('grid');
       const vb = document.documentElement.clientHeight;   // altura viewport
@@ -145,15 +154,47 @@
       const dowH  = document.getElementById('dow').getBoundingClientRect().height;
       const footH = document.getElementById('foot').getBoundingClientRect().height;
 
-      // margem/padding do container + segurança
-      const extras = 26; // leve folga
+      // margem/padding do container + folga
+      const extras = 26;
 
       const disponivel = vb - (rectWrap.top + kpisH + navH + dowH + footH + extras);
       const rowH = Math.max(76, Math.floor((disponivel - (5*4)) / 6)); // 5 gaps de 4px
 
       grid.style.setProperty('--rowH', rowH + 'px');
+      // re-clampa depois do relayout
+      requestAnimationFrame(clampAllDays);
     }
-    window.addEventListener('resize', ajustarAlturaLinhas);
+    window.addEventListener('resize', () => {
+      ajustarAlturaLinhas();
+      clampAllDays();
+    });
+
+    // ===== Clamp de eventos por dia (esconde o 3º+ quando não couber) =====
+    function clampAllDays(){
+      const cells = document.querySelectorAll('.day');
+      cells.forEach(cell=>{
+        // reset: mostra tudo e remove badge antigo
+        cell.querySelectorAll('.evt').forEach(e => e.style.display = '');
+        const old = cell.querySelector('.more'); if (old) old.remove();
+
+        let hidden = 0;
+        const evts = Array.from(cell.querySelectorAll('.evt'));
+
+        // Se estourar a altura, esconde do fim para o começo até caber
+        while (cell.scrollHeight > cell.clientHeight && evts.length > 0){
+          const last = evts.pop();
+          last.style.display = 'none';
+          hidden++;
+        }
+        // badge opcional com a contagem ocultada
+        if (hidden > 0){
+          const b = document.createElement('span');
+          b.className = 'more';
+          b.textContent = `+${hidden}`;
+          cell.appendChild(b);
+        }
+      });
+    }
 
     // ===== Navegar mês =====
     function mudarMes(delta){
@@ -185,7 +226,7 @@
 
       desenhar();
       atualizarKPIs();
-      ajustarAlturaLinhas(); // chama após render
+      ajustarAlturaLinhas(); // após render
     }
 
     // ===== Calendário =====
@@ -257,6 +298,9 @@
       // completa até 42 boxes
       const usados = offset + daysInMonth;
       for (let i=usados;i<42;i++) grid.appendChild(document.createElement('div'));
+
+      // Após montar tudo, faz o clamp dos dias que estourarem
+      clampAllDays();
     }
 
     function onDropMove(e){
@@ -330,11 +374,13 @@
         return s==='fechado' || s==='finalizado';
       };
 
+      // Vendas Reais: soma vendaPDV de Fechado/Finalizado
       const realAtual    = eventos.filter(e=>dentroYM(e, atualYM) && isFechado(e))
                                   .reduce((s,e)=> s + num(e.vendaPDV), 0);
       const realAnterior = eventos.filter(e=>dentroYM(e, antYM) && isFechado(e))
                                   .reduce((s,e)=> s + num(e.vendaPDV), 0);
 
+      // Previstas: soma estimativaVenda no mês e no próximo mês
       const prevMes  = eventos.filter(e=>dentroYM(e, atualYM))
                               .reduce((s,e)=> s + num(e.estimativaVenda), 0);
       const prevProx = eventos.filter(e=>dentroYM(e, proxYM))
