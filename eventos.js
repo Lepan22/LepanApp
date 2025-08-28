@@ -20,6 +20,22 @@ function formatCurrency(v) {
   return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// Formata número com 2 casas, sem "R$"
+function formatNumberBR(v){
+  return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Converte texto "1.234,56" ou "R$ 1.234,56" em Number
+function parseMoney(str){
+  if (str == null) return 0;
+  const s = String(str)
+    .replace(/[^\d,.\-]/g, '')  // remove tudo menos dígitos, vírgula, ponto e sinal
+    .replace(/\./g, '')         // remove separadores de milhar
+    .replace(',', '.');         // vírgula vira decimal
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : Math.round(n * 100) / 100;
+}
+
 function carregarEventos() {
   db.ref('eventos').once('value').then(snapshot => {
     eventos = [];
@@ -58,7 +74,7 @@ function aplicarFiltros() {
   });
 
   eventosFiltrados.forEach(eAtual => {
-    // Média de venda (3 últimos eventos anteriores do mesmo nome) :contentReference[oaicite:1]{index=1}
+    // Média de venda (3 últimos eventos anteriores do mesmo nome)
     const eventosAnteriores = eventos
       .filter(e =>
         e.nomeEvento === eAtual.nomeEvento &&
@@ -73,9 +89,11 @@ function aplicarFiltros() {
     const quantidade = eventosAnteriores.length;
     const mediaVenda = quantidade > 0 ? somaVenda / quantidade : 0;
 
-    const vendaPDV = Number(eAtual.vendaPDV || 0);
-    const estimativa = Number(eAtual.estimativaVenda || 0);
-    const corClass = vendaPDV > estimativa ? 'pdv-verde' : 'pdv-vermelho';
+    const vendaPDVNum = Number(eAtual.vendaPDV || 0);
+    const estimativaNum = Number(eAtual.estimativaVenda || 0);
+
+    const corOk = vendaPDVNum > estimativaNum;
+    const corStyle = corOk ? 'color:#1b7f1b;font-weight:700' : 'color:#c62828;font-weight:700';
 
     // Select de status EDITÁVEL (salva imediatamente no Firebase)
     const statusAtual = eAtual.status || 'Aberto';
@@ -93,8 +111,21 @@ function aplicarFiltros() {
       <td>${eAtual.data || '-'}</td>
       <td>${selectStatus}</td>
       <td>${formatCurrency(mediaVenda)}</td>
-      <td>${formatCurrency(estimativa)}</td>
-      <td class="${corClass}">${formatCurrency(vendaPDV)}</td>
+      <td>
+        <input type="text"
+               class="money-input inp-estimativa"
+               data-id="${eAtual.id}"
+               data-field="estimativaVenda"
+               value="${formatNumberBR(estimativaNum)}" />
+      </td>
+      <td>
+        <input type="text"
+               class="money-input inp-pdv"
+               data-id="${eAtual.id}"
+               data-field="vendaPDV"
+               style="${corStyle}"
+               value="${formatNumberBR(vendaPDVNum)}" />
+      </td>
       <td class="acoes">
         <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${eAtual.id}')">Editar</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${eAtual.id}')">Duplicar</button>
@@ -114,7 +145,6 @@ function aplicarFiltros() {
       ev.target.disabled = true;
       try {
         await db.ref('eventos/' + id + '/status').set(novoStatus);
-        // Atualiza cache local e re-renderiza — pode ocultar a linha se filtro não combinar
         const idx = eventos.findIndex(e => e.id === id);
         if (idx >= 0) eventos[idx].status = novoStatus;
         aplicarFiltros();
@@ -125,6 +155,55 @@ function aplicarFiltros() {
         ev.target.value = (evento?.status || 'Aberto');
       } finally {
         ev.target.disabled = false;
+      }
+    });
+  });
+
+  // === EDIÇÃO INLINE: Estimativa e Venda PDV ===
+  anexarEdicaoInline(tabela);
+}
+
+function anexarEdicaoInline(tabela){
+  const inputs = tabela.querySelectorAll('.money-input');
+
+  inputs.forEach(inp=>{
+    const original = inp.value;
+
+    // Seleciona tudo ao focar (facilita editar)
+    inp.addEventListener('focus', () => {
+      setTimeout(()=>inp.select(), 0);
+    });
+
+    // Enter = salvar, Esc = cancelar
+    inp.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter'){
+        e.preventDefault();
+        inp.blur(); // dispara o blur -> salvar
+      } else if (e.key === 'Escape'){
+        e.preventDefault();
+        inp.value = original;
+        inp.blur();
+      }
+    });
+
+    inp.addEventListener('blur', async ()=>{
+      const id = inp.getAttribute('data-id');
+      const field = inp.getAttribute('data-field');
+      const novoValor = parseMoney(inp.value);
+
+      // Evita writes desnecessários se não mudou
+      if (formatNumberBR(novoValor) === original) return;
+
+      inp.disabled = true;
+
+      try{
+        await db.ref('eventos/'+id+'/'+field).set(novoValor);
+        // Recarrega lista + KPIs para refletir cor/vermelho/verde e totais
+        carregarEventos();
+      }catch(err){
+        alert('Não foi possível salvar. Tente novamente.');
+        inp.disabled = false;
+        inp.focus();
       }
     });
   });
@@ -247,7 +326,6 @@ document.getElementById('filtrosForm').addEventListener('submit', function(e) {
   aplicarFiltros();
 });
 
-// Não alteramos o valor do filtroStatus aqui para não sobrepor o default do HTML.
 document.addEventListener("DOMContentLoaded", () => {
   carregarEventos();
 });
