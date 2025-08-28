@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eventos</title>
+  <title>Evento</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -53,20 +53,14 @@
     tbody tr:nth-child(odd) { background: #fff; }
     tbody tr:nth-child(even) { background: #fcfcfc; }
 
-    /* Controles */
-    .status-select {
-      padding: 4px 8px;
-      font-size: 13px;
-      max-width: 140px;
-    }
+    /* Controles e destaques */
+    .status-select { padding: 4px 8px; font-size: 13px; max-width: 140px; }
     .pdv-verde { color: #1b7f1b; font-weight: 700; }
     .pdv-vermelho { color: #c62828; font-weight: 700; }
     .acoes button { margin-right: 6px; }
 
-    /* 🔥 Ajuste para o título em preto */
-    .main-content h2 {
-      color: #000;
-    }
+    /* 🔥 Override do título (preto), independentemente do CSS global */
+    .main-content > h2.titulo-pagina { color: #000 !important; }
   </style>
 </head>
 <body>
@@ -74,7 +68,7 @@
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <h2>Eventos</h2>
+      <h2 class="titulo-pagina">Eventos</h2>
 
       <div class="kpi-linha" style="margin-top: 20px;">
         <div class="kpi">
