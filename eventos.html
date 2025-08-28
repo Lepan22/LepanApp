@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Evento</title>
+  <title>Eventos</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -14,53 +14,39 @@
 
   <style>
     /* KPIs */
-    .kpi-linha {
-      display: flex;
-      gap: 16px;
-      padding: 0 20px;
-      margin-bottom: 2px;
-      flex-wrap: wrap;
-    }
-    .kpi {
-      background-color: #fff3e0;
-      border-left: 4px solid #ff9800;
-      padding: 6px 10px;
-      border-radius: 6px;
-      min-width: 180px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      height: 60px;
-    }
-    .kpi h2 { margin: 0 0 2px; font-size: 12px; color: #333; }
-    .kpi p { font-size: 16px; margin: 0; font-weight: bold; color: #ff9800; }
+    .kpi-linha{display:flex;gap:16px;padding:0 20px;margin-bottom:2px;flex-wrap:wrap}
+    .kpi{background:#fff3e0;border-left:4px solid #ff9800;padding:6px 10px;border-radius:6px;min-width:180px;flex:1;display:flex;flex-direction:column;justify-content:center;height:60px}
+    .kpi h2{margin:0 0 2px;font-size:12px;color:#333}
+    .kpi p{font-size:16px;margin:0;font-weight:bold;color:#ff9800}
 
     /* Tabela */
-    table { width: 100%; border-collapse: collapse; }
-    thead th {
-      text-align: left;
-      padding: 10px 8px;
-      background: #fff8ef;
-      border-bottom: 1px solid #eee;
-      font-weight: 600;
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      text-align:left;
+      padding:10px 8px;
+      background:#fff8ef;
+      border-bottom:1px solid #eee;
+      font-weight:600;
+      /* força preto nos títulos das colunas */
+      color:#000 !important;
     }
-    tbody td {
-      padding: 8px;
-      border-bottom: 1px solid #f0f0f0;
-      vertical-align: middle;
-    }
-    tbody tr:nth-child(odd) { background: #fff; }
-    tbody tr:nth-child(even) { background: #fcfcfc; }
+    /* redundância com mais especificidade, à prova de tema */
+    .main-content table thead th,
+    .main-content table thead tr th{color:#000 !important}
+    .main-content table thead th *{color:inherit !important}
+
+    tbody td{padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+    tbody tr:nth-child(odd){background:#fff}
+    tbody tr:nth-child(even){background:#fcfcfc}
 
     /* Controles e destaques */
-    .status-select { padding: 4px 8px; font-size: 13px; max-width: 140px; }
-    .pdv-verde { color: #1b7f1b; font-weight: 700; }
-    .pdv-vermelho { color: #c62828; font-weight: 700; }
-    .acoes button { margin-right: 6px; }
+    .status-select{padding:4px 8px;font-size:13px;max-width:140px}
+    .pdv-verde{color:#1b7f1b;font-weight:700}
+    .pdv-vermelho{color:#c62828;font-weight:700}
+    .acoes button{margin-right:6px}
 
-    /* 🔥 Override do título (preto), independentemente do CSS global */
-    .main-content > h2.titulo-pagina { color: #000 !important; }
+    /* Título da página em preto (mantém) */
+    .main-content > h2{color:#000 !important}
   </style>
 </head>
 <body>
@@ -68,7 +54,7 @@
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <h2 class="titulo-pagina">Eventos</h2>
+      <h2>Eventos</h2>
 
       <div class="kpi-linha" style="margin-top: 20px;">
         <div class="kpi">
@@ -104,8 +90,8 @@
         </div>
       </div>
 
-      <form id="filtrosForm" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin-bottom: 10px;">
-        <div style="display: flex; flex-direction: column;">
+      <form id="filtrosForm" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px;">
+        <div style="display:flex;flex-direction:column;">
           <label for="filtroStatus">Status</label>
           <select id="filtroStatus">
             <option value="Todos">Todos</option>
@@ -115,17 +101,17 @@
           </select>
         </div>
 
-        <div style="display: flex; flex-direction: column;">
+        <div style="display:flex;flex-direction:column;">
           <label for="filtroNome">Nome do Evento</label>
           <input type="text" id="filtroNome" />
         </div>
 
-        <div style="display: flex; flex-direction: column;">
+        <div style="display:flex;flex-direction:column;">
           <label for="filtroDataInicio">Data Início</label>
           <input type="date" id="filtroDataInicio" />
         </div>
 
-        <div style="display: flex; flex-direction: column;">
+        <div style="display:flex;flex-direction:column;">
           <label for="filtroDataFim">Data Fim</label>
           <input type="date" id="filtroDataFim" />
         </div>
@@ -151,8 +137,8 @@
     </main>
   </div>
 
-  <!-- Valores padrão dos filtros -->
   <script>
+    // Valores padrão dos filtros
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('filtroStatus').value = 'Aberto';
 
