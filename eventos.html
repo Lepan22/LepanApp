@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eventos</title>
+  <title>Evento</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -43,13 +43,9 @@
       font-weight: bold;
       color: #ff9800;
     }
-
-    /* (Opcional) Deixa o select de Status compacto */
-    .status-select {
-      padding: 4px 8px;
-      font-size: 13px;
-      max-width: 140px;
-    }
+    /* destaque do Venda PDV */
+    .pdv-verde { color: green; font-weight: bold; }
+    .pdv-vermelho { color: red; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -131,6 +127,7 @@
             <th>Status</th>
             <th>Média Venda</th>
             <th>Estimativa</th>
+            <th>Venda PDV</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -139,13 +136,9 @@
     </main>
   </div>
 
-  <!-- Script para aplicar valores padrões nos filtros -->
   <script>
     window.addEventListener('DOMContentLoaded', () => {
-      // Define valor padrão do filtro de status
       document.getElementById('filtroStatus').value = 'Aberto';
-
-      // Define data fim para a próxima segunda-feira
       const hoje = new Date();
       const diaSemana = hoje.getDay();
       const diasAteSegunda = (8 - diaSemana) % 7 || 7;
