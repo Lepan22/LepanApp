@@ -16,7 +16,7 @@
 
       --gap:6px;
       --fontDay:11px;
-      --fontEvt:7px;       /* <<< tamanho dos nomes dos eventos */
+      --fontEvt:9px;       /* <<< tamanho dos nomes dos eventos */
       --padDay:4px;
 
       /* altura da linha das 6 semanas — definida por JS para caber na viewport */
@@ -24,7 +24,6 @@
     }
 
     body{background:#f6f7f9;margin:0;color:#222}
-
     .wrap{padding:10px}
 
     /* KPIs */
@@ -55,6 +54,7 @@
       padding:var(--padDay);display:flex;flex-direction:column;overflow:hidden;font-size:var(--fontDay);
       position: relative;
     }
+
     /* dias fora do mês atual */
     .other-month{
       background:#f3f5f8;
@@ -63,11 +63,11 @@
 
     /* destaque de FUNDO da semana atual */
     .is-week{
-      background:#fff5e6 !important;                 /* fundo suave */
-      box-shadow: inset 0 0 0 1px #ffd199;           /* fino contorno */
+      background:#fff5e6 !important;
+      box-shadow: inset 0 0 0 1px #ffd199;
     }
     .other-month.is-week{
-      background:#fff1d6 !important;                 /* variação para fora do mês */
+      background:#fff1d6 !important;
     }
 
     /* cabeçalho do dia (número e contador) */
@@ -92,10 +92,21 @@
 
     .evt{
       margin-top:3px;background:var(--brand);color:#fff;border-radius:6px;padding:1px 5px;
-      display:flex;align-items:center;justify-content:space-between;font-size:var(--fontEvt);min-height:16px
+      display:flex;align-items:center;justify-content:space-between;font-size:var(--fontEvt);min-height:18px
     }
     .evt .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .dup{margin-left:6px;cursor:pointer;font-weight:700}
+
+    /* Ações dos eventos (ver, duplicar, excluir) */
+    .acts{display:flex;align-items:center;gap:4px;margin-left:6px}
+    .iconbtn{
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.35);
+      color:#fff; border-radius:6px; font-size:9px;
+      padding:0 6px; height:16px; line-height:14px; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center;
+      text-decoration:none;
+    }
+    .iconbtn:hover{filter:brightness(1.05)}
 
     .foot{display:flex;align-items:center;justify-content:center;margin-top:6px}
 
@@ -164,6 +175,9 @@
     const toISO = d => new Date(d).toISOString().split('T')[0];
     const brl  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
     const num = v => { if (v==null) return 0; if (typeof v==='number') return v; const s=String(v).replace(/\./g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?0:n; };
+
+    // base para "visualizar evento"
+    const VIEW_BASE = 'https://lepan22.github.io/LepanApp/GestaoEvento.html?id=';
 
     // ===== Ajuste de altura (sem scroll na página) =====
     function ajustarAlturaLinhas(){
@@ -287,11 +301,36 @@
           const t = document.createElement('span');
           t.className='t'; t.textContent=ev.nomeEvento || 'Sem nome';
 
-          const dup = document.createElement('span');
-          dup.className='dup'; dup.title='Duplicar'; dup.textContent='＋';
+          const acts = document.createElement('div');
+          acts.className='acts';
+
+          // Ver (abre nova aba)
+          const ver = document.createElement('a');
+          ver.className = 'iconbtn';
+          ver.href = VIEW_BASE + encodeURIComponent(ev.id);
+          ver.target = '_blank';
+          ver.title = 'Visualizar evento';
+          ver.textContent = '🔍';
+
+          // Duplicar (mantido)
+          const dup = document.createElement('button');
+          dup.className='iconbtn'; dup.title='Duplicar';
+          dup.textContent='＋';
           dup.onclick = ()=>duplicarEvento(ev);
 
-          evt.appendChild(t); evt.appendChild(dup);
+          // Excluir
+          const del = document.createElement('button');
+          del.className='iconbtn'; del.title='Excluir';
+          del.textContent='🗑';
+          del.onclick = ()=>excluirEvento(ev.id);
+
+          acts.appendChild(ver);
+          acts.appendChild(dup);
+          acts.appendChild(del);
+
+          evt.appendChild(t);
+          evt.appendChild(acts);
+
           evt.addEventListener('dragstart', e=> e.dataTransfer.setData('eventoId', ev.id));
           lista.appendChild(evt);
         });
@@ -329,6 +368,16 @@
       const novo={...ev}; delete novo.id;
       await db.ref('eventos').push(novo);
       carregar();
+    }
+
+    async function excluirEvento(id){
+      if(!confirm('Tem certeza que deseja excluir este evento?')) return;
+      try{
+        await db.ref('eventos/'+id).remove();
+        carregar();
+      }catch(err){
+        alert('Erro ao excluir: ' + err.message);
+      }
     }
 
     async function duplicarMes(){
