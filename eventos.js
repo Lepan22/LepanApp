@@ -11,8 +11,8 @@ const db = firebase.database();
 let eventos = [];
 
 function formatDateBR(dateStr) {
-  const [year, month, day] = (dateStr || '').split('-');
-  if (!year || !month || !day) return new Date('1970-01-01T00:00:00');
+  if (!dateStr) return new Date('1970-01-01T00:00:00');
+  const [year, month, day] = dateStr.split('-');
   return new Date(`${year}-${month}-${day}T00:00:00`);
 }
 
@@ -72,24 +72,19 @@ function aplicarFiltros() {
     const quantidade = eventosAnteriores.length;
     const mediaVenda = quantidade > 0 ? somaVenda / quantidade : 0;
 
+    const vendaPDV = Number(eAtual.vendaPDV || 0);
+    const estimativa = Number(eAtual.estimativaVenda || 0);
+
+    const corClass = vendaPDV > estimativa ? 'pdv-verde' : 'pdv-vermelho';
+
     const row = document.createElement('tr');
-
-    // Monta o select de status
-    const statusAtual = eAtual.status || 'Aberto';
-    const selectHtml = `
-      <select class="status-select" data-id="${eAtual.id}">
-        <option value="Aberto"${statusAtual === 'Aberto' ? ' selected' : ''}>Aberto</option>
-        <option value="Finalizado"${statusAtual === 'Finalizado' ? ' selected' : ''}>Finalizado</option>
-        <option value="Fechado"${statusAtual === 'Fechado' ? ' selected' : ''}>Fechado</option>
-      </select>
-    `;
-
     row.innerHTML = `
       <td>${eAtual.nomeEvento || '-'}</td>
       <td>${eAtual.data || '-'}</td>
-      <td>${selectHtml}</td>
+      <td>${eAtual.status || '-'}</td>
       <td>${formatCurrency(mediaVenda)}</td>
-      <td>${formatCurrency(eAtual.estimativaVenda || 0)}</td>
+      <td>${formatCurrency(estimativa)}</td>
+      <td class="${corClass}">${formatCurrency(vendaPDV)}</td>
       <td>
         <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${eAtual.id}')">Editar</button>
         <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${eAtual.id}')">Duplicar</button>
@@ -98,38 +93,8 @@ function aplicarFiltros() {
         <button class="btn btn-sm btn-outline-danger" onclick="excluirEvento('${eAtual.id}')">Excluir</button>
       </td>
     `;
-
     tabela.appendChild(row);
   });
-
-  // Liga listeners de mudança de status após desenhar as linhas
-  tabela.querySelectorAll('select.status-select').forEach(sel => {
-    sel.addEventListener('change', async (ev) => {
-      const id = ev.target.getAttribute('data-id');
-      const novoStatus = ev.target.value;
-      // Desabilita durante o salvamento para evitar cliques repetidos
-      ev.target.disabled = true;
-      try {
-        await atualizarStatus(id, novoStatus);
-      } catch (err) {
-        alert('Não foi possível salvar o Status. Tente novamente.');
-        // Reverte a UI para o valor antigo em caso de erro
-        const evento = eventos.find(e => e.id === id);
-        ev.target.value = (evento?.status || 'Aberto');
-      } finally {
-        ev.target.disabled = false;
-      }
-      // Atualiza cache local e re-renderiza com filtros (pode ocultar a linha, se filtro não combinar)
-      const idx = eventos.findIndex(e => e.id === id);
-      if (idx >= 0) eventos[idx].status = novoStatus;
-      aplicarFiltros();
-      calcularKPIs();
-    });
-  });
-}
-
-async function atualizarStatus(id, novoStatus) {
-  await db.ref('eventos/' + id + '/status').set(novoStatus);
 }
 
 function calcularKPIs() {
@@ -191,14 +156,10 @@ function calcularKPIs() {
   });
 }
 
-function editarEvento(id) {
-  window.location.href = `GestaoEvento.html?id=${id}`;
-}
-
+function editarEvento(id) { window.location.href = `GestaoEvento.html?id=${id}`; }
 function duplicarEvento(id) {
   const evento = eventos.find(e => e.id === id);
   if (!evento) return;
-
   const novoEvento = { ...evento };
   novoEvento.produtos = (evento.produtos || []).map(p => ({
     produtoId: p.produtoId,
@@ -207,30 +168,21 @@ function duplicarEvento(id) {
     assado: 0,
     perda: 0
   }));
-
   delete novoEvento.id;
   delete novoEvento.vendaPDV;
   novoEvento.status = "Aberto";
   delete novoEvento.data;
-
   const novoId = db.ref('eventos').push().key;
   db.ref('eventos/' + novoId).set(novoEvento).then(() => {
     alert('Evento duplicado com sucesso!');
     carregarEventos();
   });
 }
-
 function enviarLink(id) {
   const url = `${window.location.origin}/LepanApp/form.html?id=${id}`;
-  navigator.clipboard.writeText(url).then(() => {
-    alert('Link copiado para a área de transferência!');
-  });
+  navigator.clipboard.writeText(url).then(() => { alert('Link copiado!'); });
 }
-
-function visualizarEvento(id) {
-  window.location.href = `visualizar_evento.html?id=${id}`;
-}
-
+function visualizarEvento(id) { window.location.href = `visualizar_evento.html?id=${id}`; }
 function excluirEvento(id) {
   if (confirm('Tem certeza que deseja excluir este evento?')) {
     db.ref('eventos/' + id).remove().then(() => {
@@ -239,7 +191,6 @@ function excluirEvento(id) {
     });
   }
 }
-
 function limparFiltros() {
   document.getElementById('filtroStatus').value = 'Todos';
   document.getElementById('filtroNome').value = '';
@@ -247,12 +198,9 @@ function limparFiltros() {
   document.getElementById('filtroDataFim').value = '';
   aplicarFiltros();
 }
-
 document.getElementById('filtrosForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  aplicarFiltros();
+  e.preventDefault(); aplicarFiltros();
 });
-
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById('filtroStatus').value = 'Todos';
   carregarEventos();
