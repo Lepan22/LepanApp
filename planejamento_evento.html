@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Planejamento de Eventos da Semana</title>
+  <title>Planejamento de Eventos</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -19,10 +19,11 @@
     table { border-collapse: collapse; width: 100%; font-size: 13px; }
     th { background-color: #ff7f00; color: #fff; padding: 6px; position: sticky; top: 0; z-index: 1; }
     td { border: 1px solid #ddd; padding: 6px; vertical-align: top; }
+
     tr:nth-child(even) td { background: #fafafa; }
 
-    .equipe-col { width: 280px; }
-    .list-col { width: 260px; }
+    .equipe-col { width: 320px; }
+    .list-col { width: 300px; }
     .obs-col { width: 220px; }
 
     .equipe-alocada-list, .logistica-alocada-list, .equip-alocada-list {
@@ -42,7 +43,7 @@
       width: 20px; height: 20px; line-height: 20px; text-align: center; cursor: pointer;
     }
 
-    /* Pool */
+    /* Pools */
     .pool-wrap { margin: 8px 0 12px; }
     .pool-title { font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
     .pool { display: flex; gap: 8px; flex-wrap: wrap; padding: 6px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #fff; }
@@ -56,12 +57,14 @@
     }
 
     .date-header { margin-top: 16px; margin-bottom: 6px; font-weight: 700; font-size: 15px; color: #111; }
-
     textarea.observacao { width: 100%; min-height: 60px; resize: vertical; }
 
-    /* Dropzones: contorno sem cobrir conteúdo */
-    .dropzone { border: 2px dashed transparent; border-radius: 10px; padding: 4px; }
-    .dropzone.over { outline: 2px dashed #198754; outline-offset: -6px; background: transparent; }
+    /* Dropzones — a célula inteira é droppable */
+    .td-dropzone { position: relative; }
+    .td-dropzone.over::after {
+      content: ''; position: absolute; inset: 4px;
+      border: 2px dashed #198754; border-radius: 10px; pointer-events: none;
+    }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -155,13 +158,12 @@
       }
     }
 
-    // ===== DnD helpers =====
-    function setDnD(el, { onDrop }) {
+    // ===== DnD helpers (aplicado no TD) =====
+    function setTdDrop(el, onDrop) {
       el.addEventListener('dragover', ev => { ev.preventDefault(); el.classList.add('over'); });
       el.addEventListener('dragleave', () => el.classList.remove('over'));
       el.addEventListener('drop', ev => {
-        ev.preventDefault();
-        el.classList.remove('over');
+        ev.preventDefault(); el.classList.remove('over');
         try {
           const data = JSON.parse(ev.dataTransfer.getData('text/plain'));
           onDrop && onDrop(data);
@@ -226,7 +228,6 @@
       const l = getLogisticaDoEvento(ev).filter(p => p.prestadorId !== prestadorId);
       await db.ref(`eventos/${eventoId}/logistica`).set(l);
     }
-    // mover (evento -> evento) vira CÓPIA (mantém no original)
     async function copiarPrestador(fromId, toId, prestadorId, valor) {
       await addPrestadorAoEvento(toId, prestadorId, valor);
     }
@@ -276,14 +277,19 @@
         poolEquipeWrap.className = 'pool-wrap';
         poolEquipeWrap.innerHTML = `<div class="pool-title">Pool de Equipe — arraste para o evento</div>`;
         const poolEquipe = document.createElement('div');
-        poolEquipe.className = 'pool dropzone';
-        setDnD(poolEquipe, { onDrop: async (payload) => {
-          if (payload.type === 'from-event-eq') {
-            await removerMembroDoEvento(payload.eventId, payload.membroId);
-            fetchEventos();
-          }
-        }});
-        // conteúdo do pool equipe
+        poolEquipe.className = 'pool';
+        // Soltar no pool remove do evento
+        poolEquipe.addEventListener('dragover', ev => ev.preventDefault());
+        poolEquipe.addEventListener('drop', async ev => {
+          ev.preventDefault();
+          try {
+            const payload = JSON.parse(ev.dataTransfer.getData('text/plain'));
+            if (payload.type === 'from-event-eq') {
+              await removerMembroDoEvento(payload.eventId, payload.membroId);
+              fetchEventos();
+            }
+          } catch(_) {}
+        });
         Object.keys(allEquipe).sort((a,b) =>
           (allEquipe[a].apelido || '').localeCompare(allEquipe[b].apelido || '')
         ).forEach(id => {
@@ -309,13 +315,18 @@
         poolLogWrap.className = 'pool-wrap';
         poolLogWrap.innerHTML = `<div class="pool-title">Pool de Logística — arraste para o evento</div>`;
         const poolLog = document.createElement('div');
-        poolLog.className = 'pool dropzone';
-        setDnD(poolLog, { onDrop: async (payload) => {
-          if (payload.type === 'from-event-log') {
-            await removerPrestadorDoEvento(payload.eventId, payload.prestadorId);
-            fetchEventos();
-          }
-        }});
+        poolLog.className = 'pool';
+        poolLog.addEventListener('dragover', ev => ev.preventDefault());
+        poolLog.addEventListener('drop', async ev => {
+          ev.preventDefault();
+          try {
+            const payload = JSON.parse(ev.dataTransfer.getData('text/plain'));
+            if (payload.type === 'from-event-log') {
+              await removerPrestadorDoEvento(payload.eventId, payload.prestadorId);
+              fetchEventos();
+            }
+          } catch(_) {}
+        });
         Object.keys(allLogistica).sort((a,b)=>
           (allLogistica[a].nome||'').localeCompare(allLogistica[b].nome||'')
         ).forEach(id => {
@@ -333,13 +344,18 @@
         poolEqpWrap.className = 'pool-wrap';
         poolEqpWrap.innerHTML = `<div class="pool-title">Pool de Equipamentos — arraste para o evento</div>`;
         const poolEqp = document.createElement('div');
-        poolEqp.className = 'pool dropzone';
-        setDnD(poolEqp, { onDrop: async (payload) => {
-          if (payload.type === 'from-event-eqp') {
-            await removerEquipDoEvento(payload.eventId, payload.equipamentoId);
-            fetchEventos();
-          }
-        }});
+        poolEqp.className = 'pool';
+        poolEqp.addEventListener('dragover', ev => ev.preventDefault());
+        poolEqp.addEventListener('drop', async ev => {
+          ev.preventDefault();
+          try {
+            const payload = JSON.parse(ev.dataTransfer.getData('text/plain'));
+            if (payload.type === 'from-event-eqp') {
+              await removerEquipDoEvento(payload.eventId, payload.equipamentoId);
+              fetchEventos();
+            }
+          } catch(_) {}
+        });
         Object.keys(allEquipamentos).sort((a,b)=>
           (allEquipamentos[a].nome||'').localeCompare(allEquipamentos[b].nome||'')
         ).forEach(id => {
@@ -366,9 +382,7 @@
             <th>Evento</th>
             <th class="equipe-col">Equipe Selecionada (arraste aqui)</th>
             <th class="list-col">Logística Alocada (arraste aqui)</th>
-            <th class="list-col">Editar Logística (select)</th>
             <th class="list-col">Equipamento Alocado (arraste aqui)</th>
-            <th class="list-col">Equipamento (select)</th>
             <th class="obs-col">OBS</th>
           </tr></thead>`;
         const tbody = document.createElement('tbody');
@@ -385,23 +399,21 @@
           nomeTd.textContent = evento.nomeEvento || 'Sem nome';
           row.appendChild(nomeTd);
 
-          // ===== Equipe Selecionada (dropzone) =====
-          const equipeTd = document.createElement('td'); equipeTd.className = 'equipe-col';
-          const equipeList = document.createElement('div'); equipeList.className = 'equipe-alocada-list dropzone';
-          setDnD(equipeList, {
-            onDrop: async (payload) => {
-              if (payload.type === 'from-pool-eq') {
-                const ocupado = membroOcupadoNoDia(payload.membroId, eventosDoDia);
-                const valor = ocupado?.valor ?? (allEquipe[payload.membroId]?.valorDiaria || 0);
-                await moverMembro(ocupado?.eventId || null, evento.id, payload.membroId, valor);
-                fetchEventos();
-              } else if (payload.type === 'from-event-eq' && payload.eventId !== evento.id) {
-                const valor = payload.valor ?? (allEquipe[payload.membroId]?.valorDiaria || 0);
-                await moverMembro(payload.eventId, evento.id, payload.membroId, valor);
-                fetchEventos();
-              }
+          // ===== Equipe Selecionada — TD é dropzone =====
+          const equipeTd = document.createElement('td'); equipeTd.className = 'equipe-col td-dropzone';
+          setTdDrop(equipeTd, async (payload) => {
+            if (payload.type === 'from-pool-eq') {
+              const ocupado = membroOcupadoNoDia(payload.membroId, eventosDoDia);
+              const valor = ocupado?.valor ?? (allEquipe[payload.membroId]?.valorDiaria || 0);
+              await moverMembro(ocupado?.eventId || null, evento.id, payload.membroId, valor);
+              fetchEventos();
+            } else if (payload.type === 'from-event-eq' && payload.eventId !== evento.id) {
+              const valor = payload.valor ?? (allEquipe[payload.membroId]?.valorDiaria || 0);
+              await moverMembro(payload.eventId, evento.id, payload.membroId, valor);
+              fetchEventos();
             }
           });
+          const equipeList = document.createElement('div'); equipeList.className = 'equipe-alocada-list';
 
           const equipeDoEvento = getEquipeDoEvento(evento);
           if (equipeDoEvento.length > 0) {
@@ -413,9 +425,7 @@
               strong.textContent = allEquipe[membro.membroId].apelido || allEquipe[membro.membroId].nomeCompleto || 'Sem nome';
 
               const input = document.createElement('input');
-              input.type = 'number';
-              input.step = '0.01';
-              input.dataset.membroId = membro.membroId;
+              input.type = 'number'; input.step = '0.01';
               const defaultValor = allEquipe[membro.membroId].valorDiaria || 0;
               input.value = (membro.valor != null ? parseFloat(membro.valor) : defaultValor).toFixed(2);
               input.addEventListener('change', async () => {
@@ -429,9 +439,7 @@
               });
 
               const remover = document.createElement('button');
-              remover.className = 'remove';
-              remover.textContent = '×';
-              remover.title = 'Remover';
+              remover.className = 'remove'; remover.textContent = '×'; remover.title = 'Remover';
               remover.addEventListener('click', async () => {
                 await removerMembroDoEvento(evento.id, membro.membroId);
                 fetchEventos();
@@ -444,39 +452,35 @@
             });
           } else {
             const vazio = document.createElement('div');
-            vazio.textContent = 'Arraste nomes do pool para cá';
+            vazio.textContent = 'Arraste do pool de equipe';
             equipeList.appendChild(vazio);
           }
           equipeTd.appendChild(equipeList);
           row.appendChild(equipeTd);
 
-          // ===== Logística Alocada (dropzone – CÓPIA) =====
-          const logisticaTd = document.createElement('td'); logisticaTd.className = 'list-col';
-          const logisticaList = document.createElement('div'); logisticaList.className = 'logistica-alocada-list dropzone';
-          setDnD(logisticaList, {
-            onDrop: async (payload) => {
-              if (payload.type === 'from-pool-log') {
-                await addPrestadorAoEvento(evento.id, payload.prestadorId, 0);
-                fetchEventos();
-              } else if (payload.type === 'from-event-log' && payload.eventId !== evento.id) {
-                await copiarPrestador(payload.eventId, evento.id, payload.prestadorId, payload.valor ?? 0);
-                fetchEventos();
-              }
+          // ===== Logística Alocada — TD é dropzone (CÓPIA) =====
+          const logisticaTd = document.createElement('td'); logisticaTd.className = 'list-col td-dropzone';
+          setTdDrop(logisticaTd, async (payload) => {
+            if (payload.type === 'from-pool-log') {
+              await addPrestadorAoEvento(evento.id, payload.prestadorId, 0);
+              fetchEventos();
+            } else if (payload.type === 'from-event-log' && payload.eventId !== evento.id) {
+              await copiarPrestador(payload.eventId, evento.id, payload.prestadorId, payload.valor ?? 0);
+              fetchEventos();
             }
           });
+          const logisticaList = document.createElement('div'); logisticaList.className = 'logistica-alocada-list';
 
           const logisticaDoEvento = getLogisticaDoEvento(evento);
           if (logisticaDoEvento.length > 0) {
             logisticaDoEvento.forEach(prest => {
               if (!prest?.prestadorId || !allLogistica[prest.prestadorId]) return;
-              const chip = document.createElement('div');
-              chip.className = 'chip';
+              const chip = document.createElement('div'); chip.className = 'chip';
               const strong = document.createElement('strong');
               strong.textContent = allLogistica[prest.prestadorId].nome || 'Sem nome';
 
               const input = document.createElement('input');
               input.type = 'number'; input.step = '0.01';
-              input.dataset.prestadorId = prest.prestadorId;
               input.value = prest.valor != null ? parseFloat(prest.valor).toFixed(2) : '0.00';
               input.addEventListener('change', async () => {
                 const ev = findEvento(evento.id);
@@ -508,51 +512,25 @@
           logisticaTd.appendChild(logisticaList);
           row.appendChild(logisticaTd);
 
-          // ===== Editar Logística (select múltiplo – continua) =====
-          const logisticaSelectTd = document.createElement('td'); logisticaSelectTd.className = 'list-col';
-          const logisticaSelect = document.createElement('select'); logisticaSelect.multiple = true;
-          for (const id in allLogistica) {
-            const option = document.createElement('option');
-            option.value = id; option.textContent = allLogistica[id].nome;
-            if (logisticaDoEvento.find(p => p.prestadorId === id)) option.selected = true;
-            logisticaSelect.appendChild(option);
-          }
-          logisticaSelect.addEventListener('change', async () => {
-            const options = Array.from(logisticaSelect.selectedOptions);
-            const novaLog = options.map(opt => {
-              const prestadorId = opt.value;
-              const input = row.querySelector(`input[data-prestadorId="${prestadorId}"], input[data-prestador-id="${prestadorId}"]`);
-              const valor = input ? parseFloat(input.value) || 0 : 0;
-              return { prestadorId, valor };
-            });
-            await db.ref(`eventos/${evento.id}/logistica`).set(novaLog);
-            fetchEventos();
-          });
-          logisticaSelectTd.appendChild(logisticaSelect);
-          row.appendChild(logisticaSelectTd);
-
-          // ===== Equipamento Alocado (dropzone – MOVE) =====
-          const equipAlocadoTd = document.createElement('td'); equipAlocadoTd.className = 'list-col';
-          const equipList = document.createElement('div'); equipList.className = 'equip-alocada-list dropzone';
-          setDnD(equipList, {
-            onDrop: async (payload) => {
-              if (payload.type === 'from-pool-eqp') {
-                const ocupado = equipamentoOcupadoNoDia(payload.equipamentoId, eventosDoDia);
-                await moverEquip(ocupado?.eventId || null, evento.id, payload.equipamentoId);
-                fetchEventos();
-              } else if (payload.type === 'from-event-eqp' && payload.eventId !== evento.id) {
-                await moverEquip(payload.eventId, evento.id, payload.equipamentoId);
-                fetchEventos();
-              }
+          // ===== Equipamento Alocado — TD é dropzone (MOVE) =====
+          const equipAlocadoTd = document.createElement('td'); equipAlocadoTd.className = 'list-col td-dropzone';
+          setTdDrop(equipAlocadoTd, async (payload) => {
+            if (payload.type === 'from-pool-eqp') {
+              const ocupado = equipamentoOcupadoNoDia(payload.equipamentoId, eventosDoDia);
+              await moverEquip(ocupado?.eventId || null, evento.id, payload.equipamentoId);
+              fetchEventos();
+            } else if (payload.type === 'from-event-eqp' && payload.eventId !== evento.id) {
+              await moverEquip(payload.eventId, evento.id, payload.equipamentoId);
+              fetchEventos();
             }
           });
+          const equipList = document.createElement('div'); equipList.className = 'equip-alocada-list';
 
           const equipamentosDoEvento = getEquipamentosDoEvento(evento);
           if (equipamentosDoEvento.length > 0) {
             equipamentosDoEvento.forEach(eq => {
               if (!eq?.equipamentoId || !allEquipamentos[eq.equipamentoId]) return;
-              const chip = document.createElement('div');
-              chip.className = 'chip';
+              const chip = document.createElement('div'); chip.className = 'chip';
               const strong = document.createElement('strong');
               strong.textContent = allEquipamentos[eq.equipamentoId].nome || 'Equipamento';
 
@@ -575,26 +553,6 @@
           }
           equipAlocadoTd.appendChild(equipList);
           row.appendChild(equipAlocadoTd);
-
-          // ===== Equipamento (select múltiplo – bloqueia usados no dia) =====
-          const equipamentoTd = document.createElement('td'); equipamentoTd.className = 'list-col';
-          const equipamentoSelect = document.createElement('select'); equipamentoSelect.multiple = true;
-          const usadosNesteEvento = new Set(equipamentosDoEvento.map(e => e.equipamentoId));
-          for (const id in allEquipamentos) {
-            const option = document.createElement('option');
-            option.value = id; option.textContent = allEquipamentos[id].nome;
-            if (usadosNesteEvento.has(id)) option.selected = true;
-            else if (equipamentosUsadosNoDia.has(id)) option.disabled = true;
-            equipamentoSelect.appendChild(option);
-          }
-          equipamentoSelect.addEventListener('change', async () => {
-            const options = Array.from(equipamentoSelect.selectedOptions);
-            const novos = options.map(opt => ({ equipamentoId: opt.value }));
-            await db.ref(`eventos/${evento.id}/equipamentos`).set(novos);
-            fetchEventos();
-          });
-          equipamentoTd.appendChild(equipamentoSelect);
-          row.appendChild(equipamentoTd);
 
           // ===== OBS =====
           const obsTd = document.createElement('td'); obsTd.className = 'obs-col';
