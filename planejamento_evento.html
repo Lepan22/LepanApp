@@ -24,7 +24,7 @@
     .equipe-col { width: 240px; }
     .equipe-alocada-list { display: flex; flex-wrap: wrap; gap: 6px; }
 
-    /* CHIP do membro selecionado */
+    /* CHIP do membro selecionado (só na coluna "Equipe Selecionada") */
     .chip {
       display: inline-flex; align-items: center; gap: 6px;
       background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 9999px; padding: 4px 8px;
@@ -38,13 +38,9 @@
       width: 20px; height: 20px; line-height: 20px; text-align: center; cursor: pointer;
     }
 
-    /* Seletor com busca */
-    .picker {
-      position: relative; display: flex; flex-direction: column; gap: 6px;
-    }
-    .picker .search {
-      width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px;
-    }
+    /* Seletor com busca (sem chips aqui) */
+    .picker { position: relative; display: flex; flex-direction: column; gap: 6px; }
+    .picker .search { width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
     .picker .dropdown {
       max-height: 260px; overflow: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff;
       box-shadow: 0 6px 16px rgba(0,0,0,.08);
@@ -61,11 +57,8 @@
       padding: 2px 6px; border-radius: 9999px;
     }
 
-    .date-header {
-      margin-top: 16px; margin-bottom: 6px; font-weight: 700; font-size: 15px; color: #111;
-    }
+    .date-header { margin-top: 16px; margin-bottom: 6px; font-weight: 700; font-size: 15px; color: #111; }
 
-    /* Inputs pequenos */
     .equipe-alocada-list input[data-membro-id] { width: 80px; max-width: 80px; font-size: 12px; padding: 2px 6px; height: 26px; }
 
     textarea.observacao { width: 100%; min-height: 60px; resize: vertical; }
@@ -176,10 +169,10 @@
       return Array.isArray(evento.equipamentos) ? evento.equipamentos : [];
     }
 
-    // Retorna sets: membros já alocados no mesmo dia (outros eventos) e um mapa do "em qual evento"
+    // Retorna sets: membros alocados no mesmo dia (outros eventos) e mapa "em qual evento"
     function getMembrosIndisponiveisNoDia(eventoAtual, eventosDoDia) {
       const indisponiveis = new Set();
-      const ocupadoPor = {}; // membroId -> nomeEvento
+      const ocupadoPor = {};
       eventosDoDia.forEach(e => {
         if (e.id !== eventoAtual.id) {
           getEquipeDoEvento(e).forEach(m => {
@@ -193,7 +186,7 @@
       return { indisponiveis, ocupadoPor };
     }
 
-    // ===== UI: Picker de Equipe com busca + checkboxes + chips =====
+    // ===== UI: Picker de Equipe com busca + checkboxes (sem chips) =====
     function buildEquipePicker(containerTd, eventoAtual, eventosDoDia) {
       containerTd.innerHTML = '';
       const equipeAtual = getEquipeDoEvento(eventoAtual) || [];
@@ -201,51 +194,6 @@
 
       const { indisponiveis, ocupadoPor } = getMembrosIndisponiveisNoDia(eventoAtual, eventosDoDia);
 
-      // Chips dos selecionados (com valor)
-      const chips = document.createElement('div');
-      chips.className = 'equipe-alocada-list';
-      function renderChips() {
-        chips.innerHTML = '';
-        equipeAtual.forEach(m => {
-          if (!m?.membroId || !allEquipe[m.membroId]) return;
-          const chip = document.createElement('div');
-          chip.className = 'chip';
-
-          const nome = allEquipe[m.membroId].apelido || allEquipe[m.membroId].nomeCompleto || 'Sem nome';
-          const strong = document.createElement('strong');
-          strong.textContent = nome;
-
-          const input = document.createElement('input');
-          input.type = 'number';
-          input.step = '0.01';
-          input.placeholder = 'R$';
-          input.dataset.membroId = m.membroId;
-          const defaultValor = allEquipe[m.membroId].valorDiaria || 0;
-          input.value = (m.valor != null ? parseFloat(m.valor) : defaultValor).toFixed(2);
-          input.addEventListener('change', () => updateEquipe(eventoAtual.id));
-
-          const remover = document.createElement('button');
-          remover.className = 'remove';
-          remover.textContent = '×';
-          remover.title = 'Remover';
-          remover.addEventListener('click', () => {
-            selecionadosSet.delete(m.membroId);
-            // remove do array
-            const idx = equipeAtual.findIndex(x => x.membroId === m.membroId);
-            if (idx > -1) equipeAtual.splice(idx, 1);
-            renderChips();
-            renderDropdown(search.value);
-            updateEquipe(eventoAtual.id);
-          });
-
-          chip.appendChild(strong);
-          chip.appendChild(input);
-          chip.appendChild(remover);
-          chips.appendChild(chip);
-        });
-      }
-
-      // Seletor (busca + lista)
       const picker = document.createElement('div');
       picker.className = 'picker';
 
@@ -257,34 +205,13 @@
       const dropdown = document.createElement('div');
       dropdown.className = 'dropdown';
 
-      function addOuRemoveSelecionado(membroId) {
-        if (selecionadosSet.has(membroId)) {
-          // remover
-          selecionadosSet.delete(membroId);
-          const i = equipeAtual.findIndex(x => x.membroId === membroId);
-          if (i > -1) equipeAtual.splice(i, 1);
-        } else {
-          // adicionar com valor padrão
-          const defaultValor = allEquipe[membroId]?.valorDiaria || 0;
-          equipeAtual.push({ membroId, valor: defaultValor });
-          selecionadosSet.add(membroId);
-        }
-        renderChips();
-        renderDropdown(search.value);
-        updateEquipe(eventoAtual.id);
-      }
-
       function renderDropdown(filtro = '') {
         dropdown.innerHTML = '';
         const termo = filtro.trim().toLowerCase();
 
         const membros = Object.keys(allEquipe)
           .map(id => ({ id, apelido: allEquipe[id].apelido || '', nome: allEquipe[id].nomeCompleto || '' }))
-          .filter(m => {
-            if (!termo) return true;
-            return m.apelido.toLowerCase().includes(termo) || m.nome.toLowerCase().includes(termo);
-          })
-          // ordenar: selecionados primeiro, depois livres, depois indisponíveis
+          .filter(m => !termo || m.apelido.toLowerCase().includes(termo) || m.nome.toLowerCase().includes(termo))
           .sort((a,b) => {
             const sA = selecionadosSet.has(a.id) ? 0 : (indisponiveis.has(a.id) ? 2 : 1);
             const sB = selecionadosSet.has(b.id) ? 0 : (indisponiveis.has(b.id) ? 2 : 1);
@@ -295,12 +222,13 @@
         membros.forEach(m => {
           const row = document.createElement('div');
           row.className = 'row' + (indisponiveis.has(m.id) && !selecionadosSet.has(m.id) ? ' disabled' : '');
-          const label = document.createElement('label');
 
+          const label = document.createElement('label');
           const cb = document.createElement('input');
           cb.type = 'checkbox';
+          cb.dataset.membroId = m.id;            // <- usado no updateEquipe
           cb.checked = selecionadosSet.has(m.id);
-          cb.addEventListener('change', () => addOuRemoveSelecionado(m.id));
+          cb.addEventListener('change', () => updateEquipe(eventoAtual.id));
 
           const nome = document.createElement('span');
           nome.textContent = allEquipe[m.id].apelido || allEquipe[m.id].nomeCompleto || 'Sem nome';
@@ -331,13 +259,8 @@
 
       picker.appendChild(search);
       picker.appendChild(dropdown);
-
-      // Monta TD
-      containerTd.appendChild(chips);
       containerTd.appendChild(picker);
 
-      // Render inicial
-      renderChips();
       renderDropdown('');
     }
 
@@ -396,8 +319,6 @@
           // ===== Equipe Selecionada (chips + valores) =====
           const equipeTd = document.createElement('td');
           equipeTd.className = 'equipe-col';
-          // (somente leitura visual: vai ser populado dentro do picker também – os chips são geridos lá)
-          // Para manter valor exibido mesmo sem interação, montamos uma lista simples aqui:
           const equipeList = document.createElement('div');
           equipeList.className = 'equipe-alocada-list';
           const equipeDoEvento = getEquipeDoEvento(evento);
@@ -411,7 +332,7 @@
                 const input = document.createElement('input');
                 input.type = 'number';
                 input.step = '0.01';
-                input.dataset.membroId = membro.membroId;
+                input.dataset.membroId = membro.membroId;  // <- só existem aqui!
                 const defaultValor = allEquipe[membro.membroId].valorDiaria || 0;
                 input.value = (membro.valor != null ? parseFloat(membro.valor) : defaultValor).toFixed(2);
                 input.addEventListener('change', () => updateEquipe(evento.id));
@@ -420,9 +341,6 @@
                 remover.textContent = '×';
                 remover.title = 'Remover';
                 remover.addEventListener('click', () => {
-                  // Remover visual imediato:
-                  chip.remove();
-                  // Atualiza no DB:
                   const atual = getEquipeDoEvento(allEventos.find(e => e.id === evento.id)) || [];
                   const novo = atual.filter(x => x.membroId !== membro.membroId);
                   db.ref(`eventos/${evento.id}/equipe`).set(novo).then(fetchEventos);
@@ -442,7 +360,7 @@
           equipeTd.appendChild(equipeList);
           row.appendChild(equipeTd);
 
-          // ===== Picker de Equipe =====
+          // ===== Picker de Equipe (apenas busca + checkboxes) =====
           const equipePickerTd = document.createElement('td');
           equipePickerTd.className = 'equipe-col';
           buildEquipePicker(equipePickerTd, evento, eventosAgrupados[data]);
@@ -480,7 +398,7 @@
           logisticaTd.appendChild(logisticaList);
           row.appendChild(logisticaTd);
 
-          // ===== Editar Logística (continua select múltiplo simples) =====
+          // ===== Editar Logística (select múltiplo) =====
           const logisticaSelectTd = document.createElement('td');
           logisticaSelectTd.className = 'equipe-col';
           const logisticaSelect = document.createElement('select');
@@ -518,7 +436,7 @@
           equipamentoAlocadoTd.appendChild(equipamentoList);
           row.appendChild(equipamentoAlocadoTd);
 
-          // ===== Editar Equipamento (mantém lógica) =====
+          // ===== Editar Equipamento (select múltiplo) =====
           const equipamentoTd = document.createElement('td');
           equipamentoTd.className = 'equipe-col';
           const equipamentoSelect = document.createElement('select');
@@ -547,8 +465,7 @@
           obsTextarea.placeholder = 'OBS';
           obsTextarea.value = evento.observacao || '';
           obsTextarea.addEventListener('change', () => {
-            const texto = obsTextarea.value;
-            db.ref(`eventos/${evento.id}/observacao`).set(texto);
+            db.ref(`eventos/${evento.id}/observacao`).set(obsTextarea.value);
           });
           obsTd.appendChild(obsTextarea);
           row.appendChild(obsTd);
@@ -566,48 +483,19 @@
       const row = document.getElementById(`row-${eventoId}`);
       if (!row) return;
 
-      // Lemos todos os chips/inputs que existem no DOM para compor o array
-      const inputs = row.querySelectorAll('input[data-membro-id]');
-      const novaEquipe = [];
-      inputs.forEach(inp => {
-        const membroId = inp.dataset.membroId;
-        const valor = parseFloat(inp.value) || 0;
-        novaEquipe.push({ membroId, valor });
+      // 1) Quem está marcado no picker?
+      const marcados = Array.from(row.querySelectorAll('.picker input[type="checkbox"][data-membro-id]:checked'))
+        .map(cb => cb.dataset.membroId);
+
+      // 2) Para cada marcado, pega o valor do chip (se existir) ou valorDiaria
+      const novaEquipe = marcados.map(membroId => {
+        const inputValor = row.querySelector(`.equipe-alocada-list input[data-membro-id="${membroId}"]`);
+        const valor = inputValor ? (parseFloat(inputValor.value) || 0) : (allEquipe[membroId]?.valorDiaria || 0);
+        return { membroId, valor };
       });
 
       await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
-      // Recarrega para refletir bloqueios/estado
       fetchEventos();
     }
 
-    async function updateLogistica(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      if (!row) return;
-      const select = row.querySelectorAll('select')[0]; // primeiro select após equipePickerTd
-      const options = Array.from(select.selectedOptions);
-      const novaLogistica = options.map(opt => {
-        const prestadorId = opt.value;
-        const input = row.querySelector(`input[data-prestador-id="${prestadorId}"]`);
-        let valor = input ? parseFloat(input.value) || 0 : 0;
-        return { prestadorId, valor };
-      });
-
-      await db.ref(`eventos/${eventoId}/logistica`).set(novaLogistica);
-      fetchEventos();
-    }
-
-    async function updateEquipamento(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      if (!row) return;
-      const selects = row.querySelectorAll('select');
-      const equipamentoSelect = selects[1]; // segundo select (após logística)
-      const options = Array.from(equipamentoSelect.selectedOptions);
-      const novosEquipamentos = options.map(opt => ({ equipamentoId: opt.value }));
-      await db.ref(`eventos/${eventoId}/equipamentos`).set(novosEquipamentos);
-      fetchEventos();
-    }
-
-    document.addEventListener('DOMContentLoaded', fetchEventos);
-  </script>
-</body>
-</html>
+    async function updateLogistica(eventoId)
