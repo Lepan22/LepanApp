@@ -498,4 +498,34 @@
       fetchEventos();
     }
 
-    async function updateLogistica(eventoId)
+    async function updateLogistica(eventoId) {
+      const row = document.getElementById(`row-${eventoId}`);
+      if (!row) return;
+      const select = row.querySelectorAll('select')[0];
+      const options = Array.from(select.selectedOptions);
+      const novaLogistica = options.map(opt => {
+        const prestadorId = opt.value;
+        const input = row.querySelector(`input[data-prestador-id="${prestadorId}"]`);
+        let valor = input ? parseFloat(input.value) || 0 : 0;
+        return { prestadorId, valor };
+      });
+
+      await db.ref(`eventos/${eventoId}/logistica`).set(novaLogistica);
+      fetchEventos();
+    }
+
+    async function updateEquipamento(eventoId) {
+      const row = document.getElementById(`row-${eventoId}`);
+      if (!row) return;
+      const selects = row.querySelectorAll('select');
+      const equipamentoSelect = selects[1]; // segundo select (após logística)
+      const options = Array.from(equipamentoSelect.selectedOptions);
+      const novosEquipamentos = options.map(opt => ({ equipamentoId: opt.value }));
+      await db.ref(`eventos/${eventoId}/equipamentos`).set(novosEquipamentos);
+      fetchEventos();
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchEventos);
+  </script>
+</body>
+</html>
