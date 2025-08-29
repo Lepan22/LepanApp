@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Planejamento de Eventos</title>
+  <title>Planejamento de Eventos da Semana</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -13,18 +13,23 @@
     input, select, textarea, button {
       padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
     }
-    button { background-color: #198754; color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+    button { background-color: #198754; color: #fff; font-weight: bold; cursor: pointer; transition: background-color .2s; }
     button:hover { background-color: #146c43; }
 
     table { border-collapse: collapse; width: 100%; font-size: 13px; }
-    th { background-color: #ff7f00; color: white; padding: 6px; position: sticky; top: 0; z-index: 1; }
-    td { border: 1px solid #ddd; padding: 4px; vertical-align: top; }
+    th { background-color: #ff7f00; color: #fff; padding: 6px; position: sticky; top: 0; z-index: 1; }
+    td { border: 1px solid #ddd; padding: 6px; vertical-align: top; }
     tr:nth-child(even) td { background: #fafafa; }
 
-    .equipe-col { width: 260px; }
-    .equipe-alocada-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .equipe-col { width: 280px; }
+    .list-col { width: 260px; }
+    .obs-col { width: 220px; }
 
-    /* CHIP no evento */
+    .equipe-alocada-list, .logistica-alocada-list, .equip-alocada-list {
+      display: flex; flex-wrap: wrap; gap: 6px; min-height: 44px;
+    }
+
+    /* Chips */
     .chip {
       display: inline-flex; align-items: center; gap: 6px;
       background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 9999px; padding: 4px 8px;
@@ -37,26 +42,26 @@
       width: 20px; height: 20px; line-height: 20px; text-align: center; cursor: pointer;
     }
 
-    /* POOL por dia */
-    .pool-wrap { margin: 8px 0 10px; }
+    /* Pool */
+    .pool-wrap { margin: 8px 0 12px; }
     .pool-title { font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
     .pool { display: flex; gap: 8px; flex-wrap: wrap; padding: 6px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #fff; }
     .pool .pool-chip {
       display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px;
-      border: 1px solid #cbd5e1; background: #ffffff; box-shadow: 0 1px 0 rgba(0,0,0,.03);
+      border: 1px solid #cbd5e1; background: #fff; box-shadow: 0 1px 0 rgba(0,0,0,.03);
     }
     .pool .pool-chip[draggable="true"] { cursor: grab; }
-    .pool .ocupado { font-size: 11px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 9999px; }
+    .pool .ocupado {
+      font-size: 11px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 9999px;
+    }
 
     .date-header { margin-top: 16px; margin-bottom: 6px; font-weight: 700; font-size: 15px; color: #111; }
 
     textarea.observacao { width: 100%; min-height: 60px; resize: vertical; }
 
-    /* Dropzones */
-    .dropzone { min-height: 48px; border: 2px dashed transparent; border-radius: 10px; padding: 4px; }
-    .dropzone.over { border-color: #198754; background: #f0fff4; }
-    .pool.dropzone { border-color: #cbd5e1; }
-    .pool.dropzone.over { border-color: #2563eb; background: #eef2ff; }
+    /* Dropzones: contorno sem cobrir conteúdo */
+    .dropzone { border: 2px dashed transparent; border-radius: 10px; padding: 4px; }
+    .dropzone.over { outline: 2px dashed #198754; outline-offset: -6px; background: transparent; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -96,14 +101,14 @@
     // ===== Util =====
     function getWeekRange() {
       const today = new Date();
-      const dayOfWeek = today.getDay();
-      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const dow = today.getDay();
+      const diffToMonday = dow === 0 ? -6 : 1 - dow;
       const monday = new Date(today);
       monday.setDate(today.getDate() + diffToMonday);
-      monday.setHours(0, 0, 0, 0);
+      monday.setHours(0,0,0,0);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
-      sunday.setHours(23, 59, 59, 999);
+      sunday.setHours(23,59,59,999);
       return { start: monday, end: sunday };
     }
     function formatDate(dateString) {
@@ -111,16 +116,16 @@
       const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
       return new Intl.DateTimeFormat('pt-BR', options).format(date);
     }
-    function getEquipeDoEvento(evento) {
-      if (evento && Array.isArray(evento.equipe)) return evento.equipe;
-      if (evento && Array.isArray(evento.equipeAlocada)) return evento.equipeAlocada;
+    function getEquipeDoEvento(e) {
+      if (e && Array.isArray(e.equipe)) return e.equipe;
+      if (e && Array.isArray(e.equipeAlocada)) return e.equipeAlocada;
       return [];
     }
-    function getLogisticaDoEvento(evento) {
-      return Array.isArray(evento.logistica) ? evento.logistica : [];
+    function getLogisticaDoEvento(e) {
+      return Array.isArray(e.logistica) ? e.logistica : [];
     }
-    function getEquipamentosDoEvento(evento) {
-      return Array.isArray(evento.equipamentos) ? evento.equipamentos : [];
+    function getEquipamentosDoEvento(e) {
+      return Array.isArray(e.equipamentos) ? e.equipamentos : [];
     }
 
     async function fetchEquipe() { const s = await db.ref('equipe').once('value'); allEquipe = s.val() || {}; }
@@ -136,12 +141,12 @@
 
         allEventos = Object.keys(eventosData)
           .map(key => ({ id: key, ...eventosData[key] }))
-          .filter(evento => {
-            if (!evento.data) return false;
-            const eventoDate = new Date(evento.data + 'T00:00:00');
-            return eventoDate >= start && eventoDate <= end;
+          .filter(ev => {
+            if (!ev.data) return false;
+            const d = new Date(ev.data + 'T00:00:00');
+            return d >= start && d <= end;
           })
-          .sort((a, b) => new Date(a.data) - new Date(b.data));
+          .sort((a,b) => new Date(a.data) - new Date(b.data));
 
         renderEventos();
       } catch (err) {
@@ -172,31 +177,77 @@
 
     function findEvento(id) { return allEventos.find(e => e.id === id); }
 
+    // Ocupações (Equipe/Equipamento)
     function membroOcupadoNoDia(membroId, eventosDoDia) {
       for (const e of eventosDoDia) {
-        const equipe = getEquipeDoEvento(e);
-        const hit = equipe.find(m => m.membroId === membroId);
+        const eq = getEquipeDoEvento(e);
+        const hit = eq.find(m => m.membroId === membroId);
         if (hit) return { eventId: e.id, valor: hit.valor };
       }
       return null;
     }
+    function equipamentoOcupadoNoDia(equipId, eventosDoDia) {
+      for (const e of eventosDoDia) {
+        const eqs = getEquipamentosDoEvento(e) || [];
+        if (eqs.find(x => x.equipamentoId === equipId)) return { eventId: e.id };
+      }
+      return null;
+    }
 
+    // Equipe (move)
     async function addMembroAoEvento(eventoId, membroId, valor) {
       const ev = findEvento(eventoId);
       const equipe = [...getEquipeDoEvento(ev)];
-      if (equipe.some(m => m.membroId === membroId)) return; // já está
-      const v = (valor != null ? valor : (allEquipe[membroId]?.valorDiaria || 0));
-      equipe.push({ membroId, valor: v });
-      await db.ref(`eventos/${eventoId}/equipe`).set(equipe);
+      if (!equipe.some(m => m.membroId === membroId)) {
+        const v = (valor != null ? valor : (allEquipe[membroId]?.valorDiaria || 0));
+        equipe.push({ membroId, valor: v });
+        await db.ref(`eventos/${eventoId}/equipe`).set(equipe);
+      }
     }
     async function removerMembroDoEvento(eventoId, membroId) {
       const ev = findEvento(eventoId);
       const equipe = getEquipeDoEvento(ev).filter(m => m.membroId !== membroId);
       await db.ref(`eventos/${eventoId}/equipe`).set(equipe);
     }
-    async function moverMembro(antigoEventoId, novoEventoId, membroId, valor) {
-      if (antigoEventoId) await removerMembroDoEvento(antigoEventoId, membroId);
-      await addMembroAoEvento(novoEventoId, membroId, valor);
+    async function moverMembro(fromId, toId, membroId, valor) {
+      if (fromId) await removerMembroDoEvento(fromId, membroId);
+      await addMembroAoEvento(toId, membroId, valor);
+    }
+
+    // Logística (NÃO bloqueia – pode repetir em vários eventos)
+    async function addPrestadorAoEvento(eventoId, prestadorId, valor) {
+      const ev = findEvento(eventoId);
+      const l = [...getLogisticaDoEvento(ev)];
+      if (!l.some(p => p.prestadorId === prestadorId)) l.push({ prestadorId, valor: valor ?? 0 });
+      await db.ref(`eventos/${eventoId}/logistica`).set(l);
+    }
+    async function removerPrestadorDoEvento(eventoId, prestadorId) {
+      const ev = findEvento(eventoId);
+      const l = getLogisticaDoEvento(ev).filter(p => p.prestadorId !== prestadorId);
+      await db.ref(`eventos/${eventoId}/logistica`).set(l);
+    }
+    // mover (evento -> evento) vira CÓPIA (mantém no original)
+    async function copiarPrestador(fromId, toId, prestadorId, valor) {
+      await addPrestadorAoEvento(toId, prestadorId, valor);
+    }
+
+    // Equipamento (move e bloqueia no dia)
+    async function addEquipAoEvento(eventoId, equipamentoId) {
+      const ev = findEvento(eventoId);
+      const eqs = [...getEquipamentosDoEvento(ev)];
+      if (!eqs.some(e => e.equipamentoId === equipamentoId)) {
+        eqs.push({ equipamentoId });
+        await db.ref(`eventos/${eventoId}/equipamentos`).set(eqs);
+      }
+    }
+    async function removerEquipDoEvento(eventoId, equipamentoId) {
+      const ev = findEvento(eventoId);
+      const eqs = getEquipamentosDoEvento(ev).filter(e => e.equipamentoId !== equipamentoId);
+      await db.ref(`eventos/${eventoId}/equipamentos`).set(eqs);
+    }
+    async function moverEquip(fromId, toId, equipamentoId) {
+      if (fromId) await removerEquipDoEvento(fromId, equipamentoId);
+      await addEquipAoEvento(toId, equipamentoId);
     }
 
     // ===== Render =====
@@ -209,13 +260,10 @@
         return;
       }
 
-      const eventosAgrupados = allEventos.reduce((acc, evento) => {
-        (acc[evento.data] ||= []).push(evento);
-        return acc;
-      }, {});
+      const porDia = allEventos.reduce((acc, ev) => { (acc[ev.data] ||= []).push(ev); return acc; }, {});
 
-      for (const data in eventosAgrupados) {
-        const eventosDoDia = eventosAgrupados[data];
+      for (const data in porDia) {
+        const eventosDoDia = porDia[data];
 
         // Cabeçalho da data
         const header = document.createElement('div');
@@ -223,37 +271,25 @@
         header.textContent = formatDate(data);
         container.appendChild(header);
 
-        // ===== POOL por dia =====
-        const poolWrap = document.createElement('div');
-        poolWrap.className = 'pool-wrap';
-
-        const title = document.createElement('div');
-        title.className = 'pool-title';
-        title.textContent = 'Pool de Equipe — arraste para o evento';
-        poolWrap.appendChild(title);
-
-        const pool = document.createElement('div');
-        pool.className = 'pool dropzone';
-        setDnD(pool, {
-          // soltar no pool remove do evento (desalocar)
-          onDrop: async (payload) => {
-            if (payload.type === 'from-event') {
-              await removerMembroDoEvento(payload.eventId, payload.membroId);
-              fetchEventos();
-            }
+        // ===== POOL Equipe =====
+        const poolEquipeWrap = document.createElement('div');
+        poolEquipeWrap.className = 'pool-wrap';
+        poolEquipeWrap.innerHTML = `<div class="pool-title">Pool de Equipe — arraste para o evento</div>`;
+        const poolEquipe = document.createElement('div');
+        poolEquipe.className = 'pool dropzone';
+        setDnD(poolEquipe, { onDrop: async (payload) => {
+          if (payload.type === 'from-event-eq') {
+            await removerMembroDoEvento(payload.eventId, payload.membroId);
+            fetchEventos();
           }
-        });
-
-        // monta chips do pool
-        const todosIds = Object.keys(allEquipe).sort((a,b) =>
+        }});
+        // conteúdo do pool equipe
+        Object.keys(allEquipe).sort((a,b) =>
           (allEquipe[a].apelido || '').localeCompare(allEquipe[b].apelido || '')
-        );
-        todosIds.forEach(id => {
+        ).forEach(id => {
           const chip = document.createElement('div');
           chip.className = 'pool-chip';
-          const nome = allEquipe[id].apelido || allEquipe[id].nomeCompleto || 'Sem nome';
-          chip.textContent = nome;
-
+          chip.textContent = allEquipe[id].apelido || allEquipe[id].nomeCompleto || 'Sem nome';
           const ocupado = membroOcupadoNoDia(id, eventosDoDia);
           if (ocupado) {
             const tag = document.createElement('span');
@@ -262,28 +298,81 @@
             tag.textContent = 'em: ' + (ev?.nomeEvento || 'evento');
             chip.appendChild(tag);
           }
-
-          makeDraggable(chip, { type: 'from-pool', membroId: id, data });
-          pool.appendChild(chip);
+          makeDraggable(chip, { type: 'from-pool-eq', membroId: id, data });
+          poolEquipe.appendChild(chip);
         });
+        poolEquipeWrap.appendChild(poolEquipe);
+        container.appendChild(poolEquipeWrap);
 
-        poolWrap.appendChild(pool);
-        container.appendChild(poolWrap);
+        // ===== POOL Logística =====
+        const poolLogWrap = document.createElement('div');
+        poolLogWrap.className = 'pool-wrap';
+        poolLogWrap.innerHTML = `<div class="pool-title">Pool de Logística — arraste para o evento</div>`;
+        const poolLog = document.createElement('div');
+        poolLog.className = 'pool dropzone';
+        setDnD(poolLog, { onDrop: async (payload) => {
+          if (payload.type === 'from-event-log') {
+            await removerPrestadorDoEvento(payload.eventId, payload.prestadorId);
+            fetchEventos();
+          }
+        }});
+        Object.keys(allLogistica).sort((a,b)=>
+          (allLogistica[a].nome||'').localeCompare(allLogistica[b].nome||'')
+        ).forEach(id => {
+          const chip = document.createElement('div');
+          chip.className = 'pool-chip';
+          chip.textContent = allLogistica[id].nome || 'Sem nome';
+          makeDraggable(chip, { type: 'from-pool-log', prestadorId: id, data });
+          poolLog.appendChild(chip);
+        });
+        poolLogWrap.appendChild(poolLog);
+        container.appendChild(poolLogWrap);
+
+        // ===== POOL Equipamentos =====
+        const poolEqpWrap = document.createElement('div');
+        poolEqpWrap.className = 'pool-wrap';
+        poolEqpWrap.innerHTML = `<div class="pool-title">Pool de Equipamentos — arraste para o evento</div>`;
+        const poolEqp = document.createElement('div');
+        poolEqp.className = 'pool dropzone';
+        setDnD(poolEqp, { onDrop: async (payload) => {
+          if (payload.type === 'from-event-eqp') {
+            await removerEquipDoEvento(payload.eventId, payload.equipamentoId);
+            fetchEventos();
+          }
+        }});
+        Object.keys(allEquipamentos).sort((a,b)=>
+          (allEquipamentos[a].nome||'').localeCompare(allEquipamentos[b].nome||'')
+        ).forEach(id => {
+          const chip = document.createElement('div');
+          chip.className = 'pool-chip';
+          chip.textContent = allEquipamentos[id].nome || 'Equipamento';
+          const ocupado = equipamentoOcupadoNoDia(id, eventosDoDia);
+          if (ocupado) {
+            const tag = document.createElement('span');
+            tag.className = 'ocupado';
+            const ev = findEvento(ocupado.eventId);
+            tag.textContent = 'em: ' + (ev?.nomeEvento || 'evento');
+            chip.appendChild(tag);
+          }
+          makeDraggable(chip, { type: 'from-pool-eqp', equipamentoId: id, data });
+          poolEqp.appendChild(chip);
+        });
+        poolEqpWrap.appendChild(poolEqp);
+        container.appendChild(poolEqpWrap);
 
         // ===== Tabela do dia =====
         const table = document.createElement('table');
         table.innerHTML = `<thead><tr>
             <th>Evento</th>
             <th class="equipe-col">Equipe Selecionada (arraste aqui)</th>
-            <th class="equipe-col">Logística Alocada</th>
-            <th class="equipe-col">Editar Logística</th>
-            <th class="equipe-col">Equipamento Alocado</th>
-            <th class="equipe-col">Equipamento</th>
-            <th class="equipe-col">OBS</th>
+            <th class="list-col">Logística Alocada (arraste aqui)</th>
+            <th class="list-col">Editar Logística (select)</th>
+            <th class="list-col">Equipamento Alocado (arraste aqui)</th>
+            <th class="list-col">Equipamento (select)</th>
+            <th class="obs-col">OBS</th>
           </tr></thead>`;
         const tbody = document.createElement('tbody');
 
-        // Para bloqueio de equipamento por dia
         const equipamentosUsadosNoDia = new Set();
         eventosDoDia.forEach(e => (e.equipamentos||[]).forEach(eq => equipamentosUsadosNoDia.add(eq.equipamentoId)));
 
@@ -297,20 +386,16 @@
           row.appendChild(nomeTd);
 
           // ===== Equipe Selecionada (dropzone) =====
-          const equipeTd = document.createElement('td');
-          equipeTd.className = 'equipe-col';
-          const equipeList = document.createElement('div');
-          equipeList.className = 'equipe-alocada-list dropzone';
+          const equipeTd = document.createElement('td'); equipeTd.className = 'equipe-col';
+          const equipeList = document.createElement('div'); equipeList.className = 'equipe-alocada-list dropzone';
           setDnD(equipeList, {
             onDrop: async (payload) => {
-              if (payload.type === 'from-pool') {
-                // se estiver em outro evento do mesmo dia, move
+              if (payload.type === 'from-pool-eq') {
                 const ocupado = membroOcupadoNoDia(payload.membroId, eventosDoDia);
                 const valor = ocupado?.valor ?? (allEquipe[payload.membroId]?.valorDiaria || 0);
                 await moverMembro(ocupado?.eventId || null, evento.id, payload.membroId, valor);
                 fetchEventos();
-              } else if (payload.type === 'from-event' && payload.eventId !== evento.id) {
-                // mover entre eventos
+              } else if (payload.type === 'from-event-eq' && payload.eventId !== evento.id) {
                 const valor = payload.valor ?? (allEquipe[payload.membroId]?.valorDiaria || 0);
                 await moverMembro(payload.eventId, evento.id, payload.membroId, valor);
                 fetchEventos();
@@ -334,7 +419,6 @@
               const defaultValor = allEquipe[membro.membroId].valorDiaria || 0;
               input.value = (membro.valor != null ? parseFloat(membro.valor) : defaultValor).toFixed(2);
               input.addEventListener('change', async () => {
-                // atualiza somente o valor deste membro
                 const ev = findEvento(evento.id);
                 const nova = getEquipeDoEvento(ev).map(x => x.membroId === membro.membroId
                   ? { ...x, valor: parseFloat(input.value) || 0 }
@@ -353,12 +437,9 @@
                 fetchEventos();
               });
 
-              // permitir arrastar este chip para outro evento ou de volta ao pool
-              makeDraggable(chip, { type: 'from-event', eventId: evento.id, membroId: membro.membroId, valor: parseFloat(input.value) || 0 });
+              makeDraggable(chip, { type: 'from-event-eq', eventId: evento.id, membroId: membro.membroId, valor: parseFloat(input.value) || 0 });
 
-              chip.appendChild(strong);
-              chip.appendChild(input);
-              chip.appendChild(remover);
+              chip.appendChild(strong); chip.appendChild(input); chip.appendChild(remover);
               equipeList.appendChild(chip);
             });
           } else {
@@ -369,100 +450,156 @@
           equipeTd.appendChild(equipeList);
           row.appendChild(equipeTd);
 
-          // ===== Logística Alocada =====
-          const logisticaTd = document.createElement('td');
-          logisticaTd.className = 'equipe-col';
-          const logisticaList = document.createElement('ul');
-          logisticaList.className = 'equipe-alocada-list';
+          // ===== Logística Alocada (dropzone – CÓPIA) =====
+          const logisticaTd = document.createElement('td'); logisticaTd.className = 'list-col';
+          const logisticaList = document.createElement('div'); logisticaList.className = 'logistica-alocada-list dropzone';
+          setDnD(logisticaList, {
+            onDrop: async (payload) => {
+              if (payload.type === 'from-pool-log') {
+                await addPrestadorAoEvento(evento.id, payload.prestadorId, 0);
+                fetchEventos();
+              } else if (payload.type === 'from-event-log' && payload.eventId !== evento.id) {
+                await copiarPrestador(payload.eventId, evento.id, payload.prestadorId, payload.valor ?? 0);
+                fetchEventos();
+              }
+            }
+          });
+
           const logisticaDoEvento = getLogisticaDoEvento(evento);
           if (logisticaDoEvento.length > 0) {
-            logisticaDoEvento.forEach(prestador => {
-              if (prestador?.prestadorId && allLogistica[prestador.prestadorId]) {
-                const li = document.createElement('li');
-                const label = document.createElement('label');
-                label.textContent = allLogistica[prestador.prestadorId].nome;
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.dataset.prestadorId = prestador.prestadorId;
-                input.placeholder = "R$";
-                input.step = "0.01";
-                input.value = prestador.valor ? parseFloat(prestador.valor).toFixed(2) : '';
-                input.addEventListener('change', () => updateLogistica(evento.id));
-                li.appendChild(label);
-                li.appendChild(input);
-                logisticaList.appendChild(li);
-              }
+            logisticaDoEvento.forEach(prest => {
+              if (!prest?.prestadorId || !allLogistica[prest.prestadorId]) return;
+              const chip = document.createElement('div');
+              chip.className = 'chip';
+              const strong = document.createElement('strong');
+              strong.textContent = allLogistica[prest.prestadorId].nome || 'Sem nome';
+
+              const input = document.createElement('input');
+              input.type = 'number'; input.step = '0.01';
+              input.dataset.prestadorId = prest.prestadorId;
+              input.value = prest.valor != null ? parseFloat(prest.valor).toFixed(2) : '0.00';
+              input.addEventListener('change', async () => {
+                const ev = findEvento(evento.id);
+                const nova = getLogisticaDoEvento(ev).map(x => x.prestadorId === prest.prestadorId
+                  ? { ...x, valor: parseFloat(input.value) || 0 }
+                  : x
+                );
+                await db.ref(`eventos/${evento.id}/logistica`).set(nova);
+                fetchEventos();
+              });
+
+              const remover = document.createElement('button');
+              remover.className = 'remove'; remover.textContent = '×'; remover.title = 'Remover';
+              remover.addEventListener('click', async () => {
+                await removerPrestadorDoEvento(evento.id, prest.prestadorId);
+                fetchEventos();
+              });
+
+              makeDraggable(chip, { type: 'from-event-log', eventId: evento.id, prestadorId: prest.prestadorId, valor: parseFloat(input.value) || 0 });
+
+              chip.appendChild(strong); chip.appendChild(input); chip.appendChild(remover);
+              logisticaList.appendChild(chip);
             });
           } else {
-            const li = document.createElement('li');
-            li.textContent = 'Nenhuma logística alocada';
-            logisticaList.appendChild(li);
+            const vazio = document.createElement('div');
+            vazio.textContent = 'Arraste do pool de logística';
+            logisticaList.appendChild(vazio);
           }
           logisticaTd.appendChild(logisticaList);
           row.appendChild(logisticaTd);
 
-          // ===== Editar Logística =====
-          const logisticaSelectTd = document.createElement('td');
-          logisticaSelectTd.className = 'equipe-col';
-          const logisticaSelect = document.createElement('select');
-          logisticaSelect.multiple = true;
+          // ===== Editar Logística (select múltiplo – continua) =====
+          const logisticaSelectTd = document.createElement('td'); logisticaSelectTd.className = 'list-col';
+          const logisticaSelect = document.createElement('select'); logisticaSelect.multiple = true;
           for (const id in allLogistica) {
             const option = document.createElement('option');
-            option.value = id;
-            option.textContent = allLogistica[id].nome;
+            option.value = id; option.textContent = allLogistica[id].nome;
             if (logisticaDoEvento.find(p => p.prestadorId === id)) option.selected = true;
             logisticaSelect.appendChild(option);
           }
-          logisticaSelect.addEventListener('change', () => updateLogistica(evento.id));
+          logisticaSelect.addEventListener('change', async () => {
+            const options = Array.from(logisticaSelect.selectedOptions);
+            const novaLog = options.map(opt => {
+              const prestadorId = opt.value;
+              const input = row.querySelector(`input[data-prestadorId="${prestadorId}"], input[data-prestador-id="${prestadorId}"]`);
+              const valor = input ? parseFloat(input.value) || 0 : 0;
+              return { prestadorId, valor };
+            });
+            await db.ref(`eventos/${evento.id}/logistica`).set(novaLog);
+            fetchEventos();
+          });
           logisticaSelectTd.appendChild(logisticaSelect);
           row.appendChild(logisticaSelectTd);
 
-          // ===== Equipamento Alocado =====
-          const equipamentoAlocadoTd = document.createElement('td');
-          equipamentoAlocadoTd.className = 'equipe-col';
-          const equipamentoList = document.createElement('ul');
-          equipamentoList.className = 'equipe-alocada-list';
+          // ===== Equipamento Alocado (dropzone – MOVE) =====
+          const equipAlocadoTd = document.createElement('td'); equipAlocadoTd.className = 'list-col';
+          const equipList = document.createElement('div'); equipList.className = 'equip-alocada-list dropzone';
+          setDnD(equipList, {
+            onDrop: async (payload) => {
+              if (payload.type === 'from-pool-eqp') {
+                const ocupado = equipamentoOcupadoNoDia(payload.equipamentoId, eventosDoDia);
+                await moverEquip(ocupado?.eventId || null, evento.id, payload.equipamentoId);
+                fetchEventos();
+              } else if (payload.type === 'from-event-eqp' && payload.eventId !== evento.id) {
+                await moverEquip(payload.eventId, evento.id, payload.equipamentoId);
+                fetchEventos();
+              }
+            }
+          });
+
           const equipamentosDoEvento = getEquipamentosDoEvento(evento);
           if (equipamentosDoEvento.length > 0) {
             equipamentosDoEvento.forEach(eq => {
-              if (eq?.equipamentoId && allEquipamentos[eq.equipamentoId]) {
-                const li = document.createElement('li');
-                li.textContent = allEquipamentos[eq.equipamentoId].nome;
-                equipamentoList.appendChild(li);
-              }
+              if (!eq?.equipamentoId || !allEquipamentos[eq.equipamentoId]) return;
+              const chip = document.createElement('div');
+              chip.className = 'chip';
+              const strong = document.createElement('strong');
+              strong.textContent = allEquipamentos[eq.equipamentoId].nome || 'Equipamento';
+
+              const remover = document.createElement('button');
+              remover.className = 'remove'; remover.textContent = '×'; remover.title = 'Remover';
+              remover.addEventListener('click', async () => {
+                await removerEquipDoEvento(evento.id, eq.equipamentoId);
+                fetchEventos();
+              });
+
+              makeDraggable(chip, { type: 'from-event-eqp', eventId: evento.id, equipamentoId: eq.equipamentoId });
+
+              chip.appendChild(strong); chip.appendChild(remover);
+              equipList.appendChild(chip);
             });
           } else {
-            const li = document.createElement('li');
-            li.textContent = 'Nenhum equipamento alocado';
-            equipamentoList.appendChild(li);
+            const vazio = document.createElement('div');
+            vazio.textContent = 'Arraste do pool de equipamentos';
+            equipList.appendChild(vazio);
           }
-          equipamentoAlocadoTd.appendChild(equipamentoList);
-          row.appendChild(equipamentoAlocadoTd);
+          equipAlocadoTd.appendChild(equipList);
+          row.appendChild(equipAlocadoTd);
 
-          // ===== Editar Equipamento =====
-          const equipamentoTd = document.createElement('td');
-          equipamentoTd.className = 'equipe-col';
-          const equipamentoSelect = document.createElement('select');
-          equipamentoSelect.multiple = true;
+          // ===== Equipamento (select múltiplo – bloqueia usados no dia) =====
+          const equipamentoTd = document.createElement('td'); equipamentoTd.className = 'list-col';
+          const equipamentoSelect = document.createElement('select'); equipamentoSelect.multiple = true;
           const usadosNesteEvento = new Set(equipamentosDoEvento.map(e => e.equipamentoId));
           for (const id in allEquipamentos) {
             const option = document.createElement('option');
-            option.value = id;
-            option.textContent = allEquipamentos[id].nome;
+            option.value = id; option.textContent = allEquipamentos[id].nome;
             if (usadosNesteEvento.has(id)) option.selected = true;
             else if (equipamentosUsadosNoDia.has(id)) option.disabled = true;
             equipamentoSelect.appendChild(option);
           }
-          equipamentoSelect.addEventListener('change', () => updateEquipamento(evento.id));
+          equipamentoSelect.addEventListener('change', async () => {
+            const options = Array.from(equipamentoSelect.selectedOptions);
+            const novos = options.map(opt => ({ equipamentoId: opt.value }));
+            await db.ref(`eventos/${evento.id}/equipamentos`).set(novos);
+            fetchEventos();
+          });
           equipamentoTd.appendChild(equipamentoSelect);
           row.appendChild(equipamentoTd);
 
           // ===== OBS =====
-          const obsTd = document.createElement('td');
-          obsTd.className = 'equipe-col';
+          const obsTd = document.createElement('td'); obsTd.className = 'obs-col';
           const obsTextarea = document.createElement('textarea');
-          obsTextarea.className = 'observacao';
-          obsTextarea.placeholder = 'OBS';
+          obsTextarea.className = 'observacao'; obsTextarea.placeholder = 'OBS';
           obsTextarea.value = evento.observacao || '';
           obsTextarea.addEventListener('change', () => db.ref(`eventos/${evento.id}/observacao`).set(obsTextarea.value));
           obsTd.appendChild(obsTextarea);
@@ -474,33 +611,6 @@
         table.appendChild(tbody);
         container.appendChild(table);
       }
-    }
-
-    // ===== Updates (logística/equipamento – sem mudanças) =====
-    async function updateLogistica(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      if (!row) return;
-      const select = row.querySelectorAll('select')[0];
-      const options = Array.from(select.selectedOptions);
-      const novaLogistica = options.map(opt => {
-        const prestadorId = opt.value;
-        const input = row.querySelector(`input[data-prestador-id="${prestadorId}"]`);
-        let valor = input ? parseFloat(input.value) || 0 : 0;
-        return { prestadorId, valor };
-      });
-      await db.ref(`eventos/${eventoId}/logistica`).set(novaLogistica);
-      fetchEventos();
-    }
-
-    async function updateEquipamento(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      if (!row) return;
-      const selects = row.querySelectorAll('select');
-      const equipamentoSelect = selects[1];
-      const options = Array.from(equipamentoSelect.selectedOptions);
-      const novosEquipamentos = options.map(opt => ({ equipamentoId: opt.value }));
-      await db.ref(`eventos/${eventoId}/equipamentos`).set(novosEquipamentos);
-      fetchEventos();
     }
 
     document.addEventListener('DOMContentLoaded', fetchEventos);
