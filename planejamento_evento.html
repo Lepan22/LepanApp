@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Planejamento de Eventos</title>
+  <title>Planejamento de Eventos da Semana</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
@@ -21,47 +21,42 @@
     td { border: 1px solid #ddd; padding: 4px; vertical-align: top; }
     tr:nth-child(even) td { background: #fafafa; }
 
-    .equipe-col { width: 240px; }
+    .equipe-col { width: 260px; }
     .equipe-alocada-list { display: flex; flex-wrap: wrap; gap: 6px; }
 
-    /* CHIP do membro selecionado (só na coluna "Equipe Selecionada") */
+    /* CHIP no evento */
     .chip {
       display: inline-flex; align-items: center; gap: 6px;
       background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 9999px; padding: 4px 8px;
     }
+    .chip[draggable="true"] { cursor: grab; }
     .chip strong { font-weight: 600; }
-    .chip input[type="number"] {
-      width: 80px; padding: 2px 6px; font-size: 12px; height: 26px; text-align: right;
-    }
+    .chip input[type="number"] { width: 80px; padding: 2px 6px; font-size: 12px; height: 26px; text-align: right; }
     .chip .remove {
       background: #ef4444; color: #fff; border: none; border-radius: 9999px;
       width: 20px; height: 20px; line-height: 20px; text-align: center; cursor: pointer;
     }
 
-    /* Seletor com busca (sem chips aqui) */
-    .picker { position: relative; display: flex; flex-direction: column; gap: 6px; }
-    .picker .search { width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
-    .picker .dropdown {
-      max-height: 260px; overflow: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff;
-      box-shadow: 0 6px 16px rgba(0,0,0,.08);
+    /* POOL por dia */
+    .pool-wrap { margin: 8px 0 10px; }
+    .pool-title { font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    .pool { display: flex; gap: 8px; flex-wrap: wrap; padding: 6px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #fff; }
+    .pool .pool-chip {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 9999px;
+      border: 1px solid #cbd5e1; background: #ffffff; box-shadow: 0 1px 0 rgba(0,0,0,.03);
     }
-    .picker .row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 6px 8px; border-bottom: 1px solid #f1f1f1;
-    }
-    .picker .row:last-child { border-bottom: none; }
-    .picker .row.disabled { opacity: 0.55; pointer-events: none; background: #fcfcfc; }
-    .picker .row label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
-    .picker .tag-ocupado {
-      font-size: 11px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;
-      padding: 2px 6px; border-radius: 9999px;
-    }
+    .pool .pool-chip[draggable="true"] { cursor: grab; }
+    .pool .ocupado { font-size: 11px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 6px; border-radius: 9999px; }
 
     .date-header { margin-top: 16px; margin-bottom: 6px; font-weight: 700; font-size: 15px; color: #111; }
 
-    .equipe-alocada-list input[data-membro-id] { width: 80px; max-width: 80px; font-size: 12px; padding: 2px 6px; height: 26px; }
-
     textarea.observacao { width: 100%; min-height: 60px; resize: vertical; }
+
+    /* Dropzones */
+    .dropzone { min-height: 48px; border: 2px dashed transparent; border-radius: 10px; padding: 4px; }
+    .dropzone.over { border-color: #198754; background: #f0fff4; }
+    .pool.dropzone { border-color: #cbd5e1; }
+    .pool.dropzone.over { border-color: #2563eb; background: #eef2ff; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -116,26 +111,25 @@
       const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
       return new Intl.DateTimeFormat('pt-BR', options).format(date);
     }
+    function getEquipeDoEvento(evento) {
+      if (evento && Array.isArray(evento.equipe)) return evento.equipe;
+      if (evento && Array.isArray(evento.equipeAlocada)) return evento.equipeAlocada;
+      return [];
+    }
+    function getLogisticaDoEvento(evento) {
+      return Array.isArray(evento.logistica) ? evento.logistica : [];
+    }
+    function getEquipamentosDoEvento(evento) {
+      return Array.isArray(evento.equipamentos) ? evento.equipamentos : [];
+    }
 
-    // ===== Fetch =====
-    async function fetchEquipe() {
-      const snapshot = await db.ref('equipe').once('value');
-      allEquipe = snapshot.val() || {};
-    }
-    async function fetchLogistica() {
-      const snapshot = await db.ref('logistica').once('value');
-      allLogistica = snapshot.val() || {};
-    }
-    async function fetchEquipamentos() {
-      const snapshot = await db.ref('equipamentos').once('value');
-      allEquipamentos = snapshot.val() || {};
-    }
+    async function fetchEquipe() { const s = await db.ref('equipe').once('value'); allEquipe = s.val() || {}; }
+    async function fetchLogistica() { const s = await db.ref('logistica').once('value'); allLogistica = s.val() || {}; }
+    async function fetchEquipamentos() { const s = await db.ref('equipamentos').once('value'); allEquipamentos = s.val() || {}; }
+
     async function fetchEventos() {
       try {
-        await fetchEquipe();
-        await fetchLogistica();
-        await fetchEquipamentos();
-
+        await Promise.all([fetchEquipe(), fetchLogistica(), fetchEquipamentos()]);
         const snapshot = await db.ref('eventos').once('value');
         const eventosData = snapshot.val() || {};
         const { start, end } = getWeekRange();
@@ -150,118 +144,59 @@
           .sort((a, b) => new Date(a.data) - new Date(b.data));
 
         renderEventos();
-      } catch (error) {
-        console.error("Erro ao buscar eventos:", error);
-        document.getElementById('eventos-container').innerHTML = '<p>Erro ao carregar os eventos. Verifique o console.</p>';
+      } catch (err) {
+        console.error('Erro ao buscar eventos:', err);
+        document.getElementById('eventos-container').innerHTML = '<p>Erro ao carregar os eventos.</p>';
       }
     }
 
-    // ===== Helpers por Evento =====
-    function getEquipeDoEvento(evento) {
-      if (evento && Array.isArray(evento.equipe)) return evento.equipe;
-      if (evento && Array.isArray(evento.equipeAlocada)) return evento.equipeAlocada;
-      return [];
-    }
-    function getLogisticaDoEvento(evento) {
-      return Array.isArray(evento.logistica) ? evento.logistica : [];
-    }
-    function getEquipamentosDoEvento(evento) {
-      return Array.isArray(evento.equipamentos) ? evento.equipamentos : [];
-    }
-
-    // Retorna sets: membros alocados no mesmo dia (outros eventos) e mapa "em qual evento"
-    function getMembrosIndisponiveisNoDia(eventoAtual, eventosDoDia) {
-      const indisponiveis = new Set();
-      const ocupadoPor = {};
-      eventosDoDia.forEach(e => {
-        if (e.id !== eventoAtual.id) {
-          getEquipeDoEvento(e).forEach(m => {
-            if (m?.membroId) {
-              indisponiveis.add(m.membroId);
-              if (!ocupadoPor[m.membroId]) ocupadoPor[m.membroId] = e.nomeEvento || 'Outro evento';
-            }
-          });
-        }
+    // ===== DnD helpers =====
+    function setDnD(el, { onDrop }) {
+      el.addEventListener('dragover', ev => { ev.preventDefault(); el.classList.add('over'); });
+      el.addEventListener('dragleave', () => el.classList.remove('over'));
+      el.addEventListener('drop', ev => {
+        ev.preventDefault();
+        el.classList.remove('over');
+        try {
+          const data = JSON.parse(ev.dataTransfer.getData('text/plain'));
+          onDrop && onDrop(data);
+        } catch (_) {}
       });
-      return { indisponiveis, ocupadoPor };
+    }
+    function makeDraggable(el, payload) {
+      el.setAttribute('draggable', 'true');
+      el.addEventListener('dragstart', ev => {
+        ev.dataTransfer.setData('text/plain', JSON.stringify(payload));
+      });
     }
 
-    // ===== UI: Picker de Equipe com busca + checkboxes (sem chips) =====
-    function buildEquipePicker(containerTd, eventoAtual, eventosDoDia) {
-      containerTd.innerHTML = '';
-      const equipeAtual = getEquipeDoEvento(eventoAtual) || [];
-      const selecionadosSet = new Set(equipeAtual.map(m => m.membroId));
+    function findEvento(id) { return allEventos.find(e => e.id === id); }
 
-      const { indisponiveis, ocupadoPor } = getMembrosIndisponiveisNoDia(eventoAtual, eventosDoDia);
-
-      const picker = document.createElement('div');
-      picker.className = 'picker';
-
-      const search = document.createElement('input');
-      search.className = 'search';
-      search.type = 'text';
-      search.placeholder = 'Buscar pessoa da equipe...';
-
-      const dropdown = document.createElement('div');
-      dropdown.className = 'dropdown';
-
-      function renderDropdown(filtro = '') {
-        dropdown.innerHTML = '';
-        const termo = filtro.trim().toLowerCase();
-
-        const membros = Object.keys(allEquipe)
-          .map(id => ({ id, apelido: allEquipe[id].apelido || '', nome: allEquipe[id].nomeCompleto || '' }))
-          .filter(m => !termo || m.apelido.toLowerCase().includes(termo) || m.nome.toLowerCase().includes(termo))
-          .sort((a,b) => {
-            const sA = selecionadosSet.has(a.id) ? 0 : (indisponiveis.has(a.id) ? 2 : 1);
-            const sB = selecionadosSet.has(b.id) ? 0 : (indisponiveis.has(b.id) ? 2 : 1);
-            if (sA !== sB) return sA - sB;
-            return (allEquipe[a.id].apelido || '').localeCompare(allEquipe[b.id].apelido || '');
-          });
-
-        membros.forEach(m => {
-          const row = document.createElement('div');
-          row.className = 'row' + (indisponiveis.has(m.id) && !selecionadosSet.has(m.id) ? ' disabled' : '');
-
-          const label = document.createElement('label');
-          const cb = document.createElement('input');
-          cb.type = 'checkbox';
-          cb.dataset.membroId = m.id;            // <- usado no updateEquipe
-          cb.checked = selecionadosSet.has(m.id);
-          cb.addEventListener('change', () => updateEquipe(eventoAtual.id));
-
-          const nome = document.createElement('span');
-          nome.textContent = allEquipe[m.id].apelido || allEquipe[m.id].nomeCompleto || 'Sem nome';
-
-          label.appendChild(cb);
-          label.appendChild(nome);
-          row.appendChild(label);
-
-          if (indisponiveis.has(m.id) && !selecionadosSet.has(m.id)) {
-            const tag = document.createElement('span');
-            tag.className = 'tag-ocupado';
-            tag.textContent = 'Ocupado em: ' + (ocupadoPor[m.id] || 'outro evento');
-            row.appendChild(tag);
-          }
-
-          dropdown.appendChild(row);
-        });
-
-        if (!dropdown.children.length) {
-          const vazio = document.createElement('div');
-          vazio.className = 'row';
-          vazio.textContent = 'Nenhum resultado.';
-          dropdown.appendChild(vazio);
-        }
+    function membroOcupadoNoDia(membroId, eventosDoDia) {
+      for (const e of eventosDoDia) {
+        const equipe = getEquipeDoEvento(e);
+        const hit = equipe.find(m => m.membroId === membroId);
+        if (hit) return { eventId: e.id, valor: hit.valor };
       }
+      return null;
+    }
 
-      search.addEventListener('input', () => renderDropdown(search.value));
-
-      picker.appendChild(search);
-      picker.appendChild(dropdown);
-      containerTd.appendChild(picker);
-
-      renderDropdown('');
+    async function addMembroAoEvento(eventoId, membroId, valor) {
+      const ev = findEvento(eventoId);
+      const equipe = [...getEquipeDoEvento(ev)];
+      if (equipe.some(m => m.membroId === membroId)) return; // já está
+      const v = (valor != null ? valor : (allEquipe[membroId]?.valorDiaria || 0));
+      equipe.push({ membroId, valor: v });
+      await db.ref(`eventos/${eventoId}/equipe`).set(equipe);
+    }
+    async function removerMembroDoEvento(eventoId, membroId) {
+      const ev = findEvento(eventoId);
+      const equipe = getEquipeDoEvento(ev).filter(m => m.membroId !== membroId);
+      await db.ref(`eventos/${eventoId}/equipe`).set(equipe);
+    }
+    async function moverMembro(antigoEventoId, novoEventoId, membroId, valor) {
+      if (antigoEventoId) await removerMembroDoEvento(antigoEventoId, membroId);
+      await addMembroAoEvento(novoEventoId, membroId, valor);
     }
 
     // ===== Render =====
@@ -275,23 +210,71 @@
       }
 
       const eventosAgrupados = allEventos.reduce((acc, evento) => {
-        const data = evento.data;
-        if (!acc[data]) acc[data] = [];
-        acc[data].push(evento);
+        (acc[evento.data] ||= []).push(evento);
         return acc;
       }, {});
 
       for (const data in eventosAgrupados) {
+        const eventosDoDia = eventosAgrupados[data];
+
+        // Cabeçalho da data
         const header = document.createElement('div');
         header.className = 'date-header';
         header.textContent = formatDate(data);
         container.appendChild(header);
 
+        // ===== POOL por dia =====
+        const poolWrap = document.createElement('div');
+        poolWrap.className = 'pool-wrap';
+
+        const title = document.createElement('div');
+        title.className = 'pool-title';
+        title.textContent = 'Pool de Equipe — arraste para o evento';
+        poolWrap.appendChild(title);
+
+        const pool = document.createElement('div');
+        pool.className = 'pool dropzone';
+        setDnD(pool, {
+          // soltar no pool remove do evento (desalocar)
+          onDrop: async (payload) => {
+            if (payload.type === 'from-event') {
+              await removerMembroDoEvento(payload.eventId, payload.membroId);
+              fetchEventos();
+            }
+          }
+        });
+
+        // monta chips do pool
+        const todosIds = Object.keys(allEquipe).sort((a,b) =>
+          (allEquipe[a].apelido || '').localeCompare(allEquipe[b].apelido || '')
+        );
+        todosIds.forEach(id => {
+          const chip = document.createElement('div');
+          chip.className = 'pool-chip';
+          const nome = allEquipe[id].apelido || allEquipe[id].nomeCompleto || 'Sem nome';
+          chip.textContent = nome;
+
+          const ocupado = membroOcupadoNoDia(id, eventosDoDia);
+          if (ocupado) {
+            const tag = document.createElement('span');
+            tag.className = 'ocupado';
+            const ev = findEvento(ocupado.eventId);
+            tag.textContent = 'em: ' + (ev?.nomeEvento || 'evento');
+            chip.appendChild(tag);
+          }
+
+          makeDraggable(chip, { type: 'from-pool', membroId: id, data });
+          pool.appendChild(chip);
+        });
+
+        poolWrap.appendChild(pool);
+        container.appendChild(poolWrap);
+
+        // ===== Tabela do dia =====
         const table = document.createElement('table');
         table.innerHTML = `<thead><tr>
             <th>Evento</th>
-            <th class="equipe-col">Equipe Selecionada</th>
-            <th class="equipe-col">Adicionar/Remover Equipe</th>
+            <th class="equipe-col">Equipe Selecionada (arraste aqui)</th>
             <th class="equipe-col">Logística Alocada</th>
             <th class="equipe-col">Editar Logística</th>
             <th class="equipe-col">Equipamento Alocado</th>
@@ -300,71 +283,91 @@
           </tr></thead>`;
         const tbody = document.createElement('tbody');
 
+        // Para bloqueio de equipamento por dia
         const equipamentosUsadosNoDia = new Set();
-        eventosAgrupados[data].forEach(e => {
-          if (e.equipamentos) {
-            e.equipamentos.forEach(eq => equipamentosUsadosNoDia.add(eq.equipamentoId));
-          }
-        });
+        eventosDoDia.forEach(e => (e.equipamentos||[]).forEach(eq => equipamentosUsadosNoDia.add(eq.equipamentoId)));
 
-        eventosAgrupados[data].forEach(evento => {
+        eventosDoDia.forEach(evento => {
           const row = document.createElement('tr');
           row.id = `row-${evento.id}`;
 
-          // Nome
+          // Nome do evento
           const nomeTd = document.createElement('td');
           nomeTd.textContent = evento.nomeEvento || 'Sem nome';
           row.appendChild(nomeTd);
 
-          // ===== Equipe Selecionada (chips + valores) =====
+          // ===== Equipe Selecionada (dropzone) =====
           const equipeTd = document.createElement('td');
           equipeTd.className = 'equipe-col';
           const equipeList = document.createElement('div');
-          equipeList.className = 'equipe-alocada-list';
+          equipeList.className = 'equipe-alocada-list dropzone';
+          setDnD(equipeList, {
+            onDrop: async (payload) => {
+              if (payload.type === 'from-pool') {
+                // se estiver em outro evento do mesmo dia, move
+                const ocupado = membroOcupadoNoDia(payload.membroId, eventosDoDia);
+                const valor = ocupado?.valor ?? (allEquipe[payload.membroId]?.valorDiaria || 0);
+                await moverMembro(ocupado?.eventId || null, evento.id, payload.membroId, valor);
+                fetchEventos();
+              } else if (payload.type === 'from-event' && payload.eventId !== evento.id) {
+                // mover entre eventos
+                const valor = payload.valor ?? (allEquipe[payload.membroId]?.valorDiaria || 0);
+                await moverMembro(payload.eventId, evento.id, payload.membroId, valor);
+                fetchEventos();
+              }
+            }
+          });
+
           const equipeDoEvento = getEquipeDoEvento(evento);
           if (equipeDoEvento.length > 0) {
             equipeDoEvento.forEach(membro => {
-              if (membro?.membroId && allEquipe[membro.membroId]) {
-                const chip = document.createElement('div');
-                chip.className = 'chip';
-                const strong = document.createElement('strong');
-                strong.textContent = allEquipe[membro.membroId].apelido || allEquipe[membro.membroId].nomeCompleto || 'Sem nome';
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.step = '0.01';
-                input.dataset.membroId = membro.membroId;  // <- só existem aqui!
-                const defaultValor = allEquipe[membro.membroId].valorDiaria || 0;
-                input.value = (membro.valor != null ? parseFloat(membro.valor) : defaultValor).toFixed(2);
-                input.addEventListener('change', () => updateEquipe(evento.id));
-                const remover = document.createElement('button');
-                remover.className = 'remove';
-                remover.textContent = '×';
-                remover.title = 'Remover';
-                remover.addEventListener('click', () => {
-                  const atual = getEquipeDoEvento(allEventos.find(e => e.id === evento.id)) || [];
-                  const novo = atual.filter(x => x.membroId !== membro.membroId);
-                  db.ref(`eventos/${evento.id}/equipe`).set(novo).then(fetchEventos);
-                });
+              if (!membro?.membroId || !allEquipe[membro.membroId]) return;
+              const chip = document.createElement('div');
+              chip.className = 'chip';
+              const strong = document.createElement('strong');
+              strong.textContent = allEquipe[membro.membroId].apelido || allEquipe[membro.membroId].nomeCompleto || 'Sem nome';
 
-                chip.appendChild(strong);
-                chip.appendChild(input);
-                chip.appendChild(remover);
-                equipeList.appendChild(chip);
-              }
+              const input = document.createElement('input');
+              input.type = 'number';
+              input.step = '0.01';
+              input.dataset.membroId = membro.membroId;
+              const defaultValor = allEquipe[membro.membroId].valorDiaria || 0;
+              input.value = (membro.valor != null ? parseFloat(membro.valor) : defaultValor).toFixed(2);
+              input.addEventListener('change', async () => {
+                // atualiza somente o valor deste membro
+                const ev = findEvento(evento.id);
+                const nova = getEquipeDoEvento(ev).map(x => x.membroId === membro.membroId
+                  ? { ...x, valor: parseFloat(input.value) || 0 }
+                  : x
+                );
+                await db.ref(`eventos/${evento.id}/equipe`).set(nova);
+                fetchEventos();
+              });
+
+              const remover = document.createElement('button');
+              remover.className = 'remove';
+              remover.textContent = '×';
+              remover.title = 'Remover';
+              remover.addEventListener('click', async () => {
+                await removerMembroDoEvento(evento.id, membro.membroId);
+                fetchEventos();
+              });
+
+              // permitir arrastar este chip para outro evento ou de volta ao pool
+              makeDraggable(chip, { type: 'from-event', eventId: evento.id, membroId: membro.membroId, valor: parseFloat(input.value) || 0 });
+
+              chip.appendChild(strong);
+              chip.appendChild(input);
+              chip.appendChild(remover);
+              equipeList.appendChild(chip);
             });
           } else {
             const vazio = document.createElement('div');
-            vazio.textContent = 'Nenhuma equipe alocada';
+            vazio.textContent = 'Arraste nomes do pool para cá';
             equipeList.appendChild(vazio);
           }
           equipeTd.appendChild(equipeList);
           row.appendChild(equipeTd);
-
-          // ===== Picker de Equipe (apenas busca + checkboxes) =====
-          const equipePickerTd = document.createElement('td');
-          equipePickerTd.className = 'equipe-col';
-          buildEquipePicker(equipePickerTd, evento, eventosAgrupados[data]);
-          row.appendChild(equipePickerTd);
 
           // ===== Logística Alocada =====
           const logisticaTd = document.createElement('td');
@@ -398,7 +401,7 @@
           logisticaTd.appendChild(logisticaList);
           row.appendChild(logisticaTd);
 
-          // ===== Editar Logística (select múltiplo) =====
+          // ===== Editar Logística =====
           const logisticaSelectTd = document.createElement('td');
           logisticaSelectTd.className = 'equipe-col';
           const logisticaSelect = document.createElement('select');
@@ -436,7 +439,7 @@
           equipamentoAlocadoTd.appendChild(equipamentoList);
           row.appendChild(equipamentoAlocadoTd);
 
-          // ===== Editar Equipamento (select múltiplo) =====
+          // ===== Editar Equipamento =====
           const equipamentoTd = document.createElement('td');
           equipamentoTd.className = 'equipe-col';
           const equipamentoSelect = document.createElement('select');
@@ -446,11 +449,8 @@
             const option = document.createElement('option');
             option.value = id;
             option.textContent = allEquipamentos[id].nome;
-            if (usadosNesteEvento.has(id)) {
-              option.selected = true;
-            } else if (equipamentosUsadosNoDia.has(id)) {
-              option.disabled = true;
-            }
+            if (usadosNesteEvento.has(id)) option.selected = true;
+            else if (equipamentosUsadosNoDia.has(id)) option.disabled = true;
             equipamentoSelect.appendChild(option);
           }
           equipamentoSelect.addEventListener('change', () => updateEquipamento(evento.id));
@@ -464,9 +464,7 @@
           obsTextarea.className = 'observacao';
           obsTextarea.placeholder = 'OBS';
           obsTextarea.value = evento.observacao || '';
-          obsTextarea.addEventListener('change', () => {
-            db.ref(`eventos/${evento.id}/observacao`).set(obsTextarea.value);
-          });
+          obsTextarea.addEventListener('change', () => db.ref(`eventos/${evento.id}/observacao`).set(obsTextarea.value));
           obsTd.appendChild(obsTextarea);
           row.appendChild(obsTd);
 
@@ -478,26 +476,7 @@
       }
     }
 
-    // ===== Updates =====
-    async function updateEquipe(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      if (!row) return;
-
-      // 1) Quem está marcado no picker?
-      const marcados = Array.from(row.querySelectorAll('.picker input[type="checkbox"][data-membro-id]:checked'))
-        .map(cb => cb.dataset.membroId);
-
-      // 2) Para cada marcado, pega o valor do chip (se existir) ou valorDiaria
-      const novaEquipe = marcados.map(membroId => {
-        const inputValor = row.querySelector(`.equipe-alocada-list input[data-membro-id="${membroId}"]`);
-        const valor = inputValor ? (parseFloat(inputValor.value) || 0) : (allEquipe[membroId]?.valorDiaria || 0);
-        return { membroId, valor };
-      });
-
-      await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
-      fetchEventos();
-    }
-
+    // ===== Updates (logística/equipamento – sem mudanças) =====
     async function updateLogistica(eventoId) {
       const row = document.getElementById(`row-${eventoId}`);
       if (!row) return;
@@ -509,7 +488,6 @@
         let valor = input ? parseFloat(input.value) || 0 : 0;
         return { prestadorId, valor };
       });
-
       await db.ref(`eventos/${eventoId}/logistica`).set(novaLogistica);
       fetchEventos();
     }
@@ -518,14 +496,6 @@
       const row = document.getElementById(`row-${eventoId}`);
       if (!row) return;
       const selects = row.querySelectorAll('select');
-      const equipamentoSelect = selects[1]; // segundo select (após logística)
+      const equipamentoSelect = selects[1];
       const options = Array.from(equipamentoSelect.selectedOptions);
-      const novosEquipamentos = options.map(opt => ({ equipamentoId: opt.value }));
-      await db.ref(`eventos/${eventoId}/equipamentos`).set(novosEquipamentos);
-      fetchEventos();
-    }
-
-    document.addEventListener('DOMContentLoaded', fetchEventos);
-  </script>
-</body>
-</html>
+      const novosEquipam
