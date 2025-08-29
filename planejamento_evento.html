@@ -3,144 +3,72 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GestãoEvento</title>
+  <title>Planejamento de Eventos da Semana</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
 
   <style>
-    body {
-      font-size: 14px;
-      margin-top: 10px;
-    }
-
+    body { font-size: 14px; margin-top: 10px; }
     input, select, textarea, button {
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 14px;
+      padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+    }
+    button { background-color: #198754; color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+    button:hover { background-color: #146c43; }
+
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th { background-color: #ff7f00; color: white; padding: 6px; position: sticky; top: 0; z-index: 1; }
+    td { border: 1px solid #ddd; padding: 4px; vertical-align: top; }
+    tr:nth-child(even) td { background: #fafafa; }
+
+    .equipe-col { width: 240px; }
+    .equipe-alocada-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+    /* CHIP do membro selecionado */
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 9999px; padding: 4px 8px;
+    }
+    .chip strong { font-weight: 600; }
+    .chip input[type="number"] {
+      width: 80px; padding: 2px 6px; font-size: 12px; height: 26px; text-align: right;
+    }
+    .chip .remove {
+      background: #ef4444; color: #fff; border: none; border-radius: 9999px;
+      width: 20px; height: 20px; line-height: 20px; text-align: center; cursor: pointer;
     }
 
-    button {
-      background-color: #198754;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background-color 0.2s;
+    /* Seletor com busca */
+    .picker {
+      position: relative; display: flex; flex-direction: column; gap: 6px;
+    }
+    .picker .search {
+      width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px;
+    }
+    .picker .dropdown {
+      max-height: 260px; overflow: auto; border: 1px solid #ddd; border-radius: 8px; background: #fff;
+      box-shadow: 0 6px 16px rgba(0,0,0,.08);
+    }
+    .picker .row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 8px; border-bottom: 1px solid #f1f1f1;
+    }
+    .picker .row:last-child { border-bottom: none; }
+    .picker .row.disabled { opacity: 0.55; pointer-events: none; background: #fcfcfc; }
+    .picker .row label { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+    .picker .tag-ocupado {
+      font-size: 11px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;
+      padding: 2px 6px; border-radius: 9999px;
     }
 
-    button:hover {
-      background-color: #146c43;
+    .date-header {
+      margin-top: 16px; margin-bottom: 6px; font-weight: 700; font-size: 15px; color: #111;
     }
 
-    .btn-cinza {
-      background-color: #eee;
-      color: #333;
-      border: 1px solid #ccc;
-    }
+    /* Inputs pequenos */
+    .equipe-alocada-list input[data-membro-id] { width: 80px; max-width: 80px; font-size: 12px; padding: 2px 6px; height: 26px; }
 
-    .btn-cinza:hover {
-      background-color: #ddd;
-    }
-
-    .totais-resumo {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      font-size: 13px;
-      padding: 8px;
-      background: #f5f5f5;
-      border-radius: 4px;
-      margin-bottom: 8px;
-    }
-
-    .totais-resumo span {
-      min-width: 180px;
-    }
-
-    .grupo-flex {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
-    .grupo-flex > div {
-      flex: 1;
-      min-width: 300px;
-    }
-
-    .grupo-inline {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    #tabelaProdutos input {
-      text-align: right;
-      font-size: 12px;
-      padding: 2px 4px;
-      height: 26px;
-      width: 60px;
-    }
-
-    #tabelaProdutos td:first-child input {
-      text-align: left;
-      width: 200px;
-    }
-
-    #tabelaProdutos td {
-      padding: 2px;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 13px;
-    }
-
-    th {
-      background-color: #ff7f00;
-      color: white;
-      padding: 6px;
-    }
-
-    td {
-      border: 1px solid #ddd;
-    }
-
-    .section-title {
-      font-weight: bold;
-      font-size: 15px;
-      margin-top: 10px;
-      margin-bottom: 4px;
-    }
-
-    datalist {
-      display: none;
-    }
-    
-   main h2 {
-     margin-top: 4px;
-   }
-    
-    .equipe-alocada-list input,
-    .equipe-col input[data-prestador-id] {
-    width: 70px;
-    max-width: 70px;
-    font-size: 12px;
-    padding: 2px 4px;
-}
-
-   .equipe-alocada-list {
-     max-width: 120px;
-   }
-  
-   .equipe-col {
-     width: 140px;
-   }
-
+    textarea.observacao { width: 100%; min-height: 60px; resize: vertical; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -153,13 +81,12 @@
 
     <main class="main-content">
       <h2>Planejamento de Eventos da Semana</h2>
-      <div id="eventos-container">
-        <p>Carregando eventos...</p>
-      </div>
+      <div id="eventos-container"><p>Carregando eventos...</p></div>
     </main>
   </div>
 
   <script>
+    // ===== Firebase =====
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
@@ -172,11 +99,13 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // ===== Estado =====
     let allEquipe = {};
     let allLogistica = {};
     let allEquipamentos = {};
     let allEventos = [];
 
+    // ===== Util =====
     function getWeekRange() {
       const today = new Date();
       const dayOfWeek = today.getDay();
@@ -189,33 +118,31 @@
       sunday.setHours(23, 59, 59, 999);
       return { start: monday, end: sunday };
     }
-
     function formatDate(dateString) {
       const date = new Date(dateString + 'T00:00:00');
       const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
       return new Intl.DateTimeFormat('pt-BR', options).format(date);
     }
 
+    // ===== Fetch =====
     async function fetchEquipe() {
       const snapshot = await db.ref('equipe').once('value');
       allEquipe = snapshot.val() || {};
     }
-
     async function fetchLogistica() {
       const snapshot = await db.ref('logistica').once('value');
       allLogistica = snapshot.val() || {};
     }
-
     async function fetchEquipamentos() {
       const snapshot = await db.ref('equipamentos').once('value');
       allEquipamentos = snapshot.val() || {};
     }
-
     async function fetchEventos() {
       try {
         await fetchEquipe();
         await fetchLogistica();
         await fetchEquipamentos();
+
         const snapshot = await db.ref('eventos').once('value');
         const eventosData = snapshot.val() || {};
         const { start, end } = getWeekRange();
@@ -235,20 +162,186 @@
         document.getElementById('eventos-container').innerHTML = '<p>Erro ao carregar os eventos. Verifique o console.</p>';
       }
     }
+
+    // ===== Helpers por Evento =====
     function getEquipeDoEvento(evento) {
       if (evento && Array.isArray(evento.equipe)) return evento.equipe;
       if (evento && Array.isArray(evento.equipeAlocada)) return evento.equipeAlocada;
       return [];
     }
-
     function getLogisticaDoEvento(evento) {
       return Array.isArray(evento.logistica) ? evento.logistica : [];
     }
-
     function getEquipamentosDoEvento(evento) {
       return Array.isArray(evento.equipamentos) ? evento.equipamentos : [];
     }
 
+    // Retorna sets: membros já alocados no mesmo dia (outros eventos) e um mapa do "em qual evento"
+    function getMembrosIndisponiveisNoDia(eventoAtual, eventosDoDia) {
+      const indisponiveis = new Set();
+      const ocupadoPor = {}; // membroId -> nomeEvento
+      eventosDoDia.forEach(e => {
+        if (e.id !== eventoAtual.id) {
+          getEquipeDoEvento(e).forEach(m => {
+            if (m?.membroId) {
+              indisponiveis.add(m.membroId);
+              if (!ocupadoPor[m.membroId]) ocupadoPor[m.membroId] = e.nomeEvento || 'Outro evento';
+            }
+          });
+        }
+      });
+      return { indisponiveis, ocupadoPor };
+    }
+
+    // ===== UI: Picker de Equipe com busca + checkboxes + chips =====
+    function buildEquipePicker(containerTd, eventoAtual, eventosDoDia) {
+      containerTd.innerHTML = '';
+      const equipeAtual = getEquipeDoEvento(eventoAtual) || [];
+      const selecionadosSet = new Set(equipeAtual.map(m => m.membroId));
+
+      const { indisponiveis, ocupadoPor } = getMembrosIndisponiveisNoDia(eventoAtual, eventosDoDia);
+
+      // Chips dos selecionados (com valor)
+      const chips = document.createElement('div');
+      chips.className = 'equipe-alocada-list';
+      function renderChips() {
+        chips.innerHTML = '';
+        equipeAtual.forEach(m => {
+          if (!m?.membroId || !allEquipe[m.membroId]) return;
+          const chip = document.createElement('div');
+          chip.className = 'chip';
+
+          const nome = allEquipe[m.membroId].apelido || allEquipe[m.membroId].nomeCompleto || 'Sem nome';
+          const strong = document.createElement('strong');
+          strong.textContent = nome;
+
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.step = '0.01';
+          input.placeholder = 'R$';
+          input.dataset.membroId = m.membroId;
+          const defaultValor = allEquipe[m.membroId].valorDiaria || 0;
+          input.value = (m.valor != null ? parseFloat(m.valor) : defaultValor).toFixed(2);
+          input.addEventListener('change', () => updateEquipe(eventoAtual.id));
+
+          const remover = document.createElement('button');
+          remover.className = 'remove';
+          remover.textContent = '×';
+          remover.title = 'Remover';
+          remover.addEventListener('click', () => {
+            selecionadosSet.delete(m.membroId);
+            // remove do array
+            const idx = equipeAtual.findIndex(x => x.membroId === m.membroId);
+            if (idx > -1) equipeAtual.splice(idx, 1);
+            renderChips();
+            renderDropdown(search.value);
+            updateEquipe(eventoAtual.id);
+          });
+
+          chip.appendChild(strong);
+          chip.appendChild(input);
+          chip.appendChild(remover);
+          chips.appendChild(chip);
+        });
+      }
+
+      // Seletor (busca + lista)
+      const picker = document.createElement('div');
+      picker.className = 'picker';
+
+      const search = document.createElement('input');
+      search.className = 'search';
+      search.type = 'text';
+      search.placeholder = 'Buscar pessoa da equipe...';
+
+      const dropdown = document.createElement('div');
+      dropdown.className = 'dropdown';
+
+      function addOuRemoveSelecionado(membroId) {
+        if (selecionadosSet.has(membroId)) {
+          // remover
+          selecionadosSet.delete(membroId);
+          const i = equipeAtual.findIndex(x => x.membroId === membroId);
+          if (i > -1) equipeAtual.splice(i, 1);
+        } else {
+          // adicionar com valor padrão
+          const defaultValor = allEquipe[membroId]?.valorDiaria || 0;
+          equipeAtual.push({ membroId, valor: defaultValor });
+          selecionadosSet.add(membroId);
+        }
+        renderChips();
+        renderDropdown(search.value);
+        updateEquipe(eventoAtual.id);
+      }
+
+      function renderDropdown(filtro = '') {
+        dropdown.innerHTML = '';
+        const termo = filtro.trim().toLowerCase();
+
+        const membros = Object.keys(allEquipe)
+          .map(id => ({ id, apelido: allEquipe[id].apelido || '', nome: allEquipe[id].nomeCompleto || '' }))
+          .filter(m => {
+            if (!termo) return true;
+            return m.apelido.toLowerCase().includes(termo) || m.nome.toLowerCase().includes(termo);
+          })
+          // ordenar: selecionados primeiro, depois livres, depois indisponíveis
+          .sort((a,b) => {
+            const sA = selecionadosSet.has(a.id) ? 0 : (indisponiveis.has(a.id) ? 2 : 1);
+            const sB = selecionadosSet.has(b.id) ? 0 : (indisponiveis.has(b.id) ? 2 : 1);
+            if (sA !== sB) return sA - sB;
+            return (allEquipe[a.id].apelido || '').localeCompare(allEquipe[b.id].apelido || '');
+          });
+
+        membros.forEach(m => {
+          const row = document.createElement('div');
+          row.className = 'row' + (indisponiveis.has(m.id) && !selecionadosSet.has(m.id) ? ' disabled' : '');
+          const label = document.createElement('label');
+
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = selecionadosSet.has(m.id);
+          cb.addEventListener('change', () => addOuRemoveSelecionado(m.id));
+
+          const nome = document.createElement('span');
+          nome.textContent = allEquipe[m.id].apelido || allEquipe[m.id].nomeCompleto || 'Sem nome';
+
+          label.appendChild(cb);
+          label.appendChild(nome);
+          row.appendChild(label);
+
+          if (indisponiveis.has(m.id) && !selecionadosSet.has(m.id)) {
+            const tag = document.createElement('span');
+            tag.className = 'tag-ocupado';
+            tag.textContent = 'Ocupado em: ' + (ocupadoPor[m.id] || 'outro evento');
+            row.appendChild(tag);
+          }
+
+          dropdown.appendChild(row);
+        });
+
+        if (!dropdown.children.length) {
+          const vazio = document.createElement('div');
+          vazio.className = 'row';
+          vazio.textContent = 'Nenhum resultado.';
+          dropdown.appendChild(vazio);
+        }
+      }
+
+      search.addEventListener('input', () => renderDropdown(search.value));
+
+      picker.appendChild(search);
+      picker.appendChild(dropdown);
+
+      // Monta TD
+      containerTd.appendChild(chips);
+      containerTd.appendChild(picker);
+
+      // Render inicial
+      renderChips();
+      renderDropdown('');
+    }
+
+    // ===== Render =====
     function renderEventos() {
       const container = document.getElementById('eventos-container');
       container.innerHTML = '';
@@ -274,8 +367,8 @@
         const table = document.createElement('table');
         table.innerHTML = `<thead><tr>
             <th>Evento</th>
-            <th class="equipe-col">Equipe Alocada</th>
-            <th class="equipe-col">Editar Equipe</th>
+            <th class="equipe-col">Equipe Selecionada</th>
+            <th class="equipe-col">Adicionar/Remover Equipe</th>
             <th class="equipe-col">Logística Alocada</th>
             <th class="equipe-col">Editar Logística</th>
             <th class="equipe-col">Equipamento Alocado</th>
@@ -295,50 +388,67 @@
           const row = document.createElement('tr');
           row.id = `row-${evento.id}`;
 
+          // Nome
           const nomeTd = document.createElement('td');
           nomeTd.textContent = evento.nomeEvento || 'Sem nome';
           row.appendChild(nomeTd);
-          // Equipe Alocada
+
+          // ===== Equipe Selecionada (chips + valores) =====
           const equipeTd = document.createElement('td');
           equipeTd.className = 'equipe-col';
-          const equipeList = document.createElement('ul');
+          // (somente leitura visual: vai ser populado dentro do picker também – os chips são geridos lá)
+          // Para manter valor exibido mesmo sem interação, montamos uma lista simples aqui:
+          const equipeList = document.createElement('div');
           equipeList.className = 'equipe-alocada-list';
           const equipeDoEvento = getEquipeDoEvento(evento);
           if (equipeDoEvento.length > 0) {
             equipeDoEvento.forEach(membro => {
               if (membro?.membroId && allEquipe[membro.membroId]) {
-                const li = document.createElement('li');
-                const label = document.createElement('label');
-                label.textContent = allEquipe[membro.membroId].apelido;
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                const strong = document.createElement('strong');
+                strong.textContent = allEquipe[membro.membroId].apelido || allEquipe[membro.membroId].nomeCompleto || 'Sem nome';
                 const input = document.createElement('input');
                 input.type = 'number';
+                input.step = '0.01';
                 input.dataset.membroId = membro.membroId;
-                input.placeholder = "R$";
-                input.step = "0.01";
-                input.value = membro.valor ? parseFloat(membro.valor).toFixed(2) : (allEquipe[membro.membroId].valorDiaria || '');
+                const defaultValor = allEquipe[membro.membroId].valorDiaria || 0;
+                input.value = (membro.valor != null ? parseFloat(membro.valor) : defaultValor).toFixed(2);
                 input.addEventListener('change', () => updateEquipe(evento.id));
-                li.appendChild(label);
-                li.appendChild(input);
-                equipeList.appendChild(li);
+                const remover = document.createElement('button');
+                remover.className = 'remove';
+                remover.textContent = '×';
+                remover.title = 'Remover';
+                remover.addEventListener('click', () => {
+                  // Remover visual imediato:
+                  chip.remove();
+                  // Atualiza no DB:
+                  const atual = getEquipeDoEvento(allEventos.find(e => e.id === evento.id)) || [];
+                  const novo = atual.filter(x => x.membroId !== membro.membroId);
+                  db.ref(`eventos/${evento.id}/equipe`).set(novo).then(fetchEventos);
+                });
+
+                chip.appendChild(strong);
+                chip.appendChild(input);
+                chip.appendChild(remover);
+                equipeList.appendChild(chip);
               }
             });
           } else {
-            equipeList.innerHTML = '<li>Nenhuma equipe alocada</li>';
+            const vazio = document.createElement('div');
+            vazio.textContent = 'Nenhuma equipe alocada';
+            equipeList.appendChild(vazio);
           }
           equipeTd.appendChild(equipeList);
           row.appendChild(equipeTd);
 
-          // Editar Equipe
-          const equipeSelectTd = document.createElement('td');
-          equipeSelectTd.className = 'equipe-col';
-          const equipeSelect = document.createElement('select');
-          equipeSelect.multiple = true;
-          populateSelect(equipeSelect, evento, eventosAgrupados[data]);
-          equipeSelect.addEventListener('change', () => updateEquipe(evento.id));
-          equipeSelectTd.appendChild(equipeSelect);
-          row.appendChild(equipeSelectTd);
+          // ===== Picker de Equipe =====
+          const equipePickerTd = document.createElement('td');
+          equipePickerTd.className = 'equipe-col';
+          buildEquipePicker(equipePickerTd, evento, eventosAgrupados[data]);
+          row.appendChild(equipePickerTd);
 
-          // Logística Alocada
+          // ===== Logística Alocada =====
           const logisticaTd = document.createElement('td');
           logisticaTd.className = 'equipe-col';
           const logisticaList = document.createElement('ul');
@@ -363,12 +473,14 @@
               }
             });
           } else {
-            logisticaList.innerHTML = '<li>Nenhuma logística alocada</li>';
+            const li = document.createElement('li');
+            li.textContent = 'Nenhuma logística alocada';
+            logisticaList.appendChild(li);
           }
           logisticaTd.appendChild(logisticaList);
           row.appendChild(logisticaTd);
 
-          // Editar Logística
+          // ===== Editar Logística (continua select múltiplo simples) =====
           const logisticaSelectTd = document.createElement('td');
           logisticaSelectTd.className = 'equipe-col';
           const logisticaSelect = document.createElement('select');
@@ -377,16 +489,14 @@
             const option = document.createElement('option');
             option.value = id;
             option.textContent = allLogistica[id].nome;
-            if (logisticaDoEvento.find(p => p.prestadorId === id)) {
-              option.selected = true;
-            }
+            if (logisticaDoEvento.find(p => p.prestadorId === id)) option.selected = true;
             logisticaSelect.appendChild(option);
           }
           logisticaSelect.addEventListener('change', () => updateLogistica(evento.id));
           logisticaSelectTd.appendChild(logisticaSelect);
           row.appendChild(logisticaSelectTd);
 
-          // Equipamento Alocado
+          // ===== Equipamento Alocado =====
           const equipamentoAlocadoTd = document.createElement('td');
           equipamentoAlocadoTd.className = 'equipe-col';
           const equipamentoList = document.createElement('ul');
@@ -401,18 +511,19 @@
               }
             });
           } else {
-            equipamentoList.innerHTML = '<li>Nenhum equipamento alocado</li>';
+            const li = document.createElement('li');
+            li.textContent = 'Nenhum equipamento alocado';
+            equipamentoList.appendChild(li);
           }
           equipamentoAlocadoTd.appendChild(equipamentoList);
           row.appendChild(equipamentoAlocadoTd);
 
-          // Editar Equipamento
+          // ===== Editar Equipamento (mantém lógica) =====
           const equipamentoTd = document.createElement('td');
           equipamentoTd.className = 'equipe-col';
           const equipamentoSelect = document.createElement('select');
           equipamentoSelect.multiple = true;
           const usadosNesteEvento = new Set(equipamentosDoEvento.map(e => e.equipamentoId));
-
           for (const id in allEquipamentos) {
             const option = document.createElement('option');
             option.value = id;
@@ -428,7 +539,7 @@
           equipamentoTd.appendChild(equipamentoSelect);
           row.appendChild(equipamentoTd);
 
-          // OBSERVAÇÃO
+          // ===== OBS =====
           const obsTd = document.createElement('td');
           obsTd.className = 'equipe-col';
           const obsTextarea = document.createElement('textarea');
@@ -449,54 +560,30 @@
         container.appendChild(table);
       }
     }
-    function populateSelect(selectElement, eventoAtual, eventosDoDia) {
-      selectElement.innerHTML = '';
-      const membrosAlocadosNoDia = new Set();
-      eventosDoDia.forEach(e => {
-        if (e.id !== eventoAtual.id) {
-          getEquipeDoEvento(e).forEach(m => {
-            if (m?.membroId) membrosAlocadosNoDia.add(m.membroId);
-          });
-        }
-      });
 
-      const equipeAtual = getEquipeDoEvento(eventoAtual);
-      const membrosAlocadosNesteEvento = new Set(equipeAtual.map(m => m.membroId));
-
-      for (const membroId in allEquipe) {
-        const option = document.createElement('option');
-        option.value = membroId;
-        option.textContent = allEquipe[membroId].apelido || allEquipe[membroId].nomeCompleto;
-
-        if (membrosAlocadosNesteEvento.has(membroId)) {
-          option.selected = true;
-        } else if (membrosAlocadosNoDia.has(membroId)) {
-          option.disabled = true;
-        }
-        selectElement.appendChild(option);
-      }
-    }
-
+    // ===== Updates =====
     async function updateEquipe(eventoId) {
       const row = document.getElementById(`row-${eventoId}`);
       if (!row) return;
-      const select = row.querySelectorAll('select')[0];
-      const options = Array.from(select.selectedOptions);
-      const novaEquipe = options.map(opt => {
-        const membroId = opt.value;
-        const input = row.querySelector(`input[data-membro-id="${membroId}"]`);
-        let valor = input ? parseFloat(input.value) || 0 : (allEquipe[membroId]?.valorDiaria || 0);
-        return { membroId, valor };
+
+      // Lemos todos os chips/inputs que existem no DOM para compor o array
+      const inputs = row.querySelectorAll('input[data-membro-id]');
+      const novaEquipe = [];
+      inputs.forEach(inp => {
+        const membroId = inp.dataset.membroId;
+        const valor = parseFloat(inp.value) || 0;
+        novaEquipe.push({ membroId, valor });
       });
 
       await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
+      // Recarrega para refletir bloqueios/estado
       fetchEventos();
     }
 
     async function updateLogistica(eventoId) {
       const row = document.getElementById(`row-${eventoId}`);
       if (!row) return;
-      const select = row.querySelectorAll('select')[1];
+      const select = row.querySelectorAll('select')[0]; // primeiro select após equipePickerTd
       const options = Array.from(select.selectedOptions);
       const novaLogistica = options.map(opt => {
         const prestadorId = opt.value;
@@ -512,11 +599,10 @@
     async function updateEquipamento(eventoId) {
       const row = document.getElementById(`row-${eventoId}`);
       if (!row) return;
-      const select = row.querySelectorAll('select')[2];
-      const options = Array.from(select.selectedOptions);
-      const novosEquipamentos = options.map(opt => ({
-        equipamentoId: opt.value
-      }));
+      const selects = row.querySelectorAll('select');
+      const equipamentoSelect = selects[1]; // segundo select (após logística)
+      const options = Array.from(equipamentoSelect.selectedOptions);
+      const novosEquipamentos = options.map(opt => ({ equipamentoId: opt.value }));
       await db.ref(`eventos/${eventoId}/equipamentos`).set(novosEquipamentos);
       fetchEventos();
     }
