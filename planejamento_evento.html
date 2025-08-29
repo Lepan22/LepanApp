@@ -498,4 +498,12 @@
       const selects = row.querySelectorAll('select');
       const equipamentoSelect = selects[1];
       const options = Array.from(equipamentoSelect.selectedOptions);
-      const novosEquipam
+      const novosEquipamentos = options.map(opt => ({ equipamentoId: opt.value }));
+      await db.ref(`eventos/${eventoId}/equipamentos`).set(novosEquipamentos);
+      fetchEventos();
+    }
+
+    document.addEventListener('DOMContentLoaded', fetchEventos);
+  </script>
+</body>
+</html>
