@@ -36,6 +36,28 @@ function parseMoney(str){
   return isNaN(n) ? 0 : Math.round(n * 100) / 100;
 }
 
+// === CMV SNAPSHOT helpers (cache do %CMV para cálculos locais) ===
+let __cachePercentualCMV = null;
+
+async function obterPercentualCMVAtual() {
+  if (__cachePercentualCMV !== null) return __cachePercentualCMV;
+  try {
+    const snap = await db.ref('configuracao/percentualCMV').once('value');
+    const v = Number(snap.val());
+    __cachePercentualCMV = (!isNaN(v) && v > 0) ? v : 44; // fallback seguro
+  } catch (e) {
+    __cachePercentualCMV = 44;
+  }
+  return __cachePercentualCMV;
+}
+
+function calcularCMVRealDeVenda(vendaPDV, percentual) {
+  const v = Number(vendaPDV || 0);
+  const p = Number(percentual || 0);
+  const r = v * (p / 100);
+  return Math.round(r * 100) / 100; // 2 casas
+}
+
 function carregarEventos() {
   db.ref('eventos').once('value').then(snapshot => {
     eventos = [];
@@ -52,26 +74,35 @@ function carregarEventos() {
     });
 
     aplicarFiltros();
-    calcularKPIs();
   });
 }
 
 function aplicarFiltros() {
-  const status = document.getElementById('filtroStatus').value;
-  const nomeFiltro = document.getElementById('filtroNome').value.toLowerCase();
-  const dataInicio = document.getElementById('filtroDataInicio').value;
-  const dataFim = document.getElementById('filtroDataFim').value;
-
-  const tabela = document.getElementById('tabelaEventos');
-  tabela.innerHTML = '';
+  const nome = (document.getElementById('filtroNome')?.value || '').trim().toLowerCase();
+  const dataInicio = document.getElementById('filtroDataInicio')?.value;
+  const dataFim = document.getElementById('filtroDataFim')?.value;
+  const status = (document.getElementById('filtroStatus')?.value || 'Todos').toLowerCase();
 
   const eventosFiltrados = eventos.filter(e => {
-    if (status !== 'Todos' && (e.status || 'Aberto') !== status) return false;
-    if (nomeFiltro && !(e.nomeEvento || '').toLowerCase().includes(nomeFiltro)) return false;
-    if (dataInicio && (!e.data || e.data < dataInicio)) return false;
-    if (dataFim && (!e.data || e.data > dataFim)) return false;
-    return true;
+    if (!e || !e.data) return false;
+
+    const atendeNome = nome ? (String(e.nomeEvento || '').toLowerCase().includes(nome)) : true;
+
+    const atendeData = (() => {
+      if (!dataInicio && !dataFim) return true;
+      const d = formatDateBR(e.data);
+      if (dataInicio && d < formatDateBR(dataInicio)) return false;
+      if (dataFim && d > formatDateBR(dataFim)) return false;
+      return true;
+    })();
+
+    const atendeStatus = status === 'todos' ? true : ((e.status || '').toLowerCase() === status);
+
+    return atendeNome && atendeData && atendeStatus;
   });
+
+  const tbody = document.querySelector('#tabelaEventos tbody');
+  if (tbody) tbody.innerHTML = '';
 
   eventosFiltrados.forEach(eAtual => {
     // Média de venda (3 últimos eventos anteriores do mesmo nome)
@@ -127,23 +158,20 @@ function aplicarFiltros() {
                value="${formatNumberBR(vendaPDVNum)}" />
       </td>
       <td class="acoes">
-        <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${eAtual.id}')">Editar</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${eAtual.id}')">Duplicar</button>
-        <button class="btn btn-sm btn-outline-success" onclick="enviarLink('${eAtual.id}')">Enviar Link</button>
-        <button class="btn btn-sm btn-outline-info" onclick="visualizarEvento('${eAtual.id}')">Visualizar</button>
-        <button class="btn btn-sm btn-outline-danger" onclick="excluirEvento('${eAtual.id}')">Excluir</button>
+        <button class="btn btn-sm btn-outline" data-acao="ver" data-id="${eAtual.id}">Ver</button>
+        <button class="btn btn-sm btn-outline" data-acao="excluir" data-id="${eAtual.id}">Excluir</button>
       </td>
     `;
-    tabela.appendChild(row);
+    if (tbody) tbody.appendChild(row);
   });
 
-  // Listener para salvar alteração de Status imediatamente
-  tabela.querySelectorAll('select.status-select').forEach(sel => {
-    sel.addEventListener('change', async (ev) => {
+  // Status editável
+  document.querySelectorAll('.status-select').forEach(sel=>{
+    sel.addEventListener('change', async (ev)=>{
       const id = ev.target.getAttribute('data-id');
       const novoStatus = ev.target.value;
       ev.target.disabled = true;
-      try {
+      try{
         await db.ref('eventos/' + id + '/status').set(novoStatus);
         const idx = eventos.findIndex(e => e.id === id);
         if (idx >= 0) eventos[idx].status = novoStatus;
@@ -160,7 +188,8 @@ function aplicarFiltros() {
   });
 
   // === EDIÇÃO INLINE: Estimativa e Venda PDV ===
-  anexarEdicaoInline(tabela);
+  const tabela = document.getElementById('tabelaEventos'); // garante referência para o anexo
+  if (tabela) anexarEdicaoInline(tabela);
 }
 
 function anexarEdicaoInline(tabela){
@@ -197,7 +226,12 @@ function anexarEdicaoInline(tabela){
       inp.disabled = true;
 
       try{
-        await db.ref('eventos/'+id+'/'+field).set(novoValor);
+        if (field === 'vendaPDV') {
+          // Apenas atualiza vendaPDV; (não fazemos snapshot de cmv aqui para não alterar o DB)
+          await db.ref('eventos/'+id+'/'+field).set(novoValor);
+        } else {
+          await db.ref('eventos/'+id+'/'+field).set(novoValor);
+        }
         // Recarrega lista + KPIs para refletir cor/vermelho/verde e totais
         carregarEventos();
       }catch(err){
@@ -209,7 +243,8 @@ function anexarEdicaoInline(tabela){
   });
 }
 
-function calcularKPIs() {
+// === KPI: Lucro no Mês = soma de lucroFinal dos eventos (fallback calculado) ===
+async function calcularKPIs() {
   const hoje = new Date();
   const semanaInicio = new Date(hoje);
   semanaInicio.setDate(semanaInicio.getDate() - semanaInicio.getDay() + 1);
@@ -217,28 +252,47 @@ function calcularKPIs() {
   semanaFim.setDate(semanaFim.getDate() + 7);
 
   let estimado = 0, realizado = 0, semana = 0;
-  let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
+  let estimativaMes = 0, vendaMes = 0, lucroMes = 0, estimativaSemana = 0;
+
+  // %CMV padrão para fallback (usa cache)
+  const percCMV = await obterPercentualCMVAtual();
 
   db.ref('eventos').once('value').then(snapshot => {
     const lista = snapshot.val();
 
     if (lista) {
       Object.values(lista).forEach(e => {
-        if (!e.data) return;
+        if (!e || !e.data) return;
 
         const dataEvento = formatDateBR(e.data);
         const status = (e.status || '').toLowerCase();
 
         const dentroDoMes = dataEvento.getFullYear() === hoje.getFullYear() &&
                             dataEvento.getMonth() === hoje.getMonth();
-
         const dentroDaSemana = dataEvento >= semanaInicio && dataEvento <= semanaFim;
 
         const vendaPDV = Number(e.vendaPDV || 0);
-        const cmvReal = Number(e.cmvReal || 0);
-        const custoEquipe = (e.equipe || []).reduce((s, i) => s + (Number(i.valor) || 0), 0);
-        const custoLogistica = (e.logistica || []).reduce((s, i) => s + (Number(i.valor) || 0), 0);
-        const lucroCalculado = vendaPDV - cmvReal - custoEquipe - custoLogistica;
+        const perda = Number(e.custoPerda || 0);
+        const custoEquipe = (Array.isArray(e.equipe) ? e.equipe : [])
+                              .reduce((s, i) => s + (Number(i && i.valor) || 0), 0);
+        const custoLogistica = (Array.isArray(e.logistica) ? e.logistica : [])
+                              .reduce((s, i) => s + (Number(i && i.valor) || 0), 0);
+
+        // ---- Lucro Final do evento ----
+        let lucroEvento;
+
+        if (e.lucroFinal != null && !isNaN(Number(e.lucroFinal))) {
+          // 1) Preferir o snapshot salvo
+          lucroEvento = Number(e.lucroFinal);
+        } else {
+          // 2) Calcular na hora (usa cmvReal se existir; senão PDV × %CMV)
+          const cmvBase = (e.cmvReal != null && !isNaN(Number(e.cmvReal)) && Number(e.cmvReal) >= 0)
+            ? Number(e.cmvReal)
+            : Number((vendaPDV * (percCMV / 100)).toFixed(2));
+
+          lucroEvento = vendaPDV - cmvBase - custoEquipe - custoLogistica - perda;
+          lucroEvento = Math.round(lucroEvento * 100) / 100; // 2 casas
+        }
 
         if (dentroDoMes) {
           estimado++;
@@ -248,7 +302,7 @@ function calcularKPIs() {
         if (dentroDoMes && (status === 'fechado' || status === 'finalizado')) {
           realizado++;
           vendaMes += vendaPDV;
-          lucroMes += lucroCalculado;
+          lucroMes += lucroEvento; // soma do Lucro Final de cada evento
         }
 
         if (dentroDaSemana) {
@@ -268,64 +322,24 @@ function calcularKPIs() {
   });
 }
 
-function editarEvento(id) { window.location.href = `GestaoEvento.html?id=${id}`; }
-
-function duplicarEvento(id) {
-  const evento = eventos.find(e => e.id === id);
-  if (!evento) return;
-
-  const novoEvento = { ...evento };
-  novoEvento.produtos = (evento.produtos || []).map(p => ({
-    produtoId: p.produtoId,
-    quantidade: p.quantidade,
-    congelado: 0,
-    assado: 0,
-    perda: 0
-  }));
-
-  delete novoEvento.id;
-  delete novoEvento.vendaPDV;
-  novoEvento.status = "Aberto";
-  delete novoEvento.data;
-
-  const novoId = db.ref('eventos').push().key;
-  db.ref('eventos/' + novoId).set(novoEvento).then(() => {
-    alert('Evento duplicado com sucesso!');
-    carregarEventos();
-  });
-}
-
-function enviarLink(id) {
-  const url = `${window.location.origin}/LepanApp/form.html?id=${id}`;
-  navigator.clipboard.writeText(url).then(() => {
-    alert('Link copiado para a área de transferência!');
-  });
-}
-
-function visualizarEvento(id) { window.location.href = `visualizar_evento.html?id=${id}`; }
-
-function excluirEvento(id) {
-  if (confirm('Tem certeza que deseja excluir este evento?')) {
-    db.ref('eventos/' + id).remove().then(() => {
-      alert('Evento excluído com sucesso!');
-      carregarEventos();
-    });
-  }
-}
-
-function limparFiltros() {
-  document.getElementById('filtroStatus').value = 'Todos';
-  document.getElementById('filtroNome').value = '';
-  document.getElementById('filtroDataInicio').value = '';
-  document.getElementById('filtroDataFim').value = '';
+function limparFiltros(){
+  const fs = document.getElementById('filtroStatus');
+  const fn = document.getElementById('filtroNome');
+  const fdi = document.getElementById('filtroDataInicio');
+  const fdf = document.getElementById('filtroDataFim');
+  if (fs) fs.value = 'Todos';
+  if (fn) fn.value = '';
+  if (fdi) fdi.value = '';
+  if (fdf) fdf.value = '';
   aplicarFiltros();
 }
 
-document.getElementById('filtrosForm').addEventListener('submit', function(e) {
+document.getElementById('filtrosForm')?.addEventListener('submit', function(e) {
   e.preventDefault();
   aplicarFiltros();
 });
 
 document.addEventListener("DOMContentLoaded", () => {
   carregarEventos();
+  calcularKPIs();
 });
