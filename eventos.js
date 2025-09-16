@@ -36,6 +36,28 @@ function parseMoney(str){
   return isNaN(n) ? 0 : Math.round(n * 100) / 100;
 }
 
+// === CMV SNAPSHOT (simples): usa %CMV da configuração e salva junto com vendaPDV ===
+let __cachePercentualCMV = null;
+
+async function obterPercentualCMVAtual() {
+  if (__cachePercentualCMV !== null) return __cachePercentualCMV;
+  try {
+    const snap = await db.ref('configuracao/percentualCMV').once('value');
+    const v = Number(snap.val());
+    __cachePercentualCMV = (!isNaN(v) && v > 0) ? v : 44; // fallback seguro
+  } catch (e) {
+    __cachePercentualCMV = 44;
+  }
+  return __cachePercentualCMV;
+}
+
+function calcularCMVRealDeVenda(vendaPDV, percentual) {
+  const v = Number(vendaPDV || 0);
+  const p = Number(percentual || 0);
+  const r = v * (p / 100);
+  return Math.round(r * 100) / 100; // 2 casas
+}
+
 function carregarEventos() {
   db.ref('eventos').once('value').then(snapshot => {
     eventos = [];
@@ -52,26 +74,35 @@ function carregarEventos() {
     });
 
     aplicarFiltros();
-    calcularKPIs();
   });
 }
 
 function aplicarFiltros() {
-  const status = document.getElementById('filtroStatus').value;
-  const nomeFiltro = document.getElementById('filtroNome').value.toLowerCase();
+  const nome = (document.getElementById('filtroNome').value || '').trim().toLowerCase();
   const dataInicio = document.getElementById('filtroDataInicio').value;
   const dataFim = document.getElementById('filtroDataFim').value;
-
-  const tabela = document.getElementById('tabelaEventos');
-  tabela.innerHTML = '';
+  const status = (document.getElementById('filtroStatus').value || 'Todos').toLowerCase();
 
   const eventosFiltrados = eventos.filter(e => {
-    if (status !== 'Todos' && (e.status || 'Aberto') !== status) return false;
-    if (nomeFiltro && !(e.nomeEvento || '').toLowerCase().includes(nomeFiltro)) return false;
-    if (dataInicio && (!e.data || e.data < dataInicio)) return false;
-    if (dataFim && (!e.data || e.data > dataFim)) return false;
-    return true;
+    if (!e || !e.data) return false;
+
+    const atendeNome = nome ? (String(e.nomeEvento || '').toLowerCase().includes(nome)) : true;
+
+    const atendeData = (() => {
+      if (!dataInicio && !dataFim) return true;
+      const d = formatDateBR(e.data);
+      if (dataInicio && d < formatDateBR(dataInicio)) return false;
+      if (dataFim && d > formatDateBR(dataFim)) return false;
+      return true;
+    })();
+
+    const atendeStatus = status === 'todos' ? true : ((e.status || '').toLowerCase() === status);
+
+    return atendeNome && atendeData && atendeStatus;
   });
+
+  const tbody = document.querySelector('#tabelaEventos tbody');
+  tbody.innerHTML = '';
 
   eventosFiltrados.forEach(eAtual => {
     // Média de venda (3 últimos eventos anteriores do mesmo nome)
@@ -127,23 +158,20 @@ function aplicarFiltros() {
                value="${formatNumberBR(vendaPDVNum)}" />
       </td>
       <td class="acoes">
-        <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${eAtual.id}')">Editar</button>
-        <button class="btn btn-sm btn-outline-secondary" onclick="duplicarEvento('${eAtual.id}')">Duplicar</button>
-        <button class="btn btn-sm btn-outline-success" onclick="enviarLink('${eAtual.id}')">Enviar Link</button>
-        <button class="btn btn-sm btn-outline-info" onclick="visualizarEvento('${eAtual.id}')">Visualizar</button>
-        <button class="btn btn-sm btn-outline-danger" onclick="excluirEvento('${eAtual.id}')">Excluir</button>
+        <button class="btn btn-sm btn-outline" data-acao="ver" data-id="${eAtual.id}">Ver</button>
+        <button class="btn btn-sm btn-outline" data-acao="excluir" data-id="${eAtual.id}">Excluir</button>
       </td>
     `;
-    tabela.appendChild(row);
+    tbody.appendChild(row);
   });
 
-  // Listener para salvar alteração de Status imediatamente
-  tabela.querySelectorAll('select.status-select').forEach(sel => {
-    sel.addEventListener('change', async (ev) => {
+  // Status editável
+  document.querySelectorAll('.status-select').forEach(sel=>{
+    sel.addEventListener('change', async (ev)=>{
       const id = ev.target.getAttribute('data-id');
       const novoStatus = ev.target.value;
       ev.target.disabled = true;
-      try {
+      try{
         await db.ref('eventos/' + id + '/status').set(novoStatus);
         const idx = eventos.findIndex(e => e.id === id);
         if (idx >= 0) eventos[idx].status = novoStatus;
@@ -197,7 +225,17 @@ function anexarEdicaoInline(tabela){
       inp.disabled = true;
 
       try{
-        await db.ref('eventos/'+id+'/'+field).set(novoValor);
+        if (field === 'vendaPDV') {
+          const pct = await obterPercentualCMVAtual();
+          const cmv = calcularCMVRealDeVenda(novoValor, pct);
+          const updates = {};
+          updates['eventos/' + id + '/vendaPDV'] = novoValor;
+          updates['eventos/' + id + '/cmvPercentUsado'] = pct;
+          updates['eventos/' + id + '/cmvReal'] = cmv;
+          await db.ref().update(updates);
+        } else {
+          await db.ref('eventos/'+id+'/'+field).set(novoValor);
+        }
         // Recarrega lista + KPIs para refletir cor/vermelho/verde e totais
         carregarEventos();
       }catch(err){
@@ -217,7 +255,7 @@ function calcularKPIs() {
   semanaFim.setDate(semanaFim.getDate() + 7);
 
   let estimado = 0, realizado = 0, semana = 0;
-  let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
+  let estimativaMes = 0, vendaMes = 0, lucroMes = 0, estimativaSemana = 0;
 
   db.ref('eventos').once('value').then(snapshot => {
     const lista = snapshot.val();
@@ -268,52 +306,7 @@ function calcularKPIs() {
   });
 }
 
-function editarEvento(id) { window.location.href = `GestaoEvento.html?id=${id}`; }
-
-function duplicarEvento(id) {
-  const evento = eventos.find(e => e.id === id);
-  if (!evento) return;
-
-  const novoEvento = { ...evento };
-  novoEvento.produtos = (evento.produtos || []).map(p => ({
-    produtoId: p.produtoId,
-    quantidade: p.quantidade,
-    congelado: 0,
-    assado: 0,
-    perda: 0
-  }));
-
-  delete novoEvento.id;
-  delete novoEvento.vendaPDV;
-  novoEvento.status = "Aberto";
-  delete novoEvento.data;
-
-  const novoId = db.ref('eventos').push().key;
-  db.ref('eventos/' + novoId).set(novoEvento).then(() => {
-    alert('Evento duplicado com sucesso!');
-    carregarEventos();
-  });
-}
-
-function enviarLink(id) {
-  const url = `${window.location.origin}/LepanApp/form.html?id=${id}`;
-  navigator.clipboard.writeText(url).then(() => {
-    alert('Link copiado para a área de transferência!');
-  });
-}
-
-function visualizarEvento(id) { window.location.href = `visualizar_evento.html?id=${id}`; }
-
-function excluirEvento(id) {
-  if (confirm('Tem certeza que deseja excluir este evento?')) {
-    db.ref('eventos/' + id).remove().then(() => {
-      alert('Evento excluído com sucesso!');
-      carregarEventos();
-    });
-  }
-}
-
-function limparFiltros() {
+function limparFiltros(){
   document.getElementById('filtroStatus').value = 'Todos';
   document.getElementById('filtroNome').value = '';
   document.getElementById('filtroDataInicio').value = '';
