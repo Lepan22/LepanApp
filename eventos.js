@@ -36,7 +36,7 @@ function parseMoney(str){
   return isNaN(n) ? 0 : Math.round(n * 100) / 100;
 }
 
-// === CMV SNAPSHOT helpers (cache do %CMV para cálculos locais) ===
+// === Percentual CMV cache (usado só para outras partes da tela, não para KPI) ===
 let __cachePercentualCMV = null;
 
 async function obterPercentualCMVAtual() {
@@ -49,13 +49,6 @@ async function obterPercentualCMVAtual() {
     __cachePercentualCMV = 44;
   }
   return __cachePercentualCMV;
-}
-
-function calcularCMVRealDeVenda(vendaPDV, percentual) {
-  const v = Number(vendaPDV || 0);
-  const p = Number(percentual || 0);
-  const r = v * (p / 100);
-  return Math.round(r * 100) / 100; // 2 casas
 }
 
 function carregarEventos() {
@@ -101,7 +94,8 @@ function aplicarFiltros() {
     return atendeNome && atendeData && atendeStatus;
   });
 
-  const tbody = document.querySelector('#tabelaEventos tbody');
+  // O id "tabelaEventos" está no <tbody>
+  const tbody = document.getElementById('tabelaEventos');
   if (tbody) tbody.innerHTML = '';
 
   eventosFiltrados.forEach(eAtual => {
@@ -187,8 +181,8 @@ function aplicarFiltros() {
     });
   });
 
-  // === EDIÇÃO INLINE: Estimativa e Venda PDV ===
-  const tabela = document.getElementById('tabelaEventos'); // garante referência para o anexo
+  // EDIÇÃO INLINE
+  const tabela = document.getElementById('tabelaEventos'); // é o TBODY
   if (tabela) anexarEdicaoInline(tabela);
 }
 
@@ -198,16 +192,14 @@ function anexarEdicaoInline(tabela){
   inputs.forEach(inp=>{
     const original = inp.value;
 
-    // Seleciona tudo ao focar (facilita editar)
     inp.addEventListener('focus', () => {
       setTimeout(()=>inp.select(), 0);
     });
 
-    // Enter = salvar, Esc = cancelar
     inp.addEventListener('keydown', (e)=>{
       if (e.key === 'Enter'){
         e.preventDefault();
-        inp.blur(); // dispara o blur -> salvar
+        inp.blur(); // salva
       } else if (e.key === 'Escape'){
         e.preventDefault();
         inp.value = original;
@@ -220,20 +212,13 @@ function anexarEdicaoInline(tabela){
       const field = inp.getAttribute('data-field');
       const novoValor = parseMoney(inp.value);
 
-      // Evita writes desnecessários se não mudou
       if (formatNumberBR(novoValor) === original) return;
 
       inp.disabled = true;
 
       try{
-        if (field === 'vendaPDV') {
-          // Apenas atualiza vendaPDV; (não fazemos snapshot de cmv aqui para não alterar o DB)
-          await db.ref('eventos/'+id+'/'+field).set(novoValor);
-        } else {
-          await db.ref('eventos/'+id+'/'+field).set(novoValor);
-        }
-        // Recarrega lista + KPIs para refletir cor/vermelho/verde e totais
-        carregarEventos();
+        await db.ref('eventos/'+id+'/'+field).set(novoValor);
+        carregarEventos(); // recarrega tabela + KPIs
       }catch(err){
         alert('Não foi possível salvar. Tente novamente.');
         inp.disabled = false;
@@ -243,7 +228,12 @@ function anexarEdicaoInline(tabela){
   });
 }
 
-// === KPI: Lucro no Mês = soma de lucroFinal dos eventos (fallback calculado) ===
+/**
+ * KPI “Lucro no Mês” — Regra pedida:
+ * - Considerar SOMENTE eventos com status 'Fechado' ou 'Finalizado' do mês corrente.
+ * - O valor é a SOMA de `lucroFinal` de cada evento.
+ * - Se `lucroFinal` estiver ausente ou zero, contabiliza zero (NÃO calcular fórmula).
+ */
 async function calcularKPIs() {
   const hoje = new Date();
   const semanaInicio = new Date(hoje);
@@ -253,9 +243,6 @@ async function calcularKPIs() {
 
   let estimado = 0, realizado = 0, semana = 0;
   let estimativaMes = 0, vendaMes = 0, lucroMes = 0, estimativaSemana = 0;
-
-  // %CMV padrão para fallback (usa cache)
-  const percCMV = await obterPercentualCMVAtual();
 
   db.ref('eventos').once('value').then(snapshot => {
     const lista = snapshot.val();
@@ -272,27 +259,7 @@ async function calcularKPIs() {
         const dentroDaSemana = dataEvento >= semanaInicio && dataEvento <= semanaFim;
 
         const vendaPDV = Number(e.vendaPDV || 0);
-        const perda = Number(e.custoPerda || 0);
-        const custoEquipe = (Array.isArray(e.equipe) ? e.equipe : [])
-                              .reduce((s, i) => s + (Number(i && i.valor) || 0), 0);
-        const custoLogistica = (Array.isArray(e.logistica) ? e.logistica : [])
-                              .reduce((s, i) => s + (Number(i && i.valor) || 0), 0);
-
-        // ---- Lucro Final do evento ----
-        let lucroEvento;
-
-        if (e.lucroFinal != null && !isNaN(Number(e.lucroFinal))) {
-          // 1) Preferir o snapshot salvo
-          lucroEvento = Number(e.lucroFinal);
-        } else {
-          // 2) Calcular na hora (usa cmvReal se existir; senão PDV × %CMV)
-          const cmvBase = (e.cmvReal != null && !isNaN(Number(e.cmvReal)) && Number(e.cmvReal) >= 0)
-            ? Number(e.cmvReal)
-            : Number((vendaPDV * (percCMV / 100)).toFixed(2));
-
-          lucroEvento = vendaPDV - cmvBase - custoEquipe - custoLogistica - perda;
-          lucroEvento = Math.round(lucroEvento * 100) / 100; // 2 casas
-        }
+        const lucroFinal = Number(e.lucroFinal || 0); // usar somente o snapshot salvo
 
         if (dentroDoMes) {
           estimado++;
@@ -302,7 +269,10 @@ async function calcularKPIs() {
         if (dentroDoMes && (status === 'fechado' || status === 'finalizado')) {
           realizado++;
           vendaMes += vendaPDV;
-          lucroMes += lucroEvento; // soma do Lucro Final de cada evento
+          // SOMENTE o lucroFinal salvo; se 0 ou ausente, soma 0 (sem fórmula)
+          if (!isNaN(lucroFinal)) {
+            lucroMes += lucroFinal;
+          }
         }
 
         if (dentroDaSemana) {
