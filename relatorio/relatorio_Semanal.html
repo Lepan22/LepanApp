@@ -1,40 +1,53 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Relatório Evento</title>
-  <link rel="stylesheet" href="../assets/base.css" />
-  <link rel="stylesheet" href="../assets/menu-styles.css" />
+  <title>Relatório Semanal — CMV Real (sobre Venda PDV)</title>
+
+  <link rel="stylesheet" href="assets/base.css"/>
+  <link rel="stylesheet" href="assets/menu-styles.css"/>
+
+  <!-- Firebase v8 (compatível com o resto do projeto) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="../assets/menu.js"></script>
+  <script src="assets/menu.js" defer></script>
+
   <style>
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
-    th { background-color: #ffcc80; }
-    .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; border-radius: 5px; font-size: 12px; cursor: pointer; margin-right: 5px; }
-    .btn-navegar:hover { background-color: #e96f00; }
-    .form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; align-items: flex-end; }
-    .form-row > div { display: flex; flex-direction: column; }
-    label, select, input { font-size: 12px; }
-    tfoot td { font-weight: bold; background: #f9f9f9; }
+    .page-header h1{margin:0}
+    .card-dashboard{padding:12px}
+    .form-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px}
+    .form-row > div{display:flex;flex-direction:column}
+    label, select, input{font-size:12px}
+    .btn{background:#ff7f00;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer}
+    .btn:hover{background:#e96f00}
+
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+    th, td{border:1px solid #ddd;padding:6px;text-align:center}
+    thead th{background:#fff3e0}
+    tfoot td{font-weight:bold;background:#f9f9f9}
+
+    .neg { color:#c62828; font-weight:700 }
+    .pos { color:#1b7f1b; font-weight:700 }
+
+    .hint{font-size:12px;color:#666;margin-top:6px}
   </style>
 </head>
 <body>
 <div class="layout">
   <aside class="sidebar" id="menuLateral"></aside>
+
   <main class="main-content">
     <div class="page-header">
-      <h1>Relatório por Evento</h1>
+      <h1>Relatório Semanal — CMV Real (sobre Venda PDV)</h1>
     </div>
 
     <div class="card-dashboard">
       <form id="filtrosForm">
         <div class="form-row">
           <div>
-            <label for="filtroNomeEvento">Nome Evento</label>
-            <select id="filtroNomeEvento" multiple></select>
+            <label for="filtroNomes">Nome do Evento</label>
+            <select id="filtroNomes" multiple></select>
           </div>
           <div>
             <label for="filtroDataInicio">Data Início</label>
@@ -47,18 +60,23 @@
           <div>
             <label for="filtroStatus">Status</label>
             <select id="filtroStatus">
-              <option value="" selected>Todos</option>
-              <option value="Fechado">Fechado</option>
+              <option value="">Todos</option>
               <option value="Aberto">Aberto</option>
               <option value="Finalizado">Finalizado</option>
+              <option value="Fechado">Fechado</option>
             </select>
           </div>
         </div>
         <div class="form-row">
-          <button type="submit" class="btn-navegar">Aplicar Filtros</button>
-          <button type="button" class="btn-navegar" onclick="limparFiltros()">Limpar Filtros</button>
+          <button class="btn" type="submit">Aplicar Filtros</button>
+          <button class="btn" type="button" id="btnLimpar">Limpar Filtros</button>
         </div>
       </form>
+
+      <div class="hint">
+        Este relatório considera **apenas o CMV Real (sobre Venda PDV)**. Se houver somente percentual salvo do CMV Real,
+        o valor é calculado como <em>Venda PDV × %CMV Real</em>. CMV potencial/estimado NÃO é usado.
+      </div>
 
       <div id="tabelaResultado"></div>
     </div>
@@ -66,166 +84,224 @@
 </div>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    carregarMenu('../');
-    carregarEventos();
-  });
+  // Menu lateral padrão
+  document.addEventListener('DOMContentLoaded', () => carregarMenu('./'));
 
+  // Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
     authDomain: "lepanapp.firebaseapp.com",
     databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
     projectId: "lepanapp"
   };
-  firebase.initializeApp(firebaseConfig);
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
   let eventos = [];
 
-  function carregarEventos() {
-    db.ref('eventos').once('value').then(snapshot => {
+  // Utilidades
+  const num = (v) => isNaN(parseFloat(v)) ? 0 : parseFloat(v);
+  const moeda = (v) => `R$ ${num(v).toFixed(2)}`;
+  const pct = (parte, total) => total > 0 ? (parte/total*100).toFixed(1) : '0.0';
+
+  // Pega CMV Real (SOMENTE sobre Venda PDV)
+  function obterCMVReal(e, vendaPDV){
+    // 1) valor salvo diretamente
+    const candidatosValor = [
+      'cmvReal',
+      'cmvRealValor',
+      'cmvVendaPDV',
+      'cmvSobreVenda',
+      'cmvRealCalculado'
+    ];
+    for (const k of candidatosValor){
+      if (e && e.hasOwnProperty(k) && num(e[k])>0) return num(e[k]);
+    }
+    // 2) percentual salvo
+    const candidatosPct = [
+      'percentualCMVReal',
+      'percentualCMVSobreVenda',
+      'pctCMVReal',
+      'cmvRealPercentual'
+    ];
+    for (const k of candidatosPct){
+      if (e && e.hasOwnProperty(k) && num(e[k])>0) return vendaPDV * (num(e[k])/100);
+    }
+    // 3) NÃO usar CMV potencial/estimado (intencionalmente ignorado)
+    return 0;
+  }
+
+  function setDatasPadrao(){
+    const hoje = new Date();
+    const fim = hoje;
+    const ini = new Date();
+    ini.setDate(hoje.getDate() - 6); // últimos 7 dias
+
+    const fmt = d => {
+      const a=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dia=String(d.getDate()).padStart(2,'0');
+      return `${a}-${m}-${dia}`;
+    };
+    document.getElementById('filtroDataInicio').value = fmt(ini);
+    document.getElementById('filtroDataFim').value = fmt(fim);
+  }
+
+  function carregarEventos(){
+    db.ref('eventos').once('value').then(snap=>{
       eventos = [];
-      snapshot.forEach(child => {
-        const e = child.val();
-        e.id = child.key;
+      snap.forEach(ch=>{
+        const e = ch.val() || {};
+        e.id = ch.key;
         eventos.push(e);
       });
-      popularFiltro();
-      setDataPadrao(); // ✅ Agora executa aqui, depois que tudo carrega
+      popularFiltroNomes();
+      setDatasPadrao();
       aplicarFiltros();
     });
   }
 
-  function setDataPadrao() {
-    const hoje = new Date();
-    const dataFim = hoje;
-    const dataInicio = new Date();
-    dataInicio.setDate(hoje.getDate() - 6);
-
-    const formatarData = (data) => {
-      const ano = data.getFullYear();
-      const mes = String(data.getMonth() + 1).padStart(2, '0');
-      const dia = String(data.getDate()).padStart(2, '0');
-      return `${ano}-${mes}-${dia}`;
-    };
-
-    document.getElementById('filtroDataInicio').value = formatarData(dataInicio);
-    document.getElementById('filtroDataFim').value = formatarData(dataFim);
-  }
-
-  function popularFiltro() {
-    const filtro = document.getElementById('filtroNomeEvento');
-    const nomes = [...new Set(eventos.map(e => e.nomeEvento).filter(Boolean))];
-    filtro.innerHTML = '';
-    nomes.forEach(nome => {
+  function popularFiltroNomes(){
+    const sel = document.getElementById('filtroNomes');
+    const nomes = [...new Set(eventos.map(e=>e.nomeEvento).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    sel.innerHTML = '';
+    nomes.forEach(n=>{
       const opt = document.createElement('option');
-      opt.value = nome;
-      opt.textContent = nome;
-      filtro.appendChild(opt);
+      opt.value = n; opt.textContent = n;
+      sel.appendChild(opt);
     });
   }
 
-  document.getElementById('filtrosForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    aplicarFiltros();
-  });
-
-  function limparFiltros() {
-    document.querySelectorAll('#filtroNomeEvento option').forEach(o => o.selected = false);
-    setDataPadrao();
+  function limparFiltros(){
+    document.querySelectorAll('#filtroNomes option').forEach(o=>o.selected=false);
     document.getElementById('filtroStatus').value = '';
-    aplicarFiltros();
+    setDatasPadrao();
   }
 
-  function aplicarFiltros() {
-    const nomes = [...document.getElementById('filtroNomeEvento').selectedOptions].map(o => o.value);
-    const dataInicio = document.getElementById('filtroDataInicio').value;
-    const dataFim = document.getElementById('filtroDataFim').value;
-    const status = document.getElementById('filtroStatus').value;
+  function aplicarFiltros(){
+    const nomes = [...document.getElementById('filtroNomes').selectedOptions].map(o=>o.value);
+    const di = document.getElementById('filtroDataInicio').value || '';
+    const df = document.getElementById('filtroDataFim').value || '';
+    const st = document.getElementById('filtroStatus').value || '';
 
     const linhas = [];
 
-    eventos.filter(e => {
-      if (!e.data) return false;
+    eventos.filter(e=>{
+      if (!e || !e.data) return false;
       if (nomes.length && !nomes.includes(e.nomeEvento)) return false;
-      if (dataInicio && e.data < dataInicio) return false;
-      if (dataFim && e.data > dataFim) return false;
-      if (status && e.status !== status) return false;
+      if (di && e.data < di) return false;
+      if (df && e.data > df) return false;
+      if (st && e.status !== st) return false;
       return true;
-    }).forEach(e => {
-      const vendaPDV = parseFloat(e.vendaPDV) || 0;
-      const lucro = parseFloat(e.lucroFinal) || 0;
-      const custoPerda = parseFloat(e.custoPerda) || 0;
+    }).forEach(e=>{
+      const vendaPDV = num(e.vendaPDV);
+      const perda = num(e.custoPerda);
+      const equipe = (Array.isArray(e.equipe) ? e.equipe : []).reduce((s,it)=>s+num(it && it.valor),0);
+      const logistica = (Array.isArray(e.logistica) ? e.logistica : []).reduce((s,it)=>s+num(it && it.valor),0);
 
-      const custoEquipe = (e.equipe || []).reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0);
-      const custoLogistica = (e.logistica || []).reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0);
+      const cmvReal = obterCMVReal(e, vendaPDV);
+
+      // Lucro: preferir salvo, mas % usa base Venda PDV
+      const lucro = num(e.lucroFinal);
 
       linhas.push({
-        nomeEvento: e.nomeEvento || '-',
         data: e.data,
-        vendaPDV, lucro, perda: custoPerda, equipe: custoEquipe, logistica: custoLogistica
+        nome: e.nomeEvento || '-',
+        vendaPDV,
+        cmvReal,
+        cmvPct: vendaPDV>0 ? (cmvReal/vendaPDV*100) : 0,
+        lucro,
+        lucroPct: vendaPDV>0 ? (lucro/vendaPDV*100) : 0,
+        perda,
+        perdaPct: vendaPDV>0 ? (perda/vendaPDV*100) : 0,
+        equipe,
+        equipePct: vendaPDV>0 ? (equipe/vendaPDV*100) : 0,
+        logistica,
+        logisticaPct: vendaPDV>0 ? (logistica/vendaPDV*100) : 0
       });
     });
 
-    linhas.sort((a, b) => (a.data < b.data ? 1 : -1));
-
-    exibirTabela(linhas);
+    // Ordenar por data desc
+    linhas.sort((a,b)=> a.data<b.data ? 1 : (a.data>b.data ? -1 : 0));
+    renderTabela(linhas);
   }
 
-  function exibirTabela(linhas) {
+  function renderTabela(rows){
     let html = '';
+    html += `<table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Nome Evento</th>
+          <th>Venda PDV</th>
+          <th>CMV Real (R$)</th>
+          <th>% CMV</th>
+          <th>Lucro</th>
+          <th>% Lucro</th>
+          <th>Perda</th>
+          <th>% Perda</th>
+          <th>Equipe</th>
+          <th>% Equipe</th>
+          <th>Logística</th>
+          <th>% Logística</th>
+        </tr>
+      </thead>
+      <tbody>`;
 
-    html += `<table><thead><tr>
-      <th>Data</th><th>Nome Evento</th><th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
-      <th>Perda</th><th>% Perda</th><th>Custo Equipe</th><th>% Equipe</th><th>Custo Logística</th><th>% Logística</th>
-      </tr></thead><tbody>`;
+    const tot = {
+      venda:0, cmv:0, lucro:0, perda:0, equipe:0, log:0
+    };
 
-    let total = { vendaPDV: 0, lucro: 0, perda: 0, equipe: 0, logistica: 0 };
-
-    linhas.forEach(l => {
-      total.vendaPDV += l.vendaPDV;
-      total.lucro += l.lucro;
-      total.perda += l.perda;
-      total.equipe += l.equipe;
-      total.logistica += l.logistica;
-
-      const perc = (v) => l.vendaPDV ? (v / l.vendaPDV * 100).toFixed(1) : '0.0';
+    rows.forEach(r=>{
+      tot.venda += r.vendaPDV;
+      tot.cmv += r.cmvReal;
+      tot.lucro += r.lucro;
+      tot.perda += r.perda;
+      tot.equipe += r.equipe;
+      tot.log += r.logistica;
 
       html += `<tr>
-        <td>${l.data}</td>
-        <td>${l.nomeEvento}</td>
-        <td>R$ ${l.vendaPDV.toFixed(2)}</td>
-        <td>R$ ${l.lucro.toFixed(2)}</td>
-        <td>${perc(l.lucro)}%</td>
-        <td>R$ ${l.perda.toFixed(2)}</td>
-        <td>${perc(l.perda)}%</td>
-        <td>R$ ${l.equipe.toFixed(2)}</td>
-        <td>${perc(l.equipe)}%</td>
-        <td>R$ ${l.logistica.toFixed(2)}</td>
-        <td>${perc(l.logistica)}%</td>
+        <td>${r.data}</td>
+        <td>${r.nome}</td>
+        <td>${moeda(r.vendaPDV)}</td>
+        <td>${moeda(r.cmvReal)}</td>
+        <td>${pct(r.cmvReal, r.vendaPDV)}%</td>
+        <td class="${r.lucro>=0?'pos':'neg'}">${moeda(r.lucro)}</td>
+        <td>${pct(r.lucro, r.vendaPDV)}%</td>
+        <td>${moeda(r.perda)}</td>
+        <td>${pct(r.perda, r.vendaPDV)}%</td>
+        <td>${moeda(r.equipe)}</td>
+        <td>${pct(r.equipe, r.vendaPDV)}%</td>
+        <td>${moeda(r.logistica)}</td>
+        <td>${pct(r.logistica, r.vendaPDV)}%</td>
       </tr>`;
     });
 
-    const percent = (v) => total.vendaPDV ? (v / total.vendaPDV * 100).toFixed(1) : '0.0';
-
-    html += `<tr style="font-weight:bold; background:#f9f9f9">
-      <td colspan="2">TOTAL</td>
-      <td>R$ ${total.vendaPDV.toFixed(2)}</td>
-      <td>R$ ${total.lucro.toFixed(2)}</td>
-      <td>${percent(total.lucro)}%</td>
-      <td>R$ ${total.perda.toFixed(2)}</td>
-      <td>${percent(total.perda)}%</td>
-      <td>R$ ${total.equipe.toFixed(2)}</td>
-      <td>${percent(total.equipe)}%</td>
-      <td>R$ ${total.logistica.toFixed(2)}</td>
-      <td>${percent(total.logistica)}%</td>
-    </tr>`;
-
-    html += `</tbody></table>`;
+    html += `</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2">TOTAL</td>
+          <td>${moeda(tot.venda)}</td>
+          <td>${moeda(tot.cmv)}</td>
+          <td>${pct(tot.cmv, tot.venda)}%</td>
+          <td class="${tot.lucro>=0?'pos':'neg'}">${moeda(tot.lucro)}</td>
+          <td>${pct(tot.lucro, tot.venda)}%</td>
+          <td>${moeda(tot.perda)}</td>
+          <td>${pct(tot.perda, tot.venda)}%</td>
+          <td>${moeda(tot.equipe)}</td>
+          <td>${pct(tot.equipe, tot.venda)}%</td>
+          <td>${moeda(tot.log)}</td>
+          <td>${pct(tot.log, tot.venda)}%</td>
+        </tr>
+      </tfoot>
+    </table>`;
 
     document.getElementById('tabelaResultado').innerHTML = html;
   }
 
+  // Eventos UI
+  document.getElementById('filtrosForm').addEventListener('submit', (e)=>{ e.preventDefault(); aplicarFiltros(); });
+  document.getElementById('btnLimpar').addEventListener('click', ()=>{ limparFiltros(); aplicarFiltros(); });
+
+  // Start
   carregarEventos();
 </script>
 </body>
