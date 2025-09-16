@@ -102,7 +102,7 @@ function aplicarFiltros() {
   });
 
   const tbody = document.querySelector('#tabelaEventos tbody');
-  tbody.innerHTML = '';
+  if (tbody) tbody.innerHTML = '';
 
   eventosFiltrados.forEach(eAtual => {
     // Média de venda (3 últimos eventos anteriores do mesmo nome)
@@ -162,7 +162,7 @@ function aplicarFiltros() {
         <button class="btn btn-sm btn-outline" data-acao="excluir" data-id="${eAtual.id}">Excluir</button>
       </td>
     `;
-    tbody.appendChild(row);
+    if (tbody) tbody.appendChild(row);
   });
 
   // Status editável
@@ -188,7 +188,8 @@ function aplicarFiltros() {
   });
 
   // === EDIÇÃO INLINE: Estimativa e Venda PDV ===
-  anexarEdicaoInline(tabela);
+  const tabela = document.getElementById('tabelaEventos'); // <<< CORREÇÃO: define a tabela
+  if (tabela) anexarEdicaoInline(tabela);                  // só anexa se existir
 }
 
 function anexarEdicaoInline(tabela){
