@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Relatório Semanal — CMV Real (sobre Venda PDV)</title>
+  <title>Relatório Semanal — CMV Real (PDV × %CMV)</title>
 
   <link rel="stylesheet" href="assets/base.css"/>
   <link rel="stylesheet" href="assets/menu-styles.css"/>
 
-  <!-- Firebase v8 (compatível com o resto do projeto) -->
+  <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
@@ -31,6 +31,8 @@
     .pos { color:#1b7f1b; font-weight:700 }
 
     .hint{font-size:12px;color:#666;margin-top:6px}
+    .right{ text-align:right }
+    .w80{ width:80px }
   </style>
 </head>
 <body>
@@ -39,7 +41,7 @@
 
   <main class="main-content">
     <div class="page-header">
-      <h1>Relatório Semanal — CMV Real (sobre Venda PDV)</h1>
+      <h1>Relatório Semanal — CMV Real (calculado sobre Venda PDV)</h1>
     </div>
 
     <div class="card-dashboard">
@@ -66,16 +68,21 @@
               <option value="Fechado">Fechado</option>
             </select>
           </div>
+          <div>
+            <label for="percentualCMV">% CMV (somente para cálculo)</label>
+            <input type="number" id="percentualCMV" class="w80 right" step="0.1" min="0" max="100" placeholder="44.0">
+          </div>
         </div>
         <div class="form-row">
           <button class="btn" type="submit">Aplicar Filtros</button>
-          <button class="btn" type="button" id="btnLimpar">Limpar Filtros</button>
+          <button class="btn" type="button" id="btnLimpar">Limpar</button>
+          <button class="btn" type="button" id="btnRecalcular">Recalcular com %</button>
         </div>
       </form>
 
       <div class="hint">
-        Este relatório considera **apenas o CMV Real (sobre Venda PDV)**. Se houver somente percentual salvo do CMV Real,
-        o valor é calculado como <em>Venda PDV × %CMV Real</em>. CMV potencial/estimado NÃO é usado.
+        Este relatório calcula o **CMV Real** como <b>Venda PDV × %CMV</b>, usando por padrão <code>configuracao/percentualCMV</code> (fallback 44%).
+        Alterar o campo “% CMV” aqui recalcula apenas a visualização (não grava no banco).
       </div>
 
       <div id="tabelaResultado"></div>
@@ -84,10 +91,10 @@
 </div>
 
 <script>
-  // Menu lateral padrão
+  // ====== Menu lateral padrão
   document.addEventListener('DOMContentLoaded', () => carregarMenu('./'));
 
-  // Firebase
+  // ====== Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
     authDomain: "lepanapp.firebaseapp.com",
@@ -97,39 +104,15 @@
   if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
+  // ====== Estado
   let eventos = [];
+  let percentualCMVPadrao = 44; // fallback
 
-  // Utilidades
+  // ====== Utils
   const num = (v) => isNaN(parseFloat(v)) ? 0 : parseFloat(v);
   const moeda = (v) => `R$ ${num(v).toFixed(2)}`;
-  const pct = (parte, total) => total > 0 ? (parte/total*100).toFixed(1) : '0.0';
-
-  // Pega CMV Real (SOMENTE sobre Venda PDV)
-  function obterCMVReal(e, vendaPDV){
-    // 1) valor salvo diretamente
-    const candidatosValor = [
-      'cmvReal',
-      'cmvRealValor',
-      'cmvVendaPDV',
-      'cmvSobreVenda',
-      'cmvRealCalculado'
-    ];
-    for (const k of candidatosValor){
-      if (e && e.hasOwnProperty(k) && num(e[k])>0) return num(e[k]);
-    }
-    // 2) percentual salvo
-    const candidatosPct = [
-      'percentualCMVReal',
-      'percentualCMVSobreVenda',
-      'pctCMVReal',
-      'cmvRealPercentual'
-    ];
-    for (const k of candidatosPct){
-      if (e && e.hasOwnProperty(k) && num(e[k])>0) return vendaPDV * (num(e[k])/100);
-    }
-    // 3) NÃO usar CMV potencial/estimado (intencionalmente ignorado)
-    return 0;
-  }
+  const pctStr = (v) => `${num(v).toFixed(1)}%`;
+  const pct = (parte, total) => total > 0 ? (parte/total*100) : 0;
 
   function setDatasPadrao(){
     const hoje = new Date();
@@ -145,18 +128,38 @@
     document.getElementById('filtroDataFim').value = fmt(fim);
   }
 
-  function carregarEventos(){
-    db.ref('eventos').once('value').then(snap=>{
-      eventos = [];
-      snap.forEach(ch=>{
-        const e = ch.val() || {};
-        e.id = ch.key;
-        eventos.push(e);
-      });
-      popularFiltroNomes();
-      setDatasPadrao();
-      aplicarFiltros();
+  async function carregarPercentualCMV(){
+    try{
+      const snap = await db.ref('configuracao/percentualCMV').once('value');
+      const v = num(snap.val());
+      if (v > 0) percentualCMVPadrao = v;
+    }catch(e){}
+    // preenche input com o padrão
+    const inp = document.getElementById('percentualCMV');
+    if (inp && !inp.value) inp.value = percentualCMVPadrao.toFixed(1);
+  }
+
+  function getPercentualCMVAtual(){
+    const inp = document.getElementById('percentualCMV');
+    if (!inp) return percentualCMVPadrao;
+    const raw = String(inp.value || '').replace(',','.');
+    const v = parseFloat(raw);
+    if (isNaN(v) || v < 0) return percentualCMVPadrao;
+    return v;
+  }
+
+  async function carregarEventos(){
+    await carregarPercentualCMV();
+    const snap = await db.ref('eventos').once('value');
+    eventos = [];
+    snap.forEach(ch=>{
+      const e = ch.val() || {};
+      e.id = ch.key;
+      eventos.push(e);
     });
+    popularFiltroNomes();
+    setDatasPadrao();
+    aplicarFiltros();
   }
 
   function popularFiltroNomes(){
@@ -173,6 +176,7 @@
   function limparFiltros(){
     document.querySelectorAll('#filtroNomes option').forEach(o=>o.selected=false);
     document.getElementById('filtroStatus').value = '';
+    document.getElementById('percentualCMV').value = percentualCMVPadrao.toFixed(1);
     setDatasPadrao();
   }
 
@@ -181,6 +185,7 @@
     const di = document.getElementById('filtroDataInicio').value || '';
     const df = document.getElementById('filtroDataFim').value || '';
     const st = document.getElementById('filtroStatus').value || '';
+    const perc = getPercentualCMVAtual();
 
     const linhas = [];
 
@@ -197,25 +202,26 @@
       const equipe = (Array.isArray(e.equipe) ? e.equipe : []).reduce((s,it)=>s+num(it && it.valor),0);
       const logistica = (Array.isArray(e.logistica) ? e.logistica : []).reduce((s,it)=>s+num(it && it.valor),0);
 
-      const cmvReal = obterCMVReal(e, vendaPDV);
+      // ===== CMV calculado na hora: PDV × %CMV =====
+      const cmvCalc = vendaPDV * (perc/100);
 
-      // Lucro: preferir salvo, mas % usa base Venda PDV
-      const lucro = num(e.lucroFinal);
+      // Lucro calculado usando CMV calculado
+      const lucro = vendaPDV - cmvCalc - equipe - logistica - perda;
 
       linhas.push({
         data: e.data,
         nome: e.nomeEvento || '-',
         vendaPDV,
-        cmvReal,
-        cmvPct: vendaPDV>0 ? (cmvReal/vendaPDV*100) : 0,
+        cmv: cmvCalc,
+        cmvPct: perc, // mesmo % aplicado
         lucro,
-        lucroPct: vendaPDV>0 ? (lucro/vendaPDV*100) : 0,
+        lucroPct: pct(lucro, vendaPDV),
         perda,
-        perdaPct: vendaPDV>0 ? (perda/vendaPDV*100) : 0,
+        perdaPct: pct(perda, vendaPDV),
         equipe,
-        equipePct: vendaPDV>0 ? (equipe/vendaPDV*100) : 0,
+        equipePct: pct(equipe, vendaPDV),
         logistica,
-        logisticaPct: vendaPDV>0 ? (logistica/vendaPDV*100) : 0
+        logisticaPct: pct(logistica, vendaPDV)
       });
     });
 
@@ -226,13 +232,13 @@
 
   function renderTabela(rows){
     let html = '';
-    html += `<table>
+    html += `<table id="tabelaRel">
       <thead>
         <tr>
           <th>Data</th>
           <th>Nome Evento</th>
           <th>Venda PDV</th>
-          <th>CMV Real (R$)</th>
+          <th>CMV (R$)</th>
           <th>% CMV</th>
           <th>Lucro</th>
           <th>% Lucro</th>
@@ -252,7 +258,7 @@
 
     rows.forEach(r=>{
       tot.venda += r.vendaPDV;
-      tot.cmv += r.cmvReal;
+      tot.cmv += r.cmv;
       tot.lucro += r.lucro;
       tot.perda += r.perda;
       tot.equipe += r.equipe;
@@ -261,35 +267,36 @@
       html += `<tr>
         <td>${r.data}</td>
         <td>${r.nome}</td>
-        <td>${moeda(r.vendaPDV)}</td>
-        <td>${moeda(r.cmvReal)}</td>
-        <td>${pct(r.cmvReal, r.vendaPDV)}%</td>
-        <td class="${r.lucro>=0?'pos':'neg'}">${moeda(r.lucro)}</td>
-        <td>${pct(r.lucro, r.vendaPDV)}%</td>
-        <td>${moeda(r.perda)}</td>
-        <td>${pct(r.perda, r.vendaPDV)}%</td>
-        <td>${moeda(r.equipe)}</td>
-        <td>${pct(r.equipe, r.vendaPDV)}%</td>
-        <td>${moeda(r.logistica)}</td>
-        <td>${pct(r.logistica, r.vendaPDV)}%</td>
+        <td class="right">${moeda(r.vendaPDV)}</td>
+        <td class="right">${moeda(r.cmv)}</td>
+        <td>${pctStr(r.cmvPct)}</td>
+        <td class="right ${r.lucro>=0?'pos':'neg'}">${moeda(r.lucro)}</td>
+        <td>${pctStr(r.lucroPct)}</td>
+        <td class="right">${moeda(r.perda)}</td>
+        <td>${pctStr(r.perdaPct)}</td>
+        <td class="right">${moeda(r.equipe)}</td>
+        <td>${pctStr(r.equipePct)}</td>
+        <td class="right">${moeda(r.logistica)}</td>
+        <td>${pctStr(r.logisticaPct)}</td>
       </tr>`;
     });
 
+    const perc = getPercentualCMVAtual();
     html += `</tbody>
       <tfoot>
         <tr>
           <td colspan="2">TOTAL</td>
-          <td>${moeda(tot.venda)}</td>
-          <td>${moeda(tot.cmv)}</td>
-          <td>${pct(tot.cmv, tot.venda)}%</td>
-          <td class="${tot.lucro>=0?'pos':'neg'}">${moeda(tot.lucro)}</td>
-          <td>${pct(tot.lucro, tot.venda)}%</td>
-          <td>${moeda(tot.perda)}</td>
-          <td>${pct(tot.perda, tot.venda)}%</td>
-          <td>${moeda(tot.equipe)}</td>
-          <td>${pct(tot.equipe, tot.venda)}%</td>
-          <td>${moeda(tot.log)}</td>
-          <td>${pct(tot.log, tot.venda)}%</td>
+          <td class="right">${moeda(tot.venda)}</td>
+          <td class="right">${moeda(tot.cmv)}</td>
+          <td>${pctStr(perc)}</td>
+          <td class="right ${tot.lucro>=0?'pos':'neg'}">${moeda(tot.lucro)}</td>
+          <td>${pctStr(pct(tot.lucro, tot.venda))}</td>
+          <td class="right">${moeda(tot.perda)}</td>
+          <td>${pctStr(pct(tot.perda, tot.venda))}</td>
+          <td class="right">${moeda(tot.equipe)}</td>
+          <td>${pctStr(pct(tot.equipe, tot.venda))}</td>
+          <td class="right">${moeda(tot.log)}</td>
+          <td>${pctStr(pct(tot.log, tot.venda))}</td>
         </tr>
       </tfoot>
     </table>`;
@@ -297,11 +304,13 @@
     document.getElementById('tabelaResultado').innerHTML = html;
   }
 
-  // Eventos UI
+  // ====== UI
   document.getElementById('filtrosForm').addEventListener('submit', (e)=>{ e.preventDefault(); aplicarFiltros(); });
   document.getElementById('btnLimpar').addEventListener('click', ()=>{ limparFiltros(); aplicarFiltros(); });
+  document.getElementById('btnRecalcular').addEventListener('click', ()=> aplicarFiltros());
+  document.getElementById('percentualCMV').addEventListener('change', ()=> aplicarFiltros());
 
-  // Start
+  // ====== Start
   carregarEventos();
 </script>
 </body>
