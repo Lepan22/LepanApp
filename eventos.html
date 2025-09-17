@@ -1,119 +1,143 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>configuração</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eventos</title>
 
-  <link rel="stylesheet" href="assets/menu-styles.css">
-  <link rel="stylesheet" href="assets/base.css">
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
+
+  <style>
+    /* KPIs */
+    .kpi-linha{display:flex;gap:16px;padding:0 20px;margin-bottom:2px;flex-wrap:wrap}
+    .kpi{background:#fff3e0;border-left:4px solid #ff9800;padding:6px 10px;border-radius:6px;min-width:180px;flex:1;display:flex;flex-direction:column;justify-content:center;height:60px}
+    .kpi h2{margin:0 0 2px;font-size:12px;color:#333}
+    .kpi p{font-size:16px;margin:0;font-weight:bold;color:#ff9800}
+
+    /* Tabela */
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      text-align:left;
+      padding:10px 8px;
+      background:#fff8ef;
+      border-bottom:1px solid #eee;
+      font-weight:600;
+      color:#000 !important;
+    }
+    .main-content table thead th,
+    .main-content table thead tr th{color:#000 !important}
+    .main-content table thead th *{color:inherit !important}
+
+    tbody td{padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+    tbody tr:nth-child(odd){background:#fff}
+    tbody tr:nth-child(even){background:#fcfcfc}
+
+    .status-select{padding:4px 8px;font-size:13px;max-width:140px}
+    .pdv-verde{color:#1b7f1b;font-weight:700}
+    .pdv-vermelho{color:#c62828;font-weight:700}
+    .acoes button{margin-right:6px}
+
+    .money-input{
+      width: 120px;
+      padding: 4px 6px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 13px;
+      text-align: right;
+      outline: none;
+    }
+    .money-input:focus{border-color:#ff9800; box-shadow:0 0 0 2px rgba(255,152,0,.15)}
+
+    .main-content > h2{color:#000 !important}
+  </style>
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <h2>Configuração</h2>
+      <h2>Eventos</h2>
 
-      <form id="formConfiguracao" style="display: flex; flex-wrap: wrap; gap: 12px; max-width: 420px;">
-        <div style="display: flex; flex-direction: column;">
-          <label for="capacidadeEventos">Capacidade de Eventos no Mês</label>
-          <input type="number" id="capacidadeEventos" required />
-        </div>
-
-        <div style="display: flex; flex-direction: column;">
-          <label for="percentualCMV">Percentual CMV Real (%)</label>
-          <input type="number" id="percentualCMV" step="0.01" required />
-        </div>
-
-        <div style="display: flex; flex-direction: column;">
-          <label for="percentualLucro">% Lucro para Estimativa (mês)</label>
-          <input type="number" id="percentualLucro" step="0.01" placeholder="ex.: 40" required />
-        </div>
-
-        <div style="flex-basis: 100%;">
-          <button type="submit">Atualizar Configurações</button>
-        </div>
-      </form>
-
-      <hr style="margin: 30px 0;">
-
-      <div>
-        <h3>Backup Manual</h3>
-        <button id="botaoBackup">Fazer Backup</button>
-        <div id="msgBackup" style="margin-top: 10px;"></div>
+      <!-- Linha de cima: 4 KPIs -->
+      <div class="kpi-linha" style="margin-top:20px;">
+        <div class="kpi"><h2>Eventos Estimados no Mês</h2><p id="kpi-estimado">0</p></div>
+        <div class="kpi"><h2>Eventos Realizados no Mês</h2><p id="kpi-realizado">0</p></div>
+        <div class="kpi"><h2>Eventos desta Semana</h2><p id="kpi-semana">0</p></div>
+        <div class="kpi"><h2>Estimativa Venda Semana</h2><p id="kpi-estimativa-semana">R$ 0,00</p></div>
       </div>
 
-      <div id="statusMsg" style="margin-top: 10px;"></div>
+      <!-- Linha de baixo: 4 KPIs -->
+      <div class="kpi-linha" style="margin-top:4px;">
+        <div class="kpi"><h2>Estimativa Venda Mês</h2><p id="kpi-estimativa-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Venda Real Mês</h2><p id="kpi-venda-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Lucro Estimado Mês</h2><p id="kpi-lucro-estimado-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Lucro no Mês</h2><p id="kpi-lucro-mes">R$ 0,00</p></div>
+      </div>
+
+      <form id="filtrosForm" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px;">
+        <div style="display:flex;flex-direction:column;">
+          <label for="filtroStatus">Status</label>
+          <select id="filtroStatus">
+            <option value="Todos">Todos</option>
+            <option value="Aberto">Aberto</option>
+            <option value="Finalizado">Finalizado</option>
+            <option value="Fechado">Fechado</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;">
+          <label for="filtroNome">Nome do Evento</label>
+          <input type="text" id="filtroNome" />
+        </div>
+        <div style="display:flex;flex-direction:column;">
+          <label for="filtroDataInicio">Data Início</label>
+          <input type="date" id="filtroDataInicio" />
+        </div>
+        <div style="display:flex;flex-direction:column;">
+          <label for="filtroDataFim">Data Fim</label>
+          <input type="date" id="filtroDataFim" />
+        </div>
+        <button type="submit">Aplicar</button>
+        <button type="button" onclick="limparFiltros()">Limpar</button>
+      </form>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Nome do Evento</th>
+            <th>Data</th>
+            <th>Status</th>
+            <th>Média Venda</th>
+            <th>Estimativa</th>
+            <th>Venda PDV</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaEventos"></tbody>
+      </table>
     </main>
   </div>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    const form = document.getElementById('formConfiguracao');
-    const capacidadeInput = document.getElementById('capacidadeEventos');
-    const percentualCMVInput = document.getElementById('percentualCMV');
-    const percentualLucroInput = document.getElementById('percentualLucro');
-    const statusMsg = document.getElementById('statusMsg');
-    const botaoBackup = document.getElementById('botaoBackup');
-    const msgBackup = document.getElementById('msgBackup');
-
-    function carregarConfiguracao() {
-      db.ref('configuracao').once('value')
-        .then(snapshot => {
-          const data = snapshot.val() || {};
-          capacidadeInput.value = data.capacidadeEventos ?? '';
-          percentualCMVInput.value = data.percentualCMV ?? '';
-          percentualLucroInput.value = data.percentualLucro ?? 40; // default sugerido
-        })
-        .catch(() => { statusMsg.textContent = 'Erro ao carregar configuração.'; });
-    }
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const capacidadeEventos = Number(capacidadeInput.value);
-      const percentualCMV = parseFloat(percentualCMVInput.value);
-      const percentualLucro = parseFloat(percentualLucroInput.value);
-
-      db.ref('configuracao').set({ capacidadeEventos, percentualCMV, percentualLucro })
-        .then(() => { statusMsg.textContent = 'Configurações atualizadas com sucesso!'; })
-        .catch(() => { statusMsg.textContent = 'Erro ao atualizar configurações.'; });
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('filtroStatus').value = 'Aberto';
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const diasAteSegunda = (8 - diaSemana) % 7 || 7;
+      const proximaSegunda = new Date(hoje);
+      proximaSegunda.setDate(hoje.getDate() + diasAteSegunda);
+      const yyyy = proximaSegunda.getFullYear();
+      const mm = String(proximaSegunda.getMonth() + 1).padStart(2, '0');
+      const dd = String(proximaSegunda.getDate()).padStart(2, '0');
+      document.getElementById('filtroDataFim').value = `${yyyy}-${mm}-${dd}`;
     });
-
-    botaoBackup.addEventListener('click', () => {
-      msgBackup.textContent = 'Gerando backup...';
-      db.ref('/').once('value')
-        .then(snapshot => {
-          const data = snapshot.val();
-          const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-          const link = document.createElement('a');
-          const dataAtual = new Date().toISOString().slice(0, 10);
-          link.href = URL.createObjectURL(blob);
-          link.download = `backup-lepan-${dataAtual}.json`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          msgBackup.textContent = 'Backup gerado com sucesso.';
-        })
-        .catch(() => { msgBackup.textContent = 'Erro ao gerar backup.'; });
-    });
-
-    carregarConfiguracao();
   </script>
+
+  <script src="eventos.js"></script>
 </body>
 </html>
