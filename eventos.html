@@ -13,51 +13,31 @@
   <script src="assets/menu.js" defer></script>
 
   <style>
-    /* KPIs */
     .kpi-linha{display:flex;gap:16px;padding:0 20px;margin-bottom:2px;flex-wrap:wrap}
-    .kpi{background:#fff3e0;border-left:4px solid #ff9800;padding:6px 10px;border-radius:6px;min-width:180px;flex:1;display:flex;flex-direction:column;justify-content:center;height:60px}
+    .kpi{
+      background:#fff3e0;border-left:4px solid #ff9800;padding:6px 10px;border-radius:6px;
+      min-width:180px;flex:1;display:flex;flex-direction:column;justify-content:center;height:60px
+    }
     .kpi h2{margin:0 0 2px;font-size:12px;color:#333}
     .kpi p{font-size:16px;margin:0;font-weight:bold;color:#ff9800}
 
-    /* Tabela */
     table{width:100%;border-collapse:collapse}
     thead th{
-      text-align:left;
-      padding:10px 8px;
-      background:#fff8ef;
-      border-bottom:1px solid #eee;
-      font-weight:600;
-      color:#000 !important;
+      text-align:left;padding:10px 8px;background:#fff8ef;border-bottom:1px solid #eee;
+      font-weight:600;color:#000 !important
     }
-    .main-content table thead th,
-    .main-content table thead tr th{color:#000 !important}
+    .main-content table thead th,.main-content table thead tr th{color:#000 !important}
     .main-content table thead th *{color:inherit !important}
-
     tbody td{padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
     tbody tr:nth-child(odd){background:#fff}
     tbody tr:nth-child(even){background:#fcfcfc}
 
-    /* Controles e destaques */
     .status-select{padding:4px 8px;font-size:13px;max-width:140px}
-    .pdv-verde{color:#1b7f1b;font-weight:700}
-    .pdv-vermelho{color:#c62828;font-weight:700}
     .acoes button{margin-right:6px}
-
-    /* Inputs de dinheiro inline */
-    .money-input{
-      width: 120px;
-      padding: 4px 6px;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      background: #fff;
-      font-size: 13px;
-      text-align: right;
-      outline: none;
-    }
-    .money-input:focus{border-color:#ff9800; box-shadow:0 0 0 2px rgba(255,152,0,.15)}
-
-    /* Título da página em preto (mantém) */
-    .main-content > h2{color:#000 !important}
+    .money-input{width:120px;padding:4px 6px;border:1px solid #ddd;border-radius:6px;background:#fff;
+                 font-size:13px;text-align:right;outline:none}
+    .money-input:focus{border-color:#ff9800;box-shadow:0 0 0 2px rgba(255,152,0,.15)}
+    .main-content>h2{color:#000 !important}
   </style>
 </head>
 <body>
@@ -67,38 +47,20 @@
     <main class="main-content">
       <h2>Eventos</h2>
 
-      <div class="kpi-linha" style="margin-top: 20px;">
-        <div class="kpi">
-          <h2>Eventos Estimados no Mês</h2>
-          <p id="kpi-estimado">0</p>
-        </div>
-        <div class="kpi">
-          <h2>Eventos Realizados no Mês</h2>
-          <p id="kpi-realizado">0</p>
-        </div>
-        <div class="kpi">
-          <h2>Eventos desta Semana</h2>
-          <p id="kpi-semana">0</p>
-        </div>
+      <!-- LINHA DE CIMA (agora com Estimativa Semana) -->
+      <div class="kpi-linha" style="margin-top:20px;">
+        <div class="kpi"><h2>Eventos Estimados no Mês</h2><p id="kpi-estimado">0</p></div>
+        <div class="kpi"><h2>Eventos Realizados no Mês</h2><p id="kpi-realizado">0</p></div>
+        <div class="kpi"><h2>Eventos desta Semana</h2><p id="kpi-semana">0</p></div>
+        <div class="kpi"><h2>Estimativa Venda Semana</h2><p id="kpi-estimativa-semana">R$ 0,00</p></div>
+        <div class="kpi"><h2>Lucro no Mês</h2><p id="kpi-lucro-mes">R$ 0,00</p></div>
       </div>
 
-      <div class="kpi-linha" style="margin-top: 4px;">
-        <div class="kpi">
-          <h2>Estimativa Venda Mês</h2>
-          <p id="kpi-estimativa-mes">R$ 0,00</p>
-        </div>
-        <div class="kpi">
-          <h2>Venda Real Mês</h2>
-          <p id="kpi-venda-mes">R$ 0,00</p>
-        </div>
-        <div class="kpi">
-          <h2>Estimativa Venda Semana</h2>
-          <p id="kpi-estimativa-semana">R$ 0,00</p>
-        </div>
-        <div class="kpi">
-          <h2>Lucro no Mês</h2>
-          <p id="kpi-lucro-mes">R$ 0,00</p>
-        </div>
+      <!-- LINHA DE BAIXO (inclui Lucro Estimado Mês) -->
+      <div class="kpi-linha" style="margin-top:4px;">
+        <div class="kpi"><h2>Estimativa Venda Mês</h2><p id="kpi-estimativa-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Venda Real Mês</h2><p id="kpi-venda-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Lucro Estimado Mês</h2><p id="kpi-lucro-estimado-mes">R$ 0,00</p></div>
       </div>
 
       <form id="filtrosForm" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px;">
@@ -149,6 +111,7 @@
   </div>
 
   <script>
+    // Default dos filtros
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('filtroStatus').value = 'Aberto';
       const hoje = new Date();
