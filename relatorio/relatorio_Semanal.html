@@ -1,510 +1,143 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Relatório Evento</title>
-  <link rel="stylesheet" href="../assets/base.css" />
-  <link rel="stylesheet" href="../assets/menu-styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eventos</title>
+
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="../assets/menu.js"></script>
+  <script src="assets/menu.js" defer></script>
+
   <style>
-    /* ===== Layout base ===== */
-    .page-header h1 { margin-bottom: 12px; }
+    /* KPIs */
+    .kpi-linha{display:flex;gap:16px;padding:0 20px;margin-bottom:2px;flex-wrap:wrap}
+    .kpi{background:#fff3e0;border-left:4px solid #ff9800;padding:6px 10px;border-radius:6px;min-width:180px;flex:1;display:flex;flex-direction:column;justify-content:center;height:60px}
+    .kpi h2{margin:0 0 2px;font-size:12px;color:#333}
+    .kpi p{font-size:16px;margin:0;font-weight:bold;color:#ff9800}
 
-    /* ===== KPIs (mantidos da sua versão anterior) ===== */
-    .kpi-grid{
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 14px;
+    /* Tabela */
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      text-align:left;
+      padding:10px 8px;
+      background:#fff8ef;
+      border-bottom:1px solid #eee;
+      font-weight:600;
+      color:#000 !important;
     }
-    @media (max-width: 1100px){ .kpi-grid{ grid-template-columns: 1fr; } }
+    .main-content table thead th,
+    .main-content table thead tr th{color:#000 !important}
+    .main-content table thead th *{color:inherit !important}
 
-    .kpi-card{
+    tbody td{padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+    tbody tr:nth-child(odd){background:#fff}
+    tbody tr:nth-child(even){background:#fcfcfc}
+
+    .status-select{padding:4px 8px;font-size:13px;max-width:140px}
+    .pdv-verde{color:#1b7f1b;font-weight:700}
+    .pdv-vermelho{color:#c62828;font-weight:700}
+    .acoes button{margin-right:6px}
+
+    .money-input{
+      width: 120px;
+      padding: 4px 6px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
       background: #fff;
-      border: 1px solid #eee;
-      border-radius: 12px;
-      padding: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-    }
-    .kpi-title{
-      display:flex;justify-content:space-between;align-items:center;
-      font-weight: 700; font-size: 14px; margin-bottom: 8px;
-    }
-    .kpi-rows{
-      display:grid;grid-template-columns: 1fr auto; row-gap:6px;
       font-size: 13px;
+      text-align: right;
+      outline: none;
     }
-    .pill{
-      font-size: 11px; padding:2px 8px; border-radius: 999px; background:#ffe9d1; color:#8a3b00;
-    }
+    .money-input:focus{border-color:#ff9800; box-shadow:0 0 0 2px rgba(255,152,0,.15)}
 
-    .kpi-footnote{ font-size:11px; color:#777; margin-top:4px; }
-
-    /* ===== Filtros (novo layout) ===== */
-    .filtros-wrap{
-      border: 1px solid #eee;
-      border-radius: 12px;
-      padding: 12px;
-      background: #fff;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-      margin-bottom: 12px;
-    }
-    .filtros-grid{
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 12px;
-      align-items: start;
-    }
-    @media (max-width: 1100px){
-      .filtros-grid{ grid-template-columns: 1fr; }
-    }
-    .field{ display:flex; flex-direction: column; gap:6px; }
-    .field label{ font-size:12px; color:#555; }
-    .hint{ font-size: 11px; color:#777; }
-
-    /* Caixa do seletor de eventos */
-    .evento-box{
-      display:flex; flex-direction: column; gap:6px;
-      border:1px solid #eee; border-radius:8px; padding:8px;
-      background:#fafafa;
-    }
-    .evento-tools{ display:flex; gap:6px; align-items:center; }
-    .evento-tools input[type="text"]{ flex:1; padding:6px 8px; font-size:12px; border:1px solid #ddd; border-radius:6px; }
-    .evento-select{
-      width:100%;
-      height:160px; /* dá visibilidade real das opções */
-      font-size:12px;
-      border:1px solid #ddd;
-      border-radius:6px;
-      padding:6px;
-      background:#fff;
-    }
-
-    /* Botões */
-    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
-    .btn{ background-color:#ff7f00; color:white; padding:8px 12px; border:none; border-radius:8px; font-size:12px; cursor:pointer; }
-    .btn:hover{ background-color:#e96f00; }
-    .btn-ghost{ background:#fff; color:#444; border:1px solid #ddd; }
-    .btn-ghost:hover{ background:#f6f6f6; }
-
-    /* ===== Tabela ===== */
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
-    th { background-color: #ffcc80; position: sticky; top: 0; z-index: 1; }
-    tbody tr:nth-child(even){ background:#fafafa; }
-    tfoot td { font-weight: bold; background: #f9f9f9; }
+    .main-content > h2{color:#000 !important}
   </style>
 </head>
 <body>
-<div class="layout">
-  <aside class="sidebar" id="menuLateral"></aside>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
 
-  <main class="main-content">
-    <div class="page-header">
-      <h1>Relatório por Evento</h1>
-      <div class="kpi-footnote">Resumos: Anual = ano corrente | Mensal = mês corrente | Dinâmico = conforme filtros abaixo.</div>
-    </div>
+    <main class="main-content">
+      <h2>Eventos</h2>
 
-    <!-- ======= KPIs ======= -->
-    <div class="kpi-grid" id="kpiGrid">
-      <!-- ANUAL -->
-      <div class="kpi-card">
-        <div class="kpi-title">
-          <span>Resumo Anual</span>
-          <span class="pill" id="anoCorrente">Ano</span>
-        </div>
-        <div class="kpi-rows">
-          <div>Faturamento</div><div id="anualFaturamento">R$ 0,00</div>
-          <div>Lucro</div><div id="anualLucro">R$ 0,00</div>
-          <div>Margem</div><div id="anualMargem">0,0%</div>
-        </div>
+      <!-- Linha de cima: 4 KPIs -->
+      <div class="kpi-linha" style="margin-top:20px;">
+        <div class="kpi"><h2>Eventos Estimados no Mês</h2><p id="kpi-estimado">0</p></div>
+        <div class="kpi"><h2>Eventos Realizados no Mês</h2><p id="kpi-realizado">0</p></div>
+        <div class="kpi"><h2>Eventos desta Semana</h2><p id="kpi-semana">0</p></div>
+        <div class="kpi"><h2>Estimativa Venda Semana</h2><p id="kpi-estimativa-semana">R$ 0,00</p></div>
       </div>
 
-      <!-- MENSAL -->
-      <div class="kpi-card">
-        <div class="kpi-title">
-          <span>Resumo Mensal</span>
-          <span class="pill" id="mesCorrente">Mês</span>
-        </div>
-        <div class="kpi-rows">
-          <div>Faturamento</div><div id="mensalFaturamento">R$ 0,00</div>
-          <div>Lucro</div><div id="mensalLucro">R$ 0,00</div>
-          <div>Margem</div><div id="mensalMargem">0,0%</div>
-        </div>
+      <!-- Linha de baixo: 4 KPIs -->
+      <div class="kpi-linha" style="margin-top:4px;">
+        <div class="kpi"><h2>Estimativa Venda Mês</h2><p id="kpi-estimativa-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Venda Real Mês</h2><p id="kpi-venda-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Lucro Estimado Mês</h2><p id="kpi-lucro-estimado-mes">R$ 0,00</p></div>
+        <div class="kpi"><h2>Lucro no Mês</h2><p id="kpi-lucro-mes">R$ 0,00</p></div>
       </div>
 
-      <!-- DINÂMICO (FILTRO) -->
-      <div class="kpi-card">
-        <div class="kpi-title">
-          <span>Resumo Dinâmico</span>
-          <span class="pill">Filtro</span>
+      <form id="filtrosForm" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px;">
+        <div style="display:flex;flex-direction:column;">
+          <label for="filtroStatus">Status</label>
+          <select id="filtroStatus">
+            <option value="Todos">Todos</option>
+            <option value="Aberto">Aberto</option>
+            <option value="Finalizado">Finalizado</option>
+            <option value="Fechado">Fechado</option>
+          </select>
         </div>
-        <div class="kpi-rows">
-          <div>Faturamento</div><div id="filtroFaturamento">R$ 0,00</div>
-          <div>Lucro</div><div id="filtroLucro">R$ 0,00</div>
-          <div>Margem</div><div id="filtroMargem">0,0%</div>
+        <div style="display:flex;flex-direction:column;">
+          <label for="filtroNome">Nome do Evento</label>
+          <input type="text" id="filtroNome" />
         </div>
-        <div class="kpi-footnote" id="filtroResumoInfo"></div>
-      </div>
-    </div>
-
-    <!-- ======= Filtros ======= -->
-    <div class="filtros-wrap">
-      <form id="filtrosForm">
-        <div class="filtros-grid">
-
-          <!-- Nome do Evento com busca -->
-          <div class="field">
-            <label for="filtroNomeEvento">Nome do Evento</label>
-            <div class="evento-box">
-              <div class="evento-tools">
-                <input type="text" id="buscaEvento" placeholder="Buscar evento..." />
-                <button type="button" class="btn btn-ghost" id="btnSelecionarTodos">Selecionar tudo</button>
-                <button type="button" class="btn btn-ghost" id="btnLimparSelecao">Limpar</button>
-              </div>
-              <select id="filtroNomeEvento" class="evento-select" multiple></select>
-              <div class="hint">Dica: clique para selecionar; use Ctrl/Cmd para múltiplos.</div>
-            </div>
-          </div>
-
-          <!-- Data Início -->
-          <div class="field">
-            <label for="filtroDataInicio">Data Início</label>
-            <input type="date" id="filtroDataInicio">
-          </div>
-
-          <!-- Data Fim -->
-          <div class="field">
-            <label for="filtroDataFim">Data Fim</label>
-            <input type="date" id="filtroDataFim">
-          </div>
-
-          <!-- Status -->
-          <div class="field">
-            <label for="filtroStatus">Status</label>
-            <select id="filtroStatus">
-              <option value="" selected>Todos</option>
-              <option value="Fechado">Fechado</option>
-              <option value="Aberto">Aberto</option>
-              <option value="Finalizado">Finalizado</option>
-            </select>
-          </div>
-
+        <div style="display:flex;flex-direction:column;">
+          <label for="filtroDataInicio">Data Início</label>
+          <input type="date" id="filtroDataInicio" />
         </div>
-
-        <div class="actions">
-          <button type="submit" class="btn">Aplicar Filtros</button>
-          <button type="button" class="btn btn-ghost" id="btnLimparFiltros">Limpar Filtros</button>
+        <div style="display:flex;flex-direction:column;">
+          <label for="filtroDataFim">Data Fim</label>
+          <input type="date" id="filtroDataFim" />
         </div>
+        <button type="submit">Aplicar</button>
+        <button type="button" onclick="limparFiltros()">Limpar</button>
       </form>
-    </div>
 
-    <div id="tabelaResultado"></div>
-  </main>
-</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Nome do Evento</th>
+            <th>Data</th>
+            <th>Status</th>
+            <th>Média Venda</th>
+            <th>Estimativa</th>
+            <th>Venda PDV</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabelaEventos"></tbody>
+      </table>
+    </main>
+  </div>
 
-<script>
-  // ======= Bootstrap =======
-  document.addEventListener('DOMContentLoaded', () => {
-    carregarMenu('../');
-    carregarEventos();
-    wireUI();
-  });
-
-  const firebaseConfig = {
-    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-    authDomain: "lepanapp.firebaseapp.com",
-    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-    projectId: "lepanapp"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  let eventos = [];
-
-  // ======= Utils =======
-  const BRL = v => (v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-  const PCT = (num, den) => den ? ((num/den)*100).toFixed(1)+'%' : '0,0%';
-  const pad2 = n => String(n).padStart(2,'0');
-
-  function toISODate(anyDate){
-    if(!anyDate) return null;
-
-    // Já no formato ISO YYYY-MM-DD
-    if (typeof anyDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(anyDate)) return anyDate;
-
-    // Formato BR DD/MM/AAAA
-    if (typeof anyDate === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(anyDate)) {
-      const [d,m,y] = anyDate.split('/');
-      return `${y}-${m}-${d}`;
-    }
-
-    // Timestamp numérico
-    if (typeof anyDate === 'number') {
-      const d = new Date(anyDate);
-      if (!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    }
-
-    // Tentativa de parse genérica
-    const d = new Date(anyDate);
-    if (!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-
-    return null;
-  }
-
-  function hojeInfo(){
-    const now = new Date();
-    return { y: now.getFullYear(), m: now.getMonth()+1 };
-  }
-
-  // ======= Carregar dados =======
-  function carregarEventos() {
-    db.ref('eventos').once('value').then(snapshot => {
-      eventos = [];
-      snapshot.forEach(child => {
-        const e = child.val();
-        e.id = child.key;
-
-        // Normaliza a data para ISO (usaremos e._dataISO em todos os filtros)
-        e._dataISO = toISODate(e.data);
-
-        eventos.push(e);
-      });
-      popularFiltro();
-      setDataPadrao();
-      atualizarResumosFixos();
-      aplicarFiltros();
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('filtroStatus').value = 'Aberto';
+      const hoje = new Date();
+      const diaSemana = hoje.getDay();
+      const diasAteSegunda = (8 - diaSemana) % 7 || 7;
+      const proximaSegunda = new Date(hoje);
+      proximaSegunda.setDate(hoje.getDate() + diasAteSegunda);
+      const yyyy = proximaSegunda.getFullYear();
+      const mm = String(proximaSegunda.getMonth() + 1).padStart(2, '0');
+      const dd = String(proximaSegunda.getDate()).padStart(2, '0');
+      document.getElementById('filtroDataFim').value = `${yyyy}-${mm}-${dd}`;
     });
-  }
+  </script>
 
-  // ======= Filtros =======
-  function setDataPadrao() {
-    const hoje = new Date();
-    const dataFim = hoje;
-    const dataInicio = new Date(); dataInicio.setDate(hoje.getDate() - 6);
-    const fmt = (d) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    document.getElementById('filtroDataInicio').value = fmt(dataInicio);
-    document.getElementById('filtroDataFim').value = fmt(dataFim);
-  }
-
-  function popularFiltro() {
-    const filtro = document.getElementById('filtroNomeEvento');
-    const nomes = [...new Set(eventos.map(e => e.nomeEvento).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-    filtro.innerHTML = '';
-    nomes.forEach(nome => {
-      const opt = document.createElement('option');
-      opt.value = nome; opt.textContent = nome;
-      filtro.appendChild(opt);
-    });
-  }
-
-  function aplicarFiltros() {
-    const nomes = [...document.getElementById('filtroNomeEvento').selectedOptions].map(o => o.value);
-    const dataInicio = document.getElementById('filtroDataInicio').value || null;
-    const dataFim = document.getElementById('filtroDataFim').value || null;
-    const status = document.getElementById('filtroStatus').value;
-
-    const linhas = [];
-
-    eventos.filter(e => {
-      // precisa ter data válida para participar de filtros por data;
-      // se não houver data válida, consideramos apenas quando não há restrição de data.
-      const di = dataInicio;
-      const df = dataFim;
-      const dataOK = e._dataISO
-        ? (!di || e._dataISO >= di) && (!df || e._dataISO <= df)
-        : (!di && !df); // se não tem data válida, só passa se não houver filtro de data
-
-      if (!dataOK) return false;
-      if (nomes.length && !nomes.includes(e.nomeEvento)) return false;
-      if (status && e.status !== status) return false;
-      return true;
-    }).forEach(e => {
-      const vendaPDV = parseFloat(e.vendaPDV) || 0;
-      const lucro = parseFloat(e.lucroFinal) || 0;
-      const custoPerda = parseFloat(e.custoPerda) || 0;
-
-      const custoEquipe = Array.isArray(e.equipe) ? e.equipe.reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0) : 0;
-      const custoLogistica = Array.isArray(e.logistica) ? e.logistica.reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0) : 0;
-
-      linhas.push({
-        nomeEvento: e.nomeEvento || '-',
-        data: e._dataISO || (e.data || '-'),
-        vendaPDV, lucro, perda: custoPerda, equipe: custoEquipe, logistica: custoLogistica
-      });
-    });
-
-    // Ordena por data desc quando possível
-    linhas.sort((a, b) => (a.data < b.data ? 1 : -1));
-
-    exibirTabela(linhas);
-    atualizarResumoDinamico(linhas, {nomesSelecionados: nomes, dataInicio, dataFim, status});
-  }
-
-  function limparFiltros() {
-    document.querySelectorAll('#filtroNomeEvento option').forEach(o => o.selected = false);
-    setDataPadrao();
-    document.getElementById('filtroStatus').value = '';
-    document.getElementById('buscaEvento').value = '';
-    filtrarOpcoesEvento(''); // reseta filtro visual do seletor
-    aplicarFiltros();
-  }
-
-  // ======= Tabela =======
-  function exibirTabela(linhas) {
-    let html = '';
-
-    html += `<table><thead><tr>
-      <th>Data</th><th style="text-align:left">Nome Evento</th><th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
-      <th>Perda</th><th>% Perda</th><th>Custo Equipe</th><th>% Equipe</th><th>Custo Logística</th><th>% Logística</th>
-      </tr></thead><tbody>`;
-
-    let total = { vendaPDV: 0, lucro: 0, perda: 0, equipe: 0, logistica: 0 };
-
-    linhas.forEach(l => {
-      total.vendaPDV += l.vendaPDV;
-      total.lucro += l.lucro;
-      total.perda += l.perda;
-      total.equipe += l.equipe;
-      total.logistica += l.logistica;
-
-      const perc = (v) => l.vendaPDV ? (v / l.vendaPDV * 100).toFixed(1) : '0.0';
-
-      html += `<tr>
-        <td>${l.data}</td>
-        <td style="text-align:left">${l.nomeEvento}</td>
-        <td>${BRL(l.vendaPDV)}</td>
-        <td>${BRL(l.lucro)}</td>
-        <td>${perc(l.lucro)}%</td>
-        <td>${BRL(l.perda)}</td>
-        <td>${perc(l.perda)}%</td>
-        <td>${BRL(l.equipe)}</td>
-        <td>${perc(l.equipe)}%</td>
-        <td>${BRL(l.logistica)}</td>
-        <td>${perc(l.logistica)}%</td>
-      </tr>`;
-    });
-
-    const percent = (v) => total.vendaPDV ? (v / total.vendaPDV * 100).toFixed(1) : '0.0';
-
-    html += `<tr style="font-weight:bold; background:#f9f9f9">
-      <td colspan="2" style="text-align:right">TOTAL</td>
-      <td>${BRL(total.vendaPDV)}</td>
-      <td>${BRL(total.lucro)}</td>
-      <td>${percent(total.lucro)}%</td>
-      <td>${BRL(total.perda)}</td>
-      <td>${percent(total.perda)}%</td>
-      <td>${BRL(total.equipe)}</td>
-      <td>${percent(total.equipe)}%</td>
-      <td>${BRL(total.logistica)}</td>
-      <td>${percent(total.logistica)}%</td>
-    </tr>`;
-
-    html += `</tbody></table>`;
-
-    document.getElementById('tabelaResultado').innerHTML = html;
-  }
-
-  // ======= Resumos (KPIs) =======
-  function acumula(eventosLista){
-    return eventosLista.reduce((acc, e)=>{
-      const venda = parseFloat(e.vendaPDV) || 0;
-      const lucro = parseFloat(e.lucroFinal) || 0;
-      acc.venda += venda;
-      acc.lucro += lucro;
-      return acc;
-    }, {venda:0, lucro:0});
-  }
-
-  function atualizarResumosFixos(){
-    const { y, m } = hojeInfo();
-    const strY = String(y);
-    const strYM = `${y}-${pad2(m)}`;
-    const validStatus = new Set(['Fechado','Finalizado']);
-
-    const listaAnual = eventos.filter(e => e._dataISO && e._dataISO.startsWith(strY) && validStatus.has(e.status));
-    const listaMensal = eventos.filter(e => e._dataISO && e._dataISO.startsWith(strYM) && validStatus.has(e.status));
-
-    const a = acumula(listaAnual);
-    const mAc = acumula(listaMensal);
-
-    document.getElementById('anoCorrente').textContent = strY;
-    document.getElementById('mesCorrente').textContent = `${pad2(m)}/${y}`;
-
-    document.getElementById('anualFaturamento').textContent = BRL(a.venda);
-    document.getElementById('anualLucro').textContent = BRL(a.lucro);
-    document.getElementById('anualMargem').textContent = PCT(a.lucro, a.venda);
-
-    document.getElementById('mensalFaturamento').textContent = BRL(mAc.venda);
-    document.getElementById('mensalLucro').textContent = BRL(mAc.lucro);
-    document.getElementById('mensalMargem').textContent = PCT(mAc.lucro, mAc.venda);
-  }
-
-  function atualizarResumoDinamico(linhas, info){
-    const tot = linhas.reduce((acc, l)=>{
-      acc.venda += (l.vendaPDV||0);
-      acc.lucro += (l.lucro||0);
-      return acc;
-    }, {venda:0, lucro:0});
-
-    document.getElementById('filtroFaturamento').textContent = BRL(tot.venda);
-    document.getElementById('filtroLucro').textContent = BRL(tot.lucro);
-    document.getElementById('filtroMargem').textContent = PCT(tot.lucro, tot.venda);
-
-    const partes = [];
-    if(info.nomesSelecionados && info.nomesSelecionados.length) partes.push(`Eventos: ${info.nomesSelecionados.length}`);
-    if(info.dataInicio) partes.push(`De: ${info.dataInicio}`);
-    if(info.dataFim) partes.push(`Até: ${info.dataFim}`);
-    if(info.status) partes.push(`Status: ${info.status}`);
-    document.getElementById('filtroResumoInfo').textContent = partes.length ? partes.join(' | ') : 'Sem filtros (semanais padrão).';
-  }
-
-  // ======= UI helpers =======
-  function wireUI(){
-    // aplicar ao enviar
-    document.getElementById('filtrosForm').addEventListener('submit', function(e){
-      e.preventDefault(); aplicarFiltros();
-    });
-
-    // limpar filtros
-    document.getElementById('btnLimparFiltros').addEventListener('click', limparFiltros);
-
-    // aplicar automaticamente quando mudar algo
-    ['filtroDataInicio','filtroDataFim','filtroStatus','filtroNomeEvento'].forEach(id=>{
-      document.getElementById(id).addEventListener('change', aplicarFiltros);
-    });
-
-    // busca em Nome do Evento
-    const busca = document.getElementById('buscaEvento');
-    busca.addEventListener('input', (e)=> filtrarOpcoesEvento(e.target.value));
-
-    // selecionar todos / limpar seleção
-    document.getElementById('btnSelecionarTodos').addEventListener('click', ()=>{
-      const sel = document.getElementById('filtroNomeEvento');
-      [...sel.options].forEach(o => o.selected = true);
-      aplicarFiltros();
-    });
-    document.getElementById('btnLimparSelecao').addEventListener('click', ()=>{
-      const sel = document.getElementById('filtroNomeEvento');
-      [...sel.options].forEach(o => o.selected = false);
-      aplicarFiltros();
-    });
-  }
-
-  function filtrarOpcoesEvento(term){
-    const sel = document.getElementById('filtroNomeEvento');
-    const t = (term || '').toLowerCase();
-    [...sel.options].forEach(o=>{
-      const show = o.value.toLowerCase().includes(t);
-      o.style.display = show ? '' : 'none';
-    });
-  }
-
-  // ======= Kickstart (extra segurança) =======
-  // (carregado no DOMContentLoaded)
-</script>
+  <script src="eventos.js"></script>
 </body>
 </html>
