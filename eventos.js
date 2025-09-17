@@ -10,32 +10,31 @@ const db = firebase.database();
 
 let eventos = [];
 
+/* ===== Utilidades ===== */
 function formatDateBR(dateStr) {
   if (!dateStr) return new Date('1970-01-01T00:00:00');
   const [year, month, day] = (dateStr || '').split('-');
   return new Date(`${year}-${month}-${day}T00:00:00`);
 }
-
 function formatCurrency(v) {
   return Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
-
-// Formata número com 2 casas, sem "R$"
 function formatNumberBR(v){
   return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-
-// Converte texto "1.234,56" ou "R$ 1.234,56" em Number
 function parseMoney(str){
   if (str == null) return 0;
-  const s = String(str)
-    .replace(/[^\d,.\-]/g, '')  // remove tudo menos dígitos, vírgula, ponto e sinal
-    .replace(/\./g, '')         // remove separadores de milhar
-    .replace(',', '.');         // vírgula vira decimal
+  const s = String(str).replace(/[^\d,.\-]/g, '').replace(/\./g, '').replace(',', '.');
   const n = parseFloat(s);
   return isNaN(n) ? 0 : Math.round(n * 100) / 100;
 }
+// Evita quebrar a página se faltar algum KPI no HTML
+function setText(id, value){
+  const el = document.getElementById(id);
+  if (el) el.innerText = value;
+}
 
+/* ===== Carregamento ===== */
 function carregarEventos() {
   db.ref('eventos').once('value').then(snapshot => {
     eventos = [];
@@ -56,6 +55,7 @@ function carregarEventos() {
   });
 }
 
+/* ===== Listagem + edição inline ===== */
 function aplicarFiltros() {
   const status = document.getElementById('filtroStatus').value;
   const nomeFiltro = document.getElementById('filtroNome').value.toLowerCase();
@@ -74,7 +74,7 @@ function aplicarFiltros() {
   });
 
   eventosFiltrados.forEach(eAtual => {
-    // Média de venda (3 últimos eventos anteriores do mesmo nome)
+    // 3 últimos eventos anteriores do mesmo nome
     const eventosAnteriores = eventos
       .filter(e =>
         e.nomeEvento === eAtual.nomeEvento &&
@@ -91,11 +91,9 @@ function aplicarFiltros() {
 
     const vendaPDVNum = Number(eAtual.vendaPDV || 0);
     const estimativaNum = Number(eAtual.estimativaVenda || 0);
+    const corStyle = (vendaPDVNum > estimativaNum)
+      ? 'color:#1b7f1b;font-weight:700' : 'color:#c62828;font-weight:700';
 
-    const corOk = vendaPDVNum > estimativaNum;
-    const corStyle = corOk ? 'color:#1b7f1b;font-weight:700' : 'color:#c62828;font-weight:700';
-
-    // Select de status EDITÁVEL (salva imediatamente no Firebase)
     const statusAtual = eAtual.status || 'Aberto';
     const selectStatus = `
       <select class="status-select" data-id="${eAtual.id}">
@@ -112,19 +110,12 @@ function aplicarFiltros() {
       <td>${selectStatus}</td>
       <td>${formatCurrency(mediaVenda)}</td>
       <td>
-        <input type="text"
-               class="money-input inp-estimativa"
-               data-id="${eAtual.id}"
-               data-field="estimativaVenda"
-               value="${formatNumberBR(estimativaNum)}" />
+        <input type="text" class="money-input inp-estimativa" data-id="${eAtual.id}"
+               data-field="estimativaVenda" value="${formatNumberBR(estimativaNum)}" />
       </td>
       <td>
-        <input type="text"
-               class="money-input inp-pdv"
-               data-id="${eAtual.id}"
-               data-field="vendaPDV"
-               style="${corStyle}"
-               value="${formatNumberBR(vendaPDVNum)}" />
+        <input type="text" class="money-input inp-pdv" data-id="${eAtual.id}"
+               data-field="vendaPDV" style="${corStyle}" value="${formatNumberBR(vendaPDVNum)}" />
       </td>
       <td class="acoes">
         <button class="btn btn-sm btn-outline-primary" onclick="editarEvento('${eAtual.id}')">Editar</button>
@@ -137,7 +128,7 @@ function aplicarFiltros() {
     tabela.appendChild(row);
   });
 
-  // Listener para salvar alteração de Status imediatamente
+  // salvar status imediato
   tabela.querySelectorAll('select.status-select').forEach(sel => {
     sel.addEventListener('change', async (ev) => {
       const id = ev.target.getAttribute('data-id');
@@ -159,160 +150,127 @@ function aplicarFiltros() {
     });
   });
 
-  // === EDIÇÃO INLINE: Estimativa e Venda PDV ===
   anexarEdicaoInline(tabela);
 }
 
 function anexarEdicaoInline(tabela){
   const inputs = tabela.querySelectorAll('.money-input');
-
   inputs.forEach(inp=>{
     const original = inp.value;
-
-    // Seleciona tudo ao focar (facilita editar)
-    inp.addEventListener('focus', () => {
-      setTimeout(()=>inp.select(), 0);
-    });
-
-    // Enter = salvar, Esc = cancelar
+    inp.addEventListener('focus', () => setTimeout(()=>inp.select(), 0));
     inp.addEventListener('keydown', (e)=>{
-      if (e.key === 'Enter'){
-        e.preventDefault();
-        inp.blur(); // dispara o blur -> salvar
-      } else if (e.key === 'Escape'){
-        e.preventDefault();
-        inp.value = original;
-        inp.blur();
-      }
+      if (e.key === 'Enter'){ e.preventDefault(); inp.blur(); }
+      else if (e.key === 'Escape'){ e.preventDefault(); inp.value = original; inp.blur(); }
     });
-
     inp.addEventListener('blur', async ()=>{
       const id = inp.getAttribute('data-id');
       const field = inp.getAttribute('data-field');
       const novoValor = parseMoney(inp.value);
-
-      // Evita writes desnecessários se não mudou
       if (formatNumberBR(novoValor) === original) return;
-
       inp.disabled = true;
-
       try{
         await db.ref('eventos/'+id+'/'+field).set(novoValor);
-        // Recarrega lista + KPIs para refletir cor/vermelho/verde e totais
         carregarEventos();
       }catch(err){
         alert('Não foi possível salvar. Tente novamente.');
-        inp.disabled = false;
-        inp.focus();
+        inp.disabled = false; inp.focus();
       }
     });
   });
 }
 
-function calcularKPIs() {
+/* ===== KPIs ===== */
+async function calcularKPIs() {
+  // Lê %Lucro da config (fallback 40 se não existir)
+  const [evSnap, lucroSnap] = await Promise.all([
+    db.ref('eventos').once('value'),
+    db.ref('configuracao/percentualLucro').once('value')
+  ]);
+  const percentualLucro = Number(lucroSnap.val() ?? 40);
+
   const hoje = new Date();
   const semanaInicio = new Date(hoje);
-  // Considera semana iniciando na segunda-feira
-  semanaInicio.setDate(semanaInicio.getDate() - semanaInicio.getDay() + 1);
+  semanaInicio.setDate(semanaInicio.getDate() - semanaInicio.getDay() + 1); // segunda
   const semanaFim = new Date(semanaInicio);
   semanaFim.setDate(semanaFim.getDate() + 7);
 
   let estimado = 0, realizado = 0, semana = 0;
   let estimativaMes = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
 
-  db.ref('eventos').once('value').then(snapshot => {
-    const lista = snapshot.val();
+  const lista = evSnap.val();
 
-    if (lista) {
-      Object.values(lista).forEach(e => {
-        if (!e.data) return;
+  if (lista) {
+    Object.values(lista).forEach(e => {
+      if (!e.data) return;
+      const dataEvento = formatDateBR(e.data);
+      const status = (e.status || '').toLowerCase();
 
-        const dataEvento = formatDateBR(e.data);
-        const status = (e.status || '').toLowerCase();
+      const dentroDoMes = dataEvento.getFullYear() === hoje.getFullYear() &&
+                          dataEvento.getMonth() === hoje.getMonth();
+      const dentroDaSemana = dataEvento >= semanaInicio && dataEvento <= semanaFim;
 
-        const dentroDoMes = dataEvento.getFullYear() === hoje.getFullYear() &&
-                            dataEvento.getMonth() === hoje.getMonth();
+      const vendaPDV = Number(e.vendaPDV || 0);
 
-        const dentroDaSemana = dataEvento >= semanaInicio && dataEvento <= semanaFim;
+      if (dentroDoMes) {
+        estimado++;
+        estimativaMes += Number(e.estimativaVenda || 0);
+      }
 
-        const vendaPDV = Number(e.vendaPDV || 0);
+      // Lucro no mês = soma de lucroFinal (Fechado/Finalizado)
+      if (dentroDoMes && (status === 'fechado' || status === 'finalizado')) {
+        realizado++;
+        vendaMes += vendaPDV;
+        lucroMes += Number(e.lucroFinal || 0);
+      }
 
-        // Contagem e somas gerais do mês
-        if (dentroDoMes) {
-          estimado++;
-          estimativaMes += Number(e.estimativaVenda || 0);
-        }
+      if (dentroDaSemana) {
+        estimativaSemana += Number(e.estimativaVenda || 0);
+        semana++;
+      }
+    });
+  }
 
-        // === KPI Lucro no Mês (AJUSTE): soma de e.lucroFinal dos eventos Fechado/Finalizado ===
-        if (dentroDoMes && (status === 'fechado' || status === 'finalizado')) {
-          realizado++;
-          vendaMes += vendaPDV;
-          lucroMes += Number(e.lucroFinal || 0); // <- soma direta do lucroFinal salvo no evento
-        }
+  const lucroEstimadoMes = estimativaMes * (percentualLucro / 100);
 
-        // KPI Estimativa da Semana (independe de status)
-        if (dentroDaSemana) {
-          estimativaSemana += Number(e.estimativaVenda || 0);
-          semana++;
-        }
-      });
-    }
+  setText('kpi-estimado', estimado);
+  setText('kpi-realizado', realizado);
+  setText('kpi-semana', semana);
 
-    document.getElementById('kpi-estimado').innerText = estimado;
-    document.getElementById('kpi-realizado').innerText = realizado;
-    document.getElementById('kpi-semana').innerText = semana;
-    document.getElementById('kpi-estimativa-mes').innerText = formatCurrency(estimativaMes);
-    document.getElementById('kpi-venda-mes').innerText = formatCurrency(vendaMes);
-    document.getElementById('kpi-estimativa-semana').innerText = formatCurrency(estimativaSemana);
-    document.getElementById('kpi-lucro-mes').innerText = formatCurrency(lucroMes);
-  });
+  setText('kpi-estimativa-semana', formatCurrency(estimativaSemana));
+  setText('kpi-estimativa-mes', formatCurrency(estimativaMes));
+  setText('kpi-venda-mes', formatCurrency(vendaMes));
+  setText('kpi-lucro-mes', formatCurrency(lucroMes));
+  setText('kpi-lucro-estimado-mes', formatCurrency(lucroEstimadoMes));
 }
 
+/* ===== Ações ===== */
 function editarEvento(id) { window.location.href = `GestaoEvento.html?id=${id}`; }
-
+function visualizarEvento(id) { window.location.href = `visualizar_evento.html?id=${id}`; }
+function enviarLink(id) {
+  const url = `${window.location.origin}/LepanApp/form.html?id=${id}`;
+  navigator.clipboard.writeText(url).then(() => alert('Link copiado para a área de transferência!'));
+}
 function duplicarEvento(id) {
   const evento = eventos.find(e => e.id === id);
   if (!evento) return;
-
   const novoEvento = { ...evento };
   novoEvento.produtos = (evento.produtos || []).map(p => ({
-    produtoId: p.produtoId,
-    quantidade: p.quantidade,
-    congelado: 0,
-    assado: 0,
-    perda: 0
+    produtoId: p.produtoId, quantidade: p.quantidade, congelado: 0, assado: 0, perda: 0
   }));
-
-  delete novoEvento.id;
-  delete novoEvento.vendaPDV;
+  delete novoEvento.id; delete novoEvento.vendaPDV; delete novoEvento.data;
   novoEvento.status = "Aberto";
-  delete novoEvento.data;
-
   const novoId = db.ref('eventos').push().key;
   db.ref('eventos/' + novoId).set(novoEvento).then(() => {
-    alert('Evento duplicado com sucesso!');
-    carregarEventos();
+    alert('Evento duplicado com sucesso!'); carregarEventos();
   });
 }
-
-function enviarLink(id) {
-  const url = `${window.location.origin}/LepanApp/form.html?id=${id}`;
-  navigator.clipboard.writeText(url).then(() => {
-    alert('Link copiado para a área de transferência!');
-  });
-}
-
-function visualizarEvento(id) { window.location.href = `visualizar_evento.html?id=${id}`; }
-
 function excluirEvento(id) {
   if (confirm('Tem certeza que deseja excluir este evento?')) {
     db.ref('eventos/' + id).remove().then(() => {
-      alert('Evento excluído com sucesso!');
-      carregarEventos();
+      alert('Evento excluído com sucesso!'); carregarEventos();
     });
   }
 }
-
 function limparFiltros() {
   document.getElementById('filtroStatus').value = 'Todos';
   document.getElementById('filtroNome').value = '';
@@ -322,10 +280,7 @@ function limparFiltros() {
 }
 
 document.getElementById('filtrosForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  aplicarFiltros();
+  e.preventDefault(); aplicarFiltros();
 });
 
-document.addEventListener("DOMContentLoaded", () => {
-  carregarEventos();
-});
+document.addEventListener("DOMContentLoaded", () => { carregarEventos(); });
