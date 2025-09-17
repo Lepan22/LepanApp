@@ -11,37 +11,22 @@
   <script src="../assets/menu.js"></script>
   <style>
     /* ===== KPIs (compactos) ===== */
-    .kpi-grid{
-      display:grid; grid-template-columns:repeat(3,1fr);
-      gap:10px; margin-bottom:10px;
-    }
+    .kpi-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; }
     @media (max-width:1100px){ .kpi-grid{ grid-template-columns:1fr; } }
-    .kpi-card{
-      background:#fff; border:1px solid #eee; border-radius:10px; padding:10px;
-    }
+    .kpi-card{ background:#fff; border:1px solid #eee; border-radius:10px; padding:10px; }
     .kpi-title{ display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:13px; margin-bottom:6px; }
     .kpi-rows{ display:grid; grid-template-columns:1fr auto; row-gap:4px; font-size:12px; }
     .pill{ font-size:10px; padding:1px 6px; border-radius:999px; background:#ffe9d1; color:#8a3b00; }
     .kpi-footnote{ font-size:11px; color:#777; margin-top:2px; }
 
     /* ===== Card filtros (enxuto) ===== */
-    .card-dashboard{
-      background:#fff; border:1px solid #eee; border-radius:10px; padding:10px;
-      box-shadow:0 2px 6px rgba(0,0,0,.03);
-    }
-    .filtros-grid{
-      display:grid; gap:8px;
-      grid-template-columns: 2fr 1fr 1fr 1fr 1fr; /* evento | data ini | data fim | %min | %max */
-      align-items:end;
-    }
+    .card-dashboard{ background:#fff; border:1px solid #eee; border-radius:10px; padding:10px; box-shadow:0 2px 6px rgba(0,0,0,.03); }
+    .filtros-grid{ display:grid; gap:8px; grid-template-columns:2fr 1fr 1fr 1fr 1fr; align-items:end; }
     @media (max-width:1100px){ .filtros-grid{ grid-template-columns:1fr; } }
     .field{ display:flex; flex-direction:column; gap:4px; }
     .field label{ font-size:12px; color:#555; }
-    select, input[type="date"], input[type="number"]{
-      border:1px solid #ddd; border-radius:8px; padding:6px 8px; font-size:12px; background:#fff;
-    }
+    select, input[type="date"], input[type="number"]{ border:1px solid #ddd; border-radius:8px; padding:6px 8px; font-size:12px; background:#fff; }
     #filtroNomeEvento{ min-height:150px; }
-
     .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center; }
     .btn{ background:#ff7f00; color:#fff; padding:7px 10px; border:none; border-radius:8px; font-size:12px; cursor:pointer; }
     .btn:hover{ background:#e96f00; }
@@ -58,7 +43,7 @@
 
     /* Destaques */
     .negativo{ color:#b00020; font-weight:700; }
-    .atenMargem{ background:#fff3cd; } /* amarelo claro */
+    .atenMargem{ background:#fff3cd; } /* margem < 30% */
   </style>
 </head>
 <body>
@@ -132,8 +117,8 @@
 
         <div class="actions">
           <div class="quick">
-            <button type="button" class="btn btn-ghost" id="btnMesAtual">Mês atual</button>
-            <button type="button" class="btn btn-ghost" id="btnAnoAtual">Ano atual</button>
+            <button type="button" class="btn btn-ghost" id="btnMesAtual" title="Mês atual">Mês atual</button>
+            <button type="button" class="btn btn-ghost" id="btnAnoAtual" title="Ano atual">Ano atual</button>
           </div>
           <div style="flex:1"></div>
           <div>
@@ -156,7 +141,7 @@
 </div>
 
 <script>
-  // ===== Boot =====
+  /* ========= Boot ========= */
   document.addEventListener('DOMContentLoaded', () => {
     carregarMenu('../');
     initFirebase();
@@ -164,7 +149,7 @@
     wireUI();
   });
 
-  // ===== Firebase =====
+  /* ========= Firebase ========= */
   let db;
   function initFirebase(){
     const firebaseConfig = {
@@ -177,7 +162,7 @@
     db = firebase.database();
   }
 
-  // ===== Utils =====
+  /* ========= Utils ========= */
   const BRL = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const PCT = (num,den)=> den ? ((num/den)*100).toFixed(1)+'%' : '0,0%';
   const pad2 = n => String(n).padStart(2,'0');
@@ -191,13 +176,10 @@
     return null;
   }
   function hojeInfo(){ const n=new Date(); return { y:n.getFullYear(), m:n.getMonth()+1 }; }
-  function firstLastOfMonth(y,m){
-    const first = new Date(y, m-1, 1);
-    const last  = new Date(y, m, 0);
-    return [first, last];
-  }
+  function firstLastOfMonth(y,m){ const first=new Date(y,m-1,1); const last=new Date(y,m,0); return [first,last]; }
+  function fmtDate(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
 
-  // ===== Dados =====
+  /* ========= Dados ========= */
   let eventos = [];
 
   function carregarEventos(){
@@ -205,13 +187,13 @@
       eventos = [];
       snap.forEach(ch=>{
         const e = ch.val(); e.id = ch.key;
-        e._dataISO = toISODate(e.data);
+        e._dataISO = toISODate(e.data);     // <- normaliza data (lógica essencial)
         eventos.push(e);
       });
       popularNomes();
       setDatasPadrao();
       atualizarResumosFixos();
-      aplicarFiltros();
+      aplicarFiltros();                      // render inicial
     });
   }
 
@@ -224,9 +206,10 @@
     });
   }
 
-  // ===== UI =====
+  /* ========= UI ========= */
   function wireUI(){
     document.getElementById('filtrosForm').addEventListener('submit', (e)=>{ e.preventDefault(); aplicarFiltros(); });
+
     document.getElementById('btnLimpar').addEventListener('click', ()=>{
       [...document.getElementById('filtroNomeEvento').options].forEach(o=>o.selected=false);
       document.getElementById('filtroStatus').value='';
@@ -235,36 +218,32 @@
       setDatasPadrao();
       aplicarFiltros();
     });
+
     document.getElementById('btnMesAtual').addEventListener('click', setPeriodoMesAtual);
     document.getElementById('btnAnoAtual').addEventListener('click', setPeriodoAnoAtual);
   }
 
   function setDatasPadrao(){
-    // última semana por padrão
     const hoje = new Date();
     const ini = new Date(); ini.setDate(hoje.getDate()-6);
-    const fmt = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    document.getElementById('filtroDataInicio').value = fmt(ini);
-    document.getElementById('filtroDataFim').value = fmt(hoje);
+    document.getElementById('filtroDataInicio').value = fmtDate(ini);
+    document.getElementById('filtroDataFim').value = fmtDate(hoje);
   }
   function setPeriodoMesAtual(){
     const {y,m} = hojeInfo();
     const [first,last] = firstLastOfMonth(y,m);
-    const fmt = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    document.getElementById('filtroDataInicio').value = fmt(first);
-    document.getElementById('filtroDataFim').value = fmt(last);
+    document.getElementById('filtroDataInicio').value = fmtDate(first);
+    document.getElementById('filtroDataFim').value = fmtDate(last);
     aplicarFiltros();
   }
   function setPeriodoAnoAtual(){
     const {y} = hojeInfo();
-    const first = new Date(y,0,1), last = new Date(y,11,31);
-    const fmt = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    document.getElementById('filtroDataInicio').value = fmt(first);
-    document.getElementById('filtroDataFim').value = fmt(last);
+    document.getElementById('filtroDataInicio').value = `${y}-01-01`;
+    document.getElementById('filtroDataFim').value = `${y}-12-31`;
     aplicarFiltros();
   }
 
-  // ===== Filtros =====
+  /* ========= Filtros & Render ========= */
   function aplicarFiltros(){
     const nomes = [...document.getElementById('filtroNomeEvento').selectedOptions].map(o=>o.value);
     const di = document.getElementById('filtroDataInicio').value || null;
@@ -281,20 +260,16 @@
       // Data
       const dataOK = e._dataISO ? (!di || e._dataISO>=di) && (!df || e._dataISO<=df) : (!di && !df);
       if(!dataOK) return false;
-
       // Nome
       if(nomes.length && !nomes.includes(e.nomeEvento)) return false;
-
       // Status
       if(st && e.status !== st) return false;
-
-      // % Lucro (margem) – se informado
+      // Margem %
       const venda = parseFloat(e.vendaPDV)||0;
       const lucro = parseFloat(e.lucroFinal)||0;
-      const margem = venda ? (lucro / venda * 100) : 0; // em %
+      const margem = venda ? (lucro / venda * 100) : 0;
       if(pctMin!==null && margem < pctMin) return false;
       if(pctMax!==null && margem > pctMax) return false;
-
       return true;
     }).forEach(e=>{
       const venda = parseFloat(e.vendaPDV)||0;
@@ -306,20 +281,15 @@
       linhas.push({
         data: e._dataISO || (e.data || '-'),
         nomeEvento: e.nomeEvento || '-',
-        vendaPDV: venda,
-        lucro: lucro,
-        perda, equipe, logistica
+        vendaPDV: venda, lucro, perda, equipe, logistica
       });
     });
 
-    // ordena por data desc
     linhas.sort((a,b)=> (a.data<b.data?1:-1));
-
     exibirTabela(linhas);
     atualizarResumoDinamico(linhas, {nomesSelecionados: nomes, dataInicio: di, dataFim: df, status: st, pctMin, pctMax});
   }
 
-  // ===== Tabela =====
   function exibirTabela(linhas){
     let html = `<table><thead><tr>
       <th>Data</th><th style="text-align:left">Nome Evento</th>
@@ -333,12 +303,12 @@
 
     linhas.forEach(l=>{
       total.vendaPDV += l.vendaPDV;
-      total.lucro += l.lucro;
-      total.perda += l.perda;
-      total.equipe += l.equipe;
-      total.logistica += l.logistica;
+      total.lucro    += l.lucro;
+      total.perda    += l.perda;
+      total.equipe   += l.equipe;
+      total.logistica+= l.logistica;
 
-      const p = (v)=> l.vendaPDV ? (v/l.vendaPDV*100).toFixed(1) : '0.0';
+      const p = v => l.vendaPDV ? (v/l.vendaPDV*100).toFixed(1) : '0.0';
       const margemNum = l.vendaPDV ? (l.lucro/l.vendaPDV*100) : 0;
       const lucroClass = l.lucro < 0 ? 'negativo' : '';
       const margemClass = (margemNum < 30) ? 'atenMargem' : '';
@@ -358,7 +328,7 @@
       </tr>`;
     });
 
-    const pt = (v)=> total.vendaPDV ? (v/total.vendaPDV*100).toFixed(1) : '0.0';
+    const pt = v => total.vendaPDV ? (v/total.vendaPDV*100).toFixed(1) : '0.0';
     html += `<tr style="font-weight:bold; background:#f9f9f9">
       <td colspan="2" style="text-align:right">TOTAL</td>
       <td>${BRL(total.vendaPDV)}</td>
@@ -375,7 +345,7 @@
     document.getElementById('tabelaResultado').innerHTML = html;
   }
 
-  // ===== KPIs =====
+  /* ========= KPIs ========= */
   function acum(lista){
     return lista.reduce((acc,e)=>{
       acc.v += (parseFloat(e.vendaPDV)||0);
@@ -389,8 +359,8 @@
     const yS = String(y), ym = `${y}-${pad2(m)}`;
     const ok = new Set(['Fechado','Finalizado']);
 
-    const anual = eventos.filter(e=> e._dataISO && e._dataISO.startsWith(yS) && ok.has(e.status));
-    const mensal = eventos.filter(e=> e._dataISO && e._dataISO.startsWith(ym) && ok.has(e.status));
+    const anual  = eventos.filter(e=> e._dataISO && e._dataISO.startsWith(yS)  && ok.has(e.status));
+    const mensal = eventos.filter(e=> e._dataISO && e._dataISO.startsWith(ym)  && ok.has(e.status));
 
     const A = acum(anual), M = acum(mensal);
 
@@ -398,19 +368,19 @@
     document.getElementById('mesCorrente').textContent = `${pad2(m)}/${y}`;
 
     document.getElementById('anualFaturamento').textContent = BRL(A.v);
-    document.getElementById('anualLucro').textContent = BRL(A.l);
-    document.getElementById('anualMargem').textContent = PCT(A.l,A.v);
+    document.getElementById('anualLucro').textContent      = BRL(A.l);
+    document.getElementById('anualMargem').textContent     = PCT(A.l,A.v);
 
-    document.getElementById('mensalFaturamento').textContent = BRL(M.v);
-    document.getElementById('mensalLucro').textContent = BRL(M.l);
-    document.getElementById('mensalMargem').textContent = PCT(M.l,M.v);
+    document.getElementById('mensalFaturamento').textContent= BRL(M.v);
+    document.getElementById('mensalLucro').textContent      = BRL(M.l);
+    document.getElementById('mensalMargem').textContent     = PCT(M.l,M.v);
   }
 
   function atualizarResumoDinamico(linhas, info){
     const tot = linhas.reduce((a,l)=>{ a.v+=l.vendaPDV; a.l+=l.lucro; return a; },{v:0,l:0});
     document.getElementById('filtroFaturamento').textContent = BRL(tot.v);
-    document.getElementById('filtroLucro').textContent = BRL(tot.l);
-    document.getElementById('filtroMargem').textContent = PCT(tot.l, tot.v);
+    document.getElementById('filtroLucro').textContent       = BRL(tot.l);
+    document.getElementById('filtroMargem').textContent      = PCT(tot.l, tot.v);
 
     const partes=[];
     if(info.nomesSelecionados?.length) partes.push(`Eventos: ${info.nomesSelecionados.length}`);
