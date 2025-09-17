@@ -14,52 +14,36 @@
     .page-header h1 { margin-bottom: 12px; }
 
     .kpi-grid{
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 14px;
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 12px; margin-bottom: 14px;
     }
     @media (max-width: 1100px){ .kpi-grid{ grid-template-columns: 1fr; } }
 
     .kpi-card{
-      background: #fff;
-      border: 1px solid #eee;
-      border-radius: 12px;
-      padding: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+      background:#fff; border:1px solid #eee; border-radius:12px; padding:14px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.04);
     }
-    .kpi-title{
-      display:flex;justify-content:space-between;align-items:center;
-      font-weight: 700; font-size: 14px; margin-bottom: 8px;
-    }
-    .kpi-sub{ font-size: 11px; color: #666; }
-
-    .kpi-rows{
-      display:grid;grid-template-columns: 1fr auto; row-gap:6px;
-      font-size: 13px;
-    }
+    .kpi-title{ display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:14px; margin-bottom:8px; }
+    .kpi-sub{ font-size:11px; color:#666; }
+    .kpi-rows{ display:grid; grid-template-columns:1fr auto; row-gap:6px; font-size:13px; }
     .kpi-rows .label{ color:#444; }
     .kpi-rows .value{ font-weight:600; }
-
-    .pill{
-      font-size: 11px; padding:2px 8px; border-radius: 999px; background:#ffe9d1; color:#8a3b00;
-    }
+    .pill{ font-size:11px; padding:2px 8px; border-radius:999px; background:#ffe9d1; color:#8a3b00; }
 
     /* ===== Filtros & Botões ===== */
-    .form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; align-items: flex-end; }
-    .form-row > div { display: flex; flex-direction: column; }
-    label, select, input { font-size: 12px; }
-    .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
-    .btn-navegar:hover { background-color: #e96f00; }
+    .form-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px; align-items:flex-end; }
+    .form-row > div { display:flex; flex-direction:column; }
+    label, select, input { font-size:12px; }
+    .btn-navegar { background:#ff7f00; color:white; padding:6px 10px; border:none; border-radius:6px; font-size:12px; cursor:pointer; }
+    .btn-navegar:hover { background:#e96f00; }
 
     /* ===== Tabela ===== */
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
-    th { background-color: #ffcc80; position: sticky; top: 0; z-index: 1; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; font-size:12px; }
+    th, td { border:1px solid #ddd; padding:6px 8px; text-align:center; }
+    th { background-color:#ffcc80; position:sticky; top:0; z-index:1; }
     tbody tr:nth-child(even){ background:#fafafa; }
-    tfoot td { font-weight: bold; background: #f9f9f9; }
+    tfoot td { font-weight:bold; background:#f9f9f9; }
 
-    /* Área da datação dos resumos */
     .kpi-footnote{ font-size:11px; color:#777; margin-top:4px; }
   </style>
 </head>
@@ -172,16 +156,30 @@
   let eventos = [];
 
   // ======= Util =======
+  const pad2 = n => String(n).padStart(2,'0');
   const BRL = v => (v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
   const PCT = (num, den) => den ? ((num/den)*100).toFixed(1)+'%' : '0,0%';
-  const pad2 = n => String(n).padStart(2,'0');
+
+  // Normaliza para ISO (YYYY-MM-DD) a partir de 'DD/MM/AAAA', timestamp ou Date/string.
+  function toISODate(anyDate){
+    if(!anyDate) return null;
+    if (typeof anyDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(anyDate)) return anyDate; // já ISO
+    if (typeof anyDate === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(anyDate)) {
+      const [d,m,y] = anyDate.split('/');
+      return `${y}-${m}-${d}`;
+    }
+    if (typeof anyDate === 'number') {
+      const d = new Date(anyDate);
+      if (!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    }
+    const d = new Date(anyDate);
+    if (!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    return null;
+  }
 
   function hojeInfo(){
     const now = new Date();
-    return {
-      y: now.getFullYear(),
-      m: now.getMonth()+1
-    };
+    return { y: now.getFullYear(), m: now.getMonth()+1 };
   }
 
   // ======= Load =======
@@ -191,13 +189,12 @@
       snapshot.forEach(child => {
         const e = child.val();
         e.id = child.key;
+        e._dataISO = toISODate(e.data); // <-- chave da correção
         eventos.push(e);
       });
       popularFiltro();
       setDataPadrao();
-      // Resumos globais (anual/mensal) independem do filtro:
       atualizarResumosFixos();
-      // Tabela + resumo dinâmico (com filtros padrão):
       aplicarFiltros();
     });
   }
@@ -237,17 +234,19 @@
 
   function aplicarFiltros() {
     const nomes = [...document.getElementById('filtroNomeEvento').selectedOptions].map(o => o.value);
-    const dataInicio = document.getElementById('filtroDataInicio').value;
-    const dataFim = document.getElementById('filtroDataFim').value;
+    const dataInicio = document.getElementById('filtroDataInicio').value || null;
+    const dataFim = document.getElementById('filtroDataFim').value || null;
     const status = document.getElementById('filtroStatus').value;
 
     const linhas = [];
 
     eventos.filter(e => {
-      if (!e.data) return false;
+      // Data: usa normalização; se não houver _dataISO e houver filtro de data, descarta
+      const dataOK = e._dataISO ? (!dataInicio || e._dataISO >= dataInicio) && (!dataFim || e._dataISO <= dataFim)
+                                : (!dataInicio && !dataFim);
+      if (!dataOK) return false;
+
       if (nomes.length && !nomes.includes(e.nomeEvento)) return false;
-      if (dataInicio && e.data < dataInicio) return false;
-      if (dataFim && e.data > dataFim) return false;
       if (status && e.status !== status) return false;
       return true;
     }).forEach(e => {
@@ -260,7 +259,7 @@
 
       linhas.push({
         nomeEvento: e.nomeEvento || '-',
-        data: e.data,
+        data: e._dataISO || (e.data || '-'),
         vendaPDV, lucro, perda: custoPerda, equipe: custoEquipe, logistica: custoLogistica
       });
     });
@@ -342,10 +341,9 @@
     const strY = String(y);
     const strYM = `${y}-${pad2(m)}`;
 
-    // Consideramos Anual/Mensal para eventos com status Fechado ou Finalizado (padrão operacional).
     const validStatus = new Set(['Fechado','Finalizado']);
-    const listaAnual = eventos.filter(e => e.data && e.data.startsWith(strY) && validStatus.has(e.status));
-    const listaMensal = eventos.filter(e => e.data && e.data.startsWith(strYM) && validStatus.has(e.status));
+    const listaAnual = eventos.filter(e => e._dataISO && e._dataISO.startsWith(strY) && validStatus.has(e.status));
+    const listaMensal = eventos.filter(e => e._dataISO && e._dataISO.startsWith(strYM) && validStatus.has(e.status));
 
     const a = acumula(listaAnual);
     const mAc = acumula(listaMensal);
@@ -363,7 +361,6 @@
   }
 
   function atualizarResumoDinamico(linhas, info){
-    // 'linhas' já está agregado com vendaPDV e lucro, então somamos delas:
     const tot = linhas.reduce((acc, l)=>{
       acc.venda += (l.vendaPDV||0);
       acc.lucro += (l.lucro||0);
@@ -374,7 +371,6 @@
     document.getElementById('filtroLucro').textContent = BRL(tot.lucro);
     document.getElementById('filtroMargem').textContent = PCT(tot.lucro, tot.venda);
 
-    // pequeno texto explicativo do filtro aplicado
     const partes = [];
     if(info.nomesSelecionados && info.nomesSelecionados.length) partes.push(`Eventos: ${info.nomesSelecionados.length} nome(s)`);
     if(info.dataInicio) partes.push(`De: ${info.dataInicio}`);
@@ -383,7 +379,7 @@
     document.getElementById('filtroResumoInfo').textContent = partes.length ? partes.join(' | ') : 'Sem filtros (semanais padrão).';
   }
 
-  // ======= Kickstart (extra segurança) =======
+  // ======= Kickstart =======
   carregarEventos();
 </script>
 </body>
