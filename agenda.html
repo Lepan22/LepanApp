@@ -16,7 +16,7 @@
 
       --gap:6px;
       --fontDay:11px;
-      --fontEvt:9px;       /* <<< tamanho dos nomes dos eventos */
+      --fontEvt:9px;       /* tamanho dos nomes dos eventos */
       --padDay:4px;
 
       /* altura da linha das 6 semanas — definida por JS para caber na viewport */
@@ -312,7 +312,7 @@
           ver.title = 'Visualizar evento';
           ver.textContent = '🔍';
 
-          // Duplicar
+          // Duplicar (individual)
           const dup = document.createElement('button');
           dup.className='iconbtn'; dup.title='Duplicar';
           dup.textContent='＋';
@@ -363,17 +363,24 @@
       return out;
     }
 
-    // ===== Duplicar Evento (apenas os campos solicitados) =====
+    // ===== Duplicar Evento (mantém nome + data + campos solicitados) =====
     async function duplicarEvento(ev){
       if(!confirm('Duplicar este evento?')) return;
 
+      const cloneDeep = (val)=>{
+        if (Array.isArray(val)) return val.map(v => (v && typeof v === 'object') ? {...v} : v);
+        if (val && typeof val === 'object') return JSON.parse(JSON.stringify(val));
+        return val ?? null;
+      };
+
       const novo = {
-        nomeEvento: ev.nomeEvento || '',
-        responsavel: ev.responsavel || '',
+        nomeEvento: (ev.nomeEvento ?? '').toString(),
+        responsavel: ev.responsavel ?? '',
         status: 'Aberto',
-        estimativaVenda: ev.estimativaVenda || 0,
-        equipe: Array.isArray(ev.equipe) ? ev.equipe : (ev.equipe || []),
-        logistica: Array.isArray(ev.logistica) ? ev.logistica : (ev.logistica || [])
+        estimativaVenda: num(ev.estimativaVenda),
+        equipe: cloneDeep(ev.equipe) || [],
+        logistica: cloneDeep(ev.logistica) || [],
+        data: ev.data || toISO(new Date())   // garante data
       };
 
       try{
@@ -394,7 +401,7 @@
       }
     }
 
-    // ===== Duplicar Mês (mesma regra, mantendo só campos + nova data) =====
+    // ===== Duplicar Mês (campos solicitados + nova data) =====
     async function duplicarMes(){
       if(!confirm('Duplicar todos os eventos do mês para o próximo (mantendo somente Nome, Responsável, Status=Aberto, Estimativa, Equipe e Logística)?')) return;
 
@@ -403,6 +410,12 @@
         const d=new Date(ev.data);
         return d.getMonth()===mes && d.getFullYear()===ano;
       });
+
+      const cloneDeep = (val)=>{
+        if (Array.isArray(val)) return val.map(v => (v && typeof v === 'object') ? {...v} : v);
+        if (val && typeof val === 'object') return JSON.parse(JSON.stringify(val));
+        return val ?? null;
+      };
 
       try{
         await Promise.all(doMes.map(ev=>{
@@ -413,14 +426,12 @@
           if (nova.getDate()>ultimoNovo) nova.setDate(ultimoNovo);
 
           const n = {
-            // campos permitidos
-            nomeEvento: ev.nomeEvento || '',
-            responsavel: ev.responsavel || '',
+            nomeEvento: (ev.nomeEvento ?? '').toString(),
+            responsavel: ev.responsavel ?? '',
             status: 'Aberto',
-            estimativaVenda: ev.estimativaVenda || 0,
-            equipe: Array.isArray(ev.equipe) ? ev.equipe : (ev.equipe || []),
-            logistica: Array.isArray(ev.logistica) ? ev.logistica : (ev.logistica || []),
-            // e a nova data
+            estimativaVenda: num(ev.estimativaVenda),
+            equipe: cloneDeep(ev.equipe) || [],
+            logistica: cloneDeep(ev.logistica) || [],
             data: toISO(nova)
           };
 
