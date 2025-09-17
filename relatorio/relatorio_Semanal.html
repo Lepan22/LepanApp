@@ -10,63 +10,55 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="../assets/menu.js"></script>
   <style>
-    /* ===== Layout & Cards ===== */
-    .page-header h1 { margin-bottom: 12px; }
-
+    /* ===== KPIs (compactos) ===== */
     .kpi-grid{
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 12px; margin-bottom: 14px;
+      display:grid; grid-template-columns:repeat(3,1fr);
+      gap:10px; margin-bottom:10px;
     }
-    @media (max-width: 1100px){ .kpi-grid{ grid-template-columns: 1fr; } }
-
+    @media (max-width:1100px){ .kpi-grid{ grid-template-columns:1fr; } }
     .kpi-card{
-      background:#fff; border:1px solid #eee; border-radius:12px; padding:14px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.04);
+      background:#fff; border:1px solid #eee; border-radius:10px; padding:10px;
     }
-    .kpi-title{ display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:14px; margin-bottom:8px; }
-    .kpi-rows{ display:grid; grid-template-columns:1fr auto; row-gap:6px; font-size:13px; }
-    .kpi-rows .label{ color:#444; }
-    .kpi-rows .value{ font-weight:600; }
-    .pill{ font-size:11px; padding:2px 8px; border-radius:999px; background:#ffe9d1; color:#8a3b00; }
+    .kpi-title{ display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:13px; margin-bottom:6px; }
+    .kpi-rows{ display:grid; grid-template-columns:1fr auto; row-gap:4px; font-size:12px; }
+    .pill{ font-size:10px; padding:1px 6px; border-radius:999px; background:#ffe9d1; color:#8a3b00; }
+    .kpi-footnote{ font-size:11px; color:#777; margin-top:2px; }
 
-    /* ===== Tabela ===== */
-    table { width:100%; border-collapse:collapse; margin-top:10px; font-size:12px; }
-    th, td { border:1px solid #ddd; padding:6px 8px; text-align:center; }
-    th { background-color:#ffcc80; position:sticky; top:0; z-index:1; }
-    tbody tr:nth-child(even){ background:#fafafa; }
-    tfoot td { font-weight:bold; background:#f9f9f9; }
-
-    .kpi-footnote{ font-size:11px; color:#777; margin-top:4px; }
-
-    /* ===== Filtros (layout novo) ===== */
+    /* ===== Card filtros (enxuto) ===== */
     .card-dashboard{
-      background:#fff; border:1px solid #eee; border-radius:12px; padding:14px;
-      box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-top: 6px;
+      background:#fff; border:1px solid #eee; border-radius:10px; padding:10px;
+      box-shadow:0 2px 6px rgba(0,0,0,.03);
     }
     .filtros-grid{
-      display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:12px; align-items:end;
+      display:grid; gap:8px;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1fr; /* evento | data ini | data fim | %min | %max */
+      align-items:end;
     }
-    @media (max-width: 1100px){
-      .filtros-grid{ grid-template-columns:1fr; }
-    }
-    .field{ display:flex; flex-direction:column; gap:6px; }
+    @media (max-width:1100px){ .filtros-grid{ grid-template-columns:1fr; } }
+    .field{ display:flex; flex-direction:column; gap:4px; }
     .field label{ font-size:12px; color:#555; }
-    .field input[type="date"], .field select{
-      border:1px solid #ddd; border-radius:8px; padding:8px 10px; font-size:12px; background:#fff;
+    select, input[type="date"], input[type="number"]{
+      border:1px solid #ddd; border-radius:8px; padding:6px 8px; font-size:12px; background:#fff;
     }
+    #filtroNomeEvento{ min-height:150px; }
 
-    /* Select múltiplo mais confortável */
-    #filtroNomeEvento{
-      min-height: 180px; /* altura boa para rolar */
-      padding:8px; line-height: 1.3;
-    }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center; }
+    .btn{ background:#ff7f00; color:#fff; padding:7px 10px; border:none; border-radius:8px; font-size:12px; cursor:pointer; }
+    .btn:hover{ background:#e96f00; }
+    .btn-ghost{ background:#fff; color:#444; border:1px solid #ddd; }
+    .quick{ display:flex; gap:6px; }
+    .quick .btn{ padding:5px 8px; font-size:11px; }
 
-    /* Botões */
-    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
-    .btn-navegar{ background:#ff7f00; color:#fff; padding:8px 12px; border:none; border-radius:8px; font-size:12px; cursor:pointer; }
-    .btn-navegar:hover{ background:#e96f00; }
-    .btn-outline{ background:#fff; color:#444; border:1px solid #ddd; }
-    .btn-outline:hover{ background:#f6f6f6; }
+    /* ===== Tabela ===== */
+    table{ width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
+    th,td{ border:1px solid #ddd; padding:6px 8px; text-align:center; }
+    th{ background:#ffcc80; position:sticky; top:0; z-index:1; }
+    tbody tr:nth-child(even){ background:#fafafa; }
+    tfoot td{ font-weight:bold; background:#f9f9f9; }
+
+    /* Destaques */
+    .negativo{ color:#b00020; font-weight:700; }
+    .atenMargem{ background:#fff3cd; } /* amarelo claro */
   </style>
 </head>
 <body>
@@ -79,50 +71,36 @@
       <div class="kpi-footnote">Resumos: Anual = ano corrente | Mensal = mês corrente | Dinâmico = conforme filtros abaixo.</div>
     </div>
 
-    <!-- ======= KPIs ======= -->
-    <div class="kpi-grid" id="kpiGrid">
-      <!-- ANUAL -->
+    <!-- ===== KPIs ===== -->
+    <div class="kpi-grid">
       <div class="kpi-card">
-        <div class="kpi-title">
-          <span>Resumo Anual</span>
-          <span class="pill" id="anoCorrente">Ano</span>
-        </div>
+        <div class="kpi-title"><span>Resumo Anual</span><span class="pill" id="anoCorrente">Ano</span></div>
         <div class="kpi-rows">
-          <div class="label">Faturamento</div><div class="value" id="anualFaturamento">R$ 0,00</div>
-          <div class="label">Lucro</div><div class="value" id="anualLucro">R$ 0,00</div>
-          <div class="label">Margem</div><div class="value" id="anualMargem">0,0%</div>
+          <div>Faturamento</div><div id="anualFaturamento">R$ 0,00</div>
+          <div>Lucro</div><div id="anualLucro">R$ 0,00</div>
+          <div>Margem</div><div id="anualMargem">0,0%</div>
         </div>
       </div>
-
-      <!-- MENSAL -->
       <div class="kpi-card">
-        <div class="kpi-title">
-          <span>Resumo Mensal</span>
-          <span class="pill" id="mesCorrente">Mês</span>
-        </div>
+        <div class="kpi-title"><span>Resumo Mensal</span><span class="pill" id="mesCorrente">Mês</span></div>
         <div class="kpi-rows">
-          <div class="label">Faturamento</div><div class="value" id="mensalFaturamento">R$ 0,00</div>
-          <div class="label">Lucro</div><div class="value" id="mensalLucro">R$ 0,00</div>
-          <div class="label">Margem</div><div class="value" id="mensalMargem">0,0%</div>
+          <div>Faturamento</div><div id="mensalFaturamento">R$ 0,00</div>
+          <div>Lucro</div><div id="mensalLucro">R$ 0,00</div>
+          <div>Margem</div><div id="mensalMargem">0,0%</div>
         </div>
       </div>
-
-      <!-- DINÂMICO (FILTRO) -->
       <div class="kpi-card">
-        <div class="kpi-title">
-          <span>Resumo Dinâmico</span>
-          <span class="pill">Filtro</span>
-        </div>
+        <div class="kpi-title"><span>Resumo Dinâmico</span><span class="pill">Filtro</span></div>
         <div class="kpi-rows">
-          <div class="label">Faturamento</div><div class="value" id="filtroFaturamento">R$ 0,00</div>
-          <div class="label">Lucro</div><div class="value" id="filtroLucro">R$ 0,00</div>
-          <div class="label">Margem</div><div class="value" id="filtroMargem">0,0%</div>
+          <div>Faturamento</div><div id="filtroFaturamento">R$ 0,00</div>
+          <div>Lucro</div><div id="filtroLucro">R$ 0,00</div>
+          <div>Margem</div><div id="filtroMargem">0,0%</div>
         </div>
         <div class="kpi-footnote" id="filtroResumoInfo"></div>
       </div>
     </div>
 
-    <!-- ======= Filtros (mesma lógica; apenas layout) ======= -->
+    <!-- ===== Filtros ===== -->
     <div class="card-dashboard">
       <form id="filtrosForm">
         <div class="filtros-grid">
@@ -142,19 +120,33 @@
           </div>
 
           <div class="field">
-            <label for="filtroStatus">Status</label>
-            <select id="filtroStatus">
+            <label for="filtroPctMin">Margem % (mín)</label>
+            <input type="number" id="filtroPctMin" step="0.1" placeholder="ex.: 30">
+          </div>
+
+          <div class="field">
+            <label for="filtroPctMax">Margem % (máx)</label>
+            <input type="number" id="filtroPctMax" step="0.1" placeholder="(opcional)">
+          </div>
+        </div>
+
+        <div class="actions">
+          <div class="quick">
+            <button type="button" class="btn btn-ghost" id="btnMesAtual">Mês atual</button>
+            <button type="button" class="btn btn-ghost" id="btnAnoAtual">Ano atual</button>
+          </div>
+          <div style="flex:1"></div>
+          <div>
+            <label for="filtroStatus" style="font-size:12px; color:#555; margin-right:6px;">Status</label>
+            <select id="filtroStatus" style="margin-right:8px;">
               <option value="" selected>Todos</option>
               <option value="Fechado">Fechado</option>
               <option value="Aberto">Aberto</option>
               <option value="Finalizado">Finalizado</option>
             </select>
+            <button type="submit" class="btn">Aplicar Filtros</button>
+            <button type="button" class="btn btn-ghost" id="btnLimpar">Limpar</button>
           </div>
-        </div>
-
-        <div class="actions">
-          <button type="submit" class="btn-navegar">Aplicar Filtros</button>
-          <button type="button" class="btn-navegar btn-outline" onclick="limparFiltros()">Limpar Filtros</button>
         </div>
       </form>
 
@@ -164,27 +156,31 @@
 </div>
 
 <script>
-  // ======= Bootstrap =======
+  // ===== Boot =====
   document.addEventListener('DOMContentLoaded', () => {
     carregarMenu('../');
+    initFirebase();
     carregarEventos();
+    wireUI();
   });
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-    authDomain: "lepanapp.firebaseapp.com",
-    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-    projectId: "lepanapp"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+  // ===== Firebase =====
+  let db;
+  function initFirebase(){
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+  }
 
-  let eventos = [];
-
-  // ======= Util =======
+  // ===== Utils =====
+  const BRL = v => (v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const PCT = (num,den)=> den ? ((num/den)*100).toFixed(1)+'%' : '0,0%';
   const pad2 = n => String(n).padStart(2,'0');
-  const BRL = v => (v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-  const PCT = (num, den) => den ? ((num/den)*100).toFixed(1)+'%' : '0,0%';
 
   function toISODate(anyDate){
     if(!anyDate) return null;
@@ -194,207 +190,237 @@
     const d=new Date(anyDate); if(!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
     return null;
   }
+  function hojeInfo(){ const n=new Date(); return { y:n.getFullYear(), m:n.getMonth()+1 }; }
+  function firstLastOfMonth(y,m){
+    const first = new Date(y, m-1, 1);
+    const last  = new Date(y, m, 0);
+    return [first, last];
+  }
 
-  function hojeInfo(){ const now=new Date(); return { y: now.getFullYear(), m: now.getMonth()+1 }; }
+  // ===== Dados =====
+  let eventos = [];
 
-  // ======= Load =======
-  function carregarEventos() {
-    db.ref('eventos').once('value').then(snapshot => {
+  function carregarEventos(){
+    db.ref('eventos').once('value').then(snap=>{
       eventos = [];
-      snapshot.forEach(child => {
-        const e = child.val();
-        e.id = child.key;
-        e._dataISO = toISODate(e.data); // normaliza para filtrar
+      snap.forEach(ch=>{
+        const e = ch.val(); e.id = ch.key;
+        e._dataISO = toISODate(e.data);
         eventos.push(e);
       });
-      popularFiltro();
-      setDataPadrao();
+      popularNomes();
+      setDatasPadrao();
       atualizarResumosFixos();
       aplicarFiltros();
     });
   }
 
-  function setDataPadrao() {
-    const hoje = new Date();
-    const dataFim = hoje;
-    const dataInicio = new Date(); dataInicio.setDate(hoje.getDate() - 6);
-    const formatar = (d) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    document.getElementById('filtroDataInicio').value = formatar(dataInicio);
-    document.getElementById('filtroDataFim').value = formatar(dataFim);
-  }
-
-  function popularFiltro() {
-    const filtro = document.getElementById('filtroNomeEvento');
-    const nomes = [...new Set(eventos.map(e => e.nomeEvento).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-    filtro.innerHTML = '';
-    nomes.forEach(nome => {
-      const opt = document.createElement('option');
-      opt.value = nome; opt.textContent = nome;
-      filtro.appendChild(opt);
+  function popularNomes(){
+    const sel = document.getElementById('filtroNomeEvento');
+    const nomes = [...new Set(eventos.map(e=>e?.nomeEvento).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    sel.innerHTML = '';
+    nomes.forEach(n=>{
+      const opt = document.createElement('option'); opt.value=n; opt.textContent=n; sel.appendChild(opt);
     });
   }
 
-  // ======= Filtros =======
-  document.getElementById('filtrosForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    aplicarFiltros();
-  });
+  // ===== UI =====
+  function wireUI(){
+    document.getElementById('filtrosForm').addEventListener('submit', (e)=>{ e.preventDefault(); aplicarFiltros(); });
+    document.getElementById('btnLimpar').addEventListener('click', ()=>{
+      [...document.getElementById('filtroNomeEvento').options].forEach(o=>o.selected=false);
+      document.getElementById('filtroStatus').value='';
+      document.getElementById('filtroPctMin').value='';
+      document.getElementById('filtroPctMax').value='';
+      setDatasPadrao();
+      aplicarFiltros();
+    });
+    document.getElementById('btnMesAtual').addEventListener('click', setPeriodoMesAtual);
+    document.getElementById('btnAnoAtual').addEventListener('click', setPeriodoAnoAtual);
+  }
 
-  function limparFiltros() {
-    document.querySelectorAll('#filtroNomeEvento option').forEach(o => o.selected = false);
-    setDataPadrao();
-    document.getElementById('filtroStatus').value = '';
+  function setDatasPadrao(){
+    // última semana por padrão
+    const hoje = new Date();
+    const ini = new Date(); ini.setDate(hoje.getDate()-6);
+    const fmt = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    document.getElementById('filtroDataInicio').value = fmt(ini);
+    document.getElementById('filtroDataFim').value = fmt(hoje);
+  }
+  function setPeriodoMesAtual(){
+    const {y,m} = hojeInfo();
+    const [first,last] = firstLastOfMonth(y,m);
+    const fmt = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    document.getElementById('filtroDataInicio').value = fmt(first);
+    document.getElementById('filtroDataFim').value = fmt(last);
+    aplicarFiltros();
+  }
+  function setPeriodoAnoAtual(){
+    const {y} = hojeInfo();
+    const first = new Date(y,0,1), last = new Date(y,11,31);
+    const fmt = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    document.getElementById('filtroDataInicio').value = fmt(first);
+    document.getElementById('filtroDataFim').value = fmt(last);
     aplicarFiltros();
   }
 
-  function aplicarFiltros() {
-    const nomes = [...document.getElementById('filtroNomeEvento').selectedOptions].map(o => o.value);
-    const dataInicio = document.getElementById('filtroDataInicio').value || null;
-    const dataFim = document.getElementById('filtroDataFim').value || null;
-    const status = document.getElementById('filtroStatus').value;
+  // ===== Filtros =====
+  function aplicarFiltros(){
+    const nomes = [...document.getElementById('filtroNomeEvento').selectedOptions].map(o=>o.value);
+    const di = document.getElementById('filtroDataInicio').value || null;
+    const df = document.getElementById('filtroDataFim').value || null;
+    const st = document.getElementById('filtroStatus').value;
+    const pctMinStr = document.getElementById('filtroPctMin').value;
+    const pctMaxStr = document.getElementById('filtroPctMax').value;
+    const pctMin = pctMinStr!=='' ? parseFloat(pctMinStr) : null;
+    const pctMax = pctMaxStr!=='' ? parseFloat(pctMaxStr) : null;
 
     const linhas = [];
 
-    eventos.filter(e => {
-      const dataOK = e._dataISO ? (!dataInicio || e._dataISO >= dataInicio) && (!dataFim || e._dataISO <= dataFim)
-                                : (!dataInicio && !dataFim);
-      if (!dataOK) return false;
+    eventos.filter(e=>{
+      // Data
+      const dataOK = e._dataISO ? (!di || e._dataISO>=di) && (!df || e._dataISO<=df) : (!di && !df);
+      if(!dataOK) return false;
 
-      if (nomes.length && !nomes.includes(e.nomeEvento)) return false;
-      if (status && e.status !== status) return false;
+      // Nome
+      if(nomes.length && !nomes.includes(e.nomeEvento)) return false;
+
+      // Status
+      if(st && e.status !== st) return false;
+
+      // % Lucro (margem) – se informado
+      const venda = parseFloat(e.vendaPDV)||0;
+      const lucro = parseFloat(e.lucroFinal)||0;
+      const margem = venda ? (lucro / venda * 100) : 0; // em %
+      if(pctMin!==null && margem < pctMin) return false;
+      if(pctMax!==null && margem > pctMax) return false;
+
       return true;
-    }).forEach(e => {
-      const vendaPDV = parseFloat(e.vendaPDV) || 0;
-      const lucro = parseFloat(e.lucroFinal) || 0;
-      const custoPerda = parseFloat(e.custoPerda) || 0;
-
-      const custoEquipe = Array.isArray(e.equipe) ? e.equipe.reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0) : 0;
-      const custoLogistica = Array.isArray(e.logistica) ? e.logistica.reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0) : 0;
+    }).forEach(e=>{
+      const venda = parseFloat(e.vendaPDV)||0;
+      const lucro = parseFloat(e.lucroFinal)||0;
+      const perda = parseFloat(e.custoPerda)||0;
+      const equipe = Array.isArray(e.equipe) ? e.equipe.reduce((a,i)=>a+(parseFloat(i.valor)||0),0) : 0;
+      const logistica = Array.isArray(e.logistica) ? e.logistica.reduce((a,i)=>a+(parseFloat(i.valor)||0),0) : 0;
 
       linhas.push({
-        nomeEvento: e.nomeEvento || '-',
         data: e._dataISO || (e.data || '-'),
-        vendaPDV, lucro, perda: custoPerda, equipe: custoEquipe, logistica: custoLogistica
+        nomeEvento: e.nomeEvento || '-',
+        vendaPDV: venda,
+        lucro: lucro,
+        perda, equipe, logistica
       });
     });
 
-    linhas.sort((a, b) => (a.data < b.data ? 1 : -1));
+    // ordena por data desc
+    linhas.sort((a,b)=> (a.data<b.data?1:-1));
 
     exibirTabela(linhas);
-    atualizarResumoDinamico(linhas, {nomesSelecionados: nomes, dataInicio, dataFim, status});
+    atualizarResumoDinamico(linhas, {nomesSelecionados: nomes, dataInicio: di, dataFim: df, status: st, pctMin, pctMax});
   }
 
-  // ======= Tabela =======
-  function exibirTabela(linhas) {
-    let html = '';
+  // ===== Tabela =====
+  function exibirTabela(linhas){
+    let html = `<table><thead><tr>
+      <th>Data</th><th style="text-align:left">Nome Evento</th>
+      <th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
+      <th>Perda</th><th>% Perda</th>
+      <th>Custo Equipe</th><th>% Equipe</th>
+      <th>Custo Logística</th><th>% Logística</th>
+    </tr></thead><tbody>`;
 
-    html += `<table><thead><tr>
-      <th>Data</th><th>Nome Evento</th><th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
-      <th>Perda</th><th>% Perda</th><th>Custo Equipe</th><th>% Equipe</th><th>Custo Logística</th><th>% Logística</th>
-      </tr></thead><tbody>`;
+    let total = { vendaPDV:0, lucro:0, perda:0, equipe:0, logistica:0 };
 
-    let total = { vendaPDV: 0, lucro: 0, perda: 0, equipe: 0, logistica: 0 };
-
-    linhas.forEach(l => {
+    linhas.forEach(l=>{
       total.vendaPDV += l.vendaPDV;
       total.lucro += l.lucro;
       total.perda += l.perda;
       total.equipe += l.equipe;
       total.logistica += l.logistica;
 
-      const perc = (v) => l.vendaPDV ? (v / l.vendaPDV * 100).toFixed(1) : '0.0';
+      const p = (v)=> l.vendaPDV ? (v/l.vendaPDV*100).toFixed(1) : '0.0';
+      const margemNum = l.vendaPDV ? (l.lucro/l.vendaPDV*100) : 0;
+      const lucroClass = l.lucro < 0 ? 'negativo' : '';
+      const margemClass = (margemNum < 30) ? 'atenMargem' : '';
 
-      html += `<tr>
+      html += `<tr class="${margemClass}">
         <td>${l.data}</td>
         <td style="text-align:left">${l.nomeEvento}</td>
         <td>${BRL(l.vendaPDV)}</td>
-        <td>${BRL(l.lucro)}</td>
-        <td>${perc(l.lucro)}%</td>
+        <td class="${lucroClass}">${BRL(l.lucro)}</td>
+        <td>${p(l.lucro)}%</td>
         <td>${BRL(l.perda)}</td>
-        <td>${perc(l.perda)}%</td>
+        <td>${p(l.perda)}%</td>
         <td>${BRL(l.equipe)}</td>
-        <td>${perc(l.equipe)}%</td>
+        <td>${p(l.equipe)}%</td>
         <td>${BRL(l.logistica)}</td>
-        <td>${perc(l.logistica)}%</td>
+        <td>${p(l.logistica)}%</td>
       </tr>`;
     });
 
-    const percent = (v) => total.vendaPDV ? (v / total.vendaPDV * 100).toFixed(1) : '0.0';
-
+    const pt = (v)=> total.vendaPDV ? (v/total.vendaPDV*100).toFixed(1) : '0.0';
     html += `<tr style="font-weight:bold; background:#f9f9f9">
       <td colspan="2" style="text-align:right">TOTAL</td>
       <td>${BRL(total.vendaPDV)}</td>
       <td>${BRL(total.lucro)}</td>
-      <td>${percent(total.lucro)}%</td>
+      <td>${pt(total.lucro)}%</td>
       <td>${BRL(total.perda)}</td>
-      <td>${percent(total.perda)}%</td>
+      <td>${pt(total.perda)}%</td>
       <td>${BRL(total.equipe)}</td>
-      <td>${percent(total.equipe)}%</td>
+      <td>${pt(total.equipe)}%</td>
       <td>${BRL(total.logistica)}</td>
-      <td>${percent(total.logistica)}%</td>
-    </tr>`;
-
-    html += `</tbody></table>`;
+      <td>${pt(total.logistica)}%</td>
+    </tr></tbody></table>`;
 
     document.getElementById('tabelaResultado').innerHTML = html;
   }
 
-  // ======= Resumos (KPIs) =======
-  function acumula(eventosLista){
-    return eventosLista.reduce((acc, e)=>{
-      const venda = parseFloat(e.vendaPDV) || 0;
-      const lucro = parseFloat(e.lucroFinal) || 0;
-      acc.venda += venda;
-      acc.lucro += lucro;
+  // ===== KPIs =====
+  function acum(lista){
+    return lista.reduce((acc,e)=>{
+      acc.v += (parseFloat(e.vendaPDV)||0);
+      acc.l += (parseFloat(e.lucroFinal)||0);
       return acc;
-    }, {venda:0, lucro:0});
+    },{v:0,l:0});
   }
 
   function atualizarResumosFixos(){
-    const { y, m } = hojeInfo();
-    const strY = String(y);
-    const strYM = `${y}-${pad2(m)}`;
+    const {y,m} = hojeInfo();
+    const yS = String(y), ym = `${y}-${pad2(m)}`;
+    const ok = new Set(['Fechado','Finalizado']);
 
-    const validStatus = new Set(['Fechado','Finalizado']);
-    const listaAnual = eventos.filter(e => e._dataISO && e._dataISO.startsWith(strY) && validStatus.has(e.status));
-    const listaMensal = eventos.filter(e => e._dataISO && e._dataISO.startsWith(strYM) && validStatus.has(e.status));
+    const anual = eventos.filter(e=> e._dataISO && e._dataISO.startsWith(yS) && ok.has(e.status));
+    const mensal = eventos.filter(e=> e._dataISO && e._dataISO.startsWith(ym) && ok.has(e.status));
 
-    const a = acumula(listaAnual);
-    const mAc = acumula(listaMensal);
+    const A = acum(anual), M = acum(mensal);
 
-    document.getElementById('anoCorrente').textContent = strY;
+    document.getElementById('anoCorrente').textContent = yS;
     document.getElementById('mesCorrente').textContent = `${pad2(m)}/${y}`;
 
-    document.getElementById('anualFaturamento').textContent = BRL(a.venda);
-    document.getElementById('anualLucro').textContent = BRL(a.lucro);
-    document.getElementById('anualMargem').textContent = PCT(a.lucro, a.venda);
+    document.getElementById('anualFaturamento').textContent = BRL(A.v);
+    document.getElementById('anualLucro').textContent = BRL(A.l);
+    document.getElementById('anualMargem').textContent = PCT(A.l,A.v);
 
-    document.getElementById('mensalFaturamento').textContent = BRL(mAc.venda);
-    document.getElementById('mensalLucro').textContent = BRL(mAc.lucro);
-    document.getElementById('mensalMargem').textContent = PCT(mAc.lucro, mAc.venda);
+    document.getElementById('mensalFaturamento').textContent = BRL(M.v);
+    document.getElementById('mensalLucro').textContent = BRL(M.l);
+    document.getElementById('mensalMargem').textContent = PCT(M.l,M.v);
   }
 
   function atualizarResumoDinamico(linhas, info){
-    const tot = linhas.reduce((acc, l)=>{
-      acc.venda += (l.vendaPDV||0);
-      acc.lucro += (l.lucro||0);
-      return acc;
-    }, {venda:0, lucro:0});
+    const tot = linhas.reduce((a,l)=>{ a.v+=l.vendaPDV; a.l+=l.lucro; return a; },{v:0,l:0});
+    document.getElementById('filtroFaturamento').textContent = BRL(tot.v);
+    document.getElementById('filtroLucro').textContent = BRL(tot.l);
+    document.getElementById('filtroMargem').textContent = PCT(tot.l, tot.v);
 
-    document.getElementById('filtroFaturamento').textContent = BRL(tot.venda);
-    document.getElementById('filtroLucro').textContent = BRL(tot.lucro);
-    document.getElementById('filtroMargem').textContent = PCT(tot.lucro, tot.venda);
-
-    const partes = [];
-    if(info.nomesSelecionados && info.nomesSelecionados.length) partes.push(`Eventos: ${info.nomesSelecionados.length} nome(s)`);
+    const partes=[];
+    if(info.nomesSelecionados?.length) partes.push(`Eventos: ${info.nomesSelecionados.length}`);
     if(info.dataInicio) partes.push(`De: ${info.dataInicio}`);
     if(info.dataFim) partes.push(`Até: ${info.dataFim}`);
     if(info.status) partes.push(`Status: ${info.status}`);
-    document.getElementById('filtroResumoInfo').textContent = partes.length ? partes.join(' | ') : 'Sem filtros (semanais padrão).';
+    if(info.pctMin!==null) partes.push(`Margem ≥ ${info.pctMin}%`);
+    if(info.pctMax!==null) partes.push(`Margem ≤ ${info.pctMax}%`);
+    document.getElementById('filtroResumoInfo').textContent = partes.join(' | ');
   }
-
-  // ======= Kickstart =======
-  carregarEventos();
 </script>
 </body>
 </html>
