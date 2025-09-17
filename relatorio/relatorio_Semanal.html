@@ -1,38 +1,66 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Relatório Semanal — CMV Real (PDV × %CMV)</title>
-
-  <link rel="stylesheet" href="assets/base.css"/>
-  <link rel="stylesheet" href="assets/menu-styles.css"/>
-
-  <!-- Firebase v8 -->
+  <title>Relatório Evento</title>
+  <link rel="stylesheet" href="../assets/base.css" />
+  <link rel="stylesheet" href="../assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="assets/menu.js" defer></script>
-
+  <script src="../assets/menu.js"></script>
   <style>
-    .page-header h1{margin:0}
-    .card-dashboard{padding:12px}
-    .form-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px}
-    .form-row > div{display:flex;flex-direction:column}
-    label, select, input{font-size:12px}
-    .btn{background:#ff7f00;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer}
-    .btn:hover{background:#e96f00}
+    /* ===== Layout & Cards ===== */
+    .page-header h1 { margin-bottom: 12px; }
 
-    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
-    th, td{border:1px solid #ddd;padding:6px;text-align:center}
-    thead th{background:#fff3e0}
-    tfoot td{font-weight:bold;background:#f9f9f9}
+    .kpi-grid{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 1100px){ .kpi-grid{ grid-template-columns: 1fr; } }
 
-    .neg { color:#c62828; font-weight:700 }
-    .pos { color:#1b7f1b; font-weight:700 }
+    .kpi-card{
+      background: #fff;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .kpi-title{
+      display:flex;justify-content:space-between;align-items:center;
+      font-weight: 700; font-size: 14px; margin-bottom: 8px;
+    }
+    .kpi-sub{ font-size: 11px; color: #666; }
 
-    .hint{font-size:12px;color:#666;margin-top:6px}
-    .right{ text-align:right }
-    .w80{ width:80px }
+    .kpi-rows{
+      display:grid;grid-template-columns: 1fr auto; row-gap:6px;
+      font-size: 13px;
+    }
+    .kpi-rows .label{ color:#444; }
+    .kpi-rows .value{ font-weight:600; }
+
+    .pill{
+      font-size: 11px; padding:2px 8px; border-radius: 999px; background:#ffe9d1; color:#8a3b00;
+    }
+
+    /* ===== Filtros & Botões ===== */
+    .form-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; align-items: flex-end; }
+    .form-row > div { display: flex; flex-direction: column; }
+    label, select, input { font-size: 12px; }
+    .btn-navegar { background-color: #ff7f00; color: white; padding: 6px 10px; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; }
+    .btn-navegar:hover { background-color: #e96f00; }
+
+    /* ===== Tabela ===== */
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+    th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: center; }
+    th { background-color: #ffcc80; position: sticky; top: 0; z-index: 1; }
+    tbody tr:nth-child(even){ background:#fafafa; }
+    tfoot td { font-weight: bold; background: #f9f9f9; }
+
+    /* Área da datação dos resumos */
+    .kpi-footnote{ font-size:11px; color:#777; margin-top:4px; }
   </style>
 </head>
 <body>
@@ -41,15 +69,60 @@
 
   <main class="main-content">
     <div class="page-header">
-      <h1>Relatório Semanal — CMV Real (calculado sobre Venda PDV)</h1>
+      <h1>Relatório por Evento</h1>
+      <div class="kpi-footnote">Resumos: Anual = ano corrente | Mensal = mês corrente | Dinâmico = conforme filtros abaixo.</div>
     </div>
 
+    <!-- ======= KPIs ======= -->
+    <div class="kpi-grid" id="kpiGrid">
+      <!-- ANUAL -->
+      <div class="kpi-card">
+        <div class="kpi-title">
+          <span>Resumo Anual</span>
+          <span class="pill" id="anoCorrente">Ano</span>
+        </div>
+        <div class="kpi-rows">
+          <div class="label">Faturamento</div><div class="value" id="anualFaturamento">R$ 0,00</div>
+          <div class="label">Lucro</div><div class="value" id="anualLucro">R$ 0,00</div>
+          <div class="label">Margem</div><div class="value" id="anualMargem">0,0%</div>
+        </div>
+      </div>
+
+      <!-- MENSAL -->
+      <div class="kpi-card">
+        <div class="kpi-title">
+          <span>Resumo Mensal</span>
+          <span class="pill" id="mesCorrente">Mês</span>
+        </div>
+        <div class="kpi-rows">
+          <div class="label">Faturamento</div><div class="value" id="mensalFaturamento">R$ 0,00</div>
+          <div class="label">Lucro</div><div class="value" id="mensalLucro">R$ 0,00</div>
+          <div class="label">Margem</div><div class="value" id="mensalMargem">0,0%</div>
+        </div>
+      </div>
+
+      <!-- DINÂMICO (FILTRO) -->
+      <div class="kpi-card">
+        <div class="kpi-title">
+          <span>Resumo Dinâmico</span>
+          <span class="pill">Filtro</span>
+        </div>
+        <div class="kpi-rows">
+          <div class="label">Faturamento</div><div class="value" id="filtroFaturamento">R$ 0,00</div>
+          <div class="label">Lucro</div><div class="value" id="filtroLucro">R$ 0,00</div>
+          <div class="label">Margem</div><div class="value" id="filtroMargem">0,0%</div>
+        </div>
+        <div class="kpi-footnote" id="filtroResumoInfo"></div>
+      </div>
+    </div>
+
+    <!-- ======= Filtros ======= -->
     <div class="card-dashboard">
       <form id="filtrosForm">
         <div class="form-row">
           <div>
-            <label for="filtroNomes">Nome do Evento</label>
-            <select id="filtroNomes" multiple></select>
+            <label for="filtroNomeEvento">Nome Evento</label>
+            <select id="filtroNomeEvento" multiple></select>
           </div>
           <div>
             <label for="filtroDataInicio">Data Início</label>
@@ -62,28 +135,18 @@
           <div>
             <label for="filtroStatus">Status</label>
             <select id="filtroStatus">
-              <option value="">Todos</option>
+              <option value="" selected>Todos</option>
+              <option value="Fechado">Fechado</option>
               <option value="Aberto">Aberto</option>
               <option value="Finalizado">Finalizado</option>
-              <option value="Fechado">Fechado</option>
             </select>
-          </div>
-          <div>
-            <label for="percentualCMV">% CMV (somente para cálculo)</label>
-            <input type="number" id="percentualCMV" class="w80 right" step="0.1" min="0" max="100" placeholder="44.0">
           </div>
         </div>
         <div class="form-row">
-          <button class="btn" type="submit">Aplicar Filtros</button>
-          <button class="btn" type="button" id="btnLimpar">Limpar</button>
-          <button class="btn" type="button" id="btnRecalcular">Recalcular com %</button>
+          <button type="submit" class="btn-navegar">Aplicar Filtros</button>
+          <button type="button" class="btn-navegar" onclick="limparFiltros()">Limpar Filtros</button>
         </div>
       </form>
-
-      <div class="hint">
-        Este relatório calcula o **CMV Real** como <b>Venda PDV × %CMV</b>, usando por padrão <code>configuracao/percentualCMV</code> (fallback 44%).
-        Alterar o campo “% CMV” aqui recalcula apenas a visualização (não grava no banco).
-      </div>
 
       <div id="tabelaResultado"></div>
     </div>
@@ -91,226 +154,236 @@
 </div>
 
 <script>
-  // ====== Menu lateral padrão
-  document.addEventListener('DOMContentLoaded', () => carregarMenu('./'));
+  // ======= Bootstrap =======
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarMenu('../');
+    carregarEventos();
+  });
 
-  // ====== Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
     authDomain: "lepanapp.firebaseapp.com",
     databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
     projectId: "lepanapp"
   };
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // ====== Estado
   let eventos = [];
-  let percentualCMVPadrao = 44; // fallback
 
-  // ====== Utils
-  const num = (v) => isNaN(parseFloat(v)) ? 0 : parseFloat(v);
-  const moeda = (v) => `R$ ${num(v).toFixed(2)}`;
-  const pctStr = (v) => `${num(v).toFixed(1)}%`;
-  const pct = (parte, total) => total > 0 ? (parte/total*100) : 0;
+  // ======= Util =======
+  const BRL = v => (v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  const PCT = (num, den) => den ? ((num/den)*100).toFixed(1)+'%' : '0,0%';
+  const pad2 = n => String(n).padStart(2,'0');
 
-  function setDatasPadrao(){
-    const hoje = new Date();
-    const fim = hoje;
-    const ini = new Date();
-    ini.setDate(hoje.getDate() - 6); // últimos 7 dias
-
-    const fmt = d => {
-      const a=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dia=String(d.getDate()).padStart(2,'0');
-      return `${a}-${m}-${dia}`;
+  function hojeInfo(){
+    const now = new Date();
+    return {
+      y: now.getFullYear(),
+      m: now.getMonth()+1
     };
-    document.getElementById('filtroDataInicio').value = fmt(ini);
-    document.getElementById('filtroDataFim').value = fmt(fim);
   }
 
-  async function carregarPercentualCMV(){
-    try{
-      const snap = await db.ref('configuracao/percentualCMV').once('value');
-      const v = num(snap.val());
-      if (v > 0) percentualCMVPadrao = v;
-    }catch(e){}
-    // preenche input com o padrão
-    const inp = document.getElementById('percentualCMV');
-    if (inp && !inp.value) inp.value = percentualCMVPadrao.toFixed(1);
-  }
-
-  function getPercentualCMVAtual(){
-    const inp = document.getElementById('percentualCMV');
-    if (!inp) return percentualCMVPadrao;
-    const raw = String(inp.value || '').replace(',','.');
-    const v = parseFloat(raw);
-    if (isNaN(v) || v < 0) return percentualCMVPadrao;
-    return v;
-  }
-
-  async function carregarEventos(){
-    await carregarPercentualCMV();
-    const snap = await db.ref('eventos').once('value');
-    eventos = [];
-    snap.forEach(ch=>{
-      const e = ch.val() || {};
-      e.id = ch.key;
-      eventos.push(e);
+  // ======= Load =======
+  function carregarEventos() {
+    db.ref('eventos').once('value').then(snapshot => {
+      eventos = [];
+      snapshot.forEach(child => {
+        const e = child.val();
+        e.id = child.key;
+        eventos.push(e);
+      });
+      popularFiltro();
+      setDataPadrao();
+      // Resumos globais (anual/mensal) independem do filtro:
+      atualizarResumosFixos();
+      // Tabela + resumo dinâmico (com filtros padrão):
+      aplicarFiltros();
     });
-    popularFiltroNomes();
-    setDatasPadrao();
+  }
+
+  function setDataPadrao() {
+    const hoje = new Date();
+    const dataFim = hoje;
+    const dataInicio = new Date(); dataInicio.setDate(hoje.getDate() - 6);
+    const formatar = (d) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    document.getElementById('filtroDataInicio').value = formatar(dataInicio);
+    document.getElementById('filtroDataFim').value = formatar(dataFim);
+  }
+
+  function popularFiltro() {
+    const filtro = document.getElementById('filtroNomeEvento');
+    const nomes = [...new Set(eventos.map(e => e.nomeEvento).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    filtro.innerHTML = '';
+    nomes.forEach(nome => {
+      const opt = document.createElement('option');
+      opt.value = nome; opt.textContent = nome;
+      filtro.appendChild(opt);
+    });
+  }
+
+  // ======= Filtros =======
+  document.getElementById('filtrosForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    aplicarFiltros();
+  });
+
+  function limparFiltros() {
+    document.querySelectorAll('#filtroNomeEvento option').forEach(o => o.selected = false);
+    setDataPadrao();
+    document.getElementById('filtroStatus').value = '';
     aplicarFiltros();
   }
 
-  function popularFiltroNomes(){
-    const sel = document.getElementById('filtroNomes');
-    const nomes = [...new Set(eventos.map(e=>e.nomeEvento).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-    sel.innerHTML = '';
-    nomes.forEach(n=>{
-      const opt = document.createElement('option');
-      opt.value = n; opt.textContent = n;
-      sel.appendChild(opt);
-    });
-  }
-
-  function limparFiltros(){
-    document.querySelectorAll('#filtroNomes option').forEach(o=>o.selected=false);
-    document.getElementById('filtroStatus').value = '';
-    document.getElementById('percentualCMV').value = percentualCMVPadrao.toFixed(1);
-    setDatasPadrao();
-  }
-
-  function aplicarFiltros(){
-    const nomes = [...document.getElementById('filtroNomes').selectedOptions].map(o=>o.value);
-    const di = document.getElementById('filtroDataInicio').value || '';
-    const df = document.getElementById('filtroDataFim').value || '';
-    const st = document.getElementById('filtroStatus').value || '';
-    const perc = getPercentualCMVAtual();
+  function aplicarFiltros() {
+    const nomes = [...document.getElementById('filtroNomeEvento').selectedOptions].map(o => o.value);
+    const dataInicio = document.getElementById('filtroDataInicio').value;
+    const dataFim = document.getElementById('filtroDataFim').value;
+    const status = document.getElementById('filtroStatus').value;
 
     const linhas = [];
 
-    eventos.filter(e=>{
-      if (!e || !e.data) return false;
+    eventos.filter(e => {
+      if (!e.data) return false;
       if (nomes.length && !nomes.includes(e.nomeEvento)) return false;
-      if (di && e.data < di) return false;
-      if (df && e.data > df) return false;
-      if (st && e.status !== st) return false;
+      if (dataInicio && e.data < dataInicio) return false;
+      if (dataFim && e.data > dataFim) return false;
+      if (status && e.status !== status) return false;
       return true;
-    }).forEach(e=>{
-      const vendaPDV = num(e.vendaPDV);
-      const perda = num(e.custoPerda);
-      const equipe = (Array.isArray(e.equipe) ? e.equipe : []).reduce((s,it)=>s+num(it && it.valor),0);
-      const logistica = (Array.isArray(e.logistica) ? e.logistica : []).reduce((s,it)=>s+num(it && it.valor),0);
+    }).forEach(e => {
+      const vendaPDV = parseFloat(e.vendaPDV) || 0;
+      const lucro = parseFloat(e.lucroFinal) || 0;
+      const custoPerda = parseFloat(e.custoPerda) || 0;
 
-      // ===== CMV calculado na hora: PDV × %CMV =====
-      const cmvCalc = vendaPDV * (perc/100);
-
-      // Lucro calculado usando CMV calculado
-      const lucro = vendaPDV - cmvCalc - equipe - logistica - perda;
+      const custoEquipe = Array.isArray(e.equipe) ? e.equipe.reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0) : 0;
+      const custoLogistica = Array.isArray(e.logistica) ? e.logistica.reduce((soma, item) => soma + (parseFloat(item.valor) || 0), 0) : 0;
 
       linhas.push({
+        nomeEvento: e.nomeEvento || '-',
         data: e.data,
-        nome: e.nomeEvento || '-',
-        vendaPDV,
-        cmv: cmvCalc,
-        cmvPct: perc, // mesmo % aplicado
-        lucro,
-        lucroPct: pct(lucro, vendaPDV),
-        perda,
-        perdaPct: pct(perda, vendaPDV),
-        equipe,
-        equipePct: pct(equipe, vendaPDV),
-        logistica,
-        logisticaPct: pct(logistica, vendaPDV)
+        vendaPDV, lucro, perda: custoPerda, equipe: custoEquipe, logistica: custoLogistica
       });
     });
 
-    // Ordenar por data desc
-    linhas.sort((a,b)=> a.data<b.data ? 1 : (a.data>b.data ? -1 : 0));
-    renderTabela(linhas);
+    linhas.sort((a, b) => (a.data < b.data ? 1 : -1));
+
+    exibirTabela(linhas);
+    atualizarResumoDinamico(linhas, {nomesSelecionados: nomes, dataInicio, dataFim, status});
   }
 
-  function renderTabela(rows){
+  // ======= Tabela =======
+  function exibirTabela(linhas) {
     let html = '';
-    html += `<table id="tabelaRel">
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Nome Evento</th>
-          <th>Venda PDV</th>
-          <th>CMV (R$)</th>
-          <th>% CMV</th>
-          <th>Lucro</th>
-          <th>% Lucro</th>
-          <th>Perda</th>
-          <th>% Perda</th>
-          <th>Equipe</th>
-          <th>% Equipe</th>
-          <th>Logística</th>
-          <th>% Logística</th>
-        </tr>
-      </thead>
-      <tbody>`;
 
-    const tot = {
-      venda:0, cmv:0, lucro:0, perda:0, equipe:0, log:0
-    };
+    html += `<table><thead><tr>
+      <th>Data</th><th>Nome Evento</th><th>Venda PDV</th><th>Lucro</th><th>% Lucro</th>
+      <th>Perda</th><th>% Perda</th><th>Custo Equipe</th><th>% Equipe</th><th>Custo Logística</th><th>% Logística</th>
+      </tr></thead><tbody>`;
 
-    rows.forEach(r=>{
-      tot.venda += r.vendaPDV;
-      tot.cmv += r.cmv;
-      tot.lucro += r.lucro;
-      tot.perda += r.perda;
-      tot.equipe += r.equipe;
-      tot.log += r.logistica;
+    let total = { vendaPDV: 0, lucro: 0, perda: 0, equipe: 0, logistica: 0 };
+
+    linhas.forEach(l => {
+      total.vendaPDV += l.vendaPDV;
+      total.lucro += l.lucro;
+      total.perda += l.perda;
+      total.equipe += l.equipe;
+      total.logistica += l.logistica;
+
+      const perc = (v) => l.vendaPDV ? (v / l.vendaPDV * 100).toFixed(1) : '0.0';
 
       html += `<tr>
-        <td>${r.data}</td>
-        <td>${r.nome}</td>
-        <td class="right">${moeda(r.vendaPDV)}</td>
-        <td class="right">${moeda(r.cmv)}</td>
-        <td>${pctStr(r.cmvPct)}</td>
-        <td class="right ${r.lucro>=0?'pos':'neg'}">${moeda(r.lucro)}</td>
-        <td>${pctStr(r.lucroPct)}</td>
-        <td class="right">${moeda(r.perda)}</td>
-        <td>${pctStr(r.perdaPct)}</td>
-        <td class="right">${moeda(r.equipe)}</td>
-        <td>${pctStr(r.equipePct)}</td>
-        <td class="right">${moeda(r.logistica)}</td>
-        <td>${pctStr(r.logisticaPct)}</td>
+        <td>${l.data}</td>
+        <td style="text-align:left">${l.nomeEvento}</td>
+        <td>${BRL(l.vendaPDV)}</td>
+        <td>${BRL(l.lucro)}</td>
+        <td>${perc(l.lucro)}%</td>
+        <td>${BRL(l.perda)}</td>
+        <td>${perc(l.perda)}%</td>
+        <td>${BRL(l.equipe)}</td>
+        <td>${perc(l.equipe)}%</td>
+        <td>${BRL(l.logistica)}</td>
+        <td>${perc(l.logistica)}%</td>
       </tr>`;
     });
 
-    const perc = getPercentualCMVAtual();
-    html += `</tbody>
-      <tfoot>
-        <tr>
-          <td colspan="2">TOTAL</td>
-          <td class="right">${moeda(tot.venda)}</td>
-          <td class="right">${moeda(tot.cmv)}</td>
-          <td>${pctStr(perc)}</td>
-          <td class="right ${tot.lucro>=0?'pos':'neg'}">${moeda(tot.lucro)}</td>
-          <td>${pctStr(pct(tot.lucro, tot.venda))}</td>
-          <td class="right">${moeda(tot.perda)}</td>
-          <td>${pctStr(pct(tot.perda, tot.venda))}</td>
-          <td class="right">${moeda(tot.equipe)}</td>
-          <td>${pctStr(pct(tot.equipe, tot.venda))}</td>
-          <td class="right">${moeda(tot.log)}</td>
-          <td>${pctStr(pct(tot.log, tot.venda))}</td>
-        </tr>
-      </tfoot>
-    </table>`;
+    const percent = (v) => total.vendaPDV ? (v / total.vendaPDV * 100).toFixed(1) : '0.0';
+
+    html += `<tr style="font-weight:bold; background:#f9f9f9">
+      <td colspan="2" style="text-align:right">TOTAL</td>
+      <td>${BRL(total.vendaPDV)}</td>
+      <td>${BRL(total.lucro)}</td>
+      <td>${percent(total.lucro)}%</td>
+      <td>${BRL(total.perda)}</td>
+      <td>${percent(total.perda)}%</td>
+      <td>${BRL(total.equipe)}</td>
+      <td>${percent(total.equipe)}%</td>
+      <td>${BRL(total.logistica)}</td>
+      <td>${percent(total.logistica)}%</td>
+    </tr>`;
+
+    html += `</tbody></table>`;
 
     document.getElementById('tabelaResultado').innerHTML = html;
   }
 
-  // ====== UI
-  document.getElementById('filtrosForm').addEventListener('submit', (e)=>{ e.preventDefault(); aplicarFiltros(); });
-  document.getElementById('btnLimpar').addEventListener('click', ()=>{ limparFiltros(); aplicarFiltros(); });
-  document.getElementById('btnRecalcular').addEventListener('click', ()=> aplicarFiltros());
-  document.getElementById('percentualCMV').addEventListener('change', ()=> aplicarFiltros());
+  // ======= Resumos (KPIs) =======
+  function acumula(eventosLista){
+    return eventosLista.reduce((acc, e)=>{
+      const venda = parseFloat(e.vendaPDV) || 0;
+      const lucro = parseFloat(e.lucroFinal) || 0;
+      acc.venda += venda;
+      acc.lucro += lucro;
+      return acc;
+    }, {venda:0, lucro:0});
+  }
 
-  // ====== Start
+  function atualizarResumosFixos(){
+    const { y, m } = hojeInfo();
+    const strY = String(y);
+    const strYM = `${y}-${pad2(m)}`;
+
+    // Consideramos Anual/Mensal para eventos com status Fechado ou Finalizado (padrão operacional).
+    const validStatus = new Set(['Fechado','Finalizado']);
+    const listaAnual = eventos.filter(e => e.data && e.data.startsWith(strY) && validStatus.has(e.status));
+    const listaMensal = eventos.filter(e => e.data && e.data.startsWith(strYM) && validStatus.has(e.status));
+
+    const a = acumula(listaAnual);
+    const mAc = acumula(listaMensal);
+
+    document.getElementById('anoCorrente').textContent = strY;
+    document.getElementById('mesCorrente').textContent = `${pad2(m)}/${y}`;
+
+    document.getElementById('anualFaturamento').textContent = BRL(a.venda);
+    document.getElementById('anualLucro').textContent = BRL(a.lucro);
+    document.getElementById('anualMargem').textContent = PCT(a.lucro, a.venda);
+
+    document.getElementById('mensalFaturamento').textContent = BRL(mAc.venda);
+    document.getElementById('mensalLucro').textContent = BRL(mAc.lucro);
+    document.getElementById('mensalMargem').textContent = PCT(mAc.lucro, mAc.venda);
+  }
+
+  function atualizarResumoDinamico(linhas, info){
+    // 'linhas' já está agregado com vendaPDV e lucro, então somamos delas:
+    const tot = linhas.reduce((acc, l)=>{
+      acc.venda += (l.vendaPDV||0);
+      acc.lucro += (l.lucro||0);
+      return acc;
+    }, {venda:0, lucro:0});
+
+    document.getElementById('filtroFaturamento').textContent = BRL(tot.venda);
+    document.getElementById('filtroLucro').textContent = BRL(tot.lucro);
+    document.getElementById('filtroMargem').textContent = PCT(tot.lucro, tot.venda);
+
+    // pequeno texto explicativo do filtro aplicado
+    const partes = [];
+    if(info.nomesSelecionados && info.nomesSelecionados.length) partes.push(`Eventos: ${info.nomesSelecionados.length} nome(s)`);
+    if(info.dataInicio) partes.push(`De: ${info.dataInicio}`);
+    if(info.dataFim) partes.push(`Até: ${info.dataFim}`);
+    if(info.status) partes.push(`Status: ${info.status}`);
+    document.getElementById('filtroResumoInfo').textContent = partes.length ? partes.join(' | ') : 'Sem filtros (semanais padrão).';
+  }
+
+  // ======= Kickstart (extra segurança) =======
   carregarEventos();
 </script>
 </body>
