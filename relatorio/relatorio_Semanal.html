@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Relatório Evento</title>
+  <title>Relatório por Evento</title>
   <link rel="stylesheet" href="../assets/base.css" />
   <link rel="stylesheet" href="../assets/menu-styles.css" />
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -24,18 +24,10 @@
       box-shadow:0 2px 6px rgba(0,0,0,0.04);
     }
     .kpi-title{ display:flex; justify-content:space-between; align-items:center; font-weight:700; font-size:14px; margin-bottom:8px; }
-    .kpi-sub{ font-size:11px; color:#666; }
     .kpi-rows{ display:grid; grid-template-columns:1fr auto; row-gap:6px; font-size:13px; }
     .kpi-rows .label{ color:#444; }
     .kpi-rows .value{ font-weight:600; }
     .pill{ font-size:11px; padding:2px 8px; border-radius:999px; background:#ffe9d1; color:#8a3b00; }
-
-    /* ===== Filtros & Botões ===== */
-    .form-row { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:10px; align-items:flex-end; }
-    .form-row > div { display:flex; flex-direction:column; }
-    label, select, input { font-size:12px; }
-    .btn-navegar { background:#ff7f00; color:white; padding:6px 10px; border:none; border-radius:6px; font-size:12px; cursor:pointer; }
-    .btn-navegar:hover { background:#e96f00; }
 
     /* ===== Tabela ===== */
     table { width:100%; border-collapse:collapse; margin-top:10px; font-size:12px; }
@@ -45,6 +37,36 @@
     tfoot td { font-weight:bold; background:#f9f9f9; }
 
     .kpi-footnote{ font-size:11px; color:#777; margin-top:4px; }
+
+    /* ===== Filtros (layout novo) ===== */
+    .card-dashboard{
+      background:#fff; border:1px solid #eee; border-radius:12px; padding:14px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-top: 6px;
+    }
+    .filtros-grid{
+      display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:12px; align-items:end;
+    }
+    @media (max-width: 1100px){
+      .filtros-grid{ grid-template-columns:1fr; }
+    }
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    .field label{ font-size:12px; color:#555; }
+    .field input[type="date"], .field select{
+      border:1px solid #ddd; border-radius:8px; padding:8px 10px; font-size:12px; background:#fff;
+    }
+
+    /* Select múltiplo mais confortável */
+    #filtroNomeEvento{
+      min-height: 180px; /* altura boa para rolar */
+      padding:8px; line-height: 1.3;
+    }
+
+    /* Botões */
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+    .btn-navegar{ background:#ff7f00; color:#fff; padding:8px 12px; border:none; border-radius:8px; font-size:12px; cursor:pointer; }
+    .btn-navegar:hover{ background:#e96f00; }
+    .btn-outline{ background:#fff; color:#444; border:1px solid #ddd; }
+    .btn-outline:hover{ background:#f6f6f6; }
   </style>
 </head>
 <body>
@@ -100,23 +122,26 @@
       </div>
     </div>
 
-    <!-- ======= Filtros ======= -->
+    <!-- ======= Filtros (mesma lógica; apenas layout) ======= -->
     <div class="card-dashboard">
       <form id="filtrosForm">
-        <div class="form-row">
-          <div>
+        <div class="filtros-grid">
+          <div class="field">
             <label for="filtroNomeEvento">Nome Evento</label>
             <select id="filtroNomeEvento" multiple></select>
           </div>
-          <div>
+
+          <div class="field">
             <label for="filtroDataInicio">Data Início</label>
             <input type="date" id="filtroDataInicio">
           </div>
-          <div>
+
+          <div class="field">
             <label for="filtroDataFim">Data Fim</label>
             <input type="date" id="filtroDataFim">
           </div>
-          <div>
+
+          <div class="field">
             <label for="filtroStatus">Status</label>
             <select id="filtroStatus">
               <option value="" selected>Todos</option>
@@ -126,9 +151,10 @@
             </select>
           </div>
         </div>
-        <div class="form-row">
+
+        <div class="actions">
           <button type="submit" class="btn-navegar">Aplicar Filtros</button>
-          <button type="button" class="btn-navegar" onclick="limparFiltros()">Limpar Filtros</button>
+          <button type="button" class="btn-navegar btn-outline" onclick="limparFiltros()">Limpar Filtros</button>
         </div>
       </form>
 
@@ -160,27 +186,16 @@
   const BRL = v => (v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
   const PCT = (num, den) => den ? ((num/den)*100).toFixed(1)+'%' : '0,0%';
 
-  // Normaliza para ISO (YYYY-MM-DD) a partir de 'DD/MM/AAAA', timestamp ou Date/string.
   function toISODate(anyDate){
     if(!anyDate) return null;
-    if (typeof anyDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(anyDate)) return anyDate; // já ISO
-    if (typeof anyDate === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(anyDate)) {
-      const [d,m,y] = anyDate.split('/');
-      return `${y}-${m}-${d}`;
-    }
-    if (typeof anyDate === 'number') {
-      const d = new Date(anyDate);
-      if (!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    }
-    const d = new Date(anyDate);
-    if (!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    if (typeof anyDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(anyDate)) return anyDate;
+    if (typeof anyDate === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(anyDate)) { const [d,m,y]=anyDate.split('/'); return `${y}-${m}-${d}`; }
+    if (typeof anyDate === 'number') { const d=new Date(anyDate); if(!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
+    const d=new Date(anyDate); if(!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
     return null;
   }
 
-  function hojeInfo(){
-    const now = new Date();
-    return { y: now.getFullYear(), m: now.getMonth()+1 };
-  }
+  function hojeInfo(){ const now=new Date(); return { y: now.getFullYear(), m: now.getMonth()+1 }; }
 
   // ======= Load =======
   function carregarEventos() {
@@ -189,7 +204,7 @@
       snapshot.forEach(child => {
         const e = child.val();
         e.id = child.key;
-        e._dataISO = toISODate(e.data); // <-- chave da correção
+        e._dataISO = toISODate(e.data); // normaliza para filtrar
         eventos.push(e);
       });
       popularFiltro();
@@ -241,7 +256,6 @@
     const linhas = [];
 
     eventos.filter(e => {
-      // Data: usa normalização; se não houver _dataISO e houver filtro de data, descarta
       const dataOK = e._dataISO ? (!dataInicio || e._dataISO >= dataInicio) && (!dataFim || e._dataISO <= dataFim)
                                 : (!dataInicio && !dataFim);
       if (!dataOK) return false;
