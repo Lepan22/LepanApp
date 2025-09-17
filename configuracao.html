@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Configuração</title>
+  <title>configuração</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
@@ -18,36 +18,36 @@
     <main class="main-content">
       <h2>Configuração</h2>
 
-      <form id="formConfiguracao" style="display:flex;flex-wrap:wrap;gap:12px;max-width:520px;">
-        <div style="display:flex;flex-direction:column;">
+      <form id="formConfiguracao" style="display: flex; flex-wrap: wrap; gap: 12px; max-width: 420px;">
+        <div style="display: flex; flex-direction: column;">
           <label for="capacidadeEventos">Capacidade de Eventos no Mês</label>
           <input type="number" id="capacidadeEventos" required />
         </div>
 
-        <div style="display:flex;flex-direction:column;">
+        <div style="display: flex; flex-direction: column;">
           <label for="percentualCMV">Percentual CMV Real (%)</label>
           <input type="number" id="percentualCMV" step="0.01" required />
         </div>
 
-        <div style="display:flex;flex-direction:column;">
+        <div style="display: flex; flex-direction: column;">
           <label for="percentualLucro">% Lucro para Estimativa (mês)</label>
           <input type="number" id="percentualLucro" step="0.01" placeholder="ex.: 40" required />
         </div>
 
-        <div style="flex-basis:100%;">
+        <div style="flex-basis: 100%;">
           <button type="submit">Atualizar Configurações</button>
         </div>
       </form>
 
-      <hr style="margin:30px 0;">
+      <hr style="margin: 30px 0;">
 
       <div>
         <h3>Backup Manual</h3>
         <button id="botaoBackup">Fazer Backup</button>
-        <div id="msgBackup" style="margin-top:10px;"></div>
+        <div id="msgBackup" style="margin-top: 10px;"></div>
       </div>
 
-      <div id="statusMsg" style="margin-top:10px;"></div>
+      <div id="statusMsg" style="margin-top: 10px;"></div>
     </main>
   </div>
 
@@ -79,31 +79,20 @@
           const data = snapshot.val() || {};
           capacidadeInput.value = data.capacidadeEventos ?? '';
           percentualCMVInput.value = data.percentualCMV ?? '';
-          percentualLucroInput.value = data.percentualLucro ?? 40; // sugestão de default
+          percentualLucroInput.value = data.percentualLucro ?? 40; // default sugerido
         })
-        .catch(error => {
-          console.error('Erro ao carregar:', error);
-          statusMsg.textContent = 'Erro ao carregar configuração.';
-        });
+        .catch(() => { statusMsg.textContent = 'Erro ao carregar configuração.'; });
     }
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
-
       const capacidadeEventos = Number(capacidadeInput.value);
       const percentualCMV = parseFloat(percentualCMVInput.value);
       const percentualLucro = parseFloat(percentualLucroInput.value);
 
-      const configuracao = { capacidadeEventos, percentualCMV, percentualLucro };
-
-      db.ref('configuracao').set(configuracao)
-        .then(() => {
-          statusMsg.textContent = 'Configurações atualizadas com sucesso!';
-        })
-        .catch(error => {
-          console.error('Erro ao salvar:', error);
-          statusMsg.textContent = 'Erro ao atualizar configurações.';
-        });
+      db.ref('configuracao').set({ capacidadeEventos, percentualCMV, percentualLucro })
+        .then(() => { statusMsg.textContent = 'Configurações atualizadas com sucesso!'; })
+        .catch(() => { statusMsg.textContent = 'Erro ao atualizar configurações.'; });
     });
 
     botaoBackup.addEventListener('click', () => {
@@ -121,10 +110,7 @@
           document.body.removeChild(link);
           msgBackup.textContent = 'Backup gerado com sucesso.';
         })
-        .catch(error => {
-          console.error('Erro ao gerar backup:', error);
-          msgBackup.textContent = 'Erro ao gerar backup.';
-        });
+        .catch(() => { msgBackup.textContent = 'Erro ao gerar backup.'; });
     });
 
     carregarConfiguracao();
