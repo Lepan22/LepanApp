@@ -3,176 +3,217 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gestão de Agenda</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <title>Gestão de Agenda - Datas & Feriados</title>
+  <link rel="stylesheet" href="assets/base.css">
+  <link rel="stylesheet" href="assets/menu-styles.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    h1 { font-size: 18px; }
-    label { display: block; margin-top: 10px; }
-    input, select, button { margin-top: 5px; padding: 5px; width: 100%; max-width: 300px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 12px; }
-    th { background-color: #f2f2f2; }
-    .btn-excluir { background: red; color: white; border: none; padding: 4px 8px; cursor: pointer; }
+    body { background:#f6f7f9; margin:0; color:#222; }
+    .layout { display:flex; }
+    .main-content { flex:1; }
+    .wrap { padding:16px; }
+    h1 { font-size:18px; margin:0 0 10px; }
+    .card { background:#fff; border:1px solid #e7e7ea; border-radius:12px; padding:14px; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+    @media (max-width: 800px){ .grid{ grid-template-columns:1fr; } }
+
+    label { font-size:12px; font-weight:600; color:#555; display:block; margin-bottom:6px; }
+    input, select, button { width:100%; box-sizing:border-box; }
+    input, select { border:1px solid #e1e1e5; border-radius:8px; padding:8px 10px; font-size:13px; }
+    button { background:#ff7f00; color:#fff; border:0; border-radius:10px; padding:10px 14px; cursor:pointer; font-weight:600; }
+    button:hover { filter:brightness(.96); }
+
+    .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+    .row + .row, .row3 + .row3 { margin-top:10px; }
+
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { border:1px solid #eee; padding:10px; text-align:left; font-size:12px; }
+    th { background:#fafafa; }
+    .tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+    .tag.indisponivel { background:#fde7e7; color:#b42318; border:1px solid #f2caca; }
+    .tag.feriado { background:#e7f0ff; color:#1849b4; border:1px solid #cddfff; }
+    .tag.importante { background:#fff4e5; color:#b45309; border:1px solid #ffe2be; }
+
+    .btn-del { background:#e11d48; }
+    .btn-del:hover{ filter:brightness(.96); }
+    .muted { color:#6b7280; font-size:12px; }
   </style>
 </head>
 <body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
+    <main class="main-content">
+      <div class="wrap">
+        <div class="card" style="margin-bottom:14px">
+          <h1>Gestão da Agenda — Datas Indisponíveis, Feriados e Importantes</h1>
+          <div class="muted">Cadastre datas únicas ou períodos. Elas ficam visíveis automaticamente no calendário da Agenda.</div>
+        </div>
 
-<h1>Gestão de Agenda - Dias Indisponíveis</h1>
+        <div class="grid">
+          <!-- Formulário -->
+          <div class="card">
+            <form id="formIndisponivel">
+              <div class="row3">
+                <div>
+                  <label for="tipoPeriodo">Tipo</label>
+                  <select id="tipoPeriodo">
+                    <option value="único">Data Única</option>
+                    <option value="período">Período</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="categoria">Categoria</label>
+                  <select id="categoria">
+                    <option value="indisponivel">Indisponível</option>
+                    <option value="feriado">Feriado</option>
+                    <option value="importante">Importante</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="motivo">Motivo / Título</label>
+                  <input type="text" id="motivo" placeholder="Ex.: Feriado Municipal, Reunião, Férias...">
+                </div>
+              </div>
 
-<form id="formIndisponivel">
-  <label>Tipo:
-    <select id="tipo">
-      <option value="único">Data Única</option>
-      <option value="período">Período</option>
-    </select>
-  </label>
+              <div class="row" style="margin-top:10px">
+                <div id="boxData">
+                  <label for="data">Data</label>
+                  <input type="date" id="data">
+                </div>
+                <div id="boxInicio" style="display:none">
+                  <label for="inicio">Início</label>
+                  <input type="date" id="inicio">
+                </div>
+                <div id="boxFim" style="display:none">
+                  <label for="fim">Fim</label>
+                  <input type="date" id="fim">
+                </div>
+              </div>
 
-  <label id="labelData">Data:
-    <input type="date" id="data">
-  </label>
+              <div style="margin-top:12px">
+                <button type="submit">Salvar</button>
+              </div>
+            </form>
+          </div>
 
-  <label id="labelInicio" style="display:none;">Início:
-    <input type="date" id="inicio">
-  </label>
+          <!-- Lista -->
+          <div class="card">
+            <div style="display:flex; align-items:center; justify-content:space-between">
+              <strong>Lista de Datas</strong>
+              <span class="muted">Clique em excluir para remover</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th>Tipo</th>
+                  <th>Data / Período</th>
+                  <th>Motivo</th>
+                  <th style="width:1%">Ação</th>
+                </tr>
+              </thead>
+              <tbody id="tabelaIndisponiveis"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
 
-  <label id="labelFim" style="display:none;">Fim:
-    <input type="date" id="fim">
-  </label>
-
-  <label>Motivo:
-    <input type="text" id="motivo" placeholder="Ex.: Feriado, Férias...">
-  </label>
-
-  <button type="submit">Salvar</button>
-</form>
-
-<table>
-  <thead>
-    <tr>
-      <th>Tipo</th>
-      <th>Data / Período</th>
-      <th>Motivo</th>
-      <th>Ação</th>
-    </tr>
-  </thead>
-  <tbody id="tabelaIndisponiveis"></tbody>
-</table>
-
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-    authDomain: "lepanapp.firebaseapp.com",
-    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-    projectId: "lepanapp",
-    storageBucket: "lepanapp.appspot.com",
-    messagingSenderId: "542989944344",
-    appId: "1:542989944344:web:576e28199960fd5440a56d"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  const tipo = document.getElementById('tipo');
-  const labelData = document.getElementById('labelData');
-  const labelInicio = document.getElementById('labelInicio');
-  const labelFim = document.getElementById('labelFim');
-
-  tipo.addEventListener('change', () => {
-    if (tipo.value === 'único') {
-      labelData.style.display = 'block';
-      labelInicio.style.display = 'none';
-      labelFim.style.display = 'none';
-    } else {
-      labelData.style.display = 'none';
-      labelInicio.style.display = 'block';
-      labelFim.style.display = 'block';
-    }
-  });
-
-  document.getElementById('formIndisponivel').addEventListener('submit', e => {
-    e.preventDefault();
-    const motivo = document.getElementById('motivo').value.trim();
-    if (!motivo) {
-      alert('Motivo é obrigatório!');
-      return;
-    }
-
-    const novoRef = db.ref('configuracao/diasIndisponiveis').push();
-    const obj = {
-      tipo: tipo.value,
-      motivo: motivo
+  <script src="assets/menu.js" defer></script>
+  <script>
+    // Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
     };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    if (tipo.value === 'único') {
-      const data = document.getElementById('data').value;
-      if (!data) {
-        alert('Data é obrigatória!');
-        return;
-      }
-      obj.data = data;
-    } else {
-      const inicio = document.getElementById('inicio').value;
-      const fim = document.getElementById('fim').value;
-      if (!inicio || !fim) {
-        alert('Início e Fim são obrigatórios!');
-        return;
-      }
-      obj.inicio = inicio;
-      obj.fim = fim;
-    }
-
-    novoRef.set(obj).then(() => {
-      alert('Indisponibilidade salva!');
-      document.getElementById('formIndisponivel').reset();
-      tipo.value = 'único';
-      tipo.dispatchEvent(new Event('change'));
-      listarIndisponiveis();
+    // UI troca tipo
+    const tipoPeriodo = document.getElementById('tipoPeriodo');
+    const boxData = document.getElementById('boxData');
+    const boxInicio = document.getElementById('boxInicio');
+    const boxFim = document.getElementById('boxFim');
+    tipoPeriodo.addEventListener('change', ()=>{
+      const unico = tipoPeriodo.value === 'único';
+      boxData.style.display = unico ? 'block' : 'none';
+      boxInicio.style.display = unico ? 'none' : 'block';
+      boxFim.style.display = unico ? 'none' : 'block';
     });
-  });
 
-  function listarIndisponiveis() {
-    const tbody = document.getElementById('tabelaIndisponiveis');
-    tbody.innerHTML = '';
+    // Salvar
+    document.getElementById('formIndisponivel').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const motivo = document.getElementById('motivo').value.trim();
+      const categoria = document.getElementById('categoria').value;
+      if (!motivo){ return alert('Motivo/Título é obrigatório.'); }
 
-    db.ref('configuracao/diasIndisponiveis').once('value').then(snapshot => {
-      snapshot.forEach(child => {
-        const id = child.key;
-        const item = child.val();
+      // Compat: manter campos antigos (tipo = único|período) + novos
+      const obj = {
+        tipo: tipoPeriodo.value,
+        categoria: categoria, // novo
+        motivo: motivo
+      };
+
+      if (tipoPeriodo.value === 'único'){
+        const data = document.getElementById('data').value;
+        if(!data) return alert('Informe a data.');
+        obj.data = data;
+      } else {
+        const inicio = document.getElementById('inicio').value;
+        const fim = document.getElementById('fim').value;
+        if(!inicio || !fim) return alert('Informe início e fim.');
+        obj.inicio = inicio;
+        obj.fim = fim;
+      }
+
+      try{
+        await db.ref('configuracao/diasIndisponiveis').push(obj);
+        document.getElementById('formIndisponivel').reset();
+        tipoPeriodo.value='único'; tipoPeriodo.dispatchEvent(new Event('change'));
+        listar();
+        alert('Salvo!');
+      }catch(err){
+        alert('Erro ao salvar: ' + err.message);
+      }
+    });
+
+    // Lista
+    async function listar(){
+      const tbody = document.getElementById('tabelaIndisponiveis');
+      tbody.innerHTML='';
+      const snap = await db.ref('configuracao/diasIndisponiveis').once('value');
+      snap.forEach(ch=>{
+        const id = ch.key;
+        const it = ch.val()||{};
+        const cat = (it.categoria||'indisponivel');
+        const tipoTxt = it.tipo || 'único';
+        const dataTxt = (tipoTxt==='único') ? (it.data||'—') : `${it.inicio||'—'} a ${it.fim||'—'}`;
 
         const tr = document.createElement('tr');
-
-        let dataTexto = '';
-        if (item.tipo === 'único') {
-          dataTexto = item.data;
-        } else {
-          dataTexto = `${item.inicio} a ${item.fim}`;
-        }
-
         tr.innerHTML = `
-          <td>${item.tipo}</td>
-          <td>${dataTexto}</td>
-          <td>${item.motivo}</td>
-          <td><button class="btn-excluir" onclick="excluirIndisponivel('${id}')">Excluir</button></td>
+          <td><span class="tag ${cat}">${cat}</span></td>
+          <td>${tipoTxt}</td>
+          <td>${dataTxt}</td>
+          <td>${it.motivo||'—'}</td>
+          <td><button class="btn-del" onclick="excluir('${id}')">Excluir</button></td>
         `;
         tbody.appendChild(tr);
       });
-    });
-  }
-
-  function excluirIndisponivel(id) {
-    if (confirm('Tem certeza que deseja excluir?')) {
-      db.ref('configuracao/diasIndisponiveis/' + id).remove().then(() => {
-        alert('Excluído com sucesso!');
-        listarIndisponiveis();
-      });
     }
-  }
 
-  listarIndisponiveis();
-</script>
+    async function excluir(id){
+      if(!confirm('Excluir este registro?')) return;
+      await db.ref('configuracao/diasIndisponiveis/'+id).remove();
+      listar();
+    }
 
+    document.addEventListener('DOMContentLoaded', listar);
+  </script>
 </body>
 </html>
