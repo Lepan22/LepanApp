@@ -1,527 +1,513 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GestãoEvento</title>
+  <title>Agenda | Le Pan pan</title>
 
-  <link rel="stylesheet" href="assets/menu-styles.css" />
-  <link rel="stylesheet" href="assets/base.css" />
+  <!-- Estilos base do projeto -->
+  <link rel="stylesheet" href="assets/base.css"/>
+  <link rel="stylesheet" href="assets/menu-styles.css"/>
 
-  <style>
-    body {
-      font-size: 14px;
-      margin-top: 10px;
-    }
-
-    input, select, textarea, button {
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-
-    button {
-      background-color: #198754;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    button:hover {
-      background-color: #146c43;
-    }
-
-    .btn-cinza {
-      background-color: #eee;
-      color: #333;
-      border: 1px solid #ccc;
-    }
-
-    .btn-cinza:hover {
-      background-color: #ddd;
-    }
-
-    .totais-resumo {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      font-size: 13px;
-      padding: 8px;
-      background: #f5f5f5;
-      border-radius: 4px;
-      margin-bottom: 8px;
-    }
-
-    .totais-resumo span {
-      min-width: 180px;
-    }
-
-    .grupo-flex {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
-    .grupo-flex > div {
-      flex: 1;
-      min-width: 300px;
-    }
-
-    .grupo-inline {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    #tabelaProdutos input {
-      text-align: right;
-      font-size: 12px;
-      padding: 2px 4px;
-      height: 26px;
-      width: 60px;
-    }
-
-    #tabelaProdutos td:first-child input {
-      text-align: left;
-      width: 200px;
-    }
-
-    #tabelaProdutos td {
-      padding: 2px;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 13px;
-    }
-
-    th {
-      background-color: #ff7f00;
-      color: white;
-      padding: 6px;
-    }
-
-    td {
-      border: 1px solid #ddd;
-    }
-
-    .section-title {
-      font-weight: bold;
-      font-size: 15px;
-      margin-top: 10px;
-      margin-bottom: 4px;
-    }
-
-    datalist {
-      display: none;
-    }
-    
-   main h2 {
-     margin-top: 4px;
-   }
-    
-    .equipe-alocada-list input,
-    .equipe-col input[data-prestador-id] {
-    width: 70px;
-    max-width: 70px;
-    font-size: 12px;
-    padding: 2px 4px;
-}
-
-   .equipe-alocada-list {
-     max-width: 120px;
-   }
-  
-   .equipe-col {
-     width: 140px;
-   }
-
-  </style>
-
+  <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <!-- Menu lateral -->
   <script src="assets/menu.js" defer></script>
+
+  <style>
+    /* ====== Layout da página ====== */
+    .page {
+      padding: 16px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .page-header h1 { margin-bottom: 12px; }
+
+    /* ====== KPIs ====== */
+    .kpi-grid{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi{
+      border-radius: 12px;
+      padding: 14px;
+      background: var(--card, #fff);
+      box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,.06));
+    }
+    .kpi h3{
+      font-size: 14px;
+      margin: 0 0 6px;
+      color: var(--muted-2, #555);
+      font-weight: 600;
+    }
+    .kpi .value{
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .kpi.warn{
+      outline: 2px solid #ffb84d;
+      background: #fff8eb;
+    }
+
+    /* ====== Cabeçalho do mês ====== */
+    .month-bar{
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 6px 0 10px;
+      gap: 8px;
+    }
+    .month-bar .title{
+      font-size: 18px; font-weight: 700;
+    }
+    .month-bar .nav button{
+      border: 1px solid #ddd; background: #fff; border-radius: 8px;
+      padding: 6px 10px; cursor: pointer;
+    }
+
+    /* ====== Calendário ====== */
+    .cal{
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 8px;
+      background: transparent;
+    }
+    .cal-weekdays{
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 6px; font-weight: 700; font-size: 12px; opacity: .85;
+    }
+    .cal-grid{
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+    }
+    .day{
+      min-height: 110px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: var(--shadow, 0 2px 8px rgba(0,0,0,.06));
+      padding: 6px;
+      display: flex;
+      flex-direction: column;
+    }
+    .day.out{
+      background: #fafafa;
+      color: #666;
+    }
+    .day .head{
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; margin-bottom: 4px;
+    }
+    .day .head .date-badge{
+      font-weight: 700;
+    }
+    .day.today{
+      outline: 2px solid #4da3ff;
+    }
+
+    /* ====== Evento no dia ====== */
+    .ev{
+      font-size: 9px;               /* pedido anterior: 9px */
+      line-height: 1.25;
+      border-radius: 8px;
+      padding: 4px 6px;
+      margin-bottom: 4px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px;
+      align-items: center;
+      cursor: default;
+    }
+    .ev.confirmado{
+      background: #eefaf1;
+      border: 1px solid #b6e3c1;
+    }
+    .ev.previsto{
+      background: #fff3e0;          /* âmbar/laranja claro */
+      border: 1px solid #ffd699;
+    }
+    .ev .name{
+      font-weight: 600;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .ev .est{
+      font-variant-numeric: tabular-nums;
+      opacity: .9;
+    }
+    .ev .sel{
+      display: flex; align-items: center; gap: 4px;
+    }
+    .ev select{
+      font-size: 9px; padding: 2px 4px; border-radius: 6px; border: 1px solid #ccc;
+      background: #fff;
+    }
+    .ev .act{
+      display: flex; gap: 6px;
+    }
+    .tiny-btn{
+      font-size: 9px; padding: 2px 6px; border: 1px solid #ddd; background: #fff;
+      border-radius: 6px; cursor: pointer;
+    }
+
+    /* Lista lateral opcional (se quiser ligar no futuro) */
+    @media (max-width: 900px){
+      .kpi-grid{ grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar" id="menuLateral"></aside>
+  <div id="menu-container"></div>
 
-    <main class="main-content">
-      <h2>Planejamento de Eventos da Semana</h2>
-      <div id="eventos-container">
-        <p>Carregando eventos...</p>
+  <main class="page">
+    <div class="page-header">
+      <h1>Agenda</h1>
+      <p style="margin:6px 0 2px;color:#666">Dica: eventos <b>Previstos</b> aparecem em laranja. Use o seletor para alternar entre
+        <b>Confirmado</b> e <b>Previsto</b>.</p>
+    </div>
+
+    <!-- KPIs -->
+    <section class="kpi-grid">
+      <div class="kpi" id="kpiPrevistaTotal">
+        <h3>Venda Prevista Mês (Total)</h3>
+        <div class="value" id="kpiPrevistaTotalValue">R$ 0,00</div>
       </div>
-    </main>
-  </div>
+      <div class="kpi" id="kpiPrevistaAConfirmar">
+        <h3>Venda Prevista Mês — à confirmar</h3>
+        <div class="value" id="kpiPrevistaAConfirmarValue">R$ 0,00</div>
+      </div>
+    </section>
+
+    <!-- Cabeçalho do mês -->
+    <section class="month-bar">
+      <div class="title" id="monthTitle">Mês/Ano</div>
+      <div class="nav">
+        <button id="btnPrev">&larr; Mês anterior</button>
+        <button id="btnToday">Hoje</button>
+        <button id="btnNext">Próximo mês &rarr;</button>
+      </div>
+    </section>
+
+    <!-- Calendário -->
+    <section class="cal">
+      <div class="cal-weekdays">
+        <div style="text-align:center">S</div>
+        <div style="text-align:center">T</div>
+        <div style="text-align:center">Q</div>
+        <div style="text-align:center">Q</div>
+        <div style="text-align:center">S</div>
+        <div style="text-align:center">S</div>
+        <div style="text-align:center">D</div>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+    </section>
+  </main>
 
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    // ===== UTIL =====
+    const BRL = v => (v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const pad2 = n => String(n).padStart(2,'0');
 
-    let allEquipe = {};
-    let allLogistica = {};
-    let allEquipamentos = {};
-    let allEventos = [];
+    // Datas (mantém referência ao mês exibido)
+    let current = new Date(); // hoje
+    current.setDate(1);       // pivô: primeiro dia do mês corrente
 
-    function getWeekRange() {
-      const today = new Date();
-      const dayOfWeek = today.getDay();
-      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const monday = new Date(today);
-      monday.setDate(today.getDate() + diffToMonday);
-      monday.setHours(0, 0, 0, 0);
-      const sunday = new Date(monday);
-      sunday.setDate(monday.getDate() + 6);
-      sunday.setHours(23, 59, 59, 999);
-      return { start: monday, end: sunday };
+    // Firebase app deve estar inicializado globalmente no projeto
+    const db = () => firebase.database();
+
+    // Caminho dos eventos no Realtime Database
+    const EVT_PATH = '/eventos';
+
+    // Cache de eventos do mês atual (para não recomputar a cada render)
+    let eventosDoMes = [];
+
+    // ====== Render do calendário ======
+    function renderMonthHeader() {
+      const tit = document.getElementById('monthTitle');
+      const formatter = new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric' });
+      tit.textContent = formatter.format(current).replace(/^\w/, c => c.toUpperCase());
     }
 
-    function formatDate(dateString) {
-      const date = new Date(dateString + 'T00:00:00');
-      const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
-      return new Intl.DateTimeFormat('pt-BR', options).format(date);
+    function getMonthRange(date) {
+      const start = new Date(date.getFullYear(), date.getMonth(), 1);
+      const end   = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+      return { start, end };
     }
 
-    async function fetchEquipe() {
-      const snapshot = await db.ref('equipe').once('value');
-      allEquipe = snapshot.val() || {};
+    function buildCalendarDays() {
+      const grid = document.getElementById('calGrid');
+      grid.innerHTML = '';
+
+      const { start, end } = getMonthRange(current);
+      const firstWeekday = (start.getDay() + 6) % 7; // ajusta para semana começando em segunda? No layout está S T Q Q S S D, então manter DOM=0 no fim.
+      // Para manter "S T Q Q S S D" (Seg a Dom) como cabeçalho visual, vamos preencher como:
+      // 0..6 -> Seg(1) a Dom(0). Pra simplificar, usamos offset de segunda:
+      const mondayOffset = ((start.getDay() + 6) % 7); // 0 = segunda
+
+      // Quantos dias do mês?
+      const daysInMonth = Math.round((end - start) / (24*3600*1000));
+
+      // Quantos quadradinhos "antes" (dias do mês anterior para completar a linha inicial)
+      const before = mondayOffset;
+      // E depois (para completar a grade em múltiplos de 7)
+      const totalCells = Math.ceil((before + daysInMonth) / 7) * 7;
+      const after = totalCells - (before + daysInMonth);
+
+      const today = new Date(); today.setHours(0,0,0,0);
+
+      // Dias do mês anterior
+      for (let i = before; i > 0; i--) {
+        const d = new Date(start); d.setDate(start.getDate() - i);
+        grid.appendChild(dayCell(d, true, today));
+      }
+      // Dias do mês atual
+      for (let i = 0; i < daysInMonth; i++) {
+        const d = new Date(start); d.setDate(start.getDate() + i);
+        grid.appendChild(dayCell(d, false, today));
+      }
+      // Dias do mês seguinte
+      for (let i = 1; i <= after; i++) {
+        const d = new Date(end); d.setDate(end.getDate() + i - 1);
+        grid.appendChild(dayCell(d, true, today));
+      }
     }
 
-    async function fetchLogistica() {
-      const snapshot = await db.ref('logistica').once('value');
-      allLogistica = snapshot.val() || {};
+    function dayCell(date, isOutMonth, todayRef) {
+      const cell = document.createElement('div');
+      cell.className = 'day' + (isOutMonth ? ' out' : '');
+
+      const head = document.createElement('div');
+      head.className = 'head';
+      const badge = document.createElement('div');
+      badge.className = 'date-badge';
+      badge.textContent = pad2(date.getDate());
+      const right = document.createElement('div');
+      right.textContent = ''; // reservado
+      head.appendChild(badge);
+      head.appendChild(right);
+      cell.appendChild(head);
+
+      // Destacar hoje
+      const cmp = new Date(date); cmp.setHours(0,0,0,0);
+      if (!isOutMonth && cmp.getTime() === todayRef.getTime()) {
+        cell.classList.add('today');
+      }
+
+      // Renderizar eventos deste dia
+      const y = date.getFullYear();
+      const m = pad2(date.getMonth() + 1);
+      const d = pad2(date.getDate());
+      const key = `${y}-${m}-${d}`;
+
+      const doDia = eventosDoMes.filter(ev => ev.__ymd === key);
+      for (const ev of doDia) {
+        cell.appendChild(eventPill(ev));
+      }
+
+      return cell;
     }
 
-    async function fetchEquipamentos() {
-      const snapshot = await db.ref('equipamentos').once('value');
-      allEquipamentos = snapshot.val() || {};
+    function eventPill(ev) {
+      const pill = document.createElement('div');
+      const estado = (ev.confirmacao === 'previsto') ? 'previsto' : 'confirmado';
+      pill.className = `ev ${estado}`;
+
+      // Nome do evento
+      const name = document.createElement('div');
+      name.className = 'name';
+      name.title = ev.nomeEvento || '(Sem nome)';
+      name.textContent = ev.nomeEvento || '(Sem nome)';
+
+      // Estimativa
+      const est = document.createElement('div');
+      est.className = 'est';
+      const estVal = Number(ev.estimativaVenda || 0);
+      est.textContent = BRL(estVal);
+
+      // Seletor Confirmado/Previsto
+      const selWrap = document.createElement('div');
+      selWrap.className = 'sel';
+      const sel = document.createElement('select');
+      sel.innerHTML = `
+        <option value="confirmado">Confirmado</option>
+        <option value="previsto">Previsto</option>
+      `;
+      sel.value = estado;
+      sel.title = 'Definir confirmação deste evento';
+
+      sel.addEventListener('change', async (e) => {
+        const novo = e.target.value;
+        try {
+          await db().ref(\`${EVT_PATH}/${ev._id}/confirmacao\`).set(novo);
+          pill.classList.toggle('previsto', novo === 'previsto');
+          pill.classList.toggle('confirmado', novo !== 'previsto');
+          // Recalcular KPI à confirmar
+          computeKPIs();
+        } catch (err) {
+          console.error('Erro ao atualizar confirmacao:', err);
+          alert('Não foi possível salvar. Verifique a conexão.');
+          sel.value = estado; // volta
+        }
+      });
+
+      selWrap.appendChild(sel);
+
+      // Ações (ver/excluir como você já usa)
+      const act = document.createElement('div');
+      act.className = 'act';
+      const btnView = document.createElement('button');
+      btnView.className = 'tiny-btn';
+      btnView.textContent = 'Ver';
+      btnView.title = 'Abrir gestão do evento';
+      btnView.addEventListener('click', () => {
+        if (ev._id) {
+          window.open(\`GestaoEvento.html?id=\${ev._id}\`, '_blank');
+        }
+      });
+
+      const btnDel = document.createElement('button');
+      btnDel.className = 'tiny-btn';
+      btnDel.textContent = 'Excluir';
+      btnDel.title = 'Excluir evento';
+      btnDel.addEventListener('click', async () => {
+        if (!ev._id) return;
+        const ok = confirm('Tem certeza que deseja excluir este evento?');
+        if (!ok) return;
+        try {
+          await db().ref(\`${EVT_PATH}/${ev._id}\`).remove();
+        } catch (err) {
+          console.error('Erro ao excluir:', err);
+          alert('Erro ao excluir.');
+        }
+      });
+
+      act.appendChild(btnView);
+      act.appendChild(btnDel);
+
+      // Montagem
+      const left = document.createElement('div');
+      left.appendChild(name);
+      const right = document.createElement('div');
+      right.style.display = 'flex';
+      right.style.gap = '6px';
+      right.appendChild(est);
+      right.appendChild(selWrap);
+
+      pill.appendChild(left);
+      pill.appendChild(right);
+      pill.appendChild(act);
+
+      return pill;
     }
 
-    async function fetchEventos() {
+    // ====== KPIs ======
+    function computeKPIs() {
+      // Considera eventos do mês exibido (já filtrados em eventosDoMes)
+      let totalPrevista = 0;
+      let totalPrevistaAConfirmar = 0;
+
+      for (const ev of eventosDoMes) {
+        const est = Number(ev.estimativaVenda || 0);
+        totalPrevista += est;
+        if ((ev.confirmacao || 'confirmado') === 'previsto') {
+          totalPrevistaAConfirmar += est;
+        }
+      }
+
+      document.getElementById('kpiPrevistaTotalValue').textContent = BRL(totalPrevista);
+      const kpiAConf = document.getElementById('kpiPrevistaAConfirmar');
+      document.getElementById('kpiPrevistaAConfirmarValue').textContent = BRL(totalPrevistaAConfirmar);
+      // Destaque quando há valor à confirmar
+      if (totalPrevistaAConfirmar > 0) kpiAConf.classList.add('warn'); else kpiAConf.classList.remove('warn');
+    }
+
+    // ====== Carregar eventos do mês atual ======
+    let eventosRef = null;
+
+    function watchMonth() {
+      // Remove listeners anteriores
+      if (eventosRef) {
+        eventosRef.off();
+      }
+
+      const { start, end } = getMonthRange(current);
+      // Normalizamos datas no formato YYYY-MM-DD (projeto costuma salvar em string ou timestamp)
+      // Estratégia: buscar todos eventos e filtrar por data (caso não tenha índice por data)
+      eventosRef = db().ref(EVT_PATH);
+      eventosRef.on('value', snap => {
+        const vals = snap.val() || {};
+        const arr = [];
+
+        for (const [id, ev] of Object.entries(vals)) {
+          // Pega data
+          let ymd = null;
+          if (ev.data) {
+            // Aceita "YYYY-MM-DD", "DD/MM/YYYY" ou timestamp numérico
+            if (typeof ev.data === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(ev.data)) {
+              ymd = ev.data;
+            } else if (typeof ev.data === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(ev.data)) {
+              const [dd, mm, yy] = ev.data.split('/');
+              ymd = `${yy}-${mm}-${dd}`;
+            } else if (typeof ev.data === 'number') {
+              const d = new Date(ev.data);
+              ymd = `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+            }
+          }
+
+          // Se não tem data, pula da grade (mas você pode listar em uma “sem data” se quiser)
+          if (!ymd) continue;
+
+          // Filtra por mês
+          const [Y, M, D] = ymd.split('-').map(Number);
+          const dt = new Date(Y, M-1, D);
+          if (dt >= start && dt < end) {
+            arr.push({
+              _id: id,
+              __ymd: ymd,
+              nomeEvento: ev.nomeEvento || ev.nome || '(Sem nome)',
+              estimativaVenda: ev.estimativaVenda || 0,
+              confirmacao: ev.confirmacao || 'confirmado', // default
+              status: ev.status || 'Aberto'
+            });
+          }
+        }
+
+        eventosDoMes = arr.sort((a,b) => a.__ymd.localeCompare(b.__ymd));
+        renderMonthHeader();
+        buildCalendarDays();
+        computeKPIs();
+      });
+
+      // Atualizações pontuais (child_added/changed/removed) opcional —
+      // como usamos 'value', já re-renderiza tudo de uma vez.
+    }
+
+    // ====== Navegação do mês ======
+    document.getElementById('btnPrev').addEventListener('click', () => {
+      current.setMonth(current.getMonth() - 1);
+      watchMonth();
+    });
+    document.getElementById('btnNext').addEventListener('click', () => {
+      current.setMonth(current.getMonth() + 1);
+      watchMonth();
+    });
+    document.getElementById('btnToday').addEventListener('click', () => {
+      const now = new Date();
+      current = new Date(now.getFullYear(), now.getMonth(), 1);
+      watchMonth();
+    });
+
+    // ====== Boot ======
+    (function init() {
+      // Se o app não estiver inicializado, esta chamada lançará erro no console.
       try {
-        await fetchEquipe();
-        await fetchLogistica();
-        await fetchEquipamentos();
-        const snapshot = await db.ref('eventos').once('value');
-        const eventosData = snapshot.val() || {};
-        const { start, end } = getWeekRange();
-
-        allEventos = Object.keys(eventosData)
-          .map(key => ({ id: key, ...eventosData[key] }))
-          .filter(evento => {
-            if (!evento.data) return false;
-            const eventoDate = new Date(evento.data + 'T00:00:00');
-            return eventoDate >= start && eventoDate <= end;
-          })
-          .sort((a, b) => new Date(a.data) - new Date(b.data));
-
-        renderEventos();
-      } catch (error) {
-        console.error("Erro ao buscar eventos:", error);
-        document.getElementById('eventos-container').innerHTML = '<p>Erro ao carregar os eventos. Verifique o console.</p>';
-      }
-    }
-    function getEquipeDoEvento(evento) {
-      if (evento && Array.isArray(evento.equipe)) return evento.equipe;
-      if (evento && Array.isArray(evento.equipeAlocada)) return evento.equipeAlocada;
-      return [];
-    }
-
-    function getLogisticaDoEvento(evento) {
-      return Array.isArray(evento.logistica) ? evento.logistica : [];
-    }
-
-    function getEquipamentosDoEvento(evento) {
-      return Array.isArray(evento.equipamentos) ? evento.equipamentos : [];
-    }
-
-    function renderEventos() {
-      const container = document.getElementById('eventos-container');
-      container.innerHTML = '';
-
-      if (allEventos.length === 0) {
-        container.innerHTML = '<p>Nenhum evento encontrado para a semana atual.</p>';
-        return;
-      }
-
-      const eventosAgrupados = allEventos.reduce((acc, evento) => {
-        const data = evento.data;
-        if (!acc[data]) acc[data] = [];
-        acc[data].push(evento);
-        return acc;
-      }, {});
-
-      for (const data in eventosAgrupados) {
-        const header = document.createElement('div');
-        header.className = 'date-header';
-        header.textContent = formatDate(data);
-        container.appendChild(header);
-
-        const table = document.createElement('table');
-        table.innerHTML = `<thead><tr>
-            <th>Evento</th>
-            <th class="equipe-col">Equipe Alocada</th>
-            <th class="equipe-col">Editar Equipe</th>
-            <th class="equipe-col">Logística Alocada</th>
-            <th class="equipe-col">Editar Logística</th>
-            <th class="equipe-col">Equipamento Alocado</th>
-            <th class="equipe-col">Equipamento</th>
-            <th class="equipe-col">OBS</th>
-          </tr></thead>`;
-        const tbody = document.createElement('tbody');
-
-        const equipamentosUsadosNoDia = new Set();
-        eventosAgrupados[data].forEach(e => {
-          if (e.equipamentos) {
-            e.equipamentos.forEach(eq => equipamentosUsadosNoDia.add(eq.equipamentoId));
-          }
-        });
-
-        eventosAgrupados[data].forEach(evento => {
-          const row = document.createElement('tr');
-          row.id = `row-${evento.id}`;
-
-          const nomeTd = document.createElement('td');
-          nomeTd.textContent = evento.nomeEvento || 'Sem nome';
-          row.appendChild(nomeTd);
-          // Equipe Alocada
-          const equipeTd = document.createElement('td');
-          equipeTd.className = 'equipe-col';
-          const equipeList = document.createElement('ul');
-          equipeList.className = 'equipe-alocada-list';
-          const equipeDoEvento = getEquipeDoEvento(evento);
-          if (equipeDoEvento.length > 0) {
-            equipeDoEvento.forEach(membro => {
-              if (membro?.membroId && allEquipe[membro.membroId]) {
-                const li = document.createElement('li');
-                const label = document.createElement('label');
-                label.textContent = allEquipe[membro.membroId].apelido;
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.dataset.membroId = membro.membroId;
-                input.placeholder = "R$";
-                input.step = "0.01";
-                input.value = membro.valor ? parseFloat(membro.valor).toFixed(2) : (allEquipe[membro.membroId].valorDiaria || '');
-                input.addEventListener('change', () => updateEquipe(evento.id));
-                li.appendChild(label);
-                li.appendChild(input);
-                equipeList.appendChild(li);
-              }
-            });
-          } else {
-            equipeList.innerHTML = '<li>Nenhuma equipe alocada</li>';
-          }
-          equipeTd.appendChild(equipeList);
-          row.appendChild(equipeTd);
-
-          // Editar Equipe
-          const equipeSelectTd = document.createElement('td');
-          equipeSelectTd.className = 'equipe-col';
-          const equipeSelect = document.createElement('select');
-          equipeSelect.multiple = true;
-          populateSelect(equipeSelect, evento, eventosAgrupados[data]);
-          equipeSelect.addEventListener('change', () => updateEquipe(evento.id));
-          equipeSelectTd.appendChild(equipeSelect);
-          row.appendChild(equipeSelectTd);
-
-          // Logística Alocada
-          const logisticaTd = document.createElement('td');
-          logisticaTd.className = 'equipe-col';
-          const logisticaList = document.createElement('ul');
-          logisticaList.className = 'equipe-alocada-list';
-          const logisticaDoEvento = getLogisticaDoEvento(evento);
-          if (logisticaDoEvento.length > 0) {
-            logisticaDoEvento.forEach(prestador => {
-              if (prestador?.prestadorId && allLogistica[prestador.prestadorId]) {
-                const li = document.createElement('li');
-                const label = document.createElement('label');
-                label.textContent = allLogistica[prestador.prestadorId].nome;
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.dataset.prestadorId = prestador.prestadorId;
-                input.placeholder = "R$";
-                input.step = "0.01";
-                input.value = prestador.valor ? parseFloat(prestador.valor).toFixed(2) : '';
-                input.addEventListener('change', () => updateLogistica(evento.id));
-                li.appendChild(label);
-                li.appendChild(input);
-                logisticaList.appendChild(li);
-              }
-            });
-          } else {
-            logisticaList.innerHTML = '<li>Nenhuma logística alocada</li>';
-          }
-          logisticaTd.appendChild(logisticaList);
-          row.appendChild(logisticaTd);
-
-          // Editar Logística
-          const logisticaSelectTd = document.createElement('td');
-          logisticaSelectTd.className = 'equipe-col';
-          const logisticaSelect = document.createElement('select');
-          logisticaSelect.multiple = true;
-          for (const id in allLogistica) {
-            const option = document.createElement('option');
-            option.value = id;
-            option.textContent = allLogistica[id].nome;
-            if (logisticaDoEvento.find(p => p.prestadorId === id)) {
-              option.selected = true;
-            }
-            logisticaSelect.appendChild(option);
-          }
-          logisticaSelect.addEventListener('change', () => updateLogistica(evento.id));
-          logisticaSelectTd.appendChild(logisticaSelect);
-          row.appendChild(logisticaSelectTd);
-
-          // Equipamento Alocado
-          const equipamentoAlocadoTd = document.createElement('td');
-          equipamentoAlocadoTd.className = 'equipe-col';
-          const equipamentoList = document.createElement('ul');
-          equipamentoList.className = 'equipe-alocada-list';
-          const equipamentosDoEvento = getEquipamentosDoEvento(evento);
-          if (equipamentosDoEvento.length > 0) {
-            equipamentosDoEvento.forEach(eq => {
-              if (eq?.equipamentoId && allEquipamentos[eq.equipamentoId]) {
-                const li = document.createElement('li');
-                li.textContent = allEquipamentos[eq.equipamentoId].nome;
-                equipamentoList.appendChild(li);
-              }
-            });
-          } else {
-            equipamentoList.innerHTML = '<li>Nenhum equipamento alocado</li>';
-          }
-          equipamentoAlocadoTd.appendChild(equipamentoList);
-          row.appendChild(equipamentoAlocadoTd);
-
-          // Editar Equipamento
-          const equipamentoTd = document.createElement('td');
-          equipamentoTd.className = 'equipe-col';
-          const equipamentoSelect = document.createElement('select');
-          equipamentoSelect.multiple = true;
-          const usadosNesteEvento = new Set(equipamentosDoEvento.map(e => e.equipamentoId));
-
-          for (const id in allEquipamentos) {
-            const option = document.createElement('option');
-            option.value = id;
-            option.textContent = allEquipamentos[id].nome;
-            if (usadosNesteEvento.has(id)) {
-              option.selected = true;
-            } else if (equipamentosUsadosNoDia.has(id)) {
-              option.disabled = true;
-            }
-            equipamentoSelect.appendChild(option);
-          }
-          equipamentoSelect.addEventListener('change', () => updateEquipamento(evento.id));
-          equipamentoTd.appendChild(equipamentoSelect);
-          row.appendChild(equipamentoTd);
-
-          // OBSERVAÇÃO
-          const obsTd = document.createElement('td');
-          obsTd.className = 'equipe-col';
-          const obsTextarea = document.createElement('textarea');
-          obsTextarea.className = 'observacao';
-          obsTextarea.placeholder = 'OBS';
-          obsTextarea.value = evento.observacao || '';
-          obsTextarea.addEventListener('change', () => {
-            const texto = obsTextarea.value;
-            db.ref(`eventos/${evento.id}/observacao`).set(texto);
-          });
-          obsTd.appendChild(obsTextarea);
-          row.appendChild(obsTd);
-
-          tbody.appendChild(row);
-        });
-
-        table.appendChild(tbody);
-        container.appendChild(table);
-      }
-    }
-    function populateSelect(selectElement, eventoAtual, eventosDoDia) {
-      selectElement.innerHTML = '';
-      const membrosAlocadosNoDia = new Set();
-      eventosDoDia.forEach(e => {
-        if (e.id !== eventoAtual.id) {
-          getEquipeDoEvento(e).forEach(m => {
-            if (m?.membroId) membrosAlocadosNoDia.add(m.membroId);
-          });
+        // Checagem simples (se precisar)
+        if (!firebase.apps.length) {
+          console.warn('Firebase app não inicializado. Certifique-se de incluir sua config antes desta página.');
         }
-      });
-
-      const equipeAtual = getEquipeDoEvento(eventoAtual);
-      const membrosAlocadosNesteEvento = new Set(equipeAtual.map(m => m.membroId));
-
-      for (const membroId in allEquipe) {
-        const option = document.createElement('option');
-        option.value = membroId;
-        option.textContent = allEquipe[membroId].apelido || allEquipe[membroId].nomeCompleto;
-
-        if (membrosAlocadosNesteEvento.has(membroId)) {
-          option.selected = true;
-        } else if (membrosAlocadosNoDia.has(membroId)) {
-          option.disabled = true;
-        }
-        selectElement.appendChild(option);
-      }
-    }
-
-    async function updateEquipe(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      if (!row) return;
-      const select = row.querySelectorAll('select')[0];
-      const options = Array.from(select.selectedOptions);
-      const novaEquipe = options.map(opt => {
-        const membroId = opt.value;
-        const input = row.querySelector(`input[data-membro-id="${membroId}"]`);
-        let valor = input ? parseFloat(input.value) || 0 : (allEquipe[membroId]?.valorDiaria || 0);
-        return { membroId, valor };
-      });
-
-      await db.ref(`eventos/${eventoId}/equipe`).set(novaEquipe);
-      fetchEventos();
-    }
-
-    async function updateLogistica(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      if (!row) return;
-      const select = row.querySelectorAll('select')[1];
-      const options = Array.from(select.selectedOptions);
-      const novaLogistica = options.map(opt => {
-        const prestadorId = opt.value;
-        const input = row.querySelector(`input[data-prestador-id="${prestadorId}"]`);
-        let valor = input ? parseFloat(input.value) || 0 : 0;
-        return { prestadorId, valor };
-      });
-
-      await db.ref(`eventos/${eventoId}/logistica`).set(novaLogistica);
-      fetchEventos();
-    }
-
-    async function updateEquipamento(eventoId) {
-      const row = document.getElementById(`row-${eventoId}`);
-      if (!row) return;
-      const select = row.querySelectorAll('select')[2];
-      const options = Array.from(select.selectedOptions);
-      const novosEquipamentos = options.map(opt => ({
-        equipamentoId: opt.value
-      }));
-      await db.ref(`eventos/${eventoId}/equipamentos`).set(novosEquipamentos);
-      fetchEventos();
-    }
-
-    document.addEventListener('DOMContentLoaded', fetchEventos);
+      } catch (e) {}
+      watchMonth();
+    })();
   </script>
 </body>
 </html>
