@@ -295,4 +295,210 @@
         el.addEventListener('drop', onDropMove);
 
         // Cabeçalho do dia: número + contador
-        const
+        const head = document.createElement('div');
+        head.className = 'head-dia';
+        const nEl = document.createElement('div');
+        nEl.className='n'; nEl.textContent=data.getDate();
+
+        const cnt = document.createElement('span');
+        cnt.className='count'; cnt.textContent='';
+        head.appendChild(nEl); head.appendChild(cnt);
+        el.appendChild(head);
+
+        // Mensagem de indisponível (se houver)
+        if (indis[iso]){
+          const b = document.createElement('div');
+          b.className='blocked'; b.textContent=indis[iso];
+          el.appendChild(b);
+        }
+
+        // Lista de eventos (rolagem interna)
+        const lista = document.createElement('div');
+        lista.className = 'lista';
+
+        const doDia = eventos.filter(ev=>ev.data===iso);
+        doDia.forEach(ev=>{
+          const estado = (ev.confirmacao === 'previsto') ? 'previsto' : 'confirmado';
+
+          const evt = document.createElement('div');
+          evt.className='evt ' + estado;      // <<< cor por status
+          evt.draggable=true;
+          evt.dataset.eventoId=ev.id;
+
+          const t = document.createElement('span');
+          t.className='t'; t.textContent=ev.nomeEvento || 'Sem nome';
+
+          const acts = document.createElement('div');
+          acts.className='acts';
+
+          // Ver (abre nova aba)
+          const ver = document.createElement('a');
+          ver.className = 'iconbtn';
+          ver.href = VIEW_BASE + encodeURIComponent(ev.id);
+          ver.target = '_blank';
+          ver.title = 'Visualizar evento';
+          ver.textContent = '🔍';
+
+          // Alternar Confirmado/Previsto — NOVO
+          const tog = document.createElement('button');
+          tog.className='iconbtn';
+          tog.title = (estado==='previsto') ? 'Marcar como Confirmado' : 'Marcar como Previsto';
+          tog.textContent = (estado==='previsto') ? 'C' : 'P';
+          tog.onclick = ()=>alternarConfirmacao(ev.id, estado);
+
+          // Duplicar (mantido)
+          const dup = document.createElement('button');
+          dup.className='iconbtn'; dup.title='Duplicar';
+          dup.textContent='＋';
+          dup.onclick = ()=>duplicarEvento(ev);
+
+          // Excluir
+          const del = document.createElement('button');
+          del.className='iconbtn'; del.title='Excluir';
+          del.textContent='🗑';
+          del.onclick = ()=>excluirEvento(ev.id);
+
+          acts.appendChild(ver);
+          acts.appendChild(tog);
+          acts.appendChild(dup);
+          acts.appendChild(del);
+
+          evt.appendChild(t);
+          evt.appendChild(acts);
+
+          evt.addEventListener('dragstart', e=> e.dataTransfer.setData('eventoId', ev.id));
+          lista.appendChild(evt);
+        });
+
+        // contador de eventos
+        if (doDia.length > 0) cnt.textContent = doDia.length;
+
+        el.appendChild(lista);
+        grid.appendChild(el);
+      }
+    }
+
+    function onDropMove(e){
+      const id = e.dataTransfer.getData('eventoId');
+      const data = this.dataset.data;
+      if (!id || !data) return;
+      db.ref(`eventos/${id}`).update({data})
+        .then(()=>carregar())
+        .catch(err=>alert('Erro ao mover: '+err.message));
+    }
+
+    function semanaSegADom(){
+      const hoje = new Date();
+      const dw = hoje.getDay(); // 0..6
+      const inicio = new Date(hoje);
+      const delta = (dw===0 ? -6 : 1-dw);
+      inicio.setDate(hoje.getDate()+delta);
+      const out=[];
+      for(let i=0;i<7;i++){const d=new Date(inicio);d.setDate(inicio.getDate()+i);out.push(toISO(d));}
+      return out;
+    }
+
+    async function alternarConfirmacao(id, atual){
+      const novo = (atual==='previsto') ? 'confirmado' : 'previsto';
+      try{
+        await db.ref(`eventos/${id}/confirmacao`).set(novo);
+        carregar();
+      }catch(err){
+        alert('Erro ao salvar: ' + err.message);
+      }
+    }
+
+    async function duplicarEvento(ev){
+      if(!confirm('Duplicar este evento?')) return;
+      const novo={...ev}; delete novo.id;
+      await db.ref('eventos').push(novo);
+      carregar();
+    }
+
+    async function excluirEvento(id){
+      if(!confirm('Tem certeza que deseja excluir este evento?')) return;
+      try{
+        await db.ref('eventos/'+id).remove();
+        carregar();
+      }catch(err){
+        alert('Erro ao excluir: ' + err.message);
+      }
+    }
+
+    async function duplicarMes(){
+      if(!confirm('Duplicar todos os eventos do mês para o próximo?')) return;
+
+      const ano=mesRef.getFullYear(), mes=mesRef.getMonth();
+      const doMes = eventos.filter(ev=>{
+        const d=new Date(ev.data);
+        return d.getMonth()===mes && d.getFullYear()===ano;
+      });
+
+      await Promise.all(doMes.map(ev=>{
+        const nova = new Date(ev.data); nova.setMonth(nova.getMonth()+1);
+        const ultimoNovo = new Date(nova.getFullYear(), nova.getMonth()+1, 0).getDate();
+        if (nova.getDate()>ultimoNovo) nova.setDate(ultimoNovo);
+
+        const n={...ev}; delete n.id;
+        n.data = toISO(nova); n.status='Aberto';
+        delete n.vendaPDV;
+        if (n.produtos){ n.produtos = n.produtos.map(p=>{ const {congelado,assado,perda,...r}=p; return r; }); }
+        return db.ref('eventos').push(n);
+      }));
+
+      carregar();
+    }
+
+    // ===== KPIs =====
+    function atualizarKPIs(){
+      const atualYM = ym(mesRef);
+      const dAnt = new Date(mesRef); dAnt.setMonth(dAnt.getMonth()-1);
+      const dProx= new Date(mesRef); dProx.setMonth(dProx.getMonth()+1);
+      const antYM  = ym(dAnt);
+      const proxYM = ym(dProx);
+
+      const dentroYM = (e, ymKey)=>{
+        if(!e?.data) return false;
+        const d = new Date(e.data);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        return key === ymKey;
+      };
+
+      const isFechado = (e)=>{
+        const s = String(e.status||'').toLowerCase();
+        return s==='fechado' || s==='finalizado';
+      };
+
+      // Vendas Reais: soma vendaPDV de Fechado/Finalizado
+      const realAtual    = eventos.filter(e=>dentroYM(e, atualYM) && isFechado(e))
+                                  .reduce((s,e)=> s + num(e.vendaPDV), 0);
+      const realAnterior = eventos.filter(e=>dentroYM(e, antYM) && isFechado(e))
+                                  .reduce((s,e)=> s + num(e.vendaPDV), 0);
+
+      // Previstas: soma estimativaVenda no mês atual e no próximo
+      const doMesAtual   = eventos.filter(e=>dentroYM(e, atualYM));
+      const prevMesTotal = doMesAtual.reduce((s,e)=> s + num(e.estimativaVenda), 0);
+      const prevMesAConf = doMesAtual
+                            .filter(e => (e.confirmacao || 'confirmado') === 'previsto')
+                            .reduce((s,e)=> s + num(e.estimativaVenda), 0);
+
+      const prevProx = eventos.filter(e=>dentroYM(e, proxYM))
+                              .reduce((s,e)=> s + num(e.estimativaVenda), 0);
+
+      document.getElementById('kpiRealAnterior').textContent = brl(realAnterior);
+      document.getElementById('kpiRealMes').textContent      = brl(realAtual);
+      document.getElementById('kpiPrevMes').textContent      = brl(prevMesTotal);
+      document.getElementById('kpiPrevProx').textContent     = brl(prevProx);
+
+      // Linha "à confirmar" com destaque quando > 0
+      const sub = document.getElementById('kpiPrevMesAConf');
+      sub.textContent = 'à confirmar: ' + brl(prevMesAConf);
+
+      const card = document.getElementById('kpiCardPrevMes');
+      if (prevMesAConf > 0) card.classList.add('warn'); else card.classList.remove('warn');
+    }
+
+    document.addEventListener('DOMContentLoaded', carregar);
+  </script>
+</body>
+</html>
