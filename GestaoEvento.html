@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -76,19 +76,18 @@
     thead th{background:var(--accent);color:#fff;padding:6px;text-align:left}
     tbody td{border-bottom:1px solid #f0f0f0;padding:4px 6px}
 
-    /* Larguras por coluna via colgroup (ver abaixo) */
     #tabelaProdutos input{height:24px}
 
-    /* Deixa números alinhados à direita e mais compactos */
+    /* Números alinhados à direita nas colunas numéricas */
     #tabelaProdutos td input[type="number"],
     #tabelaProdutos td:nth-child(n+2):nth-child(-n+7) input{
       text-align:right;
     }
 
-    /* Nome do produto: permitir texto completo, sem sumir */
+    /* Nome do produto: evitar “sumir” texto */
     #tabelaProdutos td:first-child input{
-      text-transform:uppercase; /* opcional */
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      text-transform:uppercase; /* opcional */
     }
 
     .form-actions{display:flex;justify-content:flex-end;margin-top:8px}
@@ -188,8 +187,6 @@
                 <th>Valor Venda</th>
                 <th>Valor Perda</th>
                 <th>Ações</th>
-              </
-
               </tr>
             </thead>
             <tbody id="tabelaProdutos"></tbody>
