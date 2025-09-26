@@ -1,3 +1,4 @@
+<!-- controle_etapas.html - Atualizado com botão "Copiar Endereço" robusto -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -34,9 +35,10 @@
       padding: 5px 10px;
       border: none;
       border-radius: 4px;
-      margin-left: 10px;
+      margin-right: 10px;
       cursor: pointer;
     }
+    pre { margin: 6px 0 10px 0; }
   </style>
 </head>
 <body>
@@ -108,6 +110,62 @@
       return (!inicio || data >= new Date(inicio)) && (!fim || data <= new Date(fim));
     }
 
+    function normalizaStr(s) {
+      return (s || '').toString().trim().toUpperCase();
+    }
+
+    function pickFirst(...vals){
+      for (const v of vals){
+        if (v && typeof v === 'string' && v.trim()) return v.trim();
+      }
+      return '';
+    }
+
+    // Procura endereço em múltiplos lugares e também por nome do evento
+    function obterEnderecoDoEvento(evento, clientesDB){
+      // 1) No próprio evento
+      if (evento && evento.endereco && evento.endereco.trim()) return evento.endereco.trim();
+
+      // 2) Pelo clienteId direto
+      if (evento && evento.clienteId && clientesDB[evento.clienteId]){
+        const c = clientesDB[evento.clienteId] || {};
+        const enderecoDireto = pickFirst(
+          c.endereco,
+          c?.clienteAtivo?.endereco,
+          c?.dadosGerais?.endereco,
+          // montagem por partes, caso existam
+          [c.logradouro, c.numero, c.bairro, c.cidade, c.estado, c.cep].filter(Boolean).join(', ')
+        );
+        if (enderecoDireto) return enderecoDireto;
+      }
+
+      // 3) Por correspondência de nome do evento com dados do cliente
+      const alvo = normalizaStr(evento?.nomeEvento);
+      if (alvo){
+        for (const cid in clientesDB){
+          const c = clientesDB[cid] || {};
+          const nomesPossiveis = [
+            c?.clienteAtivo?.nomeEvento,
+            c?.nomeCondominio,
+            c?.nome,
+            c?.dadosGerais?.nome,
+          ].map(normalizaStr);
+
+          if (nomesPossiveis.some(n => n && n === alvo)){
+            const enderecoMatch = pickFirst(
+              c.endereco,
+              c?.clienteAtivo?.endereco,
+              c?.dadosGerais?.endereco,
+              [c.logradouro, c.numero, c.bairro, c.cidade, c.estado, c.cep].filter(Boolean).join(', ')
+            );
+            if (enderecoMatch) return enderecoMatch;
+          }
+        }
+      }
+
+      return ''; // não achou
+    }
+
     async function carregarEventos() {
       const [snapshotEventos, snapshotEquipe, snapshotLogistica, snapshotClientes] = await Promise.all([
         db.ref('eventos').once('value'),
@@ -152,6 +210,7 @@
         `;
         tabela.appendChild(row);
 
+        // Monta lista de nomes únicos (equipe + logística)
         const nomesUnicos = new Set();
         const nomes = [];
 
@@ -177,24 +236,21 @@
           }
         });
 
-        if (nomes.length > 0) {
-          const div = document.createElement('div');
-          const texto = nomes.join('\n');
-          let botoes = `<button class="copiar-btn" onclick="copiarTexto(\`${texto.replace(/\n/g, '\\n')}\`)">Copiar Equipe</button>`;
+        // Sempre renderiza o bloco do evento (mesmo sem nomes) + botões
+        const div = document.createElement('div');
+        const textoEquipe = nomes.join('\n');
+        const endereco = obterEnderecoDoEvento(evento, clientesDB);
+        const enderecoParaCopiar = endereco || 'Endereço não cadastrado.';
 
-          // 🔹 Novo botão Copiar Endereço
-          if (evento.clienteId && clientesDB[evento.clienteId]?.endereco) {
-            const endereco = clientesDB[evento.clienteId].endereco;
-            botoes += `<button class="copiar-btn" onclick="copiarTexto('${endereco}')">Copiar Endereço</button>`;
-          }
-
-          div.innerHTML = `
-            <div class="titulo-evento">${evento.nomeEvento || id} (${formatDateBR(evento.data)})</div>
-            <pre>${texto}</pre>
-            ${botoes}
-          `;
-          blocoListas.appendChild(div);
-        }
+        div.innerHTML = `
+          <div class="titulo-evento">${evento.nomeEvento || id} (${formatDateBR(evento.data)})</div>
+          ${textoEquipe ? `<pre>${textoEquipe}</pre>` : `<pre style="opacity:.7">Sem nomes de equipe/logística listados</pre>`}
+          <div>
+            <button class="copiar-btn" onclick="copiarTexto(\`${textoEquipe.replace(/\n/g, '\\n')}\`)">Copiar Equipe</button>
+            <button class="copiar-btn" onclick="copiarTexto(\`${enderecoParaCopiar.replace(/`/g,'\\`')}\`)">Copiar Endereço</button>
+          </div>
+        `;
+        blocoListas.appendChild(div);
       }
     }
 
@@ -215,9 +271,9 @@
     }
 
     function copiarTexto(texto) {
-      navigator.clipboard.writeText(texto)
+      navigator.clipboard.writeText(texto || '')
         .then(() => alert('Copiado com sucesso!'))
-        .catch(err => alert('Erro ao copiar.'));
+        .catch(() => alert('Erro ao copiar.'));
     }
 
     document.getElementById('filtroStatus').addEventListener('change', carregarEventos);
