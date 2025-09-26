@@ -121,7 +121,6 @@ function adicionarEquipe() {
   renderizarEquipe();
 }
 
-
 function renderizarEquipe() {
   const container = document.getElementById('equipeContainer');
   container.innerHTML = '';
@@ -144,12 +143,10 @@ function renderizarEquipe() {
   });
 }
 
-
 function adicionarLogistica() {
   logisticaAlocada.push({ prestadorId: '', valor: 0 });
   renderizarLogistica();
 }
-
 
 function renderizarLogistica() {
   const container = document.getElementById('logisticaContainer');
@@ -172,7 +169,6 @@ function renderizarLogistica() {
     };
   });
 }
-
 
 function adicionarProduto() {
   listaProdutos.push({ produtoId: '', produtoNome: '', quantidade: 0, congelado: 0, assado: 0, perda: 0 });
@@ -234,47 +230,53 @@ async function renderizarProdutos() {
   }
 }
 
+/* helper para escrever em spans sem quebrar se o elemento não existir */
+function setText(id, value){
+  const el = document.getElementById(id);
+  if (el) el.innerText = value;
+}
+
 function calcularTotais() {
-  let totalVendida = 0, vendaSistema = 0, custoPerda = 0, valorAssados = 0, cmvCalculado = 0, potencialVenda = 0;
+  // Totais por produto (ainda calculamos internamente o vendido para valores)
+  let vendaSistema = 0, custoPerda = 0, valorAssados = 0, potencialVenda = 0;
 
   listaProdutos.forEach(item => {
     const produto = produtosDisponiveis.find(p => p.id === item.produtoId) || { valorVenda: 0, custo: 0 };
     const vendida = Math.max(0, item.quantidade - item.congelado - item.assado - item.perda);
 
-    totalVendida += vendida;
-    vendaSistema += vendida * produto.valorVenda;
-    custoPerda += item.perda * produto.custo;
-    valorAssados += item.assado * produto.custo;
-    cmvCalculado += vendida * produto.custo;
+    vendaSistema   += vendida * produto.valorVenda;
+    custoPerda     += item.perda * produto.custo;
+    valorAssados   += item.assado * produto.custo;
     potencialVenda += item.quantidade * produto.valorVenda;
   });
 
+  // CMV Real (baseado no PDV) — permanece
   const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
   const cmvReal = vendaPDV * (percentualCMV / 100);
-  document.getElementById('cmvReal').value = cmvReal.toFixed(2);
+  const cmvInput = document.getElementById('cmvReal');
+  if (cmvInput) cmvInput.value = cmvReal.toFixed(2);
 
-  const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
-  const custoLogistica = logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
+  const custoEquipe   = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
+  const custoLogistica= logisticaAlocada.reduce((s, l) => s + (l.valor || 0), 0);
 
   const diferencaVenda = vendaPDV - vendaSistema;
   const lucroFinal = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
 
-  document.getElementById('totalVendida').innerText = totalVendida;
-  document.getElementById('vendaSistema').innerText = vendaSistema.toFixed(2);
-  document.getElementById('diferencaVenda').innerText = diferencaVenda.toFixed(2);
-  document.getElementById('cmvCalculado').innerText = cmvCalculado.toFixed(2);
-  document.getElementById('lucroFinal').innerText = lucroFinal.toFixed(2);
-  document.getElementById('custoPerda').innerText = custoPerda.toFixed(2);
-  document.getElementById('valorAssados').innerText = valorAssados.toFixed(2);
-  document.getElementById('custoLogistica').innerText = custoLogistica.toFixed(2);
-  document.getElementById('custoEquipe').innerText = custoEquipe.toFixed(2);
-  document.getElementById('potencialVenda').innerText = potencialVenda.toFixed(2);
+  // Atualiza somente os campos mantidos nos Totais
+  setText('vendaSistema',    vendaSistema.toFixed(2));
+  setText('diferencaVenda',  diferencaVenda.toFixed(2));
+  setText('lucroFinal',      lucroFinal.toFixed(2));
+  setText('custoPerda',      custoPerda.toFixed(2));
+  setText('valorAssados',    valorAssados.toFixed(2));
+  setText('custoLogistica',  custoLogistica.toFixed(2));
+  setText('custoEquipe',     custoEquipe.toFixed(2));
+  setText('potencialVenda',  potencialVenda.toFixed(2));
 }
 
 document.getElementById('formGestaoEvento').addEventListener('submit', function(e) {
   e.preventDefault();
 
-  // --- Existing Calculations ---
+  // Mantém apenas o CMV Real (PDV) para gravação
   const vendaPDV = parseFloat(document.getElementById('vendaPDV').value) || 0;
   const cmvReal = vendaPDV * (percentualCMV / 100);
   const custoEquipe = equipeAlocada.reduce((s, e) => s + (e.valor || 0), 0);
@@ -283,8 +285,6 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
     const produto = produtosDisponiveis.find(prod => prod.id === p.produtoId) || { custo: 0 };
     return s + (p.perda * produto.custo);
   }, 0);
-
-  // --- New Calculations ---
   const valorAssados = listaProdutos.reduce((s, p) => {
     const produto = produtosDisponiveis.find(prod => prod.id === p.produtoId) || { custo: 0 };
     return s + (p.assado * produto.custo);
@@ -296,21 +296,19 @@ document.getElementById('formGestaoEvento').addEventListener('submit', function(
   }, 0);
   const diferencaVenda = vendaPDV - vendaSistema;
 
-  // --- Recalculate lucroFinal (using already calculated custoPerda) ---
   const lucroFinal = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
 
-  // --- Updated Event Object ---
   const evento = {
     nomeEvento: document.getElementById('nomeEvento').value,
     data: document.getElementById('data').value,
     responsavel: document.getElementById('responsavel').value,
     status: document.getElementById('status').value,
     vendaPDV: vendaPDV,
-    cmvReal: cmvReal,
-    lucroFinal: lucroFinal,
-    custoPerda: custoPerda, // Added
-    valorAssados: valorAssados, // Added
-    diferencaVenda: diferencaVenda, // Added
+    cmvReal: cmvReal,              // << mantém CMV real
+    lucroFinal: lucroFinal,        // << calculado com CMV real
+    custoPerda: custoPerda,
+    valorAssados: valorAssados,
+    diferencaVenda: diferencaVenda,
     estimativaVenda: parseFloat(document.getElementById('estimativaVenda').value) || 0,
     produtos: listaProdutos,
     equipe: equipeAlocada,
