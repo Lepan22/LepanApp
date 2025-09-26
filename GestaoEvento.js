@@ -13,7 +13,7 @@ let equipeAlocada = [], logisticaAlocada = [], listaProdutos = [];
 let eventoId = null;
 let percentualCMV = 0;
 
-/* ===== Configurações ===== */
+/* ===== Config ===== */
 function carregarPercentualCMV() {
   return db.ref('/configuracao/percentualCMV').once('value').then(s => {
     percentualCMV = s.val() || 0;
@@ -113,7 +113,7 @@ function carregarEventoExistente() {
   });
 }
 
-/* ===== UI de Equipe/Logística ===== */
+/* ===== UI Equipe/Logística ===== */
 function adicionarEquipe(){ equipeAlocada.push({ membroId:'', valor:0 }); renderizarEquipe(); }
 function renderizarEquipe(){
   const el = document.getElementById('equipeContainer'); el.innerHTML='';
@@ -122,7 +122,7 @@ function renderizarEquipe(){
     div.className='row mb-2';
     div.innerHTML = `
       <div style="flex:1;"><select class="form-select">${equipeDisponivel.map(m=>`<option value="${m.id}" ${m.id===item.membroId?'selected':''}>${m.nome}</option>`).join('')}</select></div>
-      <div style="width:140px;"><input type="number" class="form-control" placeholder="Valor" value="${item.valor}"></div>
+      <div style="width:120px;"><input type="number" class="form-control" placeholder="Valor" value="${item.valor}"></div>
       <div><button type="button" class="btn btn-danger">🗑️</button></div>`;
     el.appendChild(div);
     div.querySelector('select').onchange = e => { item.membroId = e.target.value; calcularTotais(); };
@@ -138,7 +138,7 @@ function renderizarLogistica(){
     div.className='row mb-2';
     div.innerHTML = `
       <div style="flex:1;"><select class="form-select">${logisticaDisponivel.map(l=>`<option value="${l.id}" ${l.id===item.prestadorId?'selected':''}>${l.nome}</option>`).join('')}</select></div>
-      <div style="width:140px;"><input type="number" class="form-control" placeholder="Valor" value="${item.valor}"></div>
+      <div style="width:120px;"><input type="number" class="form-control" placeholder="Valor" value="${item.valor}"></div>
       <div><button type="button" class="btn btn-danger">🗑️</button></div>`;
     el.appendChild(div);
     div.querySelector('select').onchange = e => { item.prestadorId = e.target.value; calcularTotais(); };
