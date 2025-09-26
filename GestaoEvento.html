@@ -9,117 +9,33 @@
   <link rel="stylesheet" href="assets/base.css" />
 
   <style>
-    body {
-      font-size: 14px;
-      margin-top: 10px;
-    }
-
+    body { font-size: 14px; margin-top: 10px; }
     input, select, textarea, button {
-      padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 14px;
+      padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
     }
-
-    button {
-      background-color: #198754;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-
-    button:hover {
-      background-color: #146c43;
-    }
-
-    .btn-cinza {
-      background-color: #eee;
-      color: #333;
-      border: 1px solid #ccc;
-    }
-
-    .btn-cinza:hover {
-      background-color: #ddd;
-    }
-
+    button { background-color: #198754; color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
+    button:hover { background-color: #146c43; }
+    .btn-cinza { background-color: #eee; color: #333; border: 1px solid #ccc; }
+    .btn-cinza:hover { background-color: #ddd; }
     .totais-resumo {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      font-size: 13px;
-      padding: 8px;
-      background: #f5f5f5;
-      border-radius: 4px;
-      margin-bottom: 8px;
+      display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px;
+      padding: 8px; background: #f5f5f5; border-radius: 4px; margin-bottom: 8px;
     }
+    .totais-resumo span { min-width: 180px; }
+    .grupo-flex { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 8px; }
+    .grupo-flex > div { flex: 1; min-width: 300px; }
+    .grupo-inline { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
 
-    .totais-resumo span {
-      min-width: 180px;
-    }
+    #tabelaProdutos input { text-align: right; font-size: 12px; padding: 2px 4px; height: 26px; width: 60px; }
+    #tabelaProdutos td:first-child input { text-align: left; width: 200px; }
+    #tabelaProdutos td { padding: 2px; }
 
-    .grupo-flex {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th { background-color: #ff7f00; color: white; padding: 6px; }
+    td { border: 1px solid #ddd; }
 
-    .grupo-flex > div {
-      flex: 1;
-      min-width: 300px;
-    }
-
-    .grupo-inline {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    #tabelaProdutos input {
-      text-align: right;
-      font-size: 12px;
-      padding: 2px 4px;
-      height: 26px;
-      width: 60px;
-    }
-
-    #tabelaProdutos td:first-child input {
-      text-align: left;
-      width: 200px;
-    }
-
-    #tabelaProdutos td {
-      padding: 2px;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 13px;
-    }
-
-    th {
-      background-color: #ff7f00;
-      color: white;
-      padding: 6px;
-    }
-
-    td {
-      border: 1px solid #ddd;
-    }
-
-    .section-title {
-      font-weight: bold;
-      font-size: 15px;
-      margin-top: 10px;
-      margin-bottom: 4px;
-    }
-
-    datalist {
-      display: none;
-    }
+    .section-title { font-weight: bold; font-size: 15px; margin-top: 10px; margin-bottom: 4px; }
+    datalist { display: none; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -153,10 +69,10 @@
 
         <h4 class="section-title">Totais do Evento</h4>
         <div class="totais-resumo">
-          <span>Qtd Vendida: <strong><span id="totalVendida">0</span></strong></span>
+          <!-- REMOVIDO: Qtd Vendida -->
           <span>Venda Sistema: <strong>R$ <span id="vendaSistema">0.00</span></strong></span>
           <span>Diferença PDV - Sistema: <strong>R$ <span id="diferencaVenda">0.00</span></strong></span>
-          <span>CMV: <strong>R$ <span id="cmvCalculado">0.00</span></strong></span>
+          <!-- REMOVIDO: CMV do Sistema (cmvCalculado) -->
           <span>Lucro Final: <strong>R$ <span id="lucroFinal">0.00</span></strong></span>
           <span>Custo Perda: <strong>R$ <span id="custoPerda">0.00</span></strong></span>
           <span>Valor Assados: <strong>R$ <span id="valorAssados">0.00</span></strong></span>
@@ -181,7 +97,7 @@
 
         <h4 class="section-title">Produtos</h4>
         <div class="grupo-inline">
-             <button type="button" onclick="adicionarProduto()" class="btn-cinza">+ Adicionar Produto</button>
+          <button type="button" onclick="adicionarProduto()" class="btn-cinza">+ Adicionar Produto</button>
         </div>
 
         <table>
