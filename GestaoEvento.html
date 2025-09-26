@@ -13,81 +13,77 @@
       --accent:#ff7f00;
       --card-bg:#fff8ef;
       --line:#e9e9e9;
+      --muted:#6b7280;
     }
 
-    /* ===== Compact global ===== */
     .main-content{padding-top:8px}
     h2{margin:6px 0 6px}
 
-    /* ===== Topo ===== */
+    /* ===== Topo (linha com evento/data/responsável/status) ===== */
     .topbar{
       display:grid;
       grid-template-columns: 1.1fr repeat(3, .7fr);
       gap:6px;
-      margin-bottom:6px;
+      margin-bottom:4px;
       align-items:end;
     }
-    .topbar select,.topbar input{
-      border:1px solid #ddd;border-radius:8px;padding:4px 6px;font-size:13px;height:28px
+
+    /* Campos com rótulo padronizado */
+    .field{display:flex; flex-direction:column; gap:2px}
+    .field label{font-size:11px; color:#4b5563}
+    .field input,.field select{
+      border:1px solid #ddd;border-radius:8px;padding:3px 6px;font-size:12.5px;height:26px
     }
+    .field input[disabled]{background:#f6f6f6}
+
+    /* Linha com Venda PDV / CMV / Previsão */
     .row2{
       display:grid;grid-template-columns: repeat(3, 1fr);
       gap:6px; margin:4px 0 6px 0;
     }
 
     /* ===== Cards Totais ===== */
-    .section-title{font-weight:700;font-size:14px;margin:8px 0 6px;color:#000}
-    .card-grid{display:grid;grid-template-columns: repeat(4, minmax(200px,1fr));gap:6px;margin-bottom:8px}
+    .section-title{font-weight:700;font-size:13px;margin:6px 0 6px;color:#000}
+    .card-grid{display:grid;grid-template-columns: repeat(4, minmax(180px,1fr));gap:6px;margin-bottom:6px}
     @media (max-width:1150px){ .card-grid{grid-template-columns: repeat(2,1fr)} }
     @media (max-width:640px){ .card-grid{grid-template-columns: 1fr} }
 
     .kcard{
       background:var(--card-bg);
       border:1px solid var(--line);
-      border-left:3px solid var(--accent);
+      border-left:2px solid var(--accent);
       border-radius:10px;
-      padding:6px 8px;
-      display:flex;flex-direction:column;gap:2px;min-height:52px;
+      padding:5px 7px;
+      display:flex;flex-direction:column;gap:1px;min-height:46px;
     }
-    .kcard .label{font-size:11px;color:#4b5563;line-height:1.2}
-    .kcard .value{font-size:16px;font-weight:800;color:var(--accent);line-height:1.1}
+    .kcard .label{font-size:10.5px;color:#4b5563;line-height:1.1}
+    .kcard .value{font-size:15px;font-weight:800;color:var(--accent);line-height:1.05}
 
-    /* ===== Blocos ===== */
+    /* ===== Blocos Equipe/Logística/Produtos ===== */
     .cols-2{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
     @media (max-width:900px){ .cols-2{grid-template-columns:1fr} }
-
     .box{border:1px solid var(--line);border-radius:10px;padding:8px;background:#fff}
 
-    /* ===== Form controls ===== */
     .row{display:flex;gap:6px;align-items:center}
     .mb-2{margin-bottom:6px}
     .form-select, .form-control{
       width:100%; border:1px solid #ddd; border-radius:8px; padding:3px 6px; height:26px; font-size:12.5px;
     }
-    .form-control[disabled]{background:#f6f6f6}
     .btn{background:#198754;color:#fff;border:none;border-radius:8px;height:26px;padding:0 10px;cursor:pointer;font-size:12.5px}
     .btn:hover{background:#146c43}
     .btn-danger{background:#e11d48}.btn-danger:hover{background:#be123c}
     .btn-cinza{background:#f3f4f6;color:#111827;border:1px solid #e5e7eb}
     .btn-cinza:hover{background:#e5e7eb}
 
-    /* ===== Tabela ===== */
+    /* ===== Tabela Produtos ===== */
     table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
     thead th{background:var(--accent);color:#fff;padding:6px;text-align:left}
     tbody td{border-bottom:1px solid #f0f0f0;padding:4px 6px}
-
     #tabelaProdutos input{height:24px}
-
-    /* Números alinhados à direita nas colunas numéricas */
     #tabelaProdutos td input[type="number"],
-    #tabelaProdutos td:nth-child(n+2):nth-child(-n+7) input{
-      text-align:right;
-    }
-
-    /* Nome do produto: evitar “sumir” texto */
+    #tabelaProdutos td:nth-child(n+2):nth-child(-n+7) input{ text-align:right; }
     #tabelaProdutos td:first-child input{
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      text-transform:uppercase; /* opcional */
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-transform:uppercase;
     }
 
     .form-actions{display:flex;justify-content:flex-end;margin-top:8px}
@@ -105,23 +101,44 @@
       <h2>Gestão de Evento</h2>
 
       <form id="formGestaoEvento">
-        <!-- Linha 1 -->
+        <!-- Linha 1: seleção principal -->
         <div class="topbar">
-          <select id="nomeEvento" required title="Nome do Evento"></select>
-          <input type="date" id="data" required title="Data do Evento">
-          <select id="responsavel" required title="Responsável"></select>
-          <select id="status" required title="Status">
-            <option value="Aberto">Aberto</option>
-            <option value="Finalizado">Finalizado</option>
-            <option value="Fechado">Fechado</option>
-          </select>
+          <div class="field">
+            <label for="nomeEvento">Evento</label>
+            <select id="nomeEvento" required></select>
+          </div>
+          <div class="field">
+            <label for="data">Data</label>
+            <input type="date" id="data" required>
+          </div>
+          <div class="field">
+            <label for="responsavel">Responsável</label>
+            <select id="responsavel" required></select>
+          </div>
+          <div class="field">
+            <label for="status">Status</label>
+            <select id="status" required>
+              <option value="Aberto">Aberto</option>
+              <option value="Finalizado">Finalizado</option>
+              <option value="Fechado">Fechado</option>
+            </select>
+          </div>
         </div>
 
-        <!-- Linha 2 -->
+        <!-- Linha 2: números com rótulo no mesmo padrão -->
         <div class="row2">
-          <input type="number" id="vendaPDV" placeholder="Venda PDV" step="0.01" oninput="calcularTotais()">
-          <input type="number" id="cmvReal" placeholder="CMV (sobre PDV)" step="0.01" disabled>
-          <input type="number" id="estimativaVenda" placeholder="Estimativa de Venda" step="0.01" oninput="calcularTotais()">
+          <div class="field">
+            <label for="vendaPDV">Venda PDV</label>
+            <input type="number" id="vendaPDV" step="0.01" oninput="calcularTotais()">
+          </div>
+          <div class="field">
+            <label for="cmvReal">CMV (calculado sobre PDV)</label>
+            <input type="number" id="cmvReal" step="0.01" disabled>
+          </div>
+          <div class="field">
+            <label for="estimativaVenda">Previsão de Venda</label>
+            <input type="number" id="estimativaVenda" step="0.01" oninput="calcularTotais()">
+          </div>
         </div>
 
         <!-- Totais -->
@@ -161,9 +178,8 @@
           </div>
 
           <table>
-            <!-- controla larguras das colunas da tabela -->
             <colgroup>
-              <col style="width: 280px;">   <!-- Produto (texto largo) -->
+              <col style="width: 280px;">   <!-- Produto -->
               <col style="width: 80px;">    <!-- Qtd Enviada -->
               <col style="width: 70px;">    <!-- Média -->
               <col style="width: 80px;">    <!-- Congelado -->
