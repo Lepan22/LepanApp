@@ -3,39 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GestãoEvento</title>
+  <title>Gestão de Evento</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
 
   <style>
-    body { font-size: 14px; margin-top: 10px; }
-    input, select, textarea, button {
-      padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;
+    :root{
+      --accent:#ff7f00;
+      --muted:#6b7280;
+      --card-bg:#fff8ef;
+      --line:#eee;
     }
-    button { background-color: #198754; color: white; font-weight: bold; cursor: pointer; transition: background-color 0.2s; }
-    button:hover { background-color: #146c43; }
-    .btn-cinza { background-color: #eee; color: #333; border: 1px solid #ccc; }
-    .btn-cinza:hover { background-color: #ddd; }
-    .totais-resumo {
-      display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px;
-      padding: 8px; background: #f5f5f5; border-radius: 4px; margin-bottom: 8px;
+
+    .page{
+      display:flex; gap:16px;
     }
-    .totais-resumo span { min-width: 180px; }
-    .grupo-flex { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 8px; }
-    .grupo-flex > div { flex: 1; min-width: 300px; }
-    .grupo-inline { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+    /* topo */
+    .topbar{
+      display:grid;
+      grid-template-columns: 1.3fr repeat(3, .8fr);
+      gap:10px;
+      margin-bottom:8px;
+      align-items:end;
+    }
+    .topbar select,.topbar input{
+      border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;height:38px
+    }
+    .topbar .row2{
+      display:grid;grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:4px;
+    }
 
-    #tabelaProdutos input { text-align: right; font-size: 12px; padding: 2px 4px; height: 26px; width: 60px; }
-    #tabelaProdutos td:first-child input { text-align: left; width: 200px; }
-    #tabelaProdutos td { padding: 2px; }
+    /* seção */
+    .section-title{
+      font-weight:700;font-size:15px;margin:14px 0 8px;color:#000
+    }
+    .card-grid{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(220px,1fr));
+      gap:10px;
+    }
+    @media (max-width:1150px){ .card-grid{grid-template-columns: repeat(2,1fr);} }
+    @media (max-width:640px){ .card-grid{grid-template-columns: 1fr;} }
 
-    table { border-collapse: collapse; width: 100%; font-size: 13px; }
-    th { background-color: #ff7f00; color: white; padding: 6px; }
-    td { border: 1px solid #ddd; }
+    .kcard{
+      background:var(--card-bg);
+      border:1px solid var(--line);
+      border-left:4px solid var(--accent);
+      border-radius:10px;
+      padding:10px 12px;
+      display:flex;flex-direction:column;gap:4px;min-height:72px;
+    }
+    .kcard .label{font-size:12px;color:#4b5563}
+    .kcard .value{font-size:18px;font-weight:800;color:var(--accent)}
 
-    .section-title { font-weight: bold; font-size: 15px; margin-top: 10px; margin-bottom: 4px; }
-    datalist { display: none; }
+    /* blocos lado a lado */
+    .cols-2{
+      display:grid; grid-template-columns: 1fr 1fr; gap:16px;
+    }
+    @media (max-width:900px){ .cols-2{grid-template-columns:1fr;} }
+
+    .box{
+      border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff
+    }
+
+    /* listagens */
+    .row{display:flex;gap:8px;align-items:center}
+    .mb-2{margin-bottom:8px}
+    .form-select, .form-control{
+      width:100%; border:1px solid #ddd; border-radius:8px; padding:6px 8px; height:32px; font-size:13px;
+    }
+    .form-control[disabled]{background:#f6f6f6}
+    .btn{background:#198754;color:#fff;border:none;border-radius:8px;height:34px;padding:0 12px;cursor:pointer}
+    .btn:hover{background:#146c43}
+    .btn-danger{background:#e11d48}
+    .btn-danger:hover{background:#be123c}
+    .btn-cinza{background:#f1f5f9;color:#111827;border:1px solid #e5e7eb}
+    .btn-cinza:hover{background:#e5e7eb}
+
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead th{background:var(--accent);color:#fff;padding:8px;text-align:left}
+    tbody td{border-bottom:1px solid #f0f0f0;padding:6px}
+    #tabelaProdutos input{height:28px}
+
+    /* rodapé do form */
+    .form-actions{display:flex;justify-content:flex-end;margin-top:12px}
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -49,76 +101,84 @@
     <main class="main-content">
       <h2>Gestão de Evento</h2>
 
-      <form id="formGestaoEvento" style="display: flex; flex-direction: column; gap: 8px;">
-        <div>
-          <select id="nomeEvento" required></select>
-          <input type="date" id="data" required>
-          <select id="responsavel" required></select>
-          <select id="status" required>
+      <form id="formGestaoEvento">
+        <!-- Linha 1: seleção básica -->
+        <div class="topbar">
+          <select id="nomeEvento" required title="Nome do Evento"></select>
+          <input type="date" id="data" required title="Data do Evento">
+          <select id="responsavel" required title="Responsável"></select>
+          <select id="status" required title="Status">
             <option value="Aberto">Aberto</option>
             <option value="Finalizado">Finalizado</option>
             <option value="Fechado">Fechado</option>
           </select>
         </div>
 
-        <div>
+        <!-- Linha 2: valores principais -->
+        <div class="topbar row2">
           <input type="number" id="vendaPDV" placeholder="Venda PDV" step="0.01" oninput="calcularTotais()">
-          <input type="number" id="cmvReal" placeholder="CMV Real" step="0.01" disabled>
-          <input type="number" id="estimativaVenda" placeholder="Estimativa Venda" step="0.01" oninput="calcularTotais()">
+          <input type="number" id="cmvReal" placeholder="CMV (sobre PDV)" step="0.01" disabled>
+          <input type="number" id="estimativaVenda" placeholder="Estimativa de Venda" step="0.01" oninput="calcularTotais()">
         </div>
 
-        <h4 class="section-title">Totais do Evento</h4>
-        <div class="totais-resumo">
-          <!-- REMOVIDO: Qtd Vendida -->
-          <span>Venda Sistema: <strong>R$ <span id="vendaSistema">0.00</span></strong></span>
-          <span>Diferença PDV - Sistema: <strong>R$ <span id="diferencaVenda">0.00</span></strong></span>
-          <!-- REMOVIDO: CMV do Sistema (cmvCalculado) -->
-          <span>Lucro Final: <strong>R$ <span id="lucroFinal">0.00</span></strong></span>
-          <span>Custo Perda: <strong>R$ <span id="custoPerda">0.00</span></strong></span>
-          <span>Valor Assados: <strong>R$ <span id="valorAssados">0.00</span></strong></span>
-          <span>Custo Logística: <strong>R$ <span id="custoLogistica">0.00</span></strong></span>
-          <span>Custo Equipe: <strong>R$ <span id="custoEquipe">0.00</span></strong></span>
-          <span>Potencial Venda: <strong>R$ <span id="potencialVenda">0.00</span></strong></span>
+        <!-- Totais em cards -->
+        <h3 class="section-title">Totais do Evento</h3>
+        <div class="card-grid">
+          <div class="kcard"><div class="label">Venda Sistema</div><div class="value">R$ <span id="vendaSistema">0.00</span></div></div>
+          <div class="kcard"><div class="label">Diferença PDV − Sistema</div><div class="value">R$ <span id="diferencaVenda">0.00</span></div></div>
+          <div class="kcard"><div class="label">Lucro Final</div><div class="value">R$ <span id="lucroFinal">0.00</span></div></div>
+          <div class="kcard"><div class="label">Custo Perda</div><div class="value">R$ <span id="custoPerda">0.00</span></div></div>
+
+          <div class="kcard"><div class="label">Valor Assados</div><div class="value">R$ <span id="valorAssados">0.00</span></div></div>
+          <div class="kcard"><div class="label">Custo Logística</div><div class="value">R$ <span id="custoLogistica">0.00</span></div></div>
+          <div class="kcard"><div class="label">Custo Equipe</div><div class="value">R$ <span id="custoEquipe">0.00</span></div></div>
+          <div class="kcard"><div class="label">Potencial de Venda</div><div class="value">R$ <span id="potencialVenda">0.00</span></div></div>
         </div>
 
-        <div class="grupo-flex">
-          <div>
-            <h4 class="section-title">Equipe</h4>
+        <!-- Equipe / Logística -->
+        <div class="cols-2">
+          <div class="box">
+            <h3 class="section-title">Equipe</h3>
             <div id="equipeContainer"></div>
-            <button type="button" id="btnEquipe" onclick="adicionarEquipe()" class="btn-cinza" disabled>+ Adicionar Equipe</button>
+            <button type="button" id="btnEquipe" onclick="adicionarEquipe()" class="btn btn-cinza" disabled>+ Adicionar Equipe</button>
           </div>
 
-          <div>
-            <h4 class="section-title">Logística</h4>
+          <div class="box">
+            <h3 class="section-title">Logística</h3>
             <div id="logisticaContainer"></div>
-            <button type="button" id="btnLogistica" onclick="adicionarLogistica()" class="btn-cinza" disabled>+ Adicionar Logística</button>
+            <button type="button" id="btnLogistica" onclick="adicionarLogistica()" class="btn btn-cinza" disabled>+ Adicionar Logística</button>
           </div>
         </div>
 
-        <h4 class="section-title">Produtos</h4>
-        <div class="grupo-inline">
-          <button type="button" onclick="adicionarProduto()" class="btn-cinza">+ Adicionar Produto</button>
+        <!-- Produtos -->
+        <div class="box" style="margin-top:12px;">
+          <h3 class="section-title">Produtos</h3>
+          <div class="row mb-2">
+            <button type="button" onclick="adicionarProduto()" class="btn btn-cinza">+ Adicionar Produto</button>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th>Qtd Enviada</th>
+                <th>Média</th>
+                <th>Congelado</th>
+                <th>Assado</th>
+                <th>Perda</th>
+                <th>Qtd Vendida</th>
+                <th>Valor Venda</th>
+                <th>Valor Perda</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaProdutos"></tbody>
+          </table>
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Produto</th>
-              <th>Qtd Enviada</th>
-              <th>Média</th>
-              <th>Congelado</th>
-              <th>Assado</th>
-              <th>Perda</th>
-              <th>Qtd Vendida</th>
-              <th>Valor Venda</th>
-              <th>Valor Perda</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tabelaProdutos"></tbody>
-        </table>
-
-        <button type="submit">Salvar Evento</button>
+        <div class="form-actions">
+          <button type="submit" class="btn">Salvar Evento</button>
+        </div>
       </form>
 
       <datalist id="produtosList"></datalist>
