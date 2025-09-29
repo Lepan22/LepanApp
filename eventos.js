@@ -9,6 +9,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 let eventos = [];
+let produtosIndex = {};          // id -> { custo, valorVenda, nome }
+let percentualCMV = 0;
 
 /* ===== Utilidades ===== */
 function formatDateBR(dateStr) {
@@ -28,10 +30,27 @@ function parseMoney(str){
   const n = parseFloat(s);
   return isNaN(n) ? 0 : Math.round(n * 100) / 100;
 }
-// Evita quebrar a página se faltar algum KPI no HTML
 function setText(id, value){
   const el = document.getElementById(id);
   if (el) el.innerText = value;
+}
+
+/* ===== Base ===== */
+async function carregarConfigECatalogo(){
+  const [cmvSnap, prodSnap] = await Promise.all([
+    db.ref('/configuracao/percentualCMV').once('value'),
+    db.ref('/produtos').once('value')
+  ]);
+  percentualCMV = Number(cmvSnap.val() || 0);
+  produtosIndex = {};
+  prodSnap.forEach(ch=>{
+    const p = ch.val() || {};
+    produtosIndex[ch.key] = {
+      nome: p.nome || '',
+      custo: Number(p.custo || 0),
+      valorVenda: Number(p.valorVenda || 0)
+    };
+  });
 }
 
 /* ===== Carregamento ===== */
@@ -53,6 +72,65 @@ function carregarEventos() {
     aplicarFiltros();
     calcularKPIs();
   });
+}
+
+/* ===== Recalcular + salvar (regra do status) ===== */
+async function recomputarESalvarEvento(id, patch = {}) {
+  // 1) ler evento atual
+  const snap = await db.ref('eventos/' + id).once('value');
+  if (!snap.exists()) return;
+  const e = snap.val() || {};
+
+  // 2) aplicar alterações recebidas (ex.: vendaPDV, estimativaVenda, status)
+  const atual = { ...e, ...patch };
+
+  // 3) calcular custos por listas
+  const equipe = Array.isArray(atual.equipe) ? atual.equipe : [];
+  const logistica = Array.isArray(atual.logistica) ? atual.logistica : [];
+  const itens = Array.isArray(atual.produtos) ? atual.produtos : [];
+
+  const custoEquipe = equipe.reduce((s, x) => s + (Number(x.valor || 0)), 0);
+  const custoLogistica = logistica.reduce((s, x) => s + (Number(x.valor || 0)), 0);
+
+  let custoPerda = 0, valorAssados = 0, vendaSistema = 0;
+  itens.forEach(it => {
+    const prod = produtosIndex[it.produtoId] || { custo: 0, valorVenda: 0 };
+    const qtd = Number(it.quantidade || 0);
+    const congelado = Number(it.congelado || 0);
+    const assado = Number(it.assado || 0);
+    const perda = Number(it.perda || 0);
+    const vendida = Math.max(0, qtd - congelado - assado - perda);
+    custoPerda   += perda * prod.custo;
+    valorAssados += assado * prod.custo;
+    vendaSistema += vendida * prod.valorVenda;
+  });
+
+  const vendaPDV = Number(atual.vendaPDV || 0);
+  const cmvReal = vendaPDV * (percentualCMV / 100);
+  const diferencaVenda = vendaPDV - vendaSistema;
+
+  // 4) regra do status p/ lucro
+  const st = (atual.status || 'Aberto');
+  let lucroFinal = 0;
+  if (st === 'Finalizado' || st === 'Fechado') {
+    lucroFinal = vendaPDV - cmvReal - custoLogistica - custoEquipe - custoPerda;
+  } else {
+    lucroFinal = 0;
+  }
+
+  // 5) salvar apenas campos derivados + campos alterados
+  const update = {
+    vendaPDV,
+    estimativaVenda: Number(atual.estimativaVenda || 0),
+    status: st,
+    cmvReal,
+    custoPerda,
+    valorAssados,
+    diferencaVenda,
+    lucroFinal
+  };
+
+  await db.ref('eventos/' + id).update(update);
 }
 
 /* ===== Listagem + edição inline ===== */
@@ -97,9 +175,9 @@ function aplicarFiltros() {
     const statusAtual = eAtual.status || 'Aberto';
     const selectStatus = `
       <select class="status-select" data-id="${eAtual.id}">
-        <option value="Aberto"${statusAtual === 'Aberto' ? ' selected' : ''}>Aberto</option>
-        <option value="Finalizado"${statusAtual === 'Finalizado' ? ' selected' : ''}>Finalizado</option>
-        <option value="Fechado"${statusAtual === 'Fechado' ? ' selected' : ''}>Fechado</option>
+        <option value="Aberto"${statusAtual === 'Aberto' ? 'selected' : ''}>Aberto</option>
+        <option value="Finalizado"${statusAtual === 'Finalizado' ? 'selected' : ''}>Finalizado</option>
+        <option value="Fechado"${statusAtual === 'Fechado' ? 'selected' : ''}>Fechado</option>
       </select>
     `;
 
@@ -128,18 +206,17 @@ function aplicarFiltros() {
     tabela.appendChild(row);
   });
 
-  // salvar status imediato
+  // salvar status com recálculo
   tabela.querySelectorAll('select.status-select').forEach(sel => {
     sel.addEventListener('change', async (ev) => {
       const id = ev.target.getAttribute('data-id');
       const novoStatus = ev.target.value;
       ev.target.disabled = true;
       try {
-        await db.ref('eventos/' + id + '/status').set(novoStatus);
+        await recomputarESalvarEvento(id, { status: novoStatus });
         const idx = eventos.findIndex(e => e.id === id);
         if (idx >= 0) eventos[idx].status = novoStatus;
-        aplicarFiltros();
-        calcularKPIs();
+        carregarEventos();
       } catch (err) {
         alert('Não foi possível salvar o Status. Tente novamente.');
         const evento = eventos.find(e => e.id === id);
@@ -169,7 +246,8 @@ function anexarEdicaoInline(tabela){
       if (formatNumberBR(novoValor) === original) return;
       inp.disabled = true;
       try{
-        await db.ref('eventos/'+id+'/'+field).set(novoValor);
+        // em vez de set direto, recalcula tudo e salva os derivados
+        await recomputarESalvarEvento(id, { [field]: novoValor });
         carregarEventos();
       }catch(err){
         alert('Não foi possível salvar. Tente novamente.');
@@ -283,4 +361,8 @@ document.getElementById('filtrosForm').addEventListener('submit', function(e) {
   e.preventDefault(); aplicarFiltros();
 });
 
-document.addEventListener("DOMContentLoaded", () => { carregarEventos(); });
+/* ===== Boot ===== */
+document.addEventListener("DOMContentLoaded", async () => {
+  await carregarConfigECatalogo();  // precisamos do %CMV e do catálogo de produtos para os recálculos
+  carregarEventos();
+});
