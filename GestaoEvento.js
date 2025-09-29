@@ -219,7 +219,7 @@ function calcularTotais(){
 
   setText('vendaSistema',   vendaSistema.toFixed(2));
   setText('diferencaVenda', diferenca.toFixed(2));
-  setText('lucroFinal',     lucroFinal.toFixed(2));
+  setText('lucroFinal',     lucroFinal.toFixed(2));  // exibição sempre atualizada
   setText('custoPerda',     custoPerda.toFixed(2));
   setText('valorAssados',   valorAssados.toFixed(2));
   setText('custoLogistica', custoLog.toFixed(2));
@@ -227,9 +227,12 @@ function calcularTotais(){
   setText('potencialVenda', potencialVenda.toFixed(2));
 }
 
-/* ===== Salvar ===== */
+/* ===== Salvar (recalcula antes e respeita status) ===== */
 document.getElementById('formGestaoEvento').addEventListener('submit', e=>{
   e.preventDefault();
+
+  // 1) garantir que tudo esteja atualizado
+  calcularTotais();
 
   const vendaPDV = parseFloat(document.getElementById('vendaPDV').value)||0;
   const cmvReal = vendaPDV * (percentualCMV/100);
@@ -240,13 +243,20 @@ document.getElementById('formGestaoEvento').addEventListener('submit', e=>{
   const valorAssados=  listaProdutos.reduce((s,p)=>{const pr=produtosDisponiveis.find(x=>x.id===p.produtoId)||{custo:0}; return s+(p.assado*pr.custo);},0);
   const vendaSistema=  listaProdutos.reduce((s,p)=>{const pr=produtosDisponiveis.find(x=>x.id===p.produtoId)||{valorVenda:0}; const vendida=Math.max(0,p.quantidade-p.congelado-p.assado-p.perda); return s+(vendida*pr.valorVenda);},0);
   const diferenca   =  vendaPDV - vendaSistema;
-  const lucroFinal  =  vendaPDV - cmvReal - custoLog - custoEquipe - custoPerda;
+
+  const status = document.getElementById('status').value;
+
+  // 2) regra: só grava lucro quando Finalizado/Fechado
+  let lucroFinal = 0;
+  if (status === 'Finalizado' || status === 'Fechado') {
+    lucroFinal = vendaPDV - cmvReal - custoLog - custoEquipe - custoPerda;
+  }
 
   const evento = {
     nomeEvento: document.getElementById('nomeEvento').value,
     data: document.getElementById('data').value,
     responsavel: document.getElementById('responsavel').value,
-    status: document.getElementById('status').value,
+    status,
     vendaPDV,
     cmvReal,
     lucroFinal,
