@@ -91,10 +91,10 @@
     .wlabel{font-size:12px;color:#374151}
     .wvalue{font-size:18px;font-weight:800;color:#111}
 
-    /* Margens */
-    .marg-box table{width:100%;border-collapse:collapse;font-size:12.5px}
-    .marg-box thead th{background:#f8fafc;padding:6px;border-bottom:1px solid var(--line);text-align:left}
-    .marg-box tbody td{padding:6px;border-bottom:1px solid var(--line)}
+    /* Análise 3 últimos meses */
+    .analise-box table{width:100%;border-collapse:collapse;font-size:12.5px}
+    .analise-box thead th{background:#f8fafc;padding:6px;border-bottom:1px solid var(--line);text-align:left}
+    .analise-box tbody td{padding:6px;border-bottom:1px solid var(--line)}
 
     /* Gráficos */
     .charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
@@ -161,7 +161,7 @@
         </div>
       </div>
 
-      <!-- Semana + Margens -->
+      <!-- Semana + Análise últimos 3 meses -->
       <div class="cols-2">
         <!-- Semana -->
         <div class="box">
@@ -192,14 +192,19 @@
           </div>
         </div>
 
-        <!-- Margens (direita) -->
-        <div class="box marg-box">
-          <h3>Margens recentes</h3>
+        <!-- Análise 3 últimos meses -->
+        <div class="box analise-box">
+          <h3>Análise — 3 últimos meses</h3>
           <table>
-            <thead><tr><th>Mês</th><th style="text-align:right">Margem</th></tr></thead>
-            <tbody id="tb-margens">
-              <tr><td>Margem Prevista (config)</td><td style="text-align:right"><span id="marg-prev">0%</span></td></tr>
-            </tbody>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th style="text-align:right">Venda</th>
+                <th style="text-align:right">Lucro</th>
+                <th style="text-align:right">Margem</th>
+              </tr>
+            </thead>
+            <tbody id="tb-ultimos"></tbody>
           </table>
         </div>
       </div>
@@ -338,26 +343,32 @@
       document.getElementById('wk-qtd').innerText = wkQtd;
       document.getElementById('wk-prev').innerText = brMoney(wkPrev);
 
-      /* ===== Margens recentes ===== */
-      document.getElementById('marg-prev').innerText = pct(margemPrevista);
-      const tbm = document.getElementById('tb-margens');
-      // mantém a linha 'Margem Prevista' e adiciona os últimos 3 meses
+      /* ===== Análise — 3 últimos meses ===== */
+      const tb = document.getElementById('tb-ultimos');
       const rows = [];
       for (let i=2; i>=0; i--){
         const ref = new Date(anoAtual, mesAtual - i, 1);
         const y = ref.getFullYear(), m = ref.getMonth();
-        let v=0,l=0;
+        let v=0, l=0;
         Object.values(eventos).forEach(e=>{
           if(!e || !e.data) return;
-          const dt = toDate(e.data);
-          if (dt.getFullYear()===y && dt.getMonth()===m && (e.status==='Finalizado' || e.status==='Fechado')){
+          const d = toDate(e.data);
+          if (d.getFullYear()===y && d.getMonth()===m && (e.status==='Finalizado' || e.status==='Fechado')){
             v += Number(e.vendaPDV||0);
             l += Number(e.lucroFinal||0);
           }
         });
-        rows.push(`<tr><td>${meses[m]}</td><td style="text-align:right">${v>0?((l/v)*100).toFixed(1).replace('.',','):'0,0'}%</td></tr>`);
+        const margem = v>0 ? (l/v)*100 : 0;
+        rows.push(
+          `<tr>
+            <td>${meses[m]}</td>
+            <td style="text-align:right">R$ ${brMoney(v)}</td>
+            <td style="text-align:right">R$ ${brMoney(l)}</td>
+            <td style="text-align:right">${pct(margem)}</td>
+          </tr>`
+        );
       }
-      tbm.innerHTML = `<tr><td>Margem Prevista (config)</td><td style="text-align:right">${pct(margemPrevista)}</td></tr>` + rows.join('');
+      tb.innerHTML = rows.join('');
 
       /* ===== Gráficos ===== */
       new Chart(document.getElementById('graficoVendaLucro'), {
