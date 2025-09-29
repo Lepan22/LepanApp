@@ -3,134 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Agenda</title>
-  <link rel="stylesheet" href="assets/base.css">
-  <link rel="stylesheet" href="assets/menu-styles.css">
+  <title>Le Pan pan — Painel Operacional</title>
+
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <link rel="stylesheet" href="assets/base.css" />
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="assets/menu.js" defer></script>
+
   <style>
     :root{
-      --brand:#ff7f00;
-      --line:#e7e7ea;
+      --accent:#ff7f00;
       --muted:#6b7280;
-
-      --gap:6px;
-      --fontDay:11px;
-      --fontEvt:9px;       /* tamanho dos nomes dos eventos */
-      --padDay:4px;
-
-      /* altura da linha das 6 semanas — definida por JS para caber na viewport */
-      --rowH: 120px;
+      --line:#e5e7eb;
+      --card:#fff;
+      --soft:#fff8ef;
+      --ok:#16a34a;
+      --warn:#f59e0b;
+      --bad:#dc2626;
     }
+    .main-content{ padding-top:10px }
 
-    body{background:#f6f7f9;margin:0;color:#222}
-    .wrap{padding:10px}
+    /* Header */
+    .page-header{
+      display:flex;justify-content:space-between;align-items:center;margin-bottom:8px
+    }
+    .page-header h1{ font-size:18px; margin:0 }
+
+    /* Atalhos */
+    .quick-links{
+      display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:8px
+    }
+    @media (max-width:1100px){ .quick-links{grid-template-columns:repeat(3,1fr)} }
+    @media (max-width:720px){ .quick-links{grid-template-columns:repeat(2,1fr)} }
+    .qbtn{
+      display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);
+      border-left:3px solid var(--accent);border-radius:10px;background:#fff;cursor:pointer;text-decoration:none;color:#111
+    }
+    .qbtn:hover{ background:#fff7ed }
+    .qbtn .icon{font-size:18px}
 
     /* KPIs */
-    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);margin-bottom:var(--gap)}
-    .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;min-height:52px}
-    .kpi small{color:var(--muted);font-size:11px;font-weight:600}
-    .kpi strong{font-size:16px;margin-top:2px}
-    .kpi .sub{font-size:11px;margin-top:2px;color:#7a4c00}
-    .kpi.warn{background:#fffaf2;box-shadow:inset 0 0 0 2px #ffd199}
-
-    /* Navegação */
-    .topbar{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:var(--gap)}
-    .btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
-    .btn:hover{filter:brightness(.95)}
-    #mesAtual{font-weight:700;text-transform:capitalize}
-
-    /* Cabeçalho DOM..SAB */
-    .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
-    .dow div{background:#fff;border:1px solid var(--line);border-radius:8px;text-align:center;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;min-height:24px}
-
-    /* Grade do mês – 6 semanas ajustadas por JS */
-    .grid{
-      display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
-      grid-auto-rows: var(--rowH);
-      min-height: calc(var(--rowH) * 6 + 5 * 4px); /* 6 linhas + 5 gaps */
+    .kpi-grid{
+      display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px
     }
-
-    .day{
-      background:#fff;border:1px solid var(--line);border-radius:10px;
-      padding:var(--padDay);display:flex;flex-direction:column;overflow:hidden;font-size:var(--fontDay);
-      position: relative;
+    @media (max-width:1100px){ .kpi-grid{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:640px){ .kpi-grid{grid-template-columns:1fr} }
+    .kcard{
+      background:var(--soft);border:1px solid var(--line);border-left:3px solid var(--accent);
+      border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:2px;min-height:64px
     }
+    .kcard .label{font-size:12px;color:#374151}
+    .kcard .value{font-size:20px;font-weight:800;color:var(--accent);line-height:1}
 
-    /* dias fora do mês atual */
-    .other-month{
-      background:#f3f5f8;
-      color:#6b7280;
-    }
+    /* Semana */
+    .cols-2{display:grid;grid-template-columns:1.1fr .9fr;gap:10px;margin-top:4px}
+    @media (max-width:1050px){ .cols-2{grid-template-columns:1fr} }
 
-    /* destaque de FUNDO da semana atual */
-    .is-week{
-      background:#fff5e6 !important;
-      box-shadow: inset 0 0 0 1px #ffd199;
+    .box{
+      background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px
     }
-    .other-month.is-week{
-      background:#fff1d6 !important;
-    }
+    .box h3{margin:0 0 8px 0;font-size:14px}
+    .legend{display:flex;gap:12px;font-size:12px;color:#6b7280;margin-bottom:8px}
+    .dot{display:inline-block;width:10px;height:10px;border-radius:999px;margin-right:6px;vertical-align:middle}
+    .dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)}
 
-    /* cabeçalho do dia (número e contador) */
-    .head-dia{display:flex;align-items:center;justify-content:space-between}
-    .n{font-weight:700}
-    .count{
-      min-width:18px;height:18px;line-height:18px;
-      border-radius:9px;border:1px solid var(--line);
-      background:#fff;color:#555;font-size:10px;text-align:center;margin-left:6px;
+    table{width:100%;border-collapse:collapse;font-size:12.5px}
+    thead th{background:#f8fafc;color:#111;padding:6px;border-bottom:1px solid var(--line);text-align:left}
+    tbody td{padding:6px;border-bottom:1px solid var(--line)}
+    .status-badge{
+      font-size:11px;padding:2px 6px;border-radius:999px;border:1px solid;
+      display:inline-flex;align-items:center;gap:6px
     }
+    .status-prev{color:#92400e;border-color:#f59e0b;background:#fffbeb}
+    .status-conf{color:#065f46;border-color:#10b981;background:#ecfdf5}
 
-    /* lista de eventos rola dentro do dia */
-    .lista{
-      margin-top:3px; flex:1 1 auto; overflow:auto; padding-right:2px;
-    }
-    .lista::-webkit-scrollbar{width:6px}
-    .lista::-webkit-scrollbar-thumb{background:#ddd;border-radius:8px}
-    .lista{scrollbar-width:thin; scrollbar-color:#ddd transparent;}
-
-    .is-blocked{background:#fafafa;border-style:dashed}
-    .blocked{font-size:9px;color:#d9534f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
-
-    /* Evento (bolacha) */
-    .evt{
-      margin-top:3px;background:var(--brand);color:#fff;border-radius:6px;padding:1px 5px;
-      display:flex;align-items:center;justify-content:space-between;font-size:var(--fontEvt);min-height:18px
-    }
-    .evt .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-    /* VARIAÇÃO DE STATUS — NOVO */
-    .evt.confirmado{
-      background: var(--brand);
-      color:#fff;
-      border: 1px solid rgba(255,255,255,.2);
-    }
-    .evt.previsto{
-      background:#fff3e0;           /* laranja claro */
-      color:#8a4b00;
-      border:1px dashed #ffcc80;
-    }
-
-    /* Ações dos eventos (ver, alternar, duplicar, excluir) */
-    .acts{display:flex;align-items:center;gap:4px;margin-left:6px}
-    .iconbtn{
-      background: rgba(255,255,255,.15);
-      border: 1px solid rgba(255,255,255,.35);
-      color:#fff; border-radius:6px; font-size:9px;
-      padding:0 6px; height:16px; line-height:14px; cursor:pointer;
-      display:inline-flex; align-items:center; justify-content:center;
-      text-decoration:none;
-    }
-    .evt.previsto .iconbtn{ /* ícones visíveis sobre fundo claro */
-      background:#fff; color:#8a4b00; border:1px solid #efc48f;
-    }
-    .iconbtn:hover{filter:brightness(1.05)}
-
-    .foot{display:flex;align-items:center;justify-content:center;margin-top:6px}
-
-    /* Responsivo: se apertar, empilha KPIs */
-    @media (max-width: 980px){ .kpis{grid-template-columns:repeat(2,1fr);} }
-    @media (max-width: 640px){ .kpis{grid-template-columns:1fr;} }
+    /* Gráficos */
+    .charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    @media (max-width:1050px){ .charts{grid-template-columns:1fr} }
+    .chart-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px}
+    canvas{background:#fff;border:1px solid #eee;border-radius:8px;padding:6px}
   </style>
 </head>
 <body>
@@ -138,367 +92,272 @@
     <aside class="sidebar" id="menuLateral"></aside>
 
     <main class="main-content">
-      <div class="wrap card-dashboard" style="border:1px solid #eee;border-radius:10px;background:#fff">
-        <!-- KPIs -->
-        <section id="kpis" class="kpis">
-          <div class="kpi"><small>Vendas Real Mês Anterior</small><strong id="kpiRealAnterior">—</strong></div>
-          <div class="kpi"><small>Vendas Real Mês</small><strong id="kpiRealMes">—</strong></div>
+      <div class="page-header">
+        <h1>Painel Operacional</h1>
+      </div>
 
-          <!-- Mantém o KPI de Prevista Mês e acrescenta a linha "à confirmar" -->
-          <div class="kpi" id="kpiCardPrevMes">
-            <small>Venda Prevista Mês</small>
-            <strong id="kpiPrevMes">—</strong>
-            <div class="sub" id="kpiPrevMesAConf">à confirmar: —</div>
+      <!-- Atalhos -->
+      <div class="quick-links">
+        <a class="qbtn" href="eventos.html"><span class="icon">📋</span><div><div style="font-weight:700">Eventos</div><small class="muted">Criar/editar eventos</small></div></a>
+        <a class="qbtn" href="agenda.html"><span class="icon">🗓️</span><div><div style="font-weight:700">Agenda</div><small class="muted">Semana e projeções</small></div></a>
+        <a class="qbtn" href="planejamento_evento.html"><span class="icon">🧩</span><div><div style="font-weight:700">Planejamento</div><small class="muted">Equipe, logística, equipamento</small></div></a>
+        <a class="qbtn" href="relatorio_Semanal.html"><span class="icon">📈</span><div><div style="font-weight:700">Relatório Semanal</div><small class="muted">Resultados da semana</small></div></a>
+        <a class="qbtn" href="clientes.html"><span class="icon">👥</span><div><div style="font-weight:700">Clientes</div><small class="muted">Ativos e prospects</small></div></a>
+      </div>
+
+      <!-- KPIs chave -->
+      <div class="kpi-grid">
+        <div class="kcard">
+          <div class="label">Eventos desta semana</div>
+          <div class="value" id="kpi-semana">0</div>
+          <small id="kpi-semana-detalhe" class="muted" style="color:var(--muted)"></small>
+        </div>
+        <div class="kcard">
+          <div class="label">Venda prevista da semana</div>
+          <div class="value">R$ <span id="kpi-estimativa-semana">0,00</span></div>
+        </div>
+        <div class="kcard">
+          <div class="label">Venda real no mês</div>
+          <div class="value">R$ <span id="kpi-venda-mes">0,00</span></div>
+        </div>
+        <div class="kcard">
+          <div class="label">Lucro no mês (Fech./Final.)</div>
+          <div class="value">R$ <span id="kpi-lucro-mes">0,00</span></div>
+        </div>
+      </div>
+
+      <!-- Semana: lista + mini totais -->
+      <div class="cols-2">
+        <div class="box">
+          <h3>Semana (Seg–Dom)</h3>
+          <div class="legend">
+            <span><span class="dot ok"></span>Confirmado</span>
+            <span><span class="dot warn"></span>Previsto</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Evento</th>
+                <th>Status</th>
+                <th style="text-align:right">Estimativa</th>
+              </tr>
+            </thead>
+            <tbody id="lista-semana"></tbody>
+          </table>
+        </div>
+
+        <div class="box">
+          <h3>Clientes — resumo</h3>
+          <div class="kpi-grid" style="grid-template-columns:1fr 1fr;gap:8px">
+            <div class="kcard" style="min-height:60px">
+              <div class="label">Clientes ativos</div>
+              <div class="value" id="kpi-clientes-ativos">0</div>
+            </div>
+            <div class="kcard" style="min-height:60px">
+              <div class="label">Prospects quentes</div>
+              <div class="value" id="kpi-clientes-quentes">0</div>
+            </div>
           </div>
 
-          <div class="kpi"><small>Venda Prevista Próx. Mês</small><strong id="kpiPrevProx">—</strong></div>
-        </section>
-
-        <!-- Navegação -->
-        <div id="nav" class="topbar">
-          <button class="btn" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
-          <span id="mesAtual">Mês Atual</span>
-          <button class="btn" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
+          <h3 style="margin-top:10px">Mês atual</h3>
+          <table>
+            <thead><tr><th>Métrica</th><th style="text-align:right">Valor</th></tr></thead>
+            <tbody id="tabela-mes">
+              <tr><td>Eventos finalizados/fechados</td><td style="text-align:right" id="mes-eventos">0</td></tr>
+              <tr><td>Venda PDV</td><td style="text-align:right">R$ <span id="mes-venda">0,00</span></td></tr>
+              <tr><td>Lucro</td><td style="text-align:right">R$ <span id="mes-lucro">0,00</span></td></tr>
+            </tbody>
+          </table>
         </div>
+      </div>
 
-        <!-- Cabeçalho dos dias -->
-        <div id="dow" class="dow">
-          <div>DOM</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>SAB</div>
+      <!-- Gráficos -->
+      <div class="charts">
+        <div class="chart-card">
+          <h3 style="margin:0 0 6px 0">Vendas x Lucro (ano)</h3>
+          <canvas id="graficoVendaLucro"></canvas>
         </div>
-
-        <!-- Calendário -->
-        <div id="grid" class="grid"></div>
-
-        <!-- Rodapé -->
-        <div id="foot" class="foot">
-          <button class="btn" onclick="duplicarMes()">📅 Duplicar Mês</button>
+        <div class="chart-card">
+          <h3 style="margin:0 0 6px 0">Eventos por mês (ano)</h3>
+          <canvas id="graficoEventos"></canvas>
         </div>
       </div>
     </main>
   </div>
 
-  <script src="assets/menu.js" defer></script>
   <script>
-    // ===== Firebase =====
+    /* ===== Firebase ===== */
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
       projectId: "lepanapp"
     };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // ===== Estado =====
-    let mesRef = new Date();
-    let eventos = [];
-    let indis = {};
-
-    // ===== Utils =====
-    const pad2 = n => String(n).padStart(2,'0');
-    const ym   = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
-    const toISO = d => new Date(d).toISOString().split('T')[0];
-    const brl  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
-    const num = v => { if (v==null) return 0; if (typeof v==='number') return v; const s=String(v).replace(/\./g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?0:n; };
-
-    // base para "visualizar evento"
-    const VIEW_BASE = 'https://lepan22.github.io/LepanApp/GestaoEvento.html?id=';
-
-    // ===== Ajuste de altura (sem scroll na página) =====
-    function ajustarAlturaLinhas(){
-      const grid = document.getElementById('grid');
-      const vb = document.documentElement.clientHeight;   // altura viewport
-      const rectWrap = grid.parentElement.getBoundingClientRect();
-
-      const kpisH = document.getElementById('kpis').getBoundingClientRect().height;
-      const navH  = document.getElementById('nav').getBoundingClientRect().height;
-      const dowH  = document.getElementById('dow').getBoundingClientRect().height;
-      const footH = document.getElementById('foot').getBoundingClientRect().height;
-
-      // margem/padding do container + folga
-      const extras = 26;
-
-      const disponivel = vb - (rectWrap.top + kpisH + navH + dowH + footH + extras);
-      const rowH = Math.max(84, Math.floor((disponivel - (5*4)) / 6)); // 5 gaps de 4px
-
-      grid.style.setProperty('--rowH', rowH + 'px');
+    /* ===== Helpers ===== */
+    const meses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    function toDate(dateStr){
+      if(!dateStr) return null;
+      const [y,m,d] = dateStr.split('-');
+      return new Date(Number(y), Number(m)-1, Number(d));
     }
-    window.addEventListener('resize', ajustarAlturaLinhas);
-
-    // ===== Navegar mês =====
-    function mudarMes(delta){
-      mesRef.setMonth(mesRef.getMonth()+delta);
-      carregar();
+    function mondayOf(d){
+      const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const day = x.getDay(); // 0 dom .. 6 sab
+      const diff = (day===0? -6 : 1) - day; // segunda
+      x.setDate(x.getDate()+diff);
+      x.setHours(0,0,0,0);
+      return x;
     }
+    function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
+    function within(date, start, end){
+      const x = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      return x>=start && x<=end;
+    }
+    function brMoney(n){ return Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+    function currency(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'}); }
+    function fmt(data){ const d=toDate(data); if(!d) return '-'; const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); return `${dd}/${mm}`; }
 
-    // ===== Carga =====
-    async function carregar(){
-      // eventos
-      const snap = await db.ref('eventos').once('value');
-      eventos = [];
-      snap.forEach(ch=>{ const v=ch.val(); v.id=ch.key; eventos.push(v); });
+    /* ===== Carga ===== */
+    async function carregarPainel(){
+      const [evSnap, cliSnap] = await Promise.all([
+        db.ref('eventos').once('value'),
+        db.ref('clientes').once('value')
+      ]);
 
-      // indisponíveis
-      const iSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
-      indis = {};
-      iSnap.forEach(ch=>{
-        const it=ch.val();
-        if (it?.tipo==='único' && it?.data) {
-          indis[it.data]=it.motivo||'Indisponível';
-        } else if (it?.tipo==='período' && it?.inicio && it?.fim){
-          const i=new Date(it.inicio), f=new Date(it.fim);
-          for(let d=new Date(i); d<=f; d.setDate(d.getDate()+1)){
-            indis[toISO(d)] = it.motivo||'Indisponível';
+      const hoje = new Date();
+      const semanaIni = mondayOf(hoje);
+      const semanaFim = addDays(semanaIni, 6);
+      const anoAtual = hoje.getFullYear();
+      const mesAtual = hoje.getMonth();
+
+      const eventos = evSnap.val() || {};
+      const clientes = cliSnap.val() || {};
+
+      /* --- KPIs principais --- */
+      let eventosSemana = 0, estimativaSemana = 0;
+      let vendaMes = 0, lucroMes = 0, eventosMesFinalizados = 0;
+
+      // Lista da semana para a tabela
+      const linhasSemana = [];
+
+      Object.values(eventos).forEach(e=>{
+        if(!e || !e.data) return;
+        const dt = toDate(e.data);
+        const status = (e.status || 'Aberto');
+        const vendaPDV = Number(e.vendaPDV || 0);
+        const estim = Number(e.estimativaVenda || 0);
+        const final = status === 'Finalizado' || status === 'Fechado';
+
+        // Semana
+        if (within(dt, semanaIni, semanaFim)) {
+          eventosSemana++;
+          estimativaSemana += estim;
+
+          const badge = final
+            ? `<span class="status-badge status-conf">● Confirmado</span>`
+            : `<span class="status-badge status-prev">● Previsto</span>`;
+
+          linhasSemana.push(`
+            <tr>
+              <td>${fmt(e.data)}</td>
+              <td>${e.nomeEvento || '-'}</td>
+              <td>${badge}</td>
+              <td style="text-align:right">R$ ${brMoney(estim)}</td>
+            </tr>
+          `);
+        }
+
+        // Mês atual (apenas finalizados/fechados contam em venda/lucro do mês)
+        if (dt.getFullYear()===anoAtual && dt.getMonth()===mesAtual) {
+          if (final){
+            eventosMesFinalizados++;
+            vendaMes += vendaPDV;
+            lucroMes += Number(e.lucroFinal || 0);
           }
         }
       });
 
-      desenhar();
-      atualizarKPIs();
-      ajustarAlturaLinhas(); // após render
-    }
+      // Preenche KPIs
+      document.getElementById('kpi-semana').innerText = eventosSemana;
+      document.getElementById('kpi-semana-detalhe').innerText =
+        `${fmt(semanaIni.toISOString().slice(0,10))}–${fmt(semanaFim.toISOString().slice(0,10))}`;
+      document.getElementById('kpi-estimativa-semana').innerText = brMoney(estimativaSemana);
+      document.getElementById('kpi-venda-mes').innerText = brMoney(vendaMes);
+      document.getElementById('kpi-lucro-mes').innerText = brMoney(lucroMes);
 
-    // ===== Calendário =====
-    function desenhar(){
-      document.getElementById('mesAtual').textContent =
-        mesRef.toLocaleString('pt-BR',{month:'long',year:'numeric'});
+      // Semana: tabela
+      const tbody = document.getElementById('lista-semana');
+      tbody.innerHTML = linhasSemana.length ? linhasSemana.join('') : `
+        <tr><td colspan="4" style="color:#6b7280">Nenhum evento nesta semana.</td></tr>`;
 
-      const grid = document.getElementById('grid');
-      grid.innerHTML='';
+      // Box mês (lado direito)
+      document.getElementById('mes-eventos').innerText = eventosMesFinalizados;
+      document.getElementById('mes-venda').innerText = brMoney(vendaMes);
+      document.getElementById('mes-lucro').innerText = brMoney(lucroMes);
 
-      const ano = mesRef.getFullYear();
-      const mes = mesRef.getMonth();
+      // Clientes — resumo
+      let ativos = 0, quentes = 0;
+      Object.values(clientes).forEach(c=>{
+        const st = (c.status || '').toLowerCase();
+        const stAtivo = c.clienteAtivo?.status || '';
+        if (st === 'quente') quentes++;
+        if (stAtivo === 'Ativo') ativos++;
+      });
+      document.getElementById('kpi-clientes-ativos').innerText = ativos;
+      document.getElementById('kpi-clientes-quentes').innerText = quentes;
 
-      // 1º dia do mês e início do grid (domingo da 1ª semana)
-      const first = new Date(ano, mes, 1);
-      const inicioGrid = new Date(first);
-      inicioGrid.setDate(first.getDate() - first.getDay()); // começa no DOM
+      /* --- Gráficos do ano --- */
+      const serieVenda = Array(12).fill(0);
+      const serieLucro = Array(12).fill(0);
+      const serieEventos = Array(12).fill(0);
 
-      const semanaAtual = semanaSegADom();
+      Object.values(eventos).forEach(e=>{
+        if(!e || !e.data) return;
+        const dt = toDate(e.data);
+        if (dt.getFullYear() !== anoAtual) return;
+        const m = dt.getMonth();
+        const final = (e.status==='Finalizado' || e.status==='Fechado');
 
-      // 42 dias (6 semanas)
-      for (let i=0; i<42; i++){
-        const data = new Date(inicioGrid);
-        data.setDate(inicioGrid.getDate()+i);
-        const iso = toISO(data);
-
-        const el = document.createElement('div');
-        el.className='day';
-        el.dataset.data=iso;
-
-        const isOther = data.getMonth() !== mes;
-        if (isOther) el.classList.add('other-month');
-        if (semanaAtual.includes(iso)) el.classList.add('is-week');
-        if (indis[iso]) el.classList.add('is-blocked');
-
-        el.addEventListener('dragover', e=>e.preventDefault());
-        el.addEventListener('drop', onDropMove);
-
-        // Cabeçalho do dia: número + contador
-        const head = document.createElement('div');
-        head.className = 'head-dia';
-        const nEl = document.createElement('div');
-        nEl.className='n'; nEl.textContent=data.getDate();
-
-        const cnt = document.createElement('span');
-        cnt.className='count'; cnt.textContent='';
-        head.appendChild(nEl); head.appendChild(cnt);
-        el.appendChild(head);
-
-        // Mensagem de indisponível (se houver)
-        if (indis[iso]){
-          const b = document.createElement('div');
-          b.className='blocked'; b.textContent=indis[iso];
-          el.appendChild(b);
+        if(final){
+          serieVenda[m] += Number(e.vendaPDV || 0);
+          serieLucro[m] += Number(e.lucroFinal || 0);
         }
-
-        // Lista de eventos (rolagem interna)
-        const lista = document.createElement('div');
-        lista.className = 'lista';
-
-        const doDia = eventos.filter(ev=>ev.data===iso);
-        doDia.forEach(ev=>{
-          const estado = (ev.confirmacao === 'previsto') ? 'previsto' : 'confirmado';
-
-          const evt = document.createElement('div');
-          evt.className='evt ' + estado;      // <<< cor por status
-          evt.draggable=true;
-          evt.dataset.eventoId=ev.id;
-
-          const t = document.createElement('span');
-          t.className='t'; t.textContent=ev.nomeEvento || 'Sem nome';
-
-          const acts = document.createElement('div');
-          acts.className='acts';
-
-          // Ver (abre nova aba)
-          const ver = document.createElement('a');
-          ver.className = 'iconbtn';
-          ver.href = VIEW_BASE + encodeURIComponent(ev.id);
-          ver.target = '_blank';
-          ver.title = 'Visualizar evento';
-          ver.textContent = '🔍';
-
-          // Alternar Confirmado/Previsto — NOVO
-          const tog = document.createElement('button');
-          tog.className='iconbtn';
-          tog.title = (estado==='previsto') ? 'Marcar como Confirmado' : 'Marcar como Previsto';
-          tog.textContent = (estado==='previsto') ? 'C' : 'P';
-          tog.onclick = ()=>alternarConfirmacao(ev.id, estado);
-
-          // Duplicar (mantido)
-          const dup = document.createElement('button');
-          dup.className='iconbtn'; dup.title='Duplicar';
-          dup.textContent='＋';
-          dup.onclick = ()=>duplicarEvento(ev);
-
-          // Excluir
-          const del = document.createElement('button');
-          del.className='iconbtn'; del.title='Excluir';
-          del.textContent='🗑';
-          del.onclick = ()=>excluirEvento(ev.id);
-
-          acts.appendChild(ver);
-          acts.appendChild(tog);
-          acts.appendChild(dup);
-          acts.appendChild(del);
-
-          evt.appendChild(t);
-          evt.appendChild(acts);
-
-          evt.addEventListener('dragstart', e=> e.dataTransfer.setData('eventoId', ev.id));
-          lista.appendChild(evt);
-        });
-
-        // contador de eventos
-        if (doDia.length > 0) cnt.textContent = doDia.length;
-
-        el.appendChild(lista);
-        grid.appendChild(el);
-      }
-    }
-
-    function onDropMove(e){
-      const id = e.dataTransfer.getData('eventoId');
-      const data = this.dataset.data;
-      if (!id || !data) return;
-      db.ref(`eventos/${id}`).update({data})
-        .then(()=>carregar())
-        .catch(err=>alert('Erro ao mover: '+err.message));
-    }
-
-    function semanaSegADom(){
-      const hoje = new Date();
-      const dw = hoje.getDay(); // 0..6
-      const inicio = new Date(hoje);
-      const delta = (dw===0 ? -6 : 1-dw);
-      inicio.setDate(hoje.getDate()+delta);
-      const out=[];
-      for(let i=0;i<7;i++){const d=new Date(inicio);d.setDate(inicio.getDate()+i);out.push(toISO(d));}
-      return out;
-    }
-
-    async function alternarConfirmacao(id, atual){
-      const novo = (atual==='previsto') ? 'confirmado' : 'previsto';
-      try{
-        await db.ref(`eventos/${id}/confirmacao`).set(novo);
-        carregar();
-      }catch(err){
-        alert('Erro ao salvar: ' + err.message);
-      }
-    }
-
-    async function duplicarEvento(ev){
-      if(!confirm('Duplicar este evento?')) return;
-      const novo={...ev}; delete novo.id;
-      await db.ref('eventos').push(novo);
-      carregar();
-    }
-
-    async function excluirEvento(id){
-      if(!confirm('Tem certeza que deseja excluir este evento?')) return;
-      try{
-        await db.ref('eventos/'+id).remove();
-        carregar();
-      }catch(err){
-        alert('Erro ao excluir: ' + err.message);
-      }
-    }
-
-    async function duplicarMes(){
-      if(!confirm('Duplicar todos os eventos do mês para o próximo?')) return;
-
-      const ano=mesRef.getFullYear(), mes=mesRef.getMonth();
-      const doMes = eventos.filter(ev=>{
-        const d=new Date(ev.data);
-        return d.getMonth()===mes && d.getFullYear()===ano;
+        serieEventos[m] += 1;
       });
 
-      await Promise.all(doMes.map(ev=>{
-        const nova = new Date(ev.data); nova.setMonth(nova.getMonth()+1);
-        const ultimoNovo = new Date(nova.getFullYear(), nova.getMonth()+1, 0).getDate();
-        if (nova.getDate()>ultimoNovo) nova.setDate(ultimoNovo);
-
-        const n={...ev}; delete n.id;
-        n.data = toISO(nova); n.status='Aberto';
-        delete n.vendaPDV;
-        if (n.produtos){ n.produtos = n.produtos.map(p=>{ const {congelado,assado,perda,...r}=p; return r; }); }
-        return db.ref('eventos').push(n);
-      }));
-
-      carregar();
+      desenharGraficos(serieVenda, serieLucro, serieEventos);
     }
 
-    // ===== KPIs =====
-    function atualizarKPIs(){
-      const atualYM = ym(mesRef);
-      const dAnt = new Date(mesRef); dAnt.setMonth(dAnt.getMonth()-1);
-      const dProx= new Date(mesRef); dProx.setMonth(dProx.getMonth()+1);
-      const antYM  = ym(dAnt);
-      const proxYM = ym(dProx);
+    function desenharGraficos(venda, lucro, eventos){
+      // Venda x Lucro
+      new Chart(document.getElementById('graficoVendaLucro'), {
+        type: 'line',
+        data: {
+          labels: meses,
+          datasets: [
+            { label: 'Venda PDV', data: venda, borderWidth: 2, tension: .2 },
+            { label: 'Lucro', data: lucro, borderWidth: 2, tension: .2 }
+          ]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} , scales:{ y:{ beginAtZero:true } } }
+      });
 
-      const dentroYM = (e, ymKey)=>{
-        if(!e?.data) return false;
-        const d = new Date(e.data);
-        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        return key === ymKey;
-      };
-
-      const isFechado = (e)=>{
-        const s = String(e.status||'').toLowerCase();
-        return s==='fechado' || s==='finalizado';
-      };
-
-      // Vendas Reais: soma vendaPDV de Fechado/Finalizado
-      const realAtual    = eventos.filter(e=>dentroYM(e, atualYM) && isFechado(e))
-                                  .reduce((s,e)=> s + num(e.vendaPDV), 0);
-      const realAnterior = eventos.filter(e=>dentroYM(e, antYM) && isFechado(e))
-                                  .reduce((s,e)=> s + num(e.vendaPDV), 0);
-
-      // Previstas: soma estimativaVenda no mês atual e no próximo
-      const doMesAtual   = eventos.filter(e=>dentroYM(e, atualYM));
-      const prevMesTotal = doMesAtual.reduce((s,e)=> s + num(e.estimativaVenda), 0);
-      const prevMesAConf = doMesAtual
-                            .filter(e => (e.confirmacao || 'confirmado') === 'previsto')
-                            .reduce((s,e)=> s + num(e.estimativaVenda), 0);
-
-      const prevProx = eventos.filter(e=>dentroYM(e, proxYM))
-                              .reduce((s,e)=> s + num(e.estimativaVenda), 0);
-
-      document.getElementById('kpiRealAnterior').textContent = brl(realAnterior);
-      document.getElementById('kpiRealMes').textContent      = brl(realAtual);
-      document.getElementById('kpiPrevMes').textContent      = brl(prevMesTotal);
-      document.getElementById('kpiPrevProx').textContent     = brl(prevProx);
-
-      // Linha "à confirmar" com destaque quando > 0
-      const sub = document.getElementById('kpiPrevMesAConf');
-      sub.textContent = 'à confirmar: ' + brl(prevMesAConf);
-
-      const card = document.getElementById('kpiCardPrevMes');
-      if (prevMesAConf > 0) card.classList.add('warn'); else card.classList.remove('warn');
+      // Eventos
+      new Chart(document.getElementById('graficoEventos'), {
+        type: 'bar',
+        data: {
+          labels: meses,
+          datasets: [{ label: 'Eventos', data: eventos, borderWidth: 1 }]
+        },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
+      });
     }
 
-    document.addEventListener('DOMContentLoaded', carregar);
+    document.addEventListener('DOMContentLoaded', carregarPainel);
   </script>
 </body>
 </html>
