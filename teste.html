@@ -22,14 +22,10 @@
       --soft:#fff8ef;
       --ok:#16a34a;
       --warn:#f59e0b;
-      --bad:#dc2626;
     }
     .main-content{ padding-top:10px }
 
-    /* Header */
-    .page-header{
-      display:flex;justify-content:space-between;align-items:center;margin-bottom:8px
-    }
+    .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
     .page-header h1{ font-size:18px; margin:0 }
 
     /* Atalhos */
@@ -58,13 +54,11 @@
     .kcard .label{font-size:12px;color:#374151}
     .kcard .value{font-size:20px;font-weight:800;color:var(--accent);line-height:1}
 
-    /* Semana */
+    /* Colunas */
     .cols-2{display:grid;grid-template-columns:1.1fr .9fr;gap:10px;margin-top:4px}
     @media (max-width:1050px){ .cols-2{grid-template-columns:1fr} }
 
-    .box{
-      background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px
-    }
+    .box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px}
     .box h3{margin:0 0 8px 0;font-size:14px}
     .legend{display:flex;gap:12px;font-size:12px;color:#6b7280;margin-bottom:8px}
     .dot{display:inline-block;width:10px;height:10px;border-radius:999px;margin-right:6px;vertical-align:middle}
@@ -73,10 +67,7 @@
     table{width:100%;border-collapse:collapse;font-size:12.5px}
     thead th{background:#f8fafc;color:#111;padding:6px;border-bottom:1px solid var(--line);text-align:left}
     tbody td{padding:6px;border-bottom:1px solid var(--line)}
-    .status-badge{
-      font-size:11px;padding:2px 6px;border-radius:999px;border:1px solid;
-      display:inline-flex;align-items:center;gap:6px
-    }
+    .status-badge{font-size:11px;padding:2px 6px;border-radius:999px;border:1px solid;display:inline-flex;align-items:center;gap:6px}
     .status-prev{color:#92400e;border-color:#f59e0b;background:#fffbeb}
     .status-conf{color:#065f46;border-color:#10b981;background:#ecfdf5}
 
@@ -84,7 +75,7 @@
     .charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
     @media (max-width:1050px){ .charts{grid-template-columns:1fr} }
     .chart-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px}
-    canvas{background:#fff;border:1px solid #eee;border-radius:8px;padding:6px}
+    .chart-card canvas{height:260px !important;} /* garante altura */
   </style>
 </head>
 <body>
@@ -96,21 +87,21 @@
         <h1>Painel Operacional</h1>
       </div>
 
-      <!-- Atalhos -->
+      <!-- Atalhos (abrem em nova guia) -->
       <div class="quick-links">
-        <a class="qbtn" href="eventos.html"><span class="icon">📋</span><div><div style="font-weight:700">Eventos</div><small class="muted">Criar/editar eventos</small></div></a>
-        <a class="qbtn" href="agenda.html"><span class="icon">🗓️</span><div><div style="font-weight:700">Agenda</div><small class="muted">Semana e projeções</small></div></a>
-        <a class="qbtn" href="planejamento_evento.html"><span class="icon">🧩</span><div><div style="font-weight:700">Planejamento</div><small class="muted">Equipe, logística, equipamento</small></div></a>
-        <a class="qbtn" href="relatorio_Semanal.html"><span class="icon">📈</span><div><div style="font-weight:700">Relatório Semanal</div><small class="muted">Resultados da semana</small></div></a>
-        <a class="qbtn" href="clientes.html"><span class="icon">👥</span><div><div style="font-weight:700">Clientes</div><small class="muted">Ativos e prospects</small></div></a>
+        <a class="qbtn" href="eventos.html" target="_blank" rel="noopener noreferrer"><span class="icon">📋</span><div><div style="font-weight:700">Eventos</div><small class="muted">Criar/editar eventos</small></div></a>
+        <a class="qbtn" href="agenda.html" target="_blank" rel="noopener noreferrer"><span class="icon">🗓️</span><div><div style="font-weight:700">Agenda</div><small class="muted">Semana e projeções</small></div></a>
+        <a class="qbtn" href="planejamento_evento.html" target="_blank" rel="noopener noreferrer"><span class="icon">🧩</span><div><div style="font-weight:700">Planejamento</div><small class="muted">Equipe, logística, equipamento</small></div></a>
+        <a class="qbtn" href="relatorio/relatorio_Semanal.html" target="_blank" rel="noopener noreferrer"><span class="icon">📈</span><div><div style="font-weight:700">Relatório Semanal</div><small class="muted">Resultados da semana</small></div></a>
+        <a class="qbtn" href="gestao_Cliente.html" target="_blank" rel="noopener noreferrer"><span class="icon">👥</span><div><div style="font-weight:700">Clientes</div><small class="muted">Ativos e prospects</small></div></a>
       </div>
 
-      <!-- KPIs chave -->
+      <!-- KPIs -->
       <div class="kpi-grid">
         <div class="kcard">
           <div class="label">Eventos desta semana</div>
           <div class="value" id="kpi-semana">0</div>
-          <small id="kpi-semana-detalhe" class="muted" style="color:var(--muted)"></small>
+          <small id="kpi-semana-detalhe" style="color:var(--muted)"></small>
         </div>
         <div class="kcard">
           <div class="label">Venda prevista da semana</div>
@@ -126,8 +117,9 @@
         </div>
       </div>
 
-      <!-- Semana: lista + mini totais -->
+      <!-- Semana + Mês atual + Clientes -->
       <div class="cols-2">
+        <!-- Lista da semana -->
         <div class="box">
           <h3>Semana (Seg–Dom)</h3>
           <div class="legend">
@@ -147,8 +139,20 @@
           </table>
         </div>
 
-        <div class="box">
-          <h3>Clientes — resumo</h3>
+        <!-- Coluna direita com Mês atual e Clientes -->
+        <div class="box" id="box-mes">
+          <h3>Mês atual</h3>
+          <table>
+            <thead><tr><th>Métrica</th><th style="text-align:right">Valor</th></tr></thead>
+            <tbody id="tabela-mes">
+              <tr><td>Eventos (total)</td><td style="text-align:right" id="mes-eventos-total">0</td></tr>
+              <tr><td>Eventos Abertos</td><td style="text-align:right" id="mes-eventos-abertos">0</td></tr>
+              <tr><td>Finalizados/Fechados</td><td style="text-align:right" id="mes-eventos-fechados">0</td></tr>
+              <tr><td>Estimativa do mês</td><td style="text-align:right">R$ <span id="mes-estimativa">0,00</span></td></tr>
+            </tbody>
+          </table>
+
+          <h3 style="margin-top:12px">Clientes — resumo</h3>
           <div class="kpi-grid" style="grid-template-columns:1fr 1fr;gap:8px">
             <div class="kcard" style="min-height:60px">
               <div class="label">Clientes ativos</div>
@@ -159,16 +163,6 @@
               <div class="value" id="kpi-clientes-quentes">0</div>
             </div>
           </div>
-
-          <h3 style="margin-top:10px">Mês atual</h3>
-          <table>
-            <thead><tr><th>Métrica</th><th style="text-align:right">Valor</th></tr></thead>
-            <tbody id="tabela-mes">
-              <tr><td>Eventos finalizados/fechados</td><td style="text-align:right" id="mes-eventos">0</td></tr>
-              <tr><td>Venda PDV</td><td style="text-align:right">R$ <span id="mes-venda">0,00</span></td></tr>
-              <tr><td>Lucro</td><td style="text-align:right">R$ <span id="mes-lucro">0,00</span></td></tr>
-            </tbody>
-          </table>
         </div>
       </div>
 
@@ -199,29 +193,15 @@
 
     /* ===== Helpers ===== */
     const meses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-    function toDate(dateStr){
-      if(!dateStr) return null;
-      const [y,m,d] = dateStr.split('-');
-      return new Date(Number(y), Number(m)-1, Number(d));
-    }
-    function mondayOf(d){
-      const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      const day = x.getDay(); // 0 dom .. 6 sab
-      const diff = (day===0? -6 : 1) - day; // segunda
-      x.setDate(x.getDate()+diff);
-      x.setHours(0,0,0,0);
-      return x;
-    }
-    function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
-    function within(date, start, end){
-      const x = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      return x>=start && x<=end;
-    }
+    function toDate(dateStr){ if(!dateStr) return null; const [y,m,d]=dateStr.split('-'); return new Date(+y, +m-1, +d); }
+    function mondayOf(d){ const x=new Date(d.getFullYear(), d.getMonth(), d.getDate()); const day=x.getDay(); const diff=(day===0?-6:1)-day; x.setDate(x.getDate()+diff); x.setHours(0,0,0,0); return x; }
+    function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
+    function within(date,start,end){ const x=new Date(date.getFullYear(), date.getMonth(), date.getDate()); return x>=start && x<=end; }
     function brMoney(n){ return Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}); }
     function currency(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'}); }
     function fmt(data){ const d=toDate(data); if(!d) return '-'; const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); return `${dd}/${mm}`; }
 
-    /* ===== Carga ===== */
+    /* ===== Painel ===== */
     async function carregarPainel(){
       const [evSnap, cliSnap] = await Promise.all([
         db.ref('eventos').once('value'),
@@ -237,11 +217,11 @@
       const eventos = evSnap.val() || {};
       const clientes = cliSnap.val() || {};
 
-      /* --- KPIs principais --- */
+      /* KPIs e listas */
       let eventosSemana = 0, estimativaSemana = 0;
-      let vendaMes = 0, lucroMes = 0, eventosMesFinalizados = 0;
+      let vendaMes = 0, lucroMes = 0, eventosMesFechados = 0;
+      let eventosMesTotal = 0, eventosMesAbertos = 0, estimativaMes = 0;
 
-      // Lista da semana para a tabela
       const linhasSemana = [];
 
       Object.values(eventos).forEach(e=>{
@@ -250,16 +230,18 @@
         const status = (e.status || 'Aberto');
         const vendaPDV = Number(e.vendaPDV || 0);
         const estim = Number(e.estimativaVenda || 0);
-        const final = status === 'Finalizado' || status === 'Fechado';
+        const final = (status==='Finalizado' || status==='Fechado');
 
         // Semana
         if (within(dt, semanaIni, semanaFim)) {
           eventosSemana++;
           estimativaSemana += estim;
 
-          const badge = final
-            ? `<span class="status-badge status-conf">● Confirmado</span>`
-            : `<span class="status-badge status-prev">● Previsto</span>`;
+          // Previsto: quando o próprio evento trouxer um indicativo (flags comuns); caso contrário tratar como confirmado
+          const previsto = (e.previsto === true) || (e.projetado === true) || (e.tipo === 'projetado') || (status === 'Previsto');
+          const badge = previsto
+            ? `<span class="status-badge status-prev">● Previsto</span>`
+            : `<span class="status-badge status-conf">● Confirmado</span>`;
 
           linhasSemana.push(`
             <tr>
@@ -271,17 +253,20 @@
           `);
         }
 
-        // Mês atual (apenas finalizados/fechados contam em venda/lucro do mês)
+        // Mês atual
         if (dt.getFullYear()===anoAtual && dt.getMonth()===mesAtual) {
+          eventosMesTotal++;
+          estimativaMes += estim;
+          if (status==='Aberto') eventosMesAbertos++;
           if (final){
-            eventosMesFinalizados++;
+            eventosMesFechados++;
             vendaMes += vendaPDV;
             lucroMes += Number(e.lucroFinal || 0);
           }
         }
       });
 
-      // Preenche KPIs
+      // KPIs topo
       document.getElementById('kpi-semana').innerText = eventosSemana;
       document.getElementById('kpi-semana-detalhe').innerText =
         `${fmt(semanaIni.toISOString().slice(0,10))}–${fmt(semanaFim.toISOString().slice(0,10))}`;
@@ -291,13 +276,14 @@
 
       // Semana: tabela
       const tbody = document.getElementById('lista-semana');
-      tbody.innerHTML = linhasSemana.length ? linhasSemana.join('') : `
-        <tr><td colspan="4" style="color:#6b7280">Nenhum evento nesta semana.</td></tr>`;
+      tbody.innerHTML = linhasSemana.length ? linhasSemana.join('') :
+        `<tr><td colspan="4" style="color:#6b7280">Nenhum evento nesta semana.</td></tr>`;
 
-      // Box mês (lado direito)
-      document.getElementById('mes-eventos').innerText = eventosMesFinalizados;
-      document.getElementById('mes-venda').innerText = brMoney(vendaMes);
-      document.getElementById('mes-lucro').innerText = brMoney(lucroMes);
+      // Mês atual (box)
+      document.getElementById('mes-eventos-total').innerText   = eventosMesTotal;
+      document.getElementById('mes-eventos-abertos').innerText = eventosMesAbertos;
+      document.getElementById('mes-eventos-fechados').innerText= eventosMesFechados;
+      document.getElementById('mes-estimativa').innerText      = brMoney(estimativaMes);
 
       // Clientes — resumo
       let ativos = 0, quentes = 0;
@@ -310,7 +296,7 @@
       document.getElementById('kpi-clientes-ativos').innerText = ativos;
       document.getElementById('kpi-clientes-quentes').innerText = quentes;
 
-      /* --- Gráficos do ano --- */
+      /* Gráficos do ano */
       const serieVenda = Array(12).fill(0);
       const serieLucro = Array(12).fill(0);
       const serieEventos = Array(12).fill(0);
@@ -333,7 +319,6 @@
     }
 
     function desenharGraficos(venda, lucro, eventos){
-      // Venda x Lucro
       new Chart(document.getElementById('graficoVendaLucro'), {
         type: 'line',
         data: {
@@ -343,16 +328,12 @@
             { label: 'Lucro', data: lucro, borderWidth: 2, tension: .2 }
           ]
         },
-        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}} , scales:{ y:{ beginAtZero:true } } }
+        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true } } }
       });
 
-      // Eventos
       new Chart(document.getElementById('graficoEventos'), {
         type: 'bar',
-        data: {
-          labels: meses,
-          datasets: [{ label: 'Eventos', data: eventos, borderWidth: 1 }]
-        },
+        data: { labels: meses, datasets: [{ label: 'Eventos', data: eventos, borderWidth: 1 }] },
         options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
       });
     }
