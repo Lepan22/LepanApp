@@ -22,6 +22,7 @@
       --soft:#fff8ef;
       --ok:#16a34a;
       --warn:#f59e0b;
+      --bad:#dc2626;
     }
     .main-content{ padding-top:10px }
 
@@ -41,7 +42,7 @@
     .qbtn:hover{ background:#fff7ed }
     .qbtn .icon{font-size:18px}
 
-    /* KPIs */
+    /* KPIs topo */
     .kpi-grid{
       display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px
     }
@@ -71,11 +72,20 @@
     .status-prev{color:#92400e;border-color:#f59e0b;background:#fffbeb}
     .status-conf{color:#065f46;border-color:#10b981;background:#ecfdf5}
 
+    /* Barra de progresso */
+    .goal{
+      background:#f3f4f6;border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px
+    }
+    .goal h4{margin:0 0 6px 0;font-size:12px;color:#374151}
+    .progress-wrap{background:#e5e7eb;border-radius:999px;overflow:hidden;height:10px}
+    .progress-bar{height:10px;background:linear-gradient(90deg,#10b981,#60a5fa)}
+    .goal-row{display:flex;justify-content:space-between;font-size:12px;color:#374151;margin-top:4px}
+
     /* Gráficos */
     .charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
     @media (max-width:1050px){ .charts{grid-template-columns:1fr} }
     .chart-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px}
-    .chart-card canvas{height:260px !important;} /* garante altura */
+    .chart-card canvas{height:260px !important;}
   </style>
 </head>
 <body>
@@ -96,7 +106,7 @@
         <a class="qbtn" href="gestao_Cliente.html" target="_blank" rel="noopener noreferrer"><span class="icon">👥</span><div><div style="font-weight:700">Clientes</div><small class="muted">Ativos e prospects</small></div></a>
       </div>
 
-      <!-- KPIs -->
+      <!-- KPIs topo -->
       <div class="kpi-grid">
         <div class="kcard">
           <div class="label">Eventos desta semana</div>
@@ -119,13 +129,25 @@
 
       <!-- Semana + Mês atual + Clientes -->
       <div class="cols-2">
-        <!-- Lista da semana -->
+        <!-- Lista da semana + metas -->
         <div class="box">
           <h3>Semana (Seg–Dom)</h3>
-          <div class="legend">
+
+          <!-- Previsto x Realizado (barra de metas) -->
+          <div class="goal">
+            <h4>Previsto x Realizado</h4>
+            <div class="progress-wrap"><div id="pb-semana" class="progress-bar" style="width:0%"></div></div>
+            <div class="goal-row">
+              <span>Previsto: <strong>R$ <span id="meta-previsto">0,00</span></strong></span>
+              <span>Realizado: <strong>R$ <span id="meta-realizado">0,00</span></strong> (<span id="meta-pct">0%</span>)</span>
+            </div>
+          </div>
+
+          <div class="legend" style="margin-top:8px">
             <span><span class="dot ok"></span>Confirmado</span>
             <span><span class="dot warn"></span>Previsto</span>
           </div>
+
           <table>
             <thead>
               <tr>
@@ -149,6 +171,8 @@
               <tr><td>Eventos Abertos</td><td style="text-align:right" id="mes-eventos-abertos">0</td></tr>
               <tr><td>Finalizados/Fechados</td><td style="text-align:right" id="mes-eventos-fechados">0</td></tr>
               <tr><td>Estimativa do mês</td><td style="text-align:right">R$ <span id="mes-estimativa">0,00</span></td></tr>
+              <tr><td>Margem Real do mês</td><td style="text-align:right"><span id="mes-margem-real">0,0%</span></td></tr>
+              <tr><td>Margem Prevista (config)</td><td style="text-align:right"><span id="mes-margem-prev">0,0%</span></td></tr>
             </tbody>
           </table>
 
@@ -163,6 +187,12 @@
               <div class="value" id="kpi-clientes-quentes">0</div>
             </div>
           </div>
+
+          <h3 style="margin-top:12px">Margens recentes</h3>
+          <table>
+            <thead><tr><th>Mês</th><th style="text-align:right">Margem</th></tr></thead>
+            <tbody id="tb-margens"></tbody>
+          </table>
         </div>
       </div>
 
@@ -199,13 +229,15 @@
     function within(date,start,end){ const x=new Date(date.getFullYear(), date.getMonth(), date.getDate()); return x>=start && x<=end; }
     function brMoney(n){ return Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}); }
     function currency(n){ return Number(n||0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'}); }
+    function pct(v){ return (Number(v||0)).toFixed(1).replace('.',',')+'%'; }
     function fmt(data){ const d=toDate(data); if(!d) return '-'; const dd=String(d.getDate()).padStart(2,'0'); const mm=String(d.getMonth()+1).padStart(2,'0'); return `${dd}/${mm}`; }
 
     /* ===== Painel ===== */
     async function carregarPainel(){
-      const [evSnap, cliSnap] = await Promise.all([
+      const [evSnap, cliSnap, cfgLucroSnap] = await Promise.all([
         db.ref('eventos').once('value'),
-        db.ref('clientes').once('value')
+        db.ref('clientes').once('value'),
+        db.ref('configuracao/percentualLucro').once('value')
       ]);
 
       const hoje = new Date();
@@ -213,12 +245,14 @@
       const semanaFim = addDays(semanaIni, 6);
       const anoAtual = hoje.getFullYear();
       const mesAtual = hoje.getMonth();
+      const margemPrevista = Number(cfgLucroSnap.val() ?? 40);
 
       const eventos = evSnap.val() || {};
       const clientes = cliSnap.val() || {};
 
       /* KPIs e listas */
       let eventosSemana = 0, estimativaSemana = 0;
+      let vendaSemanaReal = 0; // realizado na semana (finalizados/fechados)
       let vendaMes = 0, lucroMes = 0, eventosMesFechados = 0;
       let eventosMesTotal = 0, eventosMesAbertos = 0, estimativaMes = 0;
 
@@ -237,8 +271,10 @@
           eventosSemana++;
           estimativaSemana += estim;
 
-          // Previsto: quando o próprio evento trouxer um indicativo (flags comuns); caso contrário tratar como confirmado
-          const previsto = (e.previsto === true) || (e.projetado === true) || (e.tipo === 'projetado') || (status === 'Previsto');
+          if (final) vendaSemanaReal += vendaPDV;
+
+          // Detecta "Previsto" somente se flag de projeção existir; senão é Confirmado
+          const previsto = (e.previsto === true) || (e.projetado === true) || (e.tipo === 'projetado') || (e.origem === 'projecao');
           const badge = previsto
             ? `<span class="status-badge status-prev">● Previsto</span>`
             : `<span class="status-badge status-conf">● Confirmado</span>`;
@@ -274,6 +310,13 @@
       document.getElementById('kpi-venda-mes').innerText = brMoney(vendaMes);
       document.getElementById('kpi-lucro-mes').innerText = brMoney(lucroMes);
 
+      // Semana: metas
+      const ating = estimativaSemana > 0 ? Math.min(100, (vendaSemanaReal/estimativaSemana)*100) : 0;
+      document.getElementById('meta-previsto').innerText = brMoney(estimativaSemana);
+      document.getElementById('meta-realizado').innerText = brMoney(vendaSemanaReal);
+      document.getElementById('meta-pct').innerText = pct(ating);
+      document.getElementById('pb-semana').style.width = ating + '%';
+
       // Semana: tabela
       const tbody = document.getElementById('lista-semana');
       tbody.innerHTML = linhasSemana.length ? linhasSemana.join('') :
@@ -285,16 +328,40 @@
       document.getElementById('mes-eventos-fechados').innerText= eventosMesFechados;
       document.getElementById('mes-estimativa').innerText      = brMoney(estimativaMes);
 
-      // Clientes — resumo
+      const margemRealMes = vendaMes>0 ? (lucroMes/vendaMes)*100 : 0;
+      document.getElementById('mes-margem-real').innerText = pct(margemRealMes);
+      document.getElementById('mes-margem-prev').innerText = pct(margemPrevista);
+
+      // Clientes — resumo (robusto)
       let ativos = 0, quentes = 0;
       Object.values(clientes).forEach(c=>{
         const st = (c.status || '').toLowerCase();
-        const stAtivo = c.clienteAtivo?.status || '';
+        const ativo1 = c.clienteAtivo && (c.clienteAtivo.status === 'Ativo');
+        const ativo2 = c.clienteAtivo && (c.clienteAtivo.statusEvento === 'Ativo');
         if (st === 'quente') quentes++;
-        if (stAtivo === 'Ativo') ativos++;
+        if (ativo1 || ativo2) ativos++;
       });
       document.getElementById('kpi-clientes-ativos').innerText = ativos;
       document.getElementById('kpi-clientes-quentes').innerText = quentes;
+
+      /* Margens recentes (3 últimos meses) */
+      const margens = []; // [{mesLabel, pct}]
+      for (let i=2; i>=0; i--){
+        const ref = new Date(anoAtual, mesAtual - i, 1);
+        const y = ref.getFullYear(), m = ref.getMonth();
+        let v=0, l=0;
+        Object.values(eventos).forEach(e=>{
+          if(!e || !e.data) return;
+          const dt = toDate(e.data);
+          if (dt.getFullYear()===y && dt.getMonth()===m && (e.status==='Finalizado' || e.status==='Fechado')){
+            v += Number(e.vendaPDV || 0);
+            l += Number(e.lucroFinal || 0);
+          }
+        });
+        margens.push({ mesLabel: meses[m], pct: v>0 ? (l/v)*100 : 0 });
+      }
+      const tbm = document.getElementById('tb-margens');
+      tbm.innerHTML = margens.map(x=>`<tr><td>${x.mesLabel}</td><td style="text-align:right">${pct(x.pct)}</td></tr>`).join('');
 
       /* Gráficos do ano */
       const serieVenda = Array(12).fill(0);
@@ -324,17 +391,25 @@
         data: {
           labels: meses,
           datasets: [
-            { label: 'Venda PDV', data: venda, borderWidth: 2, tension: .2 },
-            { label: 'Lucro', data: lucro, borderWidth: 2, tension: .2 }
+            { label: 'Venda PDV', data: venda, borderWidth: 2, pointRadius: 2, tension: .25 },
+            { label: 'Lucro', data: lucro, borderWidth: 2, pointRadius: 2, tension: .25 }
           ]
         },
-        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{ y:{ beginAtZero:true } } }
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ position:'bottom' } },
+          scales:{ y:{ beginAtZero:true, ticks:{ callback:v=>v.toLocaleString('pt-BR') } } }
+        }
       });
 
       new Chart(document.getElementById('graficoEventos'), {
         type: 'bar',
         data: { labels: meses, datasets: [{ label: 'Eventos', data: eventos, borderWidth: 1 }] },
-        options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true } } }
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          plugins:{ legend:{ display:false } },
+          scales:{ y:{ beginAtZero:true } }
+        }
       });
     }
 
