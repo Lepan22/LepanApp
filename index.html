@@ -3,272 +3,387 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Le Pan pan</title>
+  <title>Le Pan pan — Painel Operacional</title>
+
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <link rel="stylesheet" href="assets/base.css" />
+
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="assets/menu.js" defer></script>
+
   <style>
-    .kpi-linha {
-      display: flex;
-      gap: 16px;
-      padding: 0 20px;
-      margin-bottom: 2px;
-      flex-wrap: wrap;
+    :root{
+      --accent:#ff7f00;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --card:#fff;
+      --soft:#fff8ef;
+      --ok:#16a34a;
+      --warn:#f59e0b;
     }
-    .kpi {
-      background-color: #fff3e0;
-      border-left: 4px solid #ff9800;
-      padding: 6px 10px;
-      border-radius: 6px;
-      min-width: 180px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      height: 60px;
+    .main-content{ padding-top:10px }
+    .page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .page-header h1{ font-size:18px; margin:0 }
+
+    /* Atalhos */
+    .quick-links{
+      display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:8px
     }
-    .kpi h2 {
-      margin: 0 0 2px;
-      font-size: 12px;
-      color: #333;
+    @media (max-width:1100px){ .quick-links{grid-template-columns:repeat(3,1fr)} }
+    @media (max-width:720px){ .quick-links{grid-template-columns:repeat(2,1fr)} }
+    .qbtn{
+      display:flex;align-items:center;gap:8px;padding:10px;border:1px solid var(--line);
+      border-left:3px solid var(--accent);border-radius:10px;background:#fff;text-decoration:none;color:#111
     }
-    .kpi p {
-      font-size: 16px;
-      margin: 0;
-      font-weight: bold;
-      color: #ff9800;
+    .qbtn:hover{ background:#fff7ed }
+    .qbtn .icon{font-size:18px}
+
+    /* KPIs compactos em uma linha */
+    .kpi-row{
+      display:grid;
+      grid-template-columns:repeat(6, minmax(180px,1fr));
+      gap:8px;
+      margin-bottom:8px
     }
-    .graficos-container {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      padding: 20px;
+    @media (max-width:1280px){ .kpi-row{ grid-template-columns:repeat(3,1fr) } }
+    @media (max-width:720px){ .kpi-row{ grid-template-columns:repeat(2,1fr) } }
+
+    .kcard{
+      background:var(--soft);
+      border:1px solid var(--line);
+      border-left:3px solid var(--accent);
+      border-radius:12px;
+      padding:8px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-height:64px
     }
-    .grafico {
-      width: 48%;
-      min-width: 300px;
-    }
-    canvas {
-      background-color: white;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 10px;
-    }
-    hr.linha-divisoria {
-      border: none;
-      border-top: 2px solid #ccc;
-      margin: 30px 20px 10px;
-    }
+    .klabel{font-size:11px;color:#374151}
+    .kvalue{font-size:18px;font-weight:800;color:var(--accent);line-height:1}
+    .kvalue-plain{font-size:18px;font-weight:800;color:#111;line-height:1}
+    .pct{font-size:11px;color:#374151;text-align:right}
+    .pwrap{background:#e5e7eb;border-radius:999px;overflow:hidden;height:6px;border:1px solid var(--line)}
+    .pbar{height:6px;background:linear-gradient(90deg,#10b981,#60a5fa);width:0%}
+
+    /* Layout: esquerda/ direita */
+    .cols-2{display:grid;grid-template-columns:1.2fr .8fr;gap:10px}
+    @media (max-width:1100px){ .cols-2{grid-template-columns:1fr} }
+
+    .box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px}
+    .box h3{margin:0 0 8px 0;font-size:14px}
+
+    /* Semana */
+    .legend{display:flex;gap:12px;font-size:12px;color:#6b7280;margin:6px 0 8px}
+    .dot{display:inline-block;width:10px;height:10px;border-radius:999px;margin-right:6px;vertical-align:middle}
+    .dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)}
+    table{width:100%;border-collapse:collapse;font-size:12.5px}
+    thead th{background:#f8fafc;padding:6px;border-bottom:1px solid var(--line);text-align:left}
+    tbody td{padding:6px;border-bottom:1px solid var(--line)}
+    .status-badge{font-size:11px;padding:2px 6px;border-radius:999px;border:1px solid;display:inline-flex;align-items:center;gap:6px}
+    .status-prev{color:#92400e;border-color:#f59e0b;background:#fffbeb}
+    .status-conf{color:#065f46;border-color:#10b981;background:#ecfdf5}
+
+    .week-totals{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+    .wcard{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px}
+    .wlabel{font-size:12px;color:#374151}
+    .wvalue{font-size:18px;font-weight:800;color:#111}
+
+    /* Análise 3 últimos meses */
+    .analise-box table{width:100%;border-collapse:collapse;font-size:12.5px}
+    .analise-box thead th{background:#f8fafc;padding:6px;border-bottom:1px solid var(--line);text-align:left}
+    .analise-box tbody td{padding:6px;border-bottom:1px solid var(--line)}
+
+    /* Gráficos */
+    .charts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    @media (max-width:1050px){ .charts{grid-template-columns:1fr} }
+    .chart-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px}
+    .chart-card canvas{height:260px !important;}
   </style>
 </head>
 <body>
   <div class="layout">
     <aside class="sidebar" id="menuLateral"></aside>
+
     <main class="main-content">
+      <div class="page-header"><h1>Painel Operacional</h1></div>
 
-      <!-- KPIs -->
-      <div class="kpi-linha" style="margin-top: 20px;">
-        <div class="kpi"><h2>Clientes Ativos</h2><p id="kpi-clientes-ativos">0</p></div>
-        <div class="kpi"><h2>Clientes Novos no Ano</h2><p id="kpi-clientes-novos">0</p></div>
-        <div class="kpi"><h2>Clientes Quentes</h2><p id="kpi-clientes-quentes">0</p></div>
-        <div class="kpi"><h2>Clientes Perdidos</h2><p id="kpi-clientes-perdidos">0</p></div>
-      </div>
-      <div class="kpi-linha">
-        <div class="kpi"><h2>Total de Eventos no Ano</h2><p id="kpi-eventos-ano">0</p></div>
-        <div class="kpi"><h2>Eventos Realizados no Mês</h2><p id="kpi-realizado">0</p></div>
-        <div class="kpi"><h2>Eventos desta Semana</h2><p id="kpi-semana">0</p></div>
-      </div>
-      <div class="kpi-linha">
-        <div class="kpi"><h2>Total de Venda no Ano</h2><p id="kpi-venda-ano">R$ 0,00</p></div>
-        <div class="kpi"><h2>Venda Real Mês</h2><p id="kpi-venda-mes">R$ 0,00</p></div>
-        <div class="kpi"><h2>Estimativa Venda Semana</h2><p id="kpi-estimativa-semana">R$ 0,00</p></div>
-      </div>
-      <div class="kpi-linha">
-        <div class="kpi"><h2>Lucro Total no Ano</h2><p id="kpi-lucro-ano">R$ 0,00</p></div>
-        <div class="kpi"><h2>Lucro no Mês</h2><p id="kpi-lucro-mes">R$ 0,00</p></div>
-        <div class="kpi"><h2>Margem de Lucro</h2><p id="kpi-margem-lucro">0,0%</p></div>
+      <!-- Atalhos -->
+      <div class="quick-links">
+        <a class="qbtn" href="eventos.html" target="_blank" rel="noopener"><span class="icon">📋</span><div><div style="font-weight:700">Eventos</div><small> Criar/editar eventos</small></div></a>
+        <a class="qbtn" href="agenda.html" target="_blank" rel="noopener"><span class="icon">🗓️</span><div><div style="font-weight:700">Agenda</div><small> Semana e projeções</small></div></a>
+        <a class="qbtn" href="planejamento_evento.html" target="_blank" rel="noopener"><span class="icon">🧩</span><div><div style="font-weight:700">Planejamento</div><small> Equipe, logística, equipamento</small></div></a>
+        <a class="qbtn" href="relatorio/relatorio_Semanal.html" target="_blank" rel="noopener"><span class="icon">📈</span><div><div style="font-weight:700">Relatório Semanal</div><small> Resultados da semana</small></div></a>
+        <a class="qbtn" href="gestao_Cliente.html" target="_blank" rel="noopener"><span class="icon">👥</span><div><div style="font-weight:700">Clientes</div><small> Ativos e prospects</small></div></a>
       </div>
 
-      <hr class="linha-divisoria" />
+      <!-- KPIs compactos: 6 cards em uma linha -->
+      <div class="kpi-row">
+        <!-- Venda (Estimativa) -->
+        <div class="kcard">
+          <div class="klabel">Estimativa Venda Mês</div>
+          <div class="kvalue">R$ <span id="kpi-estimativa-mes">0,00</span></div>
+          <div class="pwrap"><div id="pb-venda" class="pbar"></div></div>
+          <div class="pct"><span id="kpi-venda-pct">0%</span></div>
+        </div>
+        <!-- Venda (Real) -->
+        <div class="kcard">
+          <div class="klabel">Venda Real Mês</div>
+          <div class="kvalue-plain">R$ <span id="kpi-venda-mes">0,00</span></div>
+        </div>
+
+        <!-- Lucro (Estimado) -->
+        <div class="kcard">
+          <div class="klabel">Lucro Estimado Mês</div>
+          <div class="kvalue">R$ <span id="kpi-lucro-estimado-mes">0,00</span></div>
+          <div class="pwrap"><div id="pb-lucro" class="pbar"></div></div>
+          <div class="pct"><span id="kpi-lucro-pct">0%</span></div>
+        </div>
+        <!-- Lucro (Real) -->
+        <div class="kcard">
+          <div class="klabel">Lucro no mês (Fech./Final.)</div>
+          <div class="kvalue-plain">R$ <span id="kpi-lucro-mes">0,00</span></div>
+        </div>
+
+        <!-- Eventos (Estimados) -->
+        <div class="kcard">
+          <div class="klabel">Eventos Estimados no Mês</div>
+          <div class="kvalue"><span id="kpi-ev-est">0</span></div>
+          <div class="pwrap"><div id="pb-ev" class="pbar"></div></div>
+          <div class="pct"><span id="kpi-ev-pct">0%</span></div>
+        </div>
+        <!-- Eventos (Realizados) -->
+        <div class="kcard">
+          <div class="klabel">Eventos Realizados no Mês</div>
+          <div class="kvalue-plain"><span id="kpi-ev-real">0</span></div>
+        </div>
+      </div>
+
+      <!-- Semana + Análise últimos 3 meses -->
+      <div class="cols-2">
+        <!-- Semana -->
+        <div class="box">
+          <h3>Semana (Seg–Dom)</h3>
+          <div class="legend">
+            <span><span class="dot ok"></span>Confirmado</span>
+            <span><span class="dot warn"></span>Previsto</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th><th>Evento</th><th>Status</th>
+                <th style="text-align:right">Estimativa</th>
+              </tr>
+            </thead>
+            <tbody id="lista-semana"></tbody>
+          </table>
+
+          <div class="week-totals">
+            <div class="wcard">
+              <div class="wlabel">Eventos desta semana</div>
+              <div class="wvalue" id="wk-qtd">0</div>
+            </div>
+            <div class="wcard">
+              <div class="wlabel">Venda prevista da semana</div>
+              <div class="wvalue">R$ <span id="wk-prev">0,00</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Análise 3 últimos meses -->
+        <div class="box analise-box">
+          <h3>Análise — 3 últimos meses</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th style="text-align:right">Venda</th>
+                <th style="text-align:right">Lucro</th>
+                <th style="text-align:right">Margem</th>
+              </tr>
+            </thead>
+            <tbody id="tb-ultimos"></tbody>
+          </table>
+        </div>
+      </div>
 
       <!-- Gráficos -->
-      <div class="graficos-container">
-        <div class="grafico"><canvas id="graficoVenda"></canvas></div>
-        <div class="grafico"><canvas id="graficoLucro"></canvas></div>
-        <div class="grafico"><canvas id="graficoPerdaAssado"></canvas></div>
-        <div class="grafico"><canvas id="graficoEventos"></canvas></div>
+      <div class="charts">
+        <div class="chart-card">
+          <h3 style="margin:0 0 6px 0">Vendas x Lucro (ano)</h3>
+          <canvas id="graficoVendaLucro"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3 style="margin:0 0 6px 0">Eventos por mês (ano)</h3>
+          <canvas id="graficoEventos"></canvas>
+        </div>
       </div>
-
     </main>
   </div>
 
   <script>
+    /* ===== Firebase ===== */
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
       projectId: "lepanapp"
     };
-
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
-    const getMonday = date => {
-      const d = new Date(date);
-      const day = d.getDay();
-      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-      return new Date(d.setDate(diff));
-    };
+    /* ===== Helpers ===== */
+    const meses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    const toDate = s => { if(!s) return null; const [y,m,d]=s.split('-'); return new Date(+y, +m-1, +d); };
+    const mondayOf = d => { const x=new Date(d.getFullYear(), d.getMonth(), d.getDate()); const day=x.getDay(); const diff=(day===0?-6:1)-day; x.setDate(x.getDate()+diff); x.setHours(0,0,0,0); return x; };
+    const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+    const within = (date,start,end) => { const x=new Date(date.getFullYear(), date.getMonth(), date.getDate()); return x>=start && x<=end; };
+    const brMoney = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+    const pct = v => (Number(v||0)).toFixed(1).replace('.',',')+'%';
 
-    const weekStart = getMonday(new Date());
-    const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
-
-    function formatDateBR(dateStr) {
-      const [year, month, day] = dateStr.split('-');
-      return new Date(`${year}-${month}-${day}T00:00:00`);
-    }
-
-    function formatCurrency(valor) {
-      return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    function formatPercent(valor) {
-      return valor.toFixed(1).replace('.', ',') + '%';
-    }
-
-    async function carregarKPIs() {
-      let eventosAno = 0, realizadoMes = 0, semana = 0;
-      let vendaAno = 0, vendaMes = 0, estimativaSemana = 0, lucroMes = 0;
-      let clientesAtivos = 0, clientesNovos = 0, clientesQuentes = 0, clientesPerdidos = 0;
-      let dadosMes = Array.from({ length: 12 }, (_, i) => ({ mes: meses[i], venda: 0, perda: 0, assado: 0, eventos: 0, lucro: 0 }));
-
-      const [eventosSnap, clientesSnap, consolidadoSnap] = await Promise.all([
+    /* ===== Painel ===== */
+    async function carregarPainel(){
+      const [evSnap, cfgLucroSnap] = await Promise.all([
         db.ref('eventos').once('value'),
-        db.ref('clientes').once('value'),
-        db.ref('financeiro/consolidado').once('value')
+        db.ref('configuracao/percentualLucro').once('value')
       ]);
 
-      const consolidado = consolidadoSnap.val() || {};
-      let lucroAno = 0;
-      for (let i = 0; i < 12; i++) {
-        const chave = `${currentYear}_${String(i + 1).padStart(2, '0')}`;
-        const lucroMesConsolidado = consolidado[chave]?.lucroLiquido || 0;
-        dadosMes[i].lucro = lucroMesConsolidado;
-        lucroAno += lucroMesConsolidado;
-      }
+      const eventos = evSnap.val() || {};
+      const margemPrevista = Number(cfgLucroSnap.val() ?? 40);
 
-      const eventos = eventosSnap.val();
-      if (eventos) {
-        Object.values(eventos).forEach(evento => {
-          if (!evento?.data) return;
-          const dataEvento = formatDateBR(evento.data);
-          const status = (evento.status || '').toLowerCase();
-          const finalizado = status === 'fechado' || status === 'finalizado';
-          const vendaPDV = Number(evento.vendaPDV || 0);
-          const mes = dataEvento.getMonth();
+      const hoje = new Date();
+      const semanaIni = mondayOf(hoje);
+      const semanaFim = addDays(semanaIni, 6);
+      const anoAtual = hoje.getFullYear();
+      const mesAtual = hoje.getMonth();
 
-          if (dataEvento.getFullYear() === currentYear) {
-            dadosMes[mes].venda += vendaPDV;
-            dadosMes[mes].perda += (evento.produtos || []).reduce((s, p) => s + Number(p.perda || 0), 0);
-            dadosMes[mes].assado += (evento.produtos || []).reduce((s, p) => s + Number(p.assado || 0), 0);
-            dadosMes[mes].eventos++;
-          }
+      /* ===== Agregações ===== */
+      let estimativaMes = 0, vendaMes = 0, lucroMes = 0;
+      let evEstimadosMes = 0, evRealizadosMes = 0;
 
-          if (finalizado && dataEvento.getFullYear() === currentYear) {
-            eventosAno++;
-            vendaAno += vendaPDV;
-          }
+      let wkQtd=0, wkPrev=0;
 
-          if (finalizado && dataEvento.getMonth() === now.getMonth() && dataEvento.getFullYear() === now.getFullYear()) {
-            realizadoMes++;
+      const serieVenda = Array(12).fill(0);
+      const serieLucro = Array(12).fill(0);
+      const serieEventos = Array(12).fill(0);
+
+      const linhasSemana = [];
+
+      Object.values(eventos).forEach(e=>{
+        if(!e || !e.data) return;
+        const dt = toDate(e.data);
+        const status = (e.status || 'Aberto');
+        const final = (status==='Finalizado' || status==='Fechado');
+        const estim = Number(e.estimativaVenda || 0);
+        const vendaPDV = Number(e.vendaPDV || 0);
+        const lucroFinal = Number(e.lucroFinal || 0);
+
+        /* Semana */
+        if (within(dt, semanaIni, semanaFim)) {
+          wkQtd++; wkPrev += estim;
+          const previsto = (e.previsto === true) || (e.projetado === true) || (e.tipo === 'projetado') || (e.origem === 'projecao');
+          const badge = previsto ? `<span class="status-badge status-prev">● Previsto</span>` : `<span class="status-badge status-conf">● Confirmado</span>`;
+          linhasSemana.push(`
+            <tr>
+              <td>${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}</td>
+              <td>${e.nomeEvento||'-'}</td>
+              <td>${badge}</td>
+              <td style="text-align:right">R$ ${brMoney(estim)}</td>
+            </tr>
+          `);
+        }
+
+        /* Mês */
+        if (dt.getFullYear()===anoAtual && dt.getMonth()===mesAtual){
+          evEstimadosMes++;
+          estimativaMes += estim;
+          if (final){
+            evRealizadosMes++;
             vendaMes += vendaPDV;
-            lucroMes += Number(consolidado[`${currentYear}_${String(mes + 1).padStart(2, '0')}`]?.lucroLiquido || 0);
+            lucroMes += lucroFinal;
           }
+        }
 
-          if (dataEvento >= weekStart && dataEvento <= weekEnd) {
-            estimativaSemana += Number(evento.estimativaVenda || 0);
-            semana++;
+        /* Séries anuais */
+        if (dt.getFullYear()===anoAtual){
+          const m = dt.getMonth();
+          if (final){ serieVenda[m]+=vendaPDV; serieLucro[m]+=lucroFinal; }
+          serieEventos[m]+=1;
+        }
+      });
+
+      /* ===== KPIs ===== */
+      // Venda
+      const vendaPct = estimativaMes>0 ? Math.min(200,(vendaMes/estimativaMes)*100) : 0;
+      document.getElementById('kpi-estimativa-mes').innerText = brMoney(estimativaMes);
+      document.getElementById('kpi-venda-mes').innerText = brMoney(vendaMes);
+      document.getElementById('kpi-venda-pct').innerText = pct(vendaPct);
+      document.getElementById('pb-venda').style.width = vendaPct+'%';
+
+      // Lucro
+      const lucroEstimadoMes = estimativaMes * (margemPrevista/100);
+      const lucroPct = lucroEstimadoMes>0 ? Math.min(200,(lucroMes/lucroEstimadoMes)*100) : 0;
+      document.getElementById('kpi-lucro-estimado-mes').innerText = brMoney(lucroEstimadoMes);
+      document.getElementById('kpi-lucro-mes').innerText = brMoney(lucroMes);
+      document.getElementById('kpi-lucro-pct').innerText = pct(lucroPct);
+      document.getElementById('pb-lucro').style.width = lucroPct+'%';
+
+      // Eventos
+      const evPct = evEstimadosMes>0 ? Math.min(200,(evRealizadosMes/evEstimadosMes)*100) : 0;
+      document.getElementById('kpi-ev-est').innerText = evEstimadosMes;
+      document.getElementById('kpi-ev-real').innerText = evRealizadosMes;
+      document.getElementById('kpi-ev-pct').innerText = pct(evPct);
+      document.getElementById('pb-ev').style.width = evPct+'%';
+
+      /* ===== Semana ===== */
+      document.getElementById('lista-semana').innerHTML =
+        linhasSemana.length ? linhasSemana.join('') : `<tr><td colspan="4" style="color:#6b7280">Nenhum evento nesta semana.</td></tr>`;
+      document.getElementById('wk-qtd').innerText = wkQtd;
+      document.getElementById('wk-prev').innerText = brMoney(wkPrev);
+
+      /* ===== Análise — 3 últimos meses ===== */
+      const tb = document.getElementById('tb-ultimos');
+      const rows = [];
+      for (let i=2; i>=0; i--){
+        const ref = new Date(anoAtual, mesAtual - i, 1);
+        const y = ref.getFullYear(), m = ref.getMonth();
+        let v=0, l=0;
+        Object.values(eventos).forEach(e=>{
+          if(!e || !e.data) return;
+          const d = toDate(e.data);
+          if (d.getFullYear()===y && d.getMonth()===m && (e.status==='Finalizado' || e.status==='Fechado')){
+            v += Number(e.vendaPDV||0);
+            l += Number(e.lucroFinal||0);
           }
         });
+        const margem = v>0 ? (l/v)*100 : 0;
+        rows.push(
+          `<tr>
+            <td>${meses[m]}</td>
+            <td style="text-align:right">R$ ${brMoney(v)}</td>
+            <td style="text-align:right">R$ ${brMoney(l)}</td>
+            <td style="text-align:right">${pct(margem)}</td>
+          </tr>`
+        );
       }
+      tb.innerHTML = rows.join('');
 
-      const clientes = clientesSnap.val();
-      if (clientes) {
-        Object.values(clientes).forEach(cli => {
-          const status = cli.status || '';
-          const statusEvento = cli.clienteAtivo?.statusEvento;
-          if (status.toLowerCase() === 'quente') clientesQuentes++;
-          if (statusEvento === 'Ativo') clientesAtivos++;
-          if (statusEvento === 'Inativo') clientesPerdidos++;
-          if (cli.dataCadastro && status === 'Fechado') {
-            if (new Date(cli.dataCadastro).getFullYear() === currentYear) clientesNovos++;
-          }
-        });
-      }
-
-      document.getElementById('kpi-clientes-ativos').innerText = clientesAtivos;
-      document.getElementById('kpi-clientes-novos').innerText = clientesNovos;
-      document.getElementById('kpi-clientes-quentes').innerText = clientesQuentes;
-      document.getElementById('kpi-clientes-perdidos').innerText = clientesPerdidos;
-      document.getElementById('kpi-eventos-ano').innerText = eventosAno;
-      document.getElementById('kpi-realizado').innerText = realizadoMes;
-      document.getElementById('kpi-semana').innerText = semana;
-      document.getElementById('kpi-venda-ano').innerText = formatCurrency(vendaAno);
-      document.getElementById('kpi-venda-mes').innerText = formatCurrency(vendaMes);
-      document.getElementById('kpi-estimativa-semana').innerText = formatCurrency(estimativaSemana);
-      document.getElementById('kpi-lucro-ano').innerText = formatCurrency(lucroAno);
-      document.getElementById('kpi-lucro-mes').innerText = formatCurrency(lucroMes);
-
-      const margemLucro = vendaAno > 0 ? (lucroAno / vendaAno) * 100 : 0;
-      document.getElementById('kpi-margem-lucro').innerText = formatPercent(margemLucro);
-
-      desenharGraficos(dadosMes);
-    }
-
-    function desenharGraficos(data) {
-      new Chart(document.getElementById('graficoVenda'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{ label: 'Venda PDV', data: data.map(d => d.venda), borderWidth: 2, fill: false, tension: 0.2 }]
-        }
+      /* ===== Gráficos ===== */
+      new Chart(document.getElementById('graficoVendaLucro'), {
+        type:'line',
+        data:{ labels:meses, datasets:[ {label:'Venda PDV',data:serieVenda,borderWidth:2,pointRadius:2,tension:.25},{label:'Lucro',data:serieLucro,borderWidth:2,pointRadius:2,tension:.25} ] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}, scales:{y:{beginAtZero:true}} }
       });
-
-      new Chart(document.getElementById('graficoLucro'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{ label: 'Lucro Real', data: data.map(d => d.lucro), borderWidth: 2, fill: false, tension: 0.2 }]
-        }
-      });
-
-      new Chart(document.getElementById('graficoPerdaAssado'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [
-            { label: 'Perda', data: data.map(d => d.perda), borderWidth: 2, fill: false, tension: 0.2 },
-            { label: 'Assado', data: data.map(d => d.assado), borderWidth: 2, fill: false, tension: 0.2 }
-          ]
-        }
-      });
-
       new Chart(document.getElementById('graficoEventos'), {
-        type: 'line',
-        data: {
-          labels: data.map(d => d.mes),
-          datasets: [{ label: 'Eventos', data: data.map(d => d.eventos), borderWidth: 2, fill: false, tension: 0.2 }]
-        }
+        type:'bar',
+        data:{ labels:meses, datasets:[{label:'Eventos',data:serieEventos,borderWidth:1}] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
       });
     }
 
-    carregarKPIs();
+    document.addEventListener('DOMContentLoaded', carregarPainel);
   </script>
 </body>
 </html>
