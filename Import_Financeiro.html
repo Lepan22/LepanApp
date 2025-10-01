@@ -36,7 +36,6 @@
     .btn.primary { background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
     .status { font-size:12px; margin-top:4px; min-height:16px; }
     .num { text-align:right; }
-
     .ok { color:#1a7f37; }
     .err { color:#b42318; }
 
@@ -49,7 +48,7 @@
   <!-- Menu -->
   <script defer src="assets/menu.js"></script>
 
-  <!-- Firebase v9 (modular) -->
+  <!-- Firebase v9 (modular) - seu arquivo já exporta { db } -->
   <script type="module" src="assets/firebase-config.js"></script>
 </head>
 <body>
@@ -85,9 +84,10 @@
   </main>
 </div>
 
+<!-- Script principal -->
 <script type="module">
   import { db } from './assets/firebase-config.js';
-  import { ref, child, get, update } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+  import { ref, get, update } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
 
   const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const anoSelect = document.getElementById('anoSelect');
@@ -125,7 +125,7 @@
   const anoAtual = () => new Date().getFullYear();
 
   function sortFluxo(cats){
-    // Receita -> CMV -> outros; dentro do grupo, por nome
+    // Receita -> CMV -> outras; dentro de cada grupo, por nome
     const pri = c => {
       const cc = (c.centroDeCusto||'').toLowerCase();
       if (cc==='receita') return 0;
@@ -141,7 +141,6 @@
 
   // ===== UI =====
   function buildHeaders(){
-    // meses
     for (let m=1;m<=12;m++){
       const th = document.createElement('th');
       th.textContent = mesesPt[m-1];
@@ -201,9 +200,7 @@
   async function loadYearData(year){
     const snap = await get(ref(db, `financeiro/consolidado/${year}`));
     const dados = snap.val() || {};
-    // limpa grade
     document.querySelectorAll('[id^="v_"]').forEach(td => td.textContent = '—');
-    // preenche o que existe
     Object.keys(dados).forEach(mes=>{
       const porCat = dados[mes] || {};
       Object.keys(porCat).forEach(catId=>{
@@ -239,7 +236,7 @@
       return;
     }
 
-    // Precisamos do mapa nome->categoria do DB atual
+    // Mapa nome->categoria do DB
     const snapCats = await get(ref(db, 'financeiro/categorias'));
     const allCats = snapCats.val() || {};
     const nomeToCat = {};
@@ -287,7 +284,7 @@
   (async function init(){
     fillYearOptions();
     buildHeaders();
-    const categorias = await fetchCategorias();
+    const categorias = await fetchCategorias();   // dinâmicas (somente nome)
     buildBody(categorias);
     await loadYearData(Number(anoSelect.value));
 
