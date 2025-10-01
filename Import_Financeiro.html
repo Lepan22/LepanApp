@@ -30,3 +30,316 @@
 
     /* primeira coluna fixa */
     .fin th.cat, .fin td.cat {
+      position:sticky; left:0; z-index:2; background:#fafafa; min-width:260px; text-align:left;
+    }
+
+    .controls { font-size:12px; }
+    .controls input[type="file"] { width:100%; }
+    .controls .btn { width:100%; margin-top:4px; }
+
+    .btn { cursor:pointer; border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; font-size:13px; }
+    .btn.primary { background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
+    .status { font-size:12px; margin-top:4px; min-height:16px; }
+    .num { text-align:right; }
+    .ok { color:#1a7f37; }
+    .err { color:#b42318; }
+
+    @media (max-width:1100px){
+      .fin th, .fin td { padding:5px 6px; font-size:12px; }
+      .fin th.cat, .fin td.cat { min-width:220px; }
+    }
+  </style>
+
+  <!-- Menu lateral -->
+  <script defer src="assets/menu.js"></script>
+
+  <!-- Firebase v9 (modular): seu arquivo exporta { db } -->
+  <script type="module" src="assets/firebase-config.js"></script>
+</head>
+<body>
+<div class="page">
+  <aside id="menu" class="sidebar"></aside>
+
+  <main class="content">
+    <div class="page-header">
+      <h1>Importar Consolidado por Categoria</h1>
+      <p>Importe valores mensais por <strong>categoria</strong>. Se o CSV tiver categoria desconhecida, a importação é cancelada e o erro é exibido.</p>
+      <div id="diag" class="diag warn"></div>
+    </div>
+
+    <section class="filters">
+      <label>Ano Fiscal:
+        <select id="anoSelect"></select>
+      </label>
+      <span class="badge">CSV: <code>categoria;valor</code> ou <code>categoria,valor</code> · aceita vírgula/ponto</span>
+    </section>
+
+    <div class="table-wrap">
+      <table class="fin" id="tabela">
+        <thead>
+          <tr id="hdrMeses">
+            <th class="cat">Categoria</th>
+          </tr>
+          <tr id="hdrImport">
+            <th class="cat">Importar por mês</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- Script principal -->
+<script type="module">
+  import { db } from './assets/firebase-config.js';
+  import { ref, get, update } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+
+  const diag      = document.getElementById('diag');
+  const mesesPt   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const anoSelect = document.getElementById('anoSelect');
+  const hdrMeses  = document.getElementById('hdrMeses');
+  const hdrImport = document.getElementById('hdrImport');
+  const tbody     = document.getElementById('tbody');
+
+  // ===== Helpers =====
+  const showDiag = (msg, type="warn") => {
+    diag.className = `diag ${type}`;
+    diag.textContent = msg;
+    diag.style.display = 'block';
+  };
+  const clearDiag = () => { diag.style.display = 'none'; diag.textContent = ''; };
+
+  const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  function parseNumber(txt){
+    if (txt == null) return 0;
+    let s = String(txt).trim();
+    if (!s) return 0;
+    if (s.includes(',')) s = s.replace(/\./g,'').replace(',','.');
+    const v = Number(s);
+    return isNaN(v) ? 0 : v;
+  }
+  function parseCSV(text){
+    const linhas = String(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    if (!linhas.length) return { rows:[], err:"CSV vazio." };
+    const head = linhas[0].split(/[;,]/).map(h=>h.trim().toLowerCase());
+    const iCat = head.indexOf('categoria');
+    const iVal = head.indexOf('valor');
+    if (iCat === -1 || iVal === -1) return { rows:[], err:"Cabeçalho inválido. Use 'categoria;valor'." };
+
+    const rows = [];
+    for (let i=1;i<linhas.length;i++){
+      const cols = linhas[i].split(/[;,]/);
+      const cat  = (cols[iCat]||"").trim();
+      const val  = parseNumber(cols[iVal]);
+      if (cat) rows.push({ categoria: cat, valor: val });
+    }
+    return { rows, err:null };
+  }
+  const anoAtual = () => new Date().getFullYear();
+
+  function sortFluxo(cats){
+    // Receita -> CMV -> outras; dentro do grupo, por nome
+    const pri = c => {
+      const cc = (c.centroDeCusto||'').toLowerCase();
+      if (cc==='receita') return 0;
+      if (cc==='cmv')     return 1;
+      return 2;
+    };
+    return cats.sort((a,b)=>{
+      const pa = pri(a), pb = pri(b);
+      if (pa!==pb) return pa-pb;
+      return (a.nome||'').localeCompare(b.nome||'');
+    });
+  }
+
+  // ===== UI =====
+  function buildHeaders(){
+    // acrescenta 12 colunas de meses
+    for (let m=1;m<=12;m++){
+      const th = document.createElement('th');
+      th.textContent = mesesPt[m-1];
+      hdrMeses.appendChild(th);
+
+      const thImp = document.createElement('th');
+      thImp.className = 'controls';
+      thImp.innerHTML = `
+        <input type="file" accept=".csv" id="file_${m}">
+        <button class="btn primary" data-mes="${m}">Importar</button>
+        <div class="status" id="st_${m}"></div>
+      `;
+      thImp.querySelector('button').addEventListener('click', ()=> onImportClick(m));
+      hdrImport.appendChild(thImp);
+    }
+  }
+
+  function buildBody(categorias){
+    tbody.innerHTML = '';
+    if (!categorias.length){
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.className = 'cat';
+      td.colSpan = 13;
+      td.textContent = 'Nenhuma categoria encontrada.';
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    categorias.forEach(cat => {
+      const tr = document.createElement('tr');
+
+      const tdCat = document.createElement('td');
+      tdCat.className = 'cat';
+      tdCat.textContent = cat.nome || '(sem nome)';
+      tr.appendChild(tdCat);
+
+      for (let m=1;m<=12;m++){
+        const td = document.createElement('td');
+        td.className = 'num';
+        td.id = `v_${cat.id}_${m}`;
+        td.textContent = '—';
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    });
+  }
+
+  function fillYearOptions(){
+    const a = anoAtual();
+    for (let y=a-2; y<=a+1; y++){
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if (y===a) opt.selected = true;
+      anoSelect.appendChild(opt);
+    }
+  }
+
+  // ===== Data =====
+  async function fetchCategorias(){
+    try{
+      const snap = await get(ref(db, 'financeiro/categorias'));
+      const val = snap.val() || {};
+      const cats = Object.keys(val).map(id => ({ id, ...val[id] }));
+      return sortFluxo(cats);
+    }catch(err){
+      console.error(err);
+      showDiag('Erro ao ler categorias do Firebase. Verifique conexão/permite leitura em financeiro/categorias.', 'err');
+      return [];
+    }
+  }
+
+  async function loadYearData(year){
+    try{
+      const snap = await get(ref(db, `financeiro/consolidado/${year}`));
+      const dados = snap.val() || {};
+      document.querySelectorAll('[id^="v_"]').forEach(td => td.textContent = '—');
+      Object.keys(dados).forEach(mes=>{
+        const porCat = dados[mes] || {};
+        Object.keys(porCat).forEach(catId=>{
+          const td = document.getElementById(`v_${catId}_${mes}`);
+          if (td){
+            const v = Number((porCat[catId] && porCat[catId].valor) || 0);
+            td.textContent = fmt(v);
+          }
+        });
+      });
+      clearDiag();
+    }catch(err){
+      console.error(err);
+      showDiag('Erro ao carregar valores do ano selecionado.', 'err');
+    }
+  }
+
+  async function onImportClick(mes){
+    const st = document.getElementById(`st_${mes}`);
+    st.textContent = '';
+
+    const fileEl = document.getElementById(`file_${mes}`);
+    const file = fileEl.files && fileEl.files[0];
+    if (!file){
+      st.innerHTML = '<span class="err">Selecione um CSV.</span>';
+      return;
+    }
+    const year = Number(anoSelect.value);
+
+    // Lê CSV
+    const text = await file.text();
+    const { rows, err } = parseCSV(text);
+    if (err){
+      st.innerHTML = `<span class="err">${err}</span>`;
+      return;
+    }
+    if (!rows.length){
+      st.innerHTML = '<span class="err">CSV sem linhas válidas.</span>';
+      return;
+    }
+
+    // Mapa nome->categoria do DB
+    let allCats = {};
+    try{
+      const snapCats = await get(ref(db, 'financeiro/categorias'));
+      allCats = snapCats.val() || {};
+    }catch(e){
+      console.error(e);
+      st.innerHTML = '<span class="err">Erro ao ler categorias.</span>';
+      return;
+    }
+    const nomeToCat = {};
+    Object.keys(allCats).forEach(id=>{
+      const nome = (allCats[id].nome||'').trim().toLowerCase();
+      if (nome) nomeToCat[nome] = { id, ...allCats[id] };
+    });
+
+    // Validação de nomes
+    const desconhecidas = [];
+    const normalizadas = rows.map(r=>{
+      const key = r.categoria.trim().toLowerCase();
+      const cat = nomeToCat[key];
+      if (!cat) desconhecidas.push(r.categoria);
+      return { cat, valor: r.valor, nomeOriginal: r.categoria };
+    });
+
+    if (desconhecidas.length){
+      st.innerHTML = `<span class="err">Categorias não encontradas: ${desconhecidas.join(', ')}. Nada foi salvo.</span>`;
+      return;
+    }
+
+    // Updates
+    const updates = {};
+    normalizadas.forEach(it=>{
+      const base = `financeiro/consolidado/${year}/${mes}/${it.cat.id}`;
+      updates[`${base}/valor`] = it.valor;
+    });
+
+    try{
+      await update(ref(db), updates);
+      st.innerHTML = `<span class="ok">Importado com sucesso (${rows.length} linhas).</span>`;
+      // atualiza grade visível
+      normalizadas.forEach(it=>{
+        const td = document.getElementById(`v_${it.cat.id}_${mes}`);
+        if (td) td.textContent = fmt(it.valor);
+      });
+    }catch(e){
+      console.error(e);
+      st.innerHTML = `<span class="err">Erro ao salvar.</span>`;
+    }
+  }
+
+  // ===== init =====
+  (async function init(){
+    fillYearOptions();
+    buildHeaders();
+
+    const categorias = await fetchCategorias();   // dinâmicas (somente nome)
+    buildBody(categorias);
+
+    await loadYearData(Number(anoSelect.value));
+
+    anoSelect.addEventListener('change', async ()=>{
+      await loadYearData(Number(anoSelect.value));
+    });
+  })();
+</script>
+</body>
+</html>
