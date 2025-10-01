@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Importação Financeira (Consolidado por Categoria)</title>
+  <link rel="stylesheet" href="../assets/base.css"/>
+  <link rel="stylesheet" href="../assets/menu-styles.css"/>
+  <style>
+    .page { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+    .content { padding: 16px 20px; }
+    .page-header h1 { margin: 6px 0 14px; }
+    .filters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .months-grid { overflow-x: auto; }
+    table.fin { width: 100%; border-collapse: collapse; }
+    .fin th, .fin td { border: 1px solid #e3e3e3; padding: 8px; vertical-align: top; }
+    .fin thead th { background: #fff7ec; position: sticky; top: 0; z-index: 1; }
+    .month-cell { min-width: 260px; }
+    .month-actions { display:flex; flex-direction:column; gap:8px; }
+    .small { font-size: 12px; color:#666; }
+    .inputs-grid { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+    .inputs-grid label { font-size: 12px; color:#333; }
+    .btn { cursor: pointer; border: 1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; }
+    .btn.primary { background: #ff7f2a; color:white; border-color:#ff7f2a; }
+    .badge { background:#f3f3f3; border:1px solid #e3e3e3; padding:2px 6px; border-radius:6px; }
+    .muted { color:#777; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; background:#f7f7f7; border:1px solid #e5e5e5; padding:0 4px; border-radius:4px; }
+    .ok { color:#1a7f37; }
+    .warn { color:#b54708; }
+    .err { color:#b42318; }
+  </style>
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <!-- Opcional: se você já usa um arquivo de config, deixe-o aqui -->
+  <script src="../assets/firebase-config.js"></script>
+  <script src="../assets/menu.js"></script>
+</head>
+<body>
+<div class="page">
+  <aside id="menu"></aside>
+
+  <main class="content">
+    <div class="page-header">
+      <h1>Importar Consolidado por Categoria</h1>
+      <p class="small">Carregue o consolidado de cada mês (por categoria) e informe os ajustes de movimentação de produto.</p>
+    </div>
+
+    <section class="filters">
+      <label>Ano Fiscal:
+        <select id="anoSelect"></select>
+      </label>
+      <span class="badge">CSV esperado: <span class="kbd">categoria;valor</span> ou <span class="kbd">categoria,valor</span></span>
+      <span class="muted">Decimais: ponto <span class="kbd">.</span> ou vírgula <span class="kbd">,</span></span>
+    </section>
+
+    <section class="months-grid">
+      <table class="fin" id="tabelaMeses">
+        <thead>
+          <tr>
+            <th style="min-width:220px">Categoria (referência)</th>
+            <th class="month-cell">Jan</th>
+            <th class="month-cell">Fev</th>
+            <th class="month-cell">Mar</th>
+            <th class="month-cell">Abr</th>
+            <th class="month-cell">Mai</th>
+            <th class="month-cell">Jun</th>
+            <th class="month-cell">Jul</th>
+            <th class="month-cell">Ago</th>
+            <th class="month-cell">Set</th>
+            <th class="month-cell">Out</th>
+            <th class="month-cell">Nov</th>
+            <th class="month-cell">Dez</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyCategorias">
+          <!-- Linhas geradas via JS a partir de financeiro/categorias -->
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>Movimentação de Produto & Percentuais</th>
+            <!-- 12 células com inputs -->
+            <td class="month-cell" data-mes="1"></td>
+            <td class="month-cell" data-mes="2"></td>
+            <td class="month-cell" data-mes="3"></td>
+            <td class="month-cell" data-mes="4"></td>
+            <td class="month-cell" data-mes="5"></td>
+            <td class="month-cell" data-mes="6"></td>
+            <td class="month-cell" data-mes="7"></td>
+            <td class="month-cell" data-mes="8"></td>
+            <td class="month-cell" data-mes="9"></td>
+            <td class="month-cell" data-mes="10"></td>
+            <td class="month-cell" data-mes="11"></td>
+            <td class="month-cell" data-mes="12"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  // Inicialização Firebase (não duplica se já estiver inicializado)
+  if (!firebase.apps.length && window.firebaseConfig) {
+    firebase.initializeApp(window.firebaseConfig);
+  }
+  const db = firebase.database();
+
+  const anoSelect = document.getElementById('anoSelect');
+  const tbody = document.getElementById('tbodyCategorias');
+
+  const mesesLabels = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+  // Preenche anos (atual -2 até atual +1)
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+  for (let a = anoAtual - 2; a <= anoAtual + 1; a++){
+    const opt = document.createElement('option');
+    opt.value = a; opt.textContent = a;
+    if (a === anoAtual) opt.selected = true;
+    anoSelect.appendChild(opt);
+  }
+
+  let categorias = {}; // {id: {nome,tipo,centroDeCusto}}
+
+  function normalizaDecimal(texto){
+    if (texto == null) return 0;
+    const t = String(texto).trim().replace(/\./g,'').replace(',','.');
+    const num = parseFloat(t);
+    return isNaN(num) ? 0 : num;
+  }
+
+  function parseCSVConteudo(conteudo){
+    // Aceita ; ou , como separador.
+    // Cabeçalho: categoria;valor
+    const linhas = conteudo.split(/\r?\n/).map(l => l.trim()).filter(l => l.length>0);
+    if (!linhas.length) return [];
+    const header = linhas[0].split(/[;,]/).map(h => h.trim().toLowerCase());
+    const idxCat = header.indexOf('categoria');
+    const idxVal = header.indexOf('valor');
+    if (idxCat === -1 || idxVal === -1){
+      alert("Cabeçalho do CSV inválido. Use: categoria;valor");
+      return [];
+    }
+    const items = [];
+    for (let i=1;i<linhas.length;i++){
+      const cols = linhas[i].split(/[;,]/);
+      const nome = (cols[idxCat]||'').trim();
+      const valor = normalizaDecimal(cols[idxVal]||'0');
+      if (nome) items.push({nome, valor});
+    }
+    return items;
+  }
+
+  async function carregaCategorias(){
+    const snap = await db.ref('financeiro/categorias').once('value');
+    categorias = snap.val() || {};
+  }
+
+  function desenhaTabela(){
+    tbody.innerHTML = '';
+    const ids = Object.keys(categorias);
+    ids.sort((a,b) => (categorias[a].nome||'').localeCompare(categorias[b].nome||''));
+
+    ids.forEach(id => {
+      const cat = categorias[id] || {};
+      const tr = document.createElement('tr');
+
+      const tdRef = document.createElement('td');
+      tdRef.innerHTML = `<div><strong>${cat.nome||'-'}</strong></div>
+                         <div class="small muted">Tipo: ${cat.tipo||'-'} · CC: ${cat.centroDeCusto||'-'} · ID: ${id}</div>`;
+      tr.appendChild(tdRef);
+
+      for (let m=1; m<=12; m++){
+        const td = document.createElement('td');
+        td.className = 'month-cell';
+        td.innerHTML = `
+          <div class="month-actions">
+            <input type="file" accept=".csv" class="fileCsv" data-mes="${m}" data-catid="${id}" />
+            <button class="btn primary btnImport" data-mes="${m}" data-catid="${id}">Importar CSV (mês)</button>
+            <div class="small muted">Importa TODAS as categorias deste arquivo.<br/>Não é por linha.</div>
+            <div class="status small" id="st_${id}_${m}"></div>
+          </div>
+        `;
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    });
+
+    // Rodapé: inputs de movimentação (um bloco por mês)
+    document.querySelectorAll('tfoot td.month-cell').forEach(td => {
+      const mes = parseInt(td.getAttribute('data-mes'),10);
+      td.innerHTML = `
+        <div class="inputs-grid">
+          <label>Usado (R$)<br/><input type="number" step="0.01" class="inp_mov" data-key="usado" data-mes="${mes}" /></label>
+          <label>Comprado (R$)<br/><input type="number" step="0.01" class="inp_mov" data-key="comprado" data-mes="${mes}" /></label>
+          <label>Valor Estoque (R$)<br/><input type="number" step="0.01" class="inp_mov" data-key="valorEstoque" data-mes="${mes}" /></label>
+          <label>Perda Não Operac. (R$)<br/><input type="number" step="0.01" class="inp_mov" data-key="perdaNaoOperacional" data-mes="${mes}" /></label>
+          <label>% Embalagem<br/><input type="number" step="0.01" class="inp_mov" data-key="percEmbalagem" data-mes="${mes}" /></label>
+          <label>% Perda<br/><input type="number" step="0.01" class="inp_mov" data-key="percPerda" data-mes="${mes}" /></label>
+        </div>
+        <button class="btn saveMov" data-mes="${mes}">Salvar Movimentação</button>
+        <div class="small muted" id="mov_${mes}"></div>
+      `;
+    });
+
+    // Bind botões importar (um CSV por mês; importa todas categorias encontradas)
+    document.querySelectorAll('.btnImport').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const mes = parseInt(e.currentTarget.dataset.mes,10);
+        const fileInput = e.currentTarget.parentElement.querySelector('.fileCsv');
+        const st = document.getElementById(`st_${e.currentTarget.dataset.catid}_${mes}`);
+        if (!fileInput.files || !fileInput.files[0]){
+          alert(`Selecione um arquivo CSV para ${mesesLabels[mes-1]}.`);
+          return;
+        }
+        const file = fileInput.files[0];
+        const text = await file.text();
+        const linhas = parseCSVConteudo(text);
+        if (!linhas || !linhas.length){
+          st.innerHTML = `<span class="err">Nenhuma linha válida.</span>`;
+          return;
+        }
+        // Mapa por nome da categoria (case-insensitive)
+        const nomeToId = {};
+        Object.keys(categorias).forEach(cid => {
+          const nome = (categorias[cid].nome||'').trim().toLowerCase();
+          if (nome) nomeToId[nome] = cid;
+        });
+
+        const ano = parseInt(anoSelect.value,10);
+        let ok=0, skip=0;
+        const updates = {};
+        for (const item of linhas){
+          const nomeLower = (item.nome||'').trim().toLowerCase();
+          const cid = nomeToId[nomeLower];
+          if (!cid){ skip++; continue; }
+          const cat = categorias[cid] || {};
+          const base = `financeiro/consolidado/${ano}/${mes}/${cid}`;
+          updates[`${base}/valor`] = item.valor;
+          if (cat.tipo) updates[`${base}/tipo`] = cat.tipo;
+          if (cat.centroDeCusto) updates[`${base}/centroDeCusto`] = cat.centroDeCusto;
+          if (cat.nome) updates[`${base}/nome`] = cat.nome;
+          ok++;
+        }
+        try{
+          await db.ref().update(updates);
+          st.innerHTML = `<span class="ok">Importado: ${ok}. Não encontrados: ${skip}.</span>`;
+        }catch(err){
+          console.error(err);
+          st.innerHTML = `<span class="err">Erro ao salvar.</span>`;
+        }
+      });
+    });
+
+    // Bind salvar movimentação (por mês)
+    document.querySelectorAll('.saveMov').forEach(btn=>{
+      btn.addEventListener('click', async (e)=>{
+        const mes = parseInt(e.currentTarget.dataset.mes,10);
+        const ano = parseInt(anoSelect.value,10);
+        const bloco = e.currentTarget.parentElement;
+        const vals = {};
+        bloco.querySelectorAll('.inp_mov').forEach(inp=>{
+          const key = inp.dataset.key;
+          const v = normalizaDecimal(inp.value);
+          vals[key] = v;
+        });
+        try{
+          await db.ref(`financeiro/movimentacao/${ano}/${mes}`).set(vals);
+          document.getElementById(`mov_${mes}`).innerHTML = `<span class="ok">Movimentação salva.</span>`;
+        }catch(err){
+          console.error(err);
+          document.getElementById(`mov_${mes}`).innerHTML = `<span class="err">Erro ao salvar.</span>`;
+        }
+      });
+    });
+
+    // Pré-carrega movimentação do ano selecionado
+    carregaMovimentacaoAno();
+  }
+
+  async function carregaMovimentacaoAno(){
+    const ano = parseInt(anoSelect.value,10);
+    const snap = await db.ref(`financeiro/movimentacao/${ano}`).once('value');
+    const dados = snap.val() || {};
+    document.querySelectorAll('.inp_mov').forEach(inp=>{
+      const mes = inp.dataset.mes;
+      const key = inp.dataset.key;
+      const val = (dados[mes] && dados[mes][key] != null) ? dados[mes][key] : '';
+      inp.value = val;
+    });
+  }
+
+  anoSelect.addEventListener('change', ()=>{
+    carregaMovimentacaoAno();
+  });
+
+  (async function init(){
+    await carregaCategorias();
+    desenhaTabela();
+  })();
+})();
+</script>
+</body>
+</html>
