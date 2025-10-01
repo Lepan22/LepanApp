@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fluxo Financeiro • Importação por Mês</title>
+
+  <!-- Estilos padrão do projeto -->
+  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+
+  <!-- Firebase (v9 modular): seu config está em assets/firebase-config.js -->
+  <script type="module" src="assets/firebase-config.js"></script>
+  <script defer src="assets/menu.js"></script>
+
+  <!-- SheetJS para parsear CSV no navegador -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+
+  <style>
+    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .controls select, .controls input { padding:6px 8px; font-size:14px; }
+    .grid-meses {
+      display:grid;
+      grid-template-columns: repeat(3, minmax(280px, 1fr));
+      gap:12px;
+    }
+    @media (max-width: 1000px) { .grid-meses { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 680px)  { .grid-meses { grid-template-columns: 1fr; } }
+
+    .card {
+      border: 1px solid var(--border, #e5e7eb);
+      border-radius: 14px;
+      padding: 12px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+      background: #fff;
+    }
+    .card h3 { margin: 0 0 6px; font-size: 16px; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0; }
+    .row > label { display:flex; flex-direction:column; font-size:12px; gap:4px; flex:1; min-width: 120px; }
+    .row input[type="number"] { padding:6px 8px; font-size:13px; }
+    .row .btns { display:flex; gap:8px; }
+    .btn { padding:8px 10px; border-radius:8px; border:1px solid #ddd; background:#fafafa; cursor:pointer; font-size:13px; }
+    .btn.primary { background:#111827; color:#fff; border-color:#111827; }
+    .btn.ghost { background:#fff; }
+    .pill {
+      display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #e5e7eb; background:#f9fafb;
+    }
+    .kpis { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+    .kpi { flex:1; min-width:120px; border:1px dashed #e5e7eb; border-radius:10px; padding:8px; font-size:12px; }
+    .kpi b { display:block; font-size:14px; margin-bottom:2px; }
+    .muted { color:#6b7280; font-size:12px; }
+    .warn { color:#b45309; }
+    .ok { color:#047857; }
+    table.resumo { width:100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+    table.resumo th, table.resumo td { border:1px solid #e5e7eb; padding:6px 8px; text-align:left; }
+    table.resumo th { background:#f9fafb; }
+    .hint { font-size:12px; color:#6b7280; margin-top:4px; }
+    .right { text-align:right; }
+    .center { text-align:center; }
+    .cat-badge { font-size:11px; padding:2px 6px; border-radius:6px; background:#eef2ff; color:#3730a3; border:1px solid #c7d2fe; }
+  </style>
+</head>
+<body>
+  <div id="menuLateral" class="sidebar"></div>
+
+  <div class="main-content">
+    <div class="page-header">
+      <h2>Fluxo Financeiro • Importação por Mês</h2>
+      <div class="controls">
+        <label>Ano Fiscal<br>
+          <select id="selectAno"></select>
+        </label>
+        <span class="hint">Passado fiel ao ERP (CSV). Mês atual = realizado + previsto. Projeção = 3 meses à frente.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div>
+          <span class="pill">Categorias cadastradas</span>
+          <span id="totalCategorias" class="muted">0</span>
+        </div>
+        <div id="chipsCategorias" class="row" style="margin-top:6px;"></div>
+      </div>
+      <div class="hint">As categorias vêm do seu cadastro em <b>Categorias Financeiras</b>. A importação só faz o mapeamento.</div>
+    </div>
+
+    <div id="gridMeses" class="grid-meses" style="margin-top:12px;"></div>
+  </div>
+
+  <script type="module" src="./fluxo.js"></script>
+</body>
+</html>
