@@ -1,79 +1,81 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Importação Financeira (Consolidado por Categoria)</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Importação Financeira (Consolidado por Categoria)</title>
 
-  <link rel="stylesheet" href="assets/base.css"/>
-  <link rel="stylesheet" href="assets/menu-styles.css"/>
+<link rel="stylesheet" href="assets/base.css"/>
+<link rel="stylesheet" href="assets/menu-styles.css"/>
 
-  <style>
-    .main-content { padding:16px 20px; }
+<style>
+  .main-content { padding:16px 20px; }
 
-    .page-header h1 { margin:6px 0 6px; }
-    .page-header p  { margin:0 0 12px; color:#666; font-size:13px; }
+  .page-header h1 { margin:6px 0 6px; }
+  .page-header p  { margin:0 0 12px; color:#666; font-size:13px; }
 
-    .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
-    .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
-    .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+  .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
+  .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+  .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
 
-    .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-    .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
+  .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
 
-    .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
+  .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
 
-    /* Mantemos largura total compatível com 1 col. larga + 12 col. estreitas */
-    table.fin { width:100%; border-collapse:collapse; min-width:2360px; table-layout:fixed; background:#fff; }
-    .fin th, .fin td { border:1px solid #e6e6e6; padding:6px 8px; font-size:13px; }
+  /* 1 col. de 480 + 12 * 120 = 1.920 → folga: 2.000px */
+  table.fin { width:100%; border-collapse:collapse; min-width:2000px; table-layout:fixed; background:#fff; }
+  .fin th, .fin td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
 
-    /* Cabeçalho: meses pretos */
-    .fin thead th { background:#fff7ec; color:#000 !important; }
+  /* Cabeçalho em preto e um pouco mais compacto */
+  .fin thead th { background:#fff7ec; color:#000 !important; font-weight:600; }
 
-    /* SOMENTE a coluna Categoria é larga e sem quebra */
-    .fin th.cat, .fin td.cat {
-      position: sticky; left: 0; z-index: 2;
-      background:#fafafa;
-      min-width: 680px;
-      text-align: left;
-      white-space: nowrap;
-    }
+  /* SOMENTE a coluna Categoria é larga e sem quebra */
+  .fin th.cat, .fin td.cat {
+    position: sticky; left: 0; z-index: 2;
+    background:#fafafa;
+    min-width: 480px;          /* ajustado */
+    text-align: left;
+    white-space: nowrap;
+  }
 
-    /* TODAS as demais colunas (meses) estreitas */
-    .fin th:not(.cat), .fin td:not(.cat) { width:140px; }
+  /* Demais colunas (meses) estreitas */
+  .fin th:not(.cat), .fin td:not(.cat) { width:120px; }
 
-    .controls { font-size:12px; }
-    .controls input[type="file"] { width:100%; }
-    .controls .btn { width:100%; margin-top:4px; }
+  .controls { font-size:12px; }
+  .controls input[type="file"] { width:100%; }
+  .controls .btn { width:100%; margin-top:4px; }
 
-    .btn { cursor:pointer; border:1px solid #ddd; background:#fff; padding:6px 10px; border-radius:8px; font-size:13px; }
-    .btn.primary { background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
-    .status { font-size:12px; margin-top:4px; min-height:16px; }
-    .num { text-align:right; }
-    .ok  { color:#1a7f37; }
-    .err { color:#b42318; }
+  .btn { cursor:pointer; border:1px solid #ddd; background:#fff; padding:5px 8px; border-radius:8px; font-size:12px; }
+  .btn.primary { background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
+  .status { font-size:12px; margin-top:4px; min-height:16px; }
+  .num { text-align:right; }
+  .ok  { color:#1a7f37; }
+  .err { color:#b42318; }
 
-    /* Rodapé: legenda na coluna Categoria; inputs sem rótulo nos meses */
-    tfoot td.month-cell { vertical-align: top; }
-    .legend { font-size:12px; color:#333; margin-top:6px; }
-    .legend ul { margin:6px 0 0; padding-left:16px; }
-    .legend li { line-height:1.4; }
+  /* Rodapé: legenda compacta na coluna Categoria; inputs compactos nos meses */
+  tfoot td.month-cell { vertical-align: top; }
+  .legend { font-size:12px; color:#333; margin-top:4px; }
+  .legend ul { margin:6px 0 0; padding-left:16px; }
+  .legend li { line-height:1.3; margin:0; }
 
-    .inputs-grid { display:grid; grid-template-columns: 1fr; gap:6px; }
-    .inputs-grid input { width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
-    .mini-muted { font-size:11px; color:#777; margin-top:4px; }
+  .inputs-grid { display:grid; grid-template-columns: 1fr; gap:4px; }
+  .inputs-grid input {
+    width:100%; padding:4px 6px; border:1px solid #ddd; border-radius:6px; font-size:12px; line-height:1.2;
+  }
+  .mini-muted { font-size:11px; color:#777; margin-top:4px; }
 
-    @media (max-width:1100px){
-      .fin th, .fin td { padding:5px 6px; font-size:12px; }
-      .fin th.cat, .fin td.cat { min-width:600px; }
-    }
-  </style>
+  @media (max-width:1100px){
+    .fin th, .fin td { padding:5px 6px; font-size:12px; }
+    .fin th.cat, .fin td.cat { min-width:420px; } /* mobile */
+  }
+</style>
 
-  <script defer src="assets/menu.js"></script>
+<script defer src="assets/menu.js"></script>
 
-  <!-- Firebase v8 (sem módulos) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<!-- Firebase v8 (sem módulos) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
   <div id="menuLateral" class="sidebar"></div>
@@ -154,10 +156,7 @@
       measurementId: "G-VTNGJR7YRL"
     };
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  } catch (e) {
-    console.error(e);
-    showDiag('Falha ao inicializar Firebase.', 'err');
-  }
+  } catch (e) { console.error(e); showDiag('Falha ao inicializar Firebase.', 'err'); }
   const db = firebase.apps.length ? firebase.database() : null;
 
   const mesesPt   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -213,7 +212,7 @@
       tbody.appendChild(tr);
     });
 
-    // tfoot: inputs sem rótulo nos meses; rótulos só na coluna Categoria (já no HTML)
+    // Inputs compactos por mês (sem rótulo nos meses)
     document.querySelectorAll('tfoot td.month-cell').forEach(td=>{
       const mes=parseInt(td.getAttribute('data-mes'),10);
       td.innerHTML=`
@@ -309,20 +308,10 @@
   }
 
   (async function init(){
-    for(let m=1;m<=12;m++){
-      const th=document.createElement('th'); th.textContent=mesesPt[m-1]; hdrMeses.appendChild(th);
-      const thImp=document.createElement('th'); thImp.className='controls';
-      thImp.innerHTML=`<input type="file" accept=".csv" id="file_${m}"><button class="btn primary" data-mes="${m}">Importar</button><div class="status" id="st_${m}"></div>`;
-      thImp.querySelector('button').addEventListener('click', ()=> onImportClick(m));
-      hdrImport.appendChild(thImp);
-    }
-
-    const a=anoAtual();
-    for(let y=a-2; y<=a+1; y++){ const opt=document.createElement('option'); opt.value=y; opt.textContent=y; if(y===a) opt.selected=true; anoSelect.appendChild(opt); }
-
+    buildHeaders();
+    fillYearOptions();
     const categorias=await fetchCategorias();
     buildBody(categorias);
-
     await loadYearData(Number(anoSelect.value));
     anoSelect.addEventListener('change', ()=> loadYearData(Number(anoSelect.value)));
   })();
