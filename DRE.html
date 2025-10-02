@@ -10,8 +10,8 @@
 
 <style>
   :root{
-    --ind-w: 170px;  /* Centro/Categoria */
-    --year-w: 160px; /* Consolidado (Ano) */
+    --ind-w: 170px;  /* Centro/Categoria (igual ao Fluxo) */
+    --year-w: 160px; /* Consolidado (Ano) fixo */
   }
   .main-content { padding:16px 20px; }
 
@@ -27,12 +27,10 @@
 
   .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
 
-  /* min-width: 170 + 160 + 12*120 = 1770px */
-  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width: calc(var(--ind-w) + var(--year-w) + 1440px); background:#fff; }
+  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width: calc(var(--ind-w) + var(--year-w) + 12*120px); background:#fff; }
   .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
   .fx thead th { background:#fff7ec; color:#000; font-weight:600; }
 
-  /* Colunas fixas */
   .fx th.ind, .fx td.ind {
     position:sticky; left:0; z-index:3;
     background:#fafafa;
@@ -43,15 +41,15 @@
     position:sticky; left:var(--ind-w); z-index:2;
     background:#fafafa;
     width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
+    text-align:right;
   }
 
-  /* Meses */
   .fx th:not(.ind):not(.year), .fx td:not(.ind):not(.year) { width:120px; }
   .num { text-align:right; }
-  .pct { color:#475569; font-size:11.2px; display:inline; margin-left:6px; }
+  .pct { color:#475569; font-size:11.2px; margin-left:6px; }
+
   .today { background:#fffbe6 !important; }
 
-  /* Zebra para acompanhar a linha nos meses */
   .fx tbody tr.row-odd  td { background:#ffffff; }
   .fx tbody tr.row-even td { background:#f7f7fb; }
 
@@ -74,7 +72,7 @@
   <div class="main-content">
     <div class="page-header">
       <h1>DRE (Competência)</h1>
-      <p>Calculada por <strong>regra da categoria</strong>: caixa, competência por driver (% da Receita), competência por média (N) e <strong>especial</strong> (Compras → <em>Custo de Produto</em> via Importação).</p>
+      <p>Centros e categorias <strong>como no Fluxo</strong>. O <strong>Consolidado (Ano)</strong> soma <em>até o mês anterior</em> e as % são sempre sobre a Receita (mês/ano).</p>
       <div id="diag" class="diag warn"></div>
     </div>
 
@@ -82,7 +80,7 @@
       <label>Ano Fiscal:
         <select id="anoSelect"></select>
       </label>
-      <span class="badge">% = valor ÷ <strong>Receita (Consolidado)</strong> do mês/ano × 100</span>
+      <span class="badge">% = valor ÷ Receita do mês/ano × 100</span>
     </section>
 
     <div class="table-wrap">
@@ -130,11 +128,8 @@
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   const num = v => isNaN(Number(v)) ? 0 : Number(v);
 
-  const ORDEM = ["Receita","Custo de Produto","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
+  const ORDEM = ["Receita","CMV","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
 
-  const slug = s => String(s||'').toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
   const norm = s => String(s||'').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
@@ -158,19 +153,26 @@
       nome: v[id]?.nome || '(sem nome)',
       centro: v[id]?.centroDeCusto || 'Outros',
       dre_regra: v[id]?.dre_regra || 'caixa',
-      dre_percentual_base: (v[id]?.dre_percentual_base!=null) ? Number(v[id].dre_percentual_base) : null, // decimal ex.: 0.05
+      dre_percentual_base: (v[id]?.dre_percentual_base!=null) ? Number(v[id].dre_percentual_base) : null,
       dre_media_janela: v[id]?.dre_media_janela ? Number(v[id].dre_media_janela) : null
     }));
-    // ordem por ORDEM; centros fora da lista vão ao fim (alfabética)
+    // >>> mesma organização do Fluxo
+    const prioridadeCentro = c => {
+      const cc = (c.centro||'').toLowerCase();
+      if (cc==='receita') return 0;
+      if (cc==='cmv')     return 1;
+      if (cc==='despesa variável') return 2;
+      if (cc==='despesa variavel') return 2;
+      if (cc==='despesa fixa')     return 3;
+      if (cc==='investimento')     return 4;
+      if (cc==='retirada')         return 5;
+      return 6;
+    };
     arr.sort((a,b)=>{
-      const ia = ORDEM.indexOf(a.centro), ib = ORDEM.indexOf(b.centro);
-      if (ia!==-1 || ib!==-1){
-        if (ia===-1) return 1;
-        if (ib===-1) return -1;
-        if (ia!==ib) return ia-ib;
-      }
-      if (a.centro!==b.centro) return a.centro.localeCompare(b.centro);
-      return a.nome.localeCompare(b.nome);
+      const pa = prioridadeCentro(a), pb = prioridadeCentro(b);
+      if (pa!==pb) return pa-pb;
+      if (a.centro!==b.centro) return a.centro.localeCompare(b.centro,'pt-BR');
+      return a.nome.localeCompare(b.nome,'pt-BR');
     });
     return arr;
   }
@@ -200,7 +202,7 @@
   }
 
   function buildGroupHeader(label, startOpen=true){
-    const key = slug(label||'Outros');
+    const key = label.toLowerCase().replace(/\s+/g,'-');
     const tr = document.createElement('tr');
     const tdInd = document.createElement('td'); tdInd.className='ind';
     tdInd.innerHTML = `<span class="toggle" data-grp="${key}" data-open="${startOpen? '1':'0'}">
@@ -237,16 +239,13 @@
     td.innerHTML = `${fmt(valor)}<span class="pct">${pct===null?'—':pct.toFixed(1)+'%'}</span>`;
   }
 
-  // média dos últimos N meses (olhando meses anteriores do próprio ano e do ano anterior), ignorando zeros
   function mediaUltimosN(catId, m, N, dadosAno, dadosPrev){
     if (!N || N<=0) return 0;
     const vals = [];
-    // meses anteriores no ano atual: m-1 .. 1
     for (let mm=m-1; mm>=1 && vals.length<N; mm--){
       const v = num( dadosAno?.[mm]?.[catId]?.valor || 0 );
       if (v!==0) vals.push(v);
     }
-    // completa com ano anterior: 12 .. 1
     for (let mm=12; mm>=1 && vals.length<N; mm--){
       const v = num( dadosPrev?.[mm]?.[catId]?.valor || 0 );
       if (v!==0) vals.push(v);
@@ -254,68 +253,75 @@
     if (!vals.length) return 0;
     const soma = vals.reduce((a,b)=>a+b,0);
     return soma / vals.length;
-    // se quiser média estrita de N (mesmo sem N itens), troque por: return (vals.length===N)? soma/N : 0;
   }
+
+  // soma até o mês-limite (inclusive índice mLim-1)
+  const sumTo = (arr, mLim) => (mLim<=0 ? 0 : arr.slice(0, mLim).reduce((a,b)=>a+b,0));
 
   async function carregar(anoSel){
     clearDiag();
+
     buildHeader();
     tbody.innerHTML = '';
 
-    // Dados
     const [cats, consAno, consPrev, movAno] = await Promise.all([
       getCategorias(), getConsolidado(anoSel), getConsolidadoPrev(anoSel), getMov(anoSel)
     ]);
 
-    // Receita (base de % e para driver): soma do Consolidado das categorias com centro == "Receita"
+    // mês-limite do consolidado
+    let mesLimite;
+    if (anoSel < anoAtual)      mesLimite = 12;
+    else if (anoSel > anoAtual) mesLimite = 0;
+    else                        mesLimite = Math.max(0, mesAtual - 1);
+
+    // Receita base p/ % (mês e consolidado)
     const receitaMes = Array.from({length:12}, ()=>0);
     cats.forEach(cat=>{
-      if (cat.centro === 'Receita'){
+      if ((cat.centro||'').toLowerCase()==='receita'){
         for(let m=1;m<=12;m++){
           receitaMes[m-1] += num(consAno?.[m]?.[cat.id]?.valor || 0);
         }
       }
     });
-    const receitaAno = receitaMes.reduce((a,b)=>a+b,0);
+    const receitaAnoCorte = sumTo(receitaMes, mesLimite);
 
-    // Centros a mostrar: ordem fixa + extras do cadastro; mas “Compras (especial)” vai para "Custo de Produto"
-    const centrosSet = new Map();
-    ORDEM.forEach(c=>centrosSet.set(c,true));
-    cats.forEach(c=>{
-      let centroEf = c.centro;
-      if (c.dre_regra === 'especial' && norm(c.nome)==='compras') centroEf = 'Custo de Produto';
-      if (!centrosSet.has(centroEf)) centrosSet.set(centroEf,true);
-    });
-    const centros = Array.from(centrosSet.keys());
+    // centros na ordem do Fluxo
+    const centros = [];
+    const seen = new Set();
+    const ordem = ["Receita","CMV","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
+    ordem.forEach(c=>{ seen.add(c); centros.push(c); });
+    cats.forEach(c=>{ if(!seen.has(c.centro)){ seen.add(c.centro); centros.push(c.centro); } });
 
-    // Headers de grupo
     const headers = {};
     centros.forEach(c=>{
       const tr = buildGroupHeader(c, true);
       headers[c] = tr; tbody.appendChild(tr);
     });
 
-    // Linhas de categorias (já mapeando "Compras (especial)" para label e grupo "Custo de Produto")
-    const linhasCat = {}; // id -> {tr, centroEf}
+    const linhasCat = {};
     cats.forEach(cat=>{
       let centroEf = cat.centro;
       let label = cat.nome;
       if (cat.dre_regra === 'especial' && norm(cat.nome)==='compras'){
         centroEf = 'Custo de Produto';
+        if (!headers[centroEf]){
+          const tr = buildGroupHeader(centroEf, true);
+          headers[centroEf] = tr; tbody.appendChild(tr);
+          centros.push(centroEf);
+        }
         label = 'Custo de Produto';
       }
       const tr = buildRow(label, 'cat-row');
-      tr.dataset.grp = slug(centroEf);
+      tr.dataset.grp = (centroEf||'').toLowerCase().replace(/\s+/g,'-');
       tbody.insertBefore(tr, headers[centroEf].nextSibling);
       linhasCat[cat.id] = { tr, centroEf, cat };
     });
 
-    // Acumuladores por grupo e categoria
     const initArr = ()=> Array.from({length:12}, ()=>0);
     const grpSums = {}; centros.forEach(c=> grpSums[c]=initArr() );
-    const catSums = {}; // id -> [12]
+    const catSums = {};
 
-    // Calcula DRE por categoria, mês a mês
+    // calcula por regra
     for (const id in linhasCat){
       const { cat, centroEf } = linhasCat[id];
       const regra = cat.dre_regra || 'caixa';
@@ -326,16 +332,14 @@
         if (regra === 'caixa'){
           val = num( consAno?.[m]?.[id]?.valor || 0 );
         } else if (regra === 'competencia_driver'){
-          const p = (cat.dre_percentual_base!=null) ? Number(cat.dre_percentual_base) : 0; // decimal (0.05 = 5%)
+          const p = (cat.dre_percentual_base!=null) ? Number(cat.dre_percentual_base) : 0;
           val = p * num(receitaMes[m-1]);
         } else if (regra === 'competencia_media'){
           const N = cat.dre_media_janela ? Number(cat.dre_media_janela) : 0;
           val = mediaUltimosN(id, m, N, consAno, consPrev);
         } else if (regra === 'especial' && norm(cat.nome)==='compras'){
-          // Custo de Produto informado na Importação
           val = num( movAno?.[m]?.custoProdutoMes || 0 );
         } else {
-          // fallback
           val = num( consAno?.[m]?.[id]?.valor || 0 );
         }
         arr[m-1] = val;
@@ -344,11 +348,12 @@
       catSums[id] = arr;
     }
 
-    // Preencher headers de grupo com valores + % (base = Receita do mês/ano)
+    // helpers para preencher células
     const setCell = (td, v, base) => setCellWithPct(td, v, base);
+
     function fillGroupRow(trHeader, arr){
-      const anoVal = arr.reduce((a,b)=>a+b,0);
-      setCell(trHeader.children[1], anoVal, receitaAno);
+      const anoVal = sumTo(arr, mesLimite);
+      setCell(trHeader.children[1], anoVal, receitaAnoCorte);
       for(let m=1;m<=12;m++){
         const td = trHeader.children[m+1];
         paintCell(td, m, anoSel);
@@ -357,12 +362,11 @@
     }
     centros.forEach(c=> fillGroupRow(headers[c], grpSums[c]||initArr()));
 
-    // Preencher categorias
     Object.keys(linhasCat).forEach(id=>{
       const { tr } = linhasCat[id];
       const arr = catSums[id] || initArr();
-      const anoVal = arr.reduce((a,b)=>a+b,0);
-      setCell(tr.children[1], anoVal, receitaAno);
+      const anoVal = sumTo(arr, mesLimite);
+      setCell(tr.children[1], anoVal, receitaAnoCorte);
       for(let m=1;m<=12;m++){
         const td = tr.children[m+1];
         paintCell(td, m, anoSel);
@@ -374,7 +378,6 @@
     const trRes = buildRow('Resultado', 'totais-row');
     tbody.appendChild(trRes);
     const get = n => grpSums[n] || initArr();
-    const rArr = initArr();
     const cProd = get('Custo de Produto');
     const dv    = get('Despesa Variável');
     const df    = get('Despesa Fixa');
@@ -382,25 +385,24 @@
     const ret   = get('Retirada');
     const rec   = get('Receita');
 
+    const rArr = initArr();
     for (let m=1;m<=12;m++){
       rArr[m-1] = (rec[m-1] - cProd[m-1] - dv[m-1] - df[m-1] - inv[m-1] - ret[m-1]);
       const td = trRes.children[m+1];
       paintCell(td, m, anoSel);
       setCell(td, rArr[m-1], receitaMes[m-1]);
     }
-    const rAno = rArr.reduce((a,b)=>a+b,0);
-    setCell(trRes.children[1], rAno, receitaAno);
+    const rAno = sumTo(rArr, mesLimite);
+    setCell(trRes.children[1], rAno, receitaAnoCorte);
 
     // Zebra
     let idx=0; tbody.querySelectorAll('tr').forEach(tr=>{
       tr.classList.add( (idx%2===0) ? 'row-odd' : 'row-even' ); idx++;
     });
 
-    // Collapse/expand
     attachToggle();
   }
 
-  // init
   (async function init(){
     const ano = anoAtual;
     for(let y=ano-2; y<=ano+1; y++){
