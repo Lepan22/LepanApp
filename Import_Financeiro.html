@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Emportação Financeira </title>
+  <title>Importação Financeira (Consolidado por Categoria)</title>
 
-  <!-- Estilos padrão do projeto -->
+  <!-- Estilos do projeto -->
   <link rel="stylesheet" href="assets/base.css"/>
   <link rel="stylesheet" href="assets/menu-styles.css"/>
 
@@ -24,17 +24,17 @@
     .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
 
     .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
-    table.fin { width:100%; border-collapse:collapse; min-width:1200px; table-layout:fixed; background:#fff; }
+    table.fin { width:100%; border-collapse:collapse; min-width:1800px; table-layout:fixed; background:#fff; }
     .fin th, .fin td { border:1px solid #e6e6e6; padding:6px 8px; font-size:13px; }
 
     /* Cabeçalho dos meses – fundo claro e texto PRETO */
     .fin thead th { background:#fff7ec; color:#000 !important; }
 
-    /* Primeira coluna (Categoria) maior e SEM QUEBRA */
+    /* Primeira coluna (Categoria) bem larga e SEM QUEBRA */
     .fin th.cat, .fin td.cat {
       position: sticky; left: 0; z-index: 2;
       background:#fafafa;
-      min-width: 620px;           /* largura maior */
+      min-width: 680px;           /* aumentado */
       text-align: left;
       white-space: nowrap;        /* não quebrar linha */
     }
@@ -50,9 +50,16 @@
     .ok  { color:#1a7f37; }
     .err { color:#b42318; }
 
+    /* Bloco dos campos por mês (rodapé) */
+    tfoot td.month-cell { vertical-align: top; }
+    .inputs-grid { display:grid; grid-template-columns: 1fr; gap:6px; }
+    .inputs-grid label { display:flex; flex-direction:column; font-size:12px; color:#333; }
+    .inputs-grid input { padding:6px 8px; border:1px solid #ddd; border-radius:6px; font-size:13px; }
+    .mini-muted { font-size:11px; color:#777; margin-top:4px; }
+
     @media (max-width:1100px){
       .fin th, .fin td { padding:5px 6px; font-size:12px; }
-      .fin th.cat, .fin td.cat { min-width:600px; } /* mantém mais largo no mobile */
+      .fin th.cat, .fin td.cat { min-width: 600px; } /* ainda largo no mobile */
     }
   </style>
 
@@ -93,6 +100,24 @@
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
+        <tfoot>
+          <tr>
+            <th class="cat">Campos do mês</th>
+            <!-- 12 células geradas no init -->
+            <td class="month-cell" data-mes="1"></td>
+            <td class="month-cell" data-mes="2"></td>
+            <td class="month-cell" data-mes="3"></td>
+            <td class="month-cell" data-mes="4"></td>
+            <td class="month-cell" data-mes="5"></td>
+            <td class="month-cell" data-mes="6"></td>
+            <td class="month-cell" data-mes="7"></td>
+            <td class="month-cell" data-mes="8"></td>
+            <td class="month-cell" data-mes="9"></td>
+            <td class="month-cell" data-mes="10"></td>
+            <td class="month-cell" data-mes="11"></td>
+            <td class="month-cell" data-mes="12"></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
   </div>
@@ -236,6 +261,52 @@
       }
       tbody.appendChild(tr);
     });
+
+    // Monta rodapé com inputs por mês
+    document.querySelectorAll('tfoot td.month-cell').forEach(td=>{
+      const mes = parseInt(td.getAttribute('data-mes'),10);
+      td.innerHTML = `
+        <div class="inputs-grid">
+          <label>Custo Produto Mês (R$)
+            <input type="number" step="0.01" class="inp_mov" data-key="custoProdutoMes" data-mes="${mes}">
+          </label>
+          <label>Valor Estoque (R$)
+            <input type="number" step="0.01" class="inp_mov" data-key="valorEstoque" data-mes="${mes}">
+          </label>
+          <label>Compra Produto Mês (R$)
+            <input type="number" step="0.01" class="inp_mov" data-key="compraProdutoMes" data-mes="${mes}">
+          </label>
+          <label>Perda Produto não Operacional (R$)
+            <input type="number" step="0.01" class="inp_mov" data-key="perdaNaoOperacional" data-mes="${mes}">
+          </label>
+          <label>Contas a Pagar (Compras) (R$)
+            <input type="number" step="0.01" class="inp_mov" data-key="contasAPagarCompras" data-mes="${mes}">
+          </label>
+        </div>
+        <button class="btn primary saveMov" data-mes="${mes}">Salvar</button>
+        <div class="mini-muted" id="mov_${mes}"></div>
+      `;
+    });
+
+    // Bind salvar por mês
+    document.querySelectorAll('.saveMov').forEach(btn=>{
+      btn.addEventListener('click', async (e)=>{
+        const mes = parseInt(e.currentTarget.dataset.mes,10);
+        const ano = Number(anoSelect.value);
+        const bloco = e.currentTarget.parentElement;
+        const vals = {};
+        bloco.querySelectorAll('.inp_mov').forEach(inp=>{
+          vals[inp.dataset.key] = parseNumber(inp.value);
+        });
+        try{
+          await db.ref(`financeiro/movimentacao/${ano}/${mes}`).set(vals);
+          document.getElementById(`mov_${mes}`).innerHTML = '<span class="ok">Salvo.</span>';
+        }catch(err){
+          console.error(err);
+          document.getElementById(`mov_${mes}`).innerHTML = '<span class="err">Erro ao salvar.</span>';
+        }
+      });
+    });
   }
 
   function fillYearOptions(){
@@ -267,6 +338,7 @@
   async function loadYearData(year){
     if (!db) return;
     try{
+      // Preenche grade de valores
       const snap = await db.ref(`financeiro/consolidado/${year}`).once('value');
       const dados = snap.val() || {};
       document.querySelectorAll('[id^="v_"]').forEach(td => td.textContent = '—');
@@ -280,10 +352,21 @@
           }
         });
       });
+
+      // Preenche campos do rodapé
+      const movSnap = await db.ref(`financeiro/movimentacao/${year}`).once('value');
+      const mov = movSnap.val() || {};
+      document.querySelectorAll('.inp_mov').forEach(inp=>{
+        const mes = inp.dataset.mes;
+        const key = inp.dataset.key;
+        const val = mov[mes] && mov[mes][key] != null ? mov[mes][key] : '';
+        inp.value = val;
+      });
+
       clearDiag();
     }catch(err){
       console.error(err);
-      showDiag('Erro ao carregar valores do ano.', 'err');
+      showDiag('Erro ao carregar dados do ano.', 'err');
     }
   }
 
@@ -352,10 +435,32 @@
 
   /* ===== init ===== */
   (async function init(){
-    fillYearOptions();
-    buildHeaders();
+    // Monta cabeçalhos e controles
+    for (let m=1;m<=12;m++){
+      const th = document.createElement('th'); th.textContent = mesesPt[m-1]; hdrMeses.appendChild(th);
+      const thImp = document.createElement('th');
+      thImp.className = 'controls';
+      thImp.innerHTML = `
+        <input type="file" accept=".csv" id="file_${m}">
+        <button class="btn primary" data-mes="${m}">Importar</button>
+        <div class="status" id="st_${m}"></div>
+      `;
+      thImp.querySelector('button').addEventListener('click', ()=> onImportClick(m));
+      hdrImport.appendChild(thImp);
+    }
+
+    // Anos
+    const a = anoAtual();
+    for (let y=a-2; y<=a+1; y++){
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y; if (y===a) opt.selected = true; anoSelect.appendChild(opt);
+    }
+
+    // Categorias e grid
     const categorias = await fetchCategorias();
     buildBody(categorias);
+
+    // Carregar dados do ano
     await loadYearData(Number(anoSelect.value));
     anoSelect.addEventListener('change', ()=> loadYearData(Number(anoSelect.value)));
   })();
