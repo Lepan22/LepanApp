@@ -9,6 +9,10 @@
 <link rel="stylesheet" href="assets/menu-styles.css"/>
 
 <style>
+  :root{
+    --ind-w: 340px;   /* largura col. Centro/Categoria */
+    --year-w: 160px;  /* largura col. Consolidado (Ano) */
+  }
   .main-content { padding:16px 20px; }
 
   .page-header h1 { margin:6px 0 6px; }
@@ -20,61 +24,54 @@
 
   .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
   .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
+
   .legend  { font-size:11.5px; color:#666; display:flex; gap:10px; align-items:center; }
   .dot { display:inline-block; width:10px; height:10px; border-radius:3px; vertical-align:middle; margin-right:4px; }
-  .dot.past   { background:#f1f5f9; border:1px solid #e5e7eb; }
   .dot.today  { background:#fff3c4; border:1px solid #fde68a; }
-  .dot.future { background:#ffffff; border:1px solid #e5e7eb; }
 
   .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
 
-  /* 1ª col 420 + 2ª col 160 + 12*120 = 2.000 → min 2.040 */
-  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width:2040px; background:#fff; }
+  /* 1ª col var(--ind-w) + 2ª col var(--year-w) + 12*120 = ~ var */
+  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width: calc(var(--ind-w) + var(--year-w) + 1440px); background:#fff; }
   .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
 
   .fx thead th { background:#fff7ec; color:#000; font-weight:600; }
 
-  /* Coluna “Centro/Categoria” fixa e larga */
+  /* Coluna “Centro/Categoria” fixa e menor */
   .fx th.ind, .fx td.ind {
     position:sticky; left:0; z-index:3;
     background:#fafafa;
-    width:420px; min-width:420px; max-width:420px;
+    width:var(--ind-w); min-width:var(--ind-w); max-width:var(--ind-w);
     text-align:left; white-space:nowrap;
   }
 
-  /* 2ª coluna: “Consolidado (Ano)” fixa também */
+  /* 2ª coluna fixa: “Consolidado (Ano)” — nota: left = --ind-w */
   .fx th.year, .fx td.year {
-    position:sticky; left:420px; z-index:2;
+    position:sticky; left:var(--ind-w); z-index:2;
     background:#fafafa;
-    width:160px; min-width:160px; max-width:160px;
+    width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
   }
 
   /* Meses */
   .fx th:not(.ind):not(.year), .fx td:not(.ind):not(.year) { width:120px; }
 
   .num { text-align:right; }
-  .pct { color:#475569; font-size:11.2px; display:block; }
 
-  /* Destaques por grupo */
-  .grp-receita              > td.ind { background:#ecfdf5; font-weight:700; }
-  .grp-cmv                  > td.ind { background:#fff7ed; font-weight:700; }
-  .grp-despesa-variavel     > td.ind { background:#fef9c3; font-weight:700; }
-  .grp-despesa-fixa         > td.ind { background:#fde2e2; font-weight:700; }
-  .grp-investimento         > td.ind { background:#e0f2fe; font-weight:700; }
-  .grp-retirada             > td.ind { background:#e9d5ff; font-weight:700; }
-  .grp-outros               > td.ind { background:#f1f5f9; font-weight:700; }
+  /* Valor e % na MESMA linha */
+  .pct { color:#475569; font-size:11.2px; display:inline; margin-left:6px; }
 
-  .totais-row > td.ind { background:#e5e7eb; font-weight:800; }
+  /* Destaque do mês atual */
+  .today { background:#fffbe6 !important; }
 
-  /* Passado/Hoje/Futuro nas células de meses */
-  .past   { background:#fbfbfb; }
-  .today  { background:#fffbe6; }
-  .future { background:#ffffff; }
+  /* Zebra (facilita seguir a linha pelos meses) */
+  .fx tbody tr.row-odd  td { background:#ffffff; }
+  .fx tbody tr.row-even td { background:#f7f7fb; }
 
-  .toggle { display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
+  .toggle { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-weight:700; }
   .caret  { font-size:12px; color:#555; width:14px; text-align:center; }
 
   tr.cat-row.hidden { display:none; }
+  .totais-row > td.ind { font-weight:800; }
 </style>
 
 <script defer src="assets/menu.js"></script>
@@ -89,7 +86,7 @@
   <div class="main-content">
     <div class="page-header">
       <h1>Fluxo Financeiro</h1>
-      <p>Centros e categorias <strong>exatamente como no cadastro</strong>, com consolidado anual fixo e <strong>percentuais no ano e no mês</strong> (sempre sobre a Receita).</p>
+      <p>Centros e categorias <strong>exatamente como no cadastro</strong>, com <strong>Consolidado (Ano)</strong> fixo e percentuais <strong>no ano e no mês</strong> (sempre sobre a Receita).</p>
       <div id="diag" class="diag warn"></div>
     </div>
 
@@ -98,11 +95,7 @@
         <select id="anoSelect"></select>
       </label>
       <span class="badge">% = valor ÷ <strong>Receita</strong> (do ano/ do mês) × 100</span>
-      <span class="legend">
-        <span><span class="dot past"></span>Passado</span>
-        <span><span class="dot today"></span>Hoje</span>
-        <span><span class="dot future"></span>Futuro</span>
-      </span>
+      <span class="legend"><span class="dot today"></span>Hoje</span>
     </section>
 
     <div class="table-wrap">
@@ -150,7 +143,6 @@
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   const num = v => isNaN(Number(v)) ? 0 : Number(v);
 
-  // Ordem pedida
   const ORDEM_CENTROS = ["Receita","CMV","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
   const slug = s => String(s||'').toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -158,7 +150,7 @@
 
   function paintCell(td, m, anoSel){
     const isTodayCol = (m===mesAtual && anoSel===anoAtual);
-    td.classList.add(isTodayCol ? 'today' : ( (anoSel<anoAtual || (anoSel===anoAtual && m<mesAtual)) ? 'past' : 'future'));
+    if (isTodayCol) td.classList.add('today');  // só destacamos o mês atual
   }
 
   function buildHeader(){
@@ -176,7 +168,7 @@
       nome: v[id]?.nome || '(sem nome)',
       centro: v[id]?.centroDeCusto || 'Outros'
     }));
-    // ordena por ORDEM_CENTROS; centros não listados vão para o fim (ordem alfabética)
+    // ordena por ORDEM_CENTROS; centros não listados vão para o fim (alfabético)
     arr.sort((a,b)=>{
       const ia = ORDEM_CENTROS.indexOf(a.centro), ib = ORDEM_CENTROS.indexOf(b.centro);
       if (ia!==-1 || ib!==-1){
@@ -208,7 +200,7 @@
 
   function buildGroupHeader(centro, startOpen=true){
     const key = slug(centro||'Outros');
-    const tr = document.createElement('tr'); tr.className = `grp-${key}`;
+    const tr = document.createElement('tr');
     const tdInd = document.createElement('td'); tdInd.className='ind';
     tdInd.innerHTML = `<span class="toggle" data-grp="${key}" data-open="${startOpen? '1':'0'}">
       <span class="caret">${startOpen ? '▼' : '►'}</span> ${centro}
@@ -273,9 +265,8 @@
     categorias.forEach(cat=>{
       const tr = buildRow(cat.nome, 'cat-row'); 
       tr.dataset.grp = slug(cat.centro);
-      tbody.appendChild(tr);
-      linhasCat[cat.id] = { tr, centro: cat.centro };
       tbody.insertBefore(tr, headers[cat.centro].nextSibling);
+      linhasCat[cat.id] = { tr, centro: cat.centro };
     });
 
     // Acumular valores por mês para grupo e categoria
@@ -336,7 +327,7 @@
       }
     });
 
-    // Resultado final
+    // Linha Resultado
     const trRes = buildRow('Resultado', 'totais-row');
     tbody.appendChild(trRes);
 
@@ -344,37 +335,4 @@
     const resArr = initArr();
     const cmvArr   = getGrp('CMV');
     const dvArr    = getGrp('Despesa Variável');
-    const dfArr    = getGrp('Despesa Fixa');
-    const invArr   = getGrp('Investimento');
-    const retArr   = getGrp('Retirada');
-
-    for (let m=1;m<=12;m++){
-      resArr[m-1] = (recArr[m-1] - cmvArr[m-1] - dvArr[m-1] - dfArr[m-1] - invArr[m-1] - retArr[m-1]);
-      const td = trRes.children[m+1];
-      paintCell(td, m, anoSel);
-      setCellValueWithPct(td, resArr[m-1], recMes(m));
-    }
-    const resAno = sum(resArr);
-    setCellValueWithPct(trRes.children[1], resAno, recAno);
-
-    attachToggle();
-  }
-
-  // Init
-  (async function init(){
-    // anos
-    for(let y=anoAtual-2; y<=anoAtual+1; y++){
-      const opt=document.createElement('option'); opt.value=y; opt.textContent=y;
-      if(y===anoAtual) opt.selected=true; anoSelect.appendChild(opt);
-    }
-    // meses no header
-    for (let m=1;m<=12;m++){
-      const th=document.createElement('th'); th.textContent=mesesPt[m-1]; hdrMeses.appendChild(th);
-    }
-    await carregar(Number(anoSelect.value));
-    anoSelect.addEventListener('change', ()=> carregar(Number(anoSelect.value)));
-  })();
-})();
-</script>
-</body>
-</html>
+    const dfA
