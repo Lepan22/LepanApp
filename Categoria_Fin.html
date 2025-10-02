@@ -10,30 +10,64 @@
   <script defer src="assets/menu.js"></script>
   <style>
     .form-linha {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 12px;
       margin-bottom: 20px;
+      align-items: end;
     }
+    .form-linha label { font-size: 12px; color:#374151; }
     .form-linha input, .form-linha select, .form-linha textarea {
       padding: 6px;
       font-size: 12px;
-      width: 160px;
+      width: 100%;
+      box-sizing: border-box;
     }
     .form-linha textarea {
-      width: 300px;
       height: 50px;
+      resize: vertical;
     }
+    .form-linha .row-span-2 { grid-column: span 2; }
     .form-linha button {
-      height: 28px;
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #ff7f2a;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
     }
-    .tabela-categorias td {
-      padding: 4px 6px;
+
+    .param-wrap { display: contents; } /* ocupa slots do grid */
+    .param-hidden { display: none !important; }
+
+    table.tabela-categorias {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      background: #fff;
     }
+    .tabela-categorias th, .tabela-categorias td {
+      border: 1px solid #e5e7eb;
+      padding: 6px 8px;
+      font-size: 12.5px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .tabela-categorias thead th { background:#fff7ec; }
+    .acoes { white-space: nowrap; }
     .acoes button {
-      margin-right: 4px;
-      font-size: 11px;
+      margin-right: 6px;
+      font-size: 11.5px;
+      padding: 4px 8px;
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 6px;
+      cursor: pointer;
     }
+    .acoes button:hover { background:#f3f4f6; }
+    .muted { color:#6b7280; font-size: 11.5px; }
   </style>
 </head>
 <body>
@@ -58,10 +92,37 @@
         </select>
       </label>
 
-      <label>
+      <label class="row-span-2">
         Centro de Custo<br>
-        <textarea id="centroDeCustoCategoria"></textarea>
+        <textarea id="centroDeCustoCategoria" placeholder="Ex.: Receita, CMV, Despesa Variável, Despesa Fixa, Investimento, Retirada"></textarea>
       </label>
+
+      <!-- DRE Regra -->
+      <label>
+        Regra DRE<br>
+        <select id="dreRegra" required>
+          <option value="">Selecione</option>
+          <option value="caixa">caixa</option>
+          <option value="competencia_driver">competencia_driver</option>
+          <option value="competencia_media">competencia_media</option>
+          <option value="especial">especial</option>
+        </select>
+      </label>
+
+      <!-- Parâmetros dinâmicos -->
+      <div class="param-wrap" id="paramDriver">
+        <label>
+          % Receita (driver)<br>
+          <input type="text" id="dreDriverPct" placeholder="Ex.: 5% ou 0,05" />
+        </label>
+      </div>
+
+      <div class="param-wrap" id="paramMedia">
+        <label>
+          N meses (média)<br>
+          <input type="number" id="dreMediaN" min="1" step="1" placeholder="Ex.: 6" />
+        </label>
+      </div>
 
       <button type="submit">Salvar</button>
       <input type="hidden" id="categoriaId" />
@@ -73,6 +134,8 @@
           <th>Nome</th>
           <th>Tipo</th>
           <th>Centro de Custo</th>
+          <th>Regra DRE</th>
+          <th>Parâmetros</th>
           <th>Ações</th>
         </tr>
       </thead>
@@ -89,60 +152,152 @@
     const tipo = document.getElementById('tipoCategoria');
     const centro = document.getElementById('centroDeCustoCategoria');
     const categoriaId = document.getElementById('categoriaId');
+
+    const dreRegra = document.getElementById('dreRegra');
+    const paramDriver = document.getElementById('paramDriver');
+    const paramMedia  = document.getElementById('paramMedia');
+    const dreDriverPct = document.getElementById('dreDriverPct');
+    const dreMediaN    = document.getElementById('dreMediaN');
+
     const lista = document.getElementById('listaCategorias');
 
+    const cacheCats = new Map(); // id -> objeto categoria
+
+    function escapeHtml(s=''){
+      return String(s)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'","&#39;");
+    }
+
+    function showDreParamsUI(){
+      const r = dreRegra.value;
+      // mostra somente os parâmetros relevantes
+      paramDriver.classList.toggle('param-hidden', r !== 'competencia_driver');
+      paramMedia .classList.toggle('param-hidden', r !== 'competencia_media');
+    }
+    dreRegra.addEventListener('change', showDreParamsUI);
+
+    // parse de % (aceita "5", "5%", "0,05", "0.05")
+    function parsePercentToDecimal(txt){
+      if (txt == null) return null;
+      let s = String(txt).trim();
+      if (!s) return null;
+      s = s.replace('%','').replace(/\s+/g,'').replace(',','.');
+      let v = Number(s);
+      if (isNaN(v)) return null;
+      if (v > 1) v = v / 100; // se veio 5 → 0.05
+      return v; // decimal
+    }
+
+    // form submit
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      if (!nome.value || !tipo.value) return;
+      if (!nome.value || !tipo.value || !dreRegra.value) return;
 
-      const novaCategoria = {
+      const payload = {
         nome: nome.value,
         tipo: tipo.value,
-        centroDeCusto: centro.value || ''
+        centroDeCusto: centro.value || '',
+        dre_regra: dreRegra.value
       };
 
+      if (dreRegra.value === 'competencia_driver') {
+        const p = parsePercentToDecimal(dreDriverPct.value);
+        payload.dre_percentual_base = (p == null ? null : p);
+      } else {
+        payload.dre_percentual_base = null;
+      }
+
+      if (dreRegra.value === 'competencia_media') {
+        const n = Number(dreMediaN.value || 0);
+        payload.dre_media_janela = (n > 0 ? Math.floor(n) : null);
+      } else {
+        payload.dre_media_janela = null;
+      }
+
       if (categoriaId.value) {
-        await update(ref(db, `financeiro/categorias/${categoriaId.value}`), novaCategoria);
+        await update(ref(db, `financeiro/categorias/${categoriaId.value}`), payload);
       } else {
         const novaRef = push(ref(db, 'financeiro/categorias'));
-        await set(novaRef, novaCategoria);
+        await set(novaRef, payload);
       }
 
       form.reset();
       categoriaId.value = '';
+      dreRegra.value = '';
+      showDreParamsUI();
     });
 
+    // listar categorias
     onValue(ref(db, 'financeiro/categorias'), snapshot => {
       lista.innerHTML = '';
+      cacheCats.clear();
       snapshot.forEach(child => {
         const id = child.key;
-        const cat = child.val();
+        const cat = child.val() || {};
+        cacheCats.set(id, cat);
+
+        // monta texto dos parâmetros
+        let paramTxt = '—';
+        const regra = cat.dre_regra || '—';
+        if (regra === 'competencia_driver') {
+          const p = (cat.dre_percentual_base != null) ? (cat.dre_percentual_base * 100) : null;
+          paramTxt = (p != null ? `${p.toLocaleString('pt-BR',{maximumFractionDigits:2})}% Receita` : '—');
+        } else if (regra === 'competencia_media') {
+          paramTxt = (cat.dre_media_janela ? `N=${cat.dre_media_janela}` : 'N não definido');
+        } else if (regra === 'caixa' || regra === 'especial') {
+          paramTxt = '—';
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${cat.nome}</td>
-          <td>${cat.tipo}</td>
-          <td>${cat.centroDeCusto || ''}</td>
+          <td>${escapeHtml(cat.nome||'')}</td>
+          <td>${escapeHtml(cat.tipo||'')}</td>
+          <td>${escapeHtml(cat.centroDeCusto||'')}</td>
+          <td>${escapeHtml(regra)}</td>
+          <td>${escapeHtml(paramTxt)}</td>
           <td class="acoes">
-            <button onclick="editarCategoria('${id}', '${cat.nome}', '${cat.tipo}', \`${cat.centroDeCusto || ''}\`)">Editar</button>
-            <button onclick="excluirCategoria('${id}')">Excluir</button>
+            <button data-edit="${id}">Editar</button>
+            <button data-del="${id}">Excluir</button>
           </td>
         `;
         lista.appendChild(tr);
       });
+
+      // bind ações
+      lista.querySelectorAll('[data-edit]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('data-edit');
+          const cat = cacheCats.get(id) || {};
+          document.getElementById('categoriaId').value = id;
+          nome.value  = cat.nome || '';
+          tipo.value  = cat.tipo || '';
+          centro.value= cat.centroDeCusto || '';
+          dreRegra.value = cat.dre_regra || '';
+          dreDriverPct.value = (cat.dre_percentual_base != null)
+            ? ( (cat.dre_percentual_base*100).toLocaleString('pt-BR', {maximumFractionDigits:2}) + '%' )
+            : '';
+          dreMediaN.value = cat.dre_media_janela || '';
+          showDreParamsUI();
+          window.scrollTo({top:0, behavior:'smooth'});
+        });
+      });
+      lista.querySelectorAll('[data-del]').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          const id = btn.getAttribute('data-del');
+          const cat = cacheCats.get(id) || {};
+          if (confirm(`Deseja excluir a categoria "${cat.nome||''}"?`)) {
+            remove(ref(db, `financeiro/categorias/${id}`));
+          }
+        });
+      });
     });
 
-    window.editarCategoria = function (id, nomeCat, tipoCat, centro) {
-      document.getElementById('categoriaId').value = id;
-      nome.value = nomeCat;
-      tipo.value = tipoCat;
-      centroDeCustoCategoria.value = centro;
-    };
-
-    window.excluirCategoria = function (id) {
-      if (confirm('Deseja excluir esta categoria?')) {
-        remove(ref(db, `financeiro/categorias/${id}`));
-      }
-    };
+    // estado inicial dos parâmetros
+    showDreParamsUI();
   </script>
 </body>
 </html>
