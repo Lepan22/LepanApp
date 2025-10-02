@@ -3,34 +3,40 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title> Financeira (Consolidado por Categoria)</title>
+  <title>Importação Financeira (Consolidado por Categoria)</title>
 
-  <!-- Estilos do projeto -->
+  <!-- Estilos padrão do projeto -->
   <link rel="stylesheet" href="assets/base.css"/>
   <link rel="stylesheet" href="assets/menu-styles.css"/>
 
   <style>
-    .page { display:grid; grid-template-columns:260px 1fr; min-height:100vh; background:#fff; }
-    .content { padding:16px 20px; }
+    /* Layout padrão do projeto */
+    .main-content { padding:16px 20px; }
+
     .page-header h1 { margin:6px 0 6px; }
-    .page-header p { margin:0 0 12px; color:#666; font-size:13px; }
+    .page-header p  { margin:0 0 12px; color:#666; font-size:13px; }
 
     .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
     .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
     .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
-    .diag.ok   { background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; }
 
     .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-    .badge { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
+    .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
 
     .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
     table.fin { width:100%; border-collapse:collapse; min-width:1200px; table-layout:fixed; background:#fff; }
     .fin th, .fin td { border:1px solid #e6e6e6; padding:6px 8px; font-size:13px; }
-    .fin thead th { background:#fff7ec; }
 
-    /* primeira coluna fixa */
+    /* Cabeçalho dos meses – fundo claro e texto PRETO */
+    .fin thead th { background:#fff7ec; color:#000 !important; }
+
+    /* Primeira coluna (Categoria) maior e SEM QUEBRA */
     .fin th.cat, .fin td.cat {
-      position:sticky; left:0; z-index:2; background:#fafafa; min-width:260px; text-align:left;
+      position: sticky; left: 0; z-index: 2;
+      background:#fafafa;
+      min-width: 340px;           /* largura maior */
+      text-align: left;
+      white-space: nowrap;        /* não quebrar linha */
     }
 
     .controls { font-size:12px; }
@@ -46,22 +52,23 @@
 
     @media (max-width:1100px){
       .fin th, .fin td { padding:5px 6px; font-size:12px; }
-      .fin th.cat, .fin td.cat { min-width:220px; }
+      .fin th.cat, .fin td.cat { min-width:300px; } /* mantém mais largo no mobile */
     }
   </style>
 
-  <!-- Menu -->
+  <!-- Menu padrão -->
   <script defer src="assets/menu.js"></script>
 
-  <!-- Firebase v8 (sem módulos) -->
+  <!-- Firebase v8 (sem módulos – compatível com GitHub Pages) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
-<div class="page">
-  <aside id="menu"></aside>
+  <!-- MENU PADRÃO -->
+  <div id="menuLateral" class="sidebar"></div>
 
-  <main class="content">
+  <!-- CONTEÚDO -->
+  <div class="main-content">
     <div class="page-header">
       <h1>Importar Consolidado por Categoria</h1>
       <p>Importe valores mensais por <strong>categoria</strong>. Se o CSV tiver categoria desconhecida, a importação é cancelada e o erro é exibido.</p>
@@ -88,17 +95,16 @@
         <tbody id="tbody"></tbody>
       </table>
     </div>
-  </main>
-</div>
+  </div>
 
 <script>
 (function(){
-  // ===== Mensagens de diagnóstico =====
+  /* ===== DIAGNÓSTICO ===== */
   const diag = document.getElementById('diag');
   const showDiag = (msg, type="warn") => { diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display = 'block'; };
   const clearDiag = () => { diag.style.display = 'none'; diag.textContent = ''; };
 
-  // ===== Firebase (inline, igual ao projeto) =====
+  /* ===== Firebase inline (mesma config do projeto) ===== */
   try {
     const firebaseConfig = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -117,14 +123,14 @@
   }
   const db = firebase.apps.length ? firebase.database() : null;
 
-  // ===== Dom =====
+  /* ===== DOM ===== */
   const mesesPt   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const anoSelect = document.getElementById('anoSelect');
   const hdrMeses  = document.getElementById('hdrMeses');
   const hdrImport = document.getElementById('hdrImport');
   const tbody     = document.getElementById('tbody');
 
-  // ===== Utils =====
+  /* ===== Utils ===== */
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   function parseNumber(txt){
     if (txt == null) return 0;
@@ -134,12 +140,11 @@
     const v = Number(s);
     return isNaN(v) ? 0 : v;
   }
-  // Lê CSV com fallback para Windows-1252 (Excel/Windows)
   async function readCSVText(file){
     const buf = await file.arrayBuffer();
     let text = new TextDecoder('utf-8', {fatal:false}).decode(buf);
-    if (/\uFFFD/.test(text)) { // caractere substituto => provável CP-1252
-      try { text = new TextDecoder('windows-1252', {fatal:false}).decode(buf); } catch(e) {}
+    if (/\uFFFD/.test(text)) {
+      try { text = new TextDecoder('windows-1252', {fatal:false}).decode(buf); } catch(e){}
     }
     return text;
   }
@@ -159,19 +164,17 @@
     }
     return { rows, err:null };
   }
-  // Normaliza nome: sem acento, sem pontuação, case-insensitive, & -> " e "
   function normalizeName(s){
     return String(s || '')
       .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // remove acentos
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
       .replace(/&/g,' e ')
-      .replace(/[^\p{L}\p{N} ]+/gu,' ')               // só letras/números/espaço
+      .replace(/[^\p{L}\p{N} ]+/gu,' ')
       .replace(/\s+/g,' ')
       .trim();
   }
   const anoAtual = () => new Date().getFullYear();
 
-  // Ordenação no fluxo: Receita → CMV → Outras; dentro do grupo, por nome
   function sortFluxo(cats){
     const pri = c => {
       const cc = (c.centroDeCusto||'').toLowerCase();
@@ -186,7 +189,7 @@
     });
   }
 
-  // ===== UI =====
+  /* ===== UI ===== */
   function buildHeaders(){
     for (let m=1;m<=12;m++){
       const th = document.createElement('th');
@@ -210,8 +213,7 @@
     if (!categorias.length){
       const tr = document.createElement('tr');
       const td = document.createElement('td');
-      td.className = 'cat';
-      td.colSpan = 13;
+      td.className = 'cat'; td.colSpan = 13;
       td.textContent = 'Nenhuma categoria encontrada.';
       tr.appendChild(td);
       tbody.appendChild(tr);
@@ -222,7 +224,7 @@
 
       const tdCat = document.createElement('td');
       tdCat.className = 'cat';
-      tdCat.textContent = cat.nome || '(sem nome)'; // mostra só o nome
+      tdCat.textContent = cat.nome || '(sem nome)'; // só o nome
       tr.appendChild(tdCat);
 
       for (let m=1;m<=12;m++){
@@ -246,7 +248,7 @@
     }
   }
 
-  // ===== Dados =====
+  /* ===== Dados ===== */
   async function fetchCategorias(){
     if (!db){ showDiag('Firebase não inicializado.', 'err'); return []; }
     try{
@@ -300,7 +302,7 @@
     if (err){ st.innerHTML = `<span class="err">${err}</span>`; return; }
     if (!rows.length){ st.innerHTML = '<span class="err">CSV sem linhas válidas.</span>'; return; }
 
-    // mapa nome->categoria (normalizado)
+    // nome -> categoria (normalizado)
     let allCats = {};
     try{
       const snapCats = await db.ref('financeiro/categorias').once('value');
@@ -329,7 +331,6 @@
       return;
     }
 
-    // Atualizações (atômicas)
     const updates = {};
     normalizadas.forEach(it=>{
       const base = `financeiro/consolidado/${year}/${mes}/${it.cat.id}`;
@@ -339,7 +340,6 @@
     try{
       await db.ref().update(updates);
       st.innerHTML = `<span class="ok">Importado com sucesso (${rows.length} linhas).</span>`;
-      // Atualiza grade visível
       normalizadas.forEach(it=>{
         const td = document.getElementById(`v_${it.cat.id}_${mes}`);
         if (td) td.textContent = fmt(it.valor);
@@ -350,7 +350,7 @@
     }
   }
 
-  // ===== init =====
+  /* ===== init ===== */
   (async function init(){
     fillYearOptions();
     buildHeaders();
