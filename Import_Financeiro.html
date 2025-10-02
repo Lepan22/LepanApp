@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Financeira (Consolidado por Categoria)</title>
+  <title>Importação Financeira (Consolidado por Categoria)</title>
 
-  <!-- Estilos padrão -->
   <link rel="stylesheet" href="assets/base.css"/>
   <link rel="stylesheet" href="assets/menu-styles.css"/>
 
@@ -18,7 +17,6 @@
     .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
     .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
     .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
-    .diag.ok   { background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; }
 
     .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
     .badge { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
@@ -28,7 +26,6 @@
     .fin th, .fin td { border:1px solid #e6e6e6; padding:6px 8px; font-size:13px; }
     .fin thead th { background:#fff7ec; }
 
-    /* primeira coluna fixa */
     .fin th.cat, .fin td.cat {
       position:sticky; left:0; z-index:2; background:#fafafa; min-width:260px; text-align:left;
     }
@@ -50,20 +47,20 @@
     }
   </style>
 
-  <!-- Menu lateral -->
   <script defer src="assets/menu.js"></script>
 
-  <!-- Firebase v9 (modular): seu arquivo exporta { db } -->
-  <script type="module" src="assets/firebase-config.js"></script>
+  <!-- Firebase v8 (sem módulos) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
 <div class="page">
-  <aside id="menu" class="sidebar"></aside>
+  <aside id="menu"></aside>
 
   <main class="content">
     <div class="page-header">
       <h1>Importar Consolidado por Categoria</h1>
-      <p>Importe valores mensais por <strong>categoria</strong>. Se o CSV tiver categoria desconhecida, a importação é cancelada e o erro é exibido.</p>
+      <p>Importe valores mensais por <strong>categoria</strong>. Se houver categoria desconhecida no CSV, a importação é cancelada e o erro é exibido.</p>
       <div id="diag" class="diag warn"></div>
     </div>
 
@@ -90,25 +87,38 @@
   </main>
 </div>
 
-<!-- Script principal -->
-<script type="module">
-  import { db } from './assets/firebase-config.js';
-  import { ref, get, update } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+<script>
+(function(){
+  const diag = document.getElementById('diag');
+  const showDiag = (msg, type="warn") => {
+    diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display = 'block';
+  };
+  const clearDiag = () => { diag.style.display = 'none'; diag.textContent = ''; };
 
-  const diag      = document.getElementById('diag');
-  const mesesPt   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  // === Firebase inline (seu projeto) ===
+  try {
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  } catch (e) {
+    console.error(e);
+    showDiag('Falha ao inicializar Firebase.', 'err');
+  }
+  const db = firebase.apps.length ? firebase.database() : null;
+
+  const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const anoSelect = document.getElementById('anoSelect');
   const hdrMeses  = document.getElementById('hdrMeses');
   const hdrImport = document.getElementById('hdrImport');
   const tbody     = document.getElementById('tbody');
-
-  // ===== Helpers =====
-  const showDiag = (msg, type="warn") => {
-    diag.className = `diag ${type}`;
-    diag.textContent = msg;
-    diag.style.display = 'block';
-  };
-  const clearDiag = () => { diag.style.display = 'none'; diag.textContent = ''; };
 
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   function parseNumber(txt){
@@ -139,7 +149,6 @@
   const anoAtual = () => new Date().getFullYear();
 
   function sortFluxo(cats){
-    // Receita -> CMV -> outras; dentro do grupo, por nome
     const pri = c => {
       const cc = (c.centroDeCusto||'').toLowerCase();
       if (cc==='receita') return 0;
@@ -153,9 +162,7 @@
     });
   }
 
-  // ===== UI =====
   function buildHeaders(){
-    // acrescenta 12 colunas de meses
     for (let m=1;m<=12;m++){
       const th = document.createElement('th');
       th.textContent = mesesPt[m-1];
@@ -185,7 +192,6 @@
       tbody.appendChild(tr);
       return;
     }
-
     categorias.forEach(cat => {
       const tr = document.createElement('tr');
 
@@ -215,23 +221,25 @@
     }
   }
 
-  // ===== Data =====
   async function fetchCategorias(){
+    if (!db){ showDiag('Firebase não inicializado.', 'err'); return []; }
     try{
-      const snap = await get(ref(db, 'financeiro/categorias'));
+      const snap = await db.ref('financeiro/categorias').once('value');
       const val = snap.val() || {};
       const cats = Object.keys(val).map(id => ({ id, ...val[id] }));
+      clearDiag();
       return sortFluxo(cats);
     }catch(err){
       console.error(err);
-      showDiag('Erro ao ler categorias do Firebase. Verifique conexão/permite leitura em financeiro/categorias.', 'err');
+      showDiag('Erro ao ler categorias (regras de leitura/ conexão).', 'err');
       return [];
     }
   }
 
   async function loadYearData(year){
+    if (!db) return;
     try{
-      const snap = await get(ref(db, `financeiro/consolidado/${year}`));
+      const snap = await db.ref(`financeiro/consolidado/${year}`).once('value');
       const dados = snap.val() || {};
       document.querySelectorAll('[id^="v_"]').forEach(td => td.textContent = '—');
       Object.keys(dados).forEach(mes=>{
@@ -247,38 +255,29 @@
       clearDiag();
     }catch(err){
       console.error(err);
-      showDiag('Erro ao carregar valores do ano selecionado.', 'err');
+      showDiag('Erro ao carregar valores do ano.', 'err');
     }
   }
 
   async function onImportClick(mes){
     const st = document.getElementById(`st_${mes}`);
     st.textContent = '';
+    if (!db){ st.innerHTML = '<span class="err">Firebase não inicializado.</span>'; return; }
 
     const fileEl = document.getElementById(`file_${mes}`);
     const file = fileEl.files && fileEl.files[0];
-    if (!file){
-      st.innerHTML = '<span class="err">Selecione um CSV.</span>';
-      return;
-    }
-    const year = Number(anoSelect.value);
+    if (!file){ st.innerHTML = '<span class="err">Selecione um CSV.</span>'; return; }
 
-    // Lê CSV
+    const year = Number(anoSelect.value);
     const text = await file.text();
     const { rows, err } = parseCSV(text);
-    if (err){
-      st.innerHTML = `<span class="err">${err}</span>`;
-      return;
-    }
-    if (!rows.length){
-      st.innerHTML = '<span class="err">CSV sem linhas válidas.</span>';
-      return;
-    }
+    if (err){ st.innerHTML = `<span class="err">${err}</span>`; return; }
+    if (!rows.length){ st.innerHTML = '<span class="err">CSV sem linhas válidas.</span>'; return; }
 
-    // Mapa nome->categoria do DB
+    // mapa nome->categoria
     let allCats = {};
     try{
-      const snapCats = await get(ref(db, 'financeiro/categorias'));
+      const snapCats = await db.ref('financeiro/categorias').once('value');
       allCats = snapCats.val() || {};
     }catch(e){
       console.error(e);
@@ -291,7 +290,6 @@
       if (nome) nomeToCat[nome] = { id, ...allCats[id] };
     });
 
-    // Validação de nomes
     const desconhecidas = [];
     const normalizadas = rows.map(r=>{
       const key = r.categoria.trim().toLowerCase();
@@ -305,7 +303,6 @@
       return;
     }
 
-    // Updates
     const updates = {};
     normalizadas.forEach(it=>{
       const base = `financeiro/consolidado/${year}/${mes}/${it.cat.id}`;
@@ -313,9 +310,8 @@
     });
 
     try{
-      await update(ref(db), updates);
+      await db.ref().update(updates);
       st.innerHTML = `<span class="ok">Importado com sucesso (${rows.length} linhas).</span>`;
-      // atualiza grade visível
       normalizadas.forEach(it=>{
         const td = document.getElementById(`v_${it.cat.id}_${mes}`);
         if (td) td.textContent = fmt(it.valor);
@@ -326,20 +322,15 @@
     }
   }
 
-  // ===== init =====
   (async function init(){
     fillYearOptions();
     buildHeaders();
-
-    const categorias = await fetchCategorias();   // dinâmicas (somente nome)
+    const categorias = await fetchCategorias();
     buildBody(categorias);
-
     await loadYearData(Number(anoSelect.value));
-
-    anoSelect.addEventListener('change', async ()=>{
-      await loadYearData(Number(anoSelect.value));
-    });
+    anoSelect.addEventListener('change', ()=> loadYearData(Number(anoSelect.value)));
   })();
+})();
 </script>
 </body>
 </html>
