@@ -42,7 +42,7 @@
     text-align:left; white-space:nowrap;
   }
 
-  /* 2ª coluna: “Consolidado no Ano” fixa também */
+  /* 2ª coluna: “Consolidado (Ano)” fixa também */
   .fx th.year, .fx td.year {
     position:sticky; left:420px; z-index:2;
     background:#fafafa;
@@ -56,17 +56,17 @@
   .pct { color:#475569; font-size:11.2px; display:block; }
 
   /* Destaques por grupo */
-  .grp-receita   > td.ind { background:#ecfdf5; font-weight:700; }   /* verde claro */
-  .grp-cmv       > td.ind { background:#fff7ed; font-weight:700; }   /* laranja claro */
-  .grp-despesa-variavel > td.ind { background:#fef9c3; font-weight:700; } /* amarelo claro */
-  .grp-despesa-fixa     > td.ind { background:#fef2f2; font-weight:700; }  /* vermelho claro */
-  .grp-investimento     > td.ind { background:#e0f2fe; font-weight:700; }  /* azul claro */
-  .grp-retirada         > td.ind { background:#e9d5ff; font-weight:700; }  /* roxo claro */
-  .grp-outros           > td.ind { background:#f1f5f9; font-weight:700; }  /* cinza claro */
+  .grp-receita              > td.ind { background:#ecfdf5; font-weight:700; }
+  .grp-cmv                  > td.ind { background:#fff7ed; font-weight:700; }
+  .grp-despesa-variavel     > td.ind { background:#fef9c3; font-weight:700; }
+  .grp-despesa-fixa         > td.ind { background:#fde2e2; font-weight:700; }
+  .grp-investimento         > td.ind { background:#e0f2fe; font-weight:700; }
+  .grp-retirada             > td.ind { background:#e9d5ff; font-weight:700; }
+  .grp-outros               > td.ind { background:#f1f5f9; font-weight:700; }
 
   .totais-row > td.ind { background:#e5e7eb; font-weight:800; }
 
-  /* Passado/Hoje/Futuro */
+  /* Passado/Hoje/Futuro nas células de meses */
   .past   { background:#fbfbfb; }
   .today  { background:#fffbe6; }
   .future { background:#ffffff; }
@@ -97,7 +97,7 @@
       <label>Ano Fiscal:
         <select id="anoSelect"></select>
       </label>
-      <span class="badge">%</span> = valor ÷ <strong>Receita</strong> (do ano/ do mês) × 100
+      <span class="badge">% = valor ÷ <strong>Receita</strong> (do ano/ do mês) × 100</span>
       <span class="legend">
         <span><span class="dot past"></span>Passado</span>
         <span><span class="dot today"></span>Hoje</span>
@@ -260,7 +260,7 @@
     categorias.forEach(c=>{ if(!centrosSet.has(c.centro)) centrosSet.set(c.centro,true); });
     const centros = Array.from(centrosSet.keys());
 
-    // Cria headers de grupo
+    // Headers de grupo
     const headers = {}; // centro -> <tr>
     centros.forEach(c=>{
       const tr = buildGroupHeader(c, true);
@@ -268,14 +268,13 @@
       tbody.appendChild(tr);
     });
 
-    // Cria linhas de categorias
+    // Linhas de categorias
     const linhasCat = {}; // id -> {tr, centro}
     categorias.forEach(cat=>{
       const tr = buildRow(cat.nome, 'cat-row'); 
       tr.dataset.grp = slug(cat.centro);
       tbody.appendChild(tr);
       linhasCat[cat.id] = { tr, centro: cat.centro };
-      // insere cada cat logo depois do header do seu grupo:
       tbody.insertBefore(tr, headers[cat.centro].nextSibling);
     });
 
@@ -305,28 +304,10 @@
     const recAno = sum(recArr);
     const recMes = m => num(recArr[m-1]);
 
-    // Preencher headers de grupo com valor e %
- (ano e mês)
+    // Preencher headers de grupo (valor + % no ano e no mês)
     centros.forEach(c=>{
       const tr = headers[c];
       const arr = grpSums[c] || initArr();
-      const anoVal = sum(arr);
-
-      // Consolidado no ano (valor + % sobre Receita do ano)
-      setCellValueWithPct(tr.children[1], anoVal, recAno);
-
-      // Meses
-      for (let m=1;m<=12;m++){
-        const td = tr.children[m+1];
-        paintCell(td, m, anoSel);
-        setCellValueWithPct(td, arr[m-1], recMes(m));
-      }
-    });
-
-    // Preencher linhas de categorias
-    categorias.forEach(cat=>{
-      const tr = linhasCat[cat.id].tr;
-      const arr = catSums[cat.id] || initArr();
       const anoVal = sum(arr);
 
       // Ano
@@ -340,7 +321,22 @@
       }
     });
 
-    // Linha Resultado
+    // Categorias
+    categorias.forEach(cat=>{
+      const tr = linhasCat[cat.id].tr;
+      const arr = catSums[cat.id] || initArr();
+      const anoVal = sum(arr);
+
+      setCellValueWithPct(tr.children[1], anoVal, recAno);
+
+      for (let m=1;m<=12;m++){
+        const td = tr.children[m+1];
+        paintCell(td, m, anoSel);
+        setCellValueWithPct(td, arr[m-1], recMes(m));
+      }
+    });
+
+    // Resultado final
     const trRes = buildRow('Resultado', 'totais-row');
     tbody.appendChild(trRes);
 
@@ -361,16 +357,17 @@
     const resAno = sum(resArr);
     setCellValueWithPct(trRes.children[1], resAno, recAno);
 
-    // Ativa colapsar/expandir
     attachToggle();
   }
 
   // Init
   (async function init(){
+    // anos
     for(let y=anoAtual-2; y<=anoAtual+1; y++){
       const opt=document.createElement('option'); opt.value=y; opt.textContent=y;
       if(y===anoAtual) opt.selected=true; anoSelect.appendChild(opt);
     }
+    // meses no header
     for (let m=1;m<=12;m++){
       const th=document.createElement('th'); th.textContent=mesesPt[m-1]; hdrMeses.appendChild(th);
     }
