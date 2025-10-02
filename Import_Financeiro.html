@@ -9,65 +9,43 @@
 <link rel="stylesheet" href="assets/menu-styles.css"/>
 
 <style>
-  :root{
-    --cat-w: 170px;   /* largura da coluna Categoria (metade) */
-    --mon-w: 120px;   /* largura de cada mês */
-  }
-
-  .main-content { padding:16px 20px; }
-  h1 { margin:6px 0 10px; }
-  .sub { color:#666; font-size:13px; margin-bottom:12px; }
-
-  .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
-  .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
-  .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
-  .diag.ok   { background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; }
-
-  .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-  .btn { padding:6px 10px; border:1px solid #ddd; background:#fff; border-radius:8px; font-size:12px; cursor:pointer; }
-  .btn.primary { background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
-
-  .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
-
-  /* Tabela principal */
-  table.fin { width:100%; border-collapse:collapse; table-layout:fixed; min-width: calc(var(--cat-w) + 12*var(--mon-w)); background:#fff; }
-  .fin th, .fin td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
-  .fin thead th { background:#fff7ec; color:#000; font-weight:600; }
-
-  /* Coluna Categoria (fixa e compacta) */
-  .fin th.cat, .fin td.cat {
-    position:sticky; left:0; z-index:2;
-    background:#fafafa;
+  :root{ --cat-w:170px; --mon-w:120px; }
+  .main-content{ padding:16px 20px; }
+  h1{ margin:6px 0 10px; }
+  .sub{ color:#666; font-size:13px; margin-bottom:12px; }
+  .diag{ margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
+  .diag.warn{ background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+  .diag.err{  background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+  .diag.ok{   background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; }
+  .controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .btn{ padding:6px 10px; border:1px solid #ddd; background:#fff; border-radius:8px; font-size:12px; cursor:pointer; }
+  .btn.primary{ background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
+  .table-wrap{ overflow-x:auto; border:1px solid #eee; border-radius:8px; }
+  table.fin{ width:100%; border-collapse:collapse; table-layout:fixed; min-width:calc(var(--cat-w)+12*var(--mon-w)); background:#fff; }
+  .fin th,.fin td{ border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
+  .fin thead th{ background:#fff7ec; color:#000; font-weight:600; }
+  .fin th.cat,.fin td.cat{
+    position:sticky; left:0; z-index:2; background:#fafafa;
     width:var(--cat-w); min-width:var(--cat-w); max-width:var(--cat-w);
     text-align:left; white-space:normal;
   }
-
-  /* Demais colunas (meses) */
-  .fin th.mon, .fin td.mon { width:var(--mon-w); }
-
-  .num { text-align:right; }
-
-  /* Faixa de import por mês */
-  .import-row td { background:#f8fafc; }
-
-  /* Cards dos campos do mês */
-  .cards { display:grid; grid-template-columns: repeat(12, minmax(var(--mon-w), 1fr)); gap:8px; overflow-x:auto; }
-  .card { border:1px solid #e5e7eb; border-radius:10px; padding:8px; background:#fff; min-width:var(--mon-w); }
-  .card h4 { margin:0 0 6px; font-size:12px; font-weight:700; text-align:center; }
-  .form-col { display:flex; flex-direction:column; gap:6px; }
-  .field { display:flex; align-items:center; justify-content:space-between; gap:6px; }
-  .field label { font-size:11.5px; color:#555; }
-  .field input { width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:12.5px; text-align:right; }
-  .card .btn { width:100%; margin-top:4px; }
-
-  .help { font-size:12px; color:#475569; }
-  .merr { color:#991b1b; font-size:12px; }
-  .mok  { color:#065f46; font-size:12px; }
+  .fin th.mon,.fin td.mon{ width:var(--mon-w); }
+  .num{ text-align:right; }
+  .import-row td{ background:#f8fafc; }
+  .cards{ display:grid; grid-template-columns:repeat(12, minmax(var(--mon-w),1fr)); gap:8px; overflow-x:auto; }
+  .card{ border:1px solid #e5e7eb; border-radius:10px; padding:8px; background:#fff; min-width:var(--mon-w); }
+  .card h4{ margin:0 0 6px; font-size:12px; font-weight:700; text-align:center; }
+  .form-col{ display:flex; flex-direction:column; gap:6px; }
+  .field{ display:flex; align-items:center; gap:6px; }
+  .field label{ font-size:11.5px; color:#555; }
+  .field input{ width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:12.5px; text-align:right; }
+  .card .btn{ width:100%; margin-top:4px; }
+  .help{ font-size:12px; color:#475569; }
+  .merr{ color:#991b1b; font-size:12px; }
+  .mok{  color:#065f46; font-size:12px; }
 </style>
 
 <script defer src="assets/menu.js"></script>
-
-<!-- Firebase v8 -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
@@ -76,23 +54,20 @@
 
   <div class="main-content">
     <h1>Importar Consolidado por Categoria</h1>
-    <div class="sub">Importa valores mensais por <strong>categoria</strong>. Linhas de cabeçalho/subtotal (ex.: “Entradas”, “Saídas”, “Total”) são automaticamente ignoradas.</div>
+    <div class="sub">
+      Importa valores mensais por <strong>categoria</strong>.
+      Linhas de cabeçalho/subtotal (ex.: “Entradas”, “Saídas”, “Total”) são ignoradas.
+    </div>
     <div id="diag" class="diag warn"></div>
 
     <div class="controls">
-      <label>Ano Fiscal:
-        <select id="anoSelect"></select>
-      </label>
+      <label>Ano Fiscal: <select id="anoSelect"></select></label>
       <span class="help">CSV: <code>categoria;valor</code> ou <code>categoria,valor</code> — aceita <em>24.671,87</em> ou <em>24671.87</em></span>
     </div>
 
     <div class="table-wrap">
       <table class="fin" id="tbl">
-        <thead>
-          <tr id="hdr">
-            <th class="cat">Categoria</th>
-          </tr>
-        </thead>
+        <thead><tr id="hdr"><th class="cat">Categoria</th></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
@@ -104,342 +79,267 @@
 <script>
 (function(){
   const diag = document.getElementById('diag');
-  const showDiag = (msg, type="warn") => { diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display='block'; };
-  const clearDiag = () => { diag.style.display='none'; diag.textContent=''; };
+  const showDiag = (msg,type="warn")=>{ diag.className=`diag ${type}`; diag.textContent=msg; diag.style.display='block'; };
+  const clearDiag = ()=>{ diag.style.display='none'; diag.textContent=''; };
 
-  // Firebase
-  try {
+  try{
     const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d",
-      measurementId: "G-VTNGJR7YRL"
+      apiKey:"AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain:"lepanapp.firebaseapp.com",
+      databaseURL:"https://lepanapp-default-rtdb.firebaseio.com",
+      projectId:"lepanapp",
+      storageBucket:"lepanapp.appspot.com",
+      messagingSenderId:"542989944344",
+      appId:"1:542989944344:web:576e28199960fd5440a56d",
+      measurementId:"G-VTNGJR7YRL"
     };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  } catch(e){ console.error(e); showDiag('Falha ao inicializar Firebase.', 'err'); }
-  const db = firebase.apps.length ? firebase.database() : null;
+    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  }catch(e){ console.error(e); showDiag('Falha ao inicializar Firebase.','err'); }
+  const db = firebase.apps.length? firebase.database(): null;
 
-  const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-  const hoje = new Date(); const mesAtual = hoje.getMonth()+1; const anoAtual = hoje.getFullYear();
+  const mesesPt=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const hoje=new Date(); const mesAtual=hoje.getMonth()+1; const anoAtual=hoje.getFullYear();
 
-  const anoSelect = document.getElementById('anoSelect');
-  const hdr = document.getElementById('hdr');
-  const tbody = document.getElementById('tbody');
-  const cards = document.getElementById('cards');
+  const anoSelect=document.getElementById('anoSelect');
+  const hdr=document.getElementById('hdr');
+  const tbody=document.getElementById('tbody');
+  const cards=document.getElementById('cards');
 
-  const fmtBR = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const fmtBR=n=>Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
   function parseBR(v){
-    if (v===null || v===undefined) return 0;
-    if (typeof v !== 'string') return Number(v)||0;
-    let s = v.trim();
-    if (!s) return 0;
-    s = s.replace(/[R$\s]/gi,'');
-    if (s.includes(',') && s.includes('.')) { s = s.replace(/\./g,'').replace(',', '.'); }
-    else if (s.includes(','))             { s = s.replace(',', '.'); }
-    s = s.replace(/[^\d\.\-]/g,'');
+    if(v==null) return 0;
+    if(typeof v!=='string') return Number(v)||0;
+    let s=v.trim(); if(!s) return 0;
+    s=s.replace(/[R$\s]/gi,'');
+    if(s.includes(',')&&s.includes('.')) s=s.replace(/\./g,'').replace(',', '.');
+    else if(s.includes(',')) s=s.replace(',', '.');
+    s=s.replace(/[^\d\.\-]/g,'');
     return Number(s)||0;
   }
 
-  // ========= NOVO: nomes a ignorar (cabeçalhos/subtotais) =========
-  const SKIP_NAMES = new Set([
-    'entradas','entrada','saidas','saidas-','saída','saidas-subtotal','saidas-total',
-    'saidas subtotal','saidas total','saidas (subtotal)','saidas (total)',
-    'categoria','categorias','grupo','grupos','resumo',
-    'total','totais','subtotal','subtotais'
-  ].map(s=>normalizeName(s)));
-
+  // —— normalização & skip
+  const SKIP_NAMES=new Set(['entradas','entrada','saidas','saida','categoria','categorias','grupo','grupos','resumo','total','totais','subtotal','subtotais']);
   function normalizeName(s){
-    return String(s||'')
-      .replace(/^\ufeff/, '')                    // remove BOM
-      .toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // tira acentos
-      .replace(/&/g,'e')
-      .replace(/[^\w\s]/g,' ')
-      .replace(/\s+/g,' ')
-      .trim();
+    return String(s||'').replace(/^\ufeff/,'').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/&/g,'e').replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();
   }
-
-  // Máscara leve: formata ao sair do campo; permite digitar livre
-  function enhanceMoneyInputs(root){
-    root.querySelectorAll('input[data-money="1"]').forEach(inp=>{
-      inp.addEventListener('blur', ()=>{
-        const n = parseBR(inp.value);
-        inp.value = fmtBR(n);
-      }, {passive:true});
-    });
+  function softKey(s){
+    let k=normalizeName(s);
+    k=k.replace(/\b(de|da|do|em|para|por|no|na|um|uma|os|as|o|a|e)\b/g,' ').replace(/\s+/g,' ').trim();
+    k=k.replace(/\b(\w+?)s\b/g,'$1'); // plural simples
+    return k;
   }
-
-  async function getCategorias(){
-    const snap = await db.ref('financeiro/categorias').once('value');
-    const v = snap.val() || {};
-    // ordem por nome
-    return Object.keys(v).map(id => ({ id, nome: v[id]?.nome || '(sem nome)' }))
-                         .sort((a,b)=> a.nome.localeCompare(b.nome, 'pt-BR'));
-  }
-
-  async function getConsolidado(ano){
-    const snap = await db.ref(`financeiro/consolidado/${ano}`).once('value');
-    return snap.val() || {};
+  function isHeaderOrSubtotal(name){
+    const nk=normalizeName(name);
+    if(!nk) return true;
+    if(SKIP_NAMES.has(nk)) return true;
+    if(/^(total|sub|entrada|entradas|saida|saidas|categoria|categorias|grupo|grupos|resumo)\b/.test(nk)) return true;
+    return false;
   }
 
   function buildHeader(){
-    hdr.innerHTML = '<th class="cat">Categoria</th>';
-    for(let m=1;m<=12;m++){
-      const th = document.createElement('th');
-      th.className = 'mon';
-      th.textContent = mesesPt[m-1];
-      hdr.appendChild(th);
-    }
+    hdr.innerHTML='<th class="cat">Categoria</th>';
+    for(let m=1;m<=12;m++){ const th=document.createElement('th'); th.className='mon'; th.textContent=mesesPt[m-1]; hdr.appendChild(th); }
+  }
+
+  async function getCategorias(){
+    const snap=await db.ref('financeiro/categorias').once('value');
+    const v=snap.val()||{};
+    return Object.keys(v).map(id=>({id, nome:v[id]?.nome||'(sem nome)'}))
+      .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  }
+  async function getConsolidado(ano){
+    const snap=await db.ref(`financeiro/consolidado/${ano}`).once('value');
+    return snap.val()||{};
   }
 
   function buildRows(categorias){
-    tbody.innerHTML = '';
-    // Linha de Import por mês
-    const trImport = document.createElement('tr');
-    trImport.className='import-row';
-    const td0 = document.createElement('td'); td0.className='cat'; td0.innerHTML = '<b>Importar por mês</b>';
-    trImport.appendChild(td0);
-
-    for (let m=1;m<=12;m++){
-      const td = document.createElement('td'); td.className='mon';
-      td.innerHTML = `
+    tbody.innerHTML='';
+    const trImport=document.createElement('tr'); trImport.className='import-row';
+    const td0=document.createElement('td'); td0.className='cat'; td0.innerHTML='<b>Importar por mês</b>'; trImport.appendChild(td0);
+    for(let m=1;m<=12;m++){
+      const td=document.createElement('td'); td.className='mon';
+      td.innerHTML=`
         <input type="file" accept=".csv" id="file-${m}" style="width:100%; font-size:12px; margin-bottom:4px;">
         <button class="btn primary" data-import="${m}" style="width:100%;">Importar</button>
-        <div id="msg-${m}" class="merr"></div>
-      `;
+        <div id="msg-${m}" class="merr"></div>`;
       trImport.appendChild(td);
     }
     tbody.appendChild(trImport);
 
-    // Demais linhas (categorias)
     categorias.forEach(c=>{
-      const tr = document.createElement('tr');
-      const tdCat = document.createElement('td'); tdCat.className='cat'; tdCat.textContent = c.nome;
-      tr.appendChild(tdCat);
-      for(let m=1;m<=12;m++){
-        const td = document.createElement('td'); td.className='mon num'; td.dataset.cat = c.id; td.dataset.mes=m; td.textContent = '—';
-        tr.appendChild(td);
-      }
+      const tr=document.createElement('tr');
+      const tdCat=document.createElement('td'); tdCat.className='cat'; tdCat.textContent=c.nome; tr.appendChild(tdCat);
+      for(let m=1;m<=12;m++){ const td=document.createElement('td'); td.className='mon num'; td.dataset.cat=c.id; td.dataset.mes=m; td.textContent='—'; tr.appendChild(td); }
       tbody.appendChild(tr);
     });
   }
 
   async function preencherValores(anoSel){
-    const dados = await getConsolidado(anoSel);
-    const cellMap = {}; // key `${id}-${m}` -> td
+    const dados=await getConsolidado(anoSel);
     Array.from(tbody.querySelectorAll('td.mon.num')).forEach(td=>{
-      cellMap[`${td.dataset.cat}-${td.dataset.mes}`] = td;
-    });
-
-    Object.keys(dados||{}).forEach(m=>{
-      const porCat = dados[m] || {};
-      Object.keys(porCat).forEach(id=>{
-        const td = cellMap[`${id}-${m}`];
-        if (td){
-          const v = Number(porCat[id]?.valor)||0;
-          td.textContent = v ? fmtBR(v) : '—';
-        }
-      });
+      const v=Number(dados?.[td.dataset.mes]?.[td.dataset.cat]?.valor||0);
+      td.textContent= v? fmtBR(v) : '—';
     });
   }
 
-  // ========= NOVO: parser que detecta se há valor “de verdade” na linha =========
   function parseCsv(text){
-    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-    const rows = [];
-
-    for (const raw of lines){
-      let line = raw.replace(/^\ufeff/,''); // BOM
-      // remove aspas no início/fim
-      if (line.startsWith('"') && line.endsWith('"')) line = line.slice(1,-1);
-
-      // tenta ; depois ,
-      let parts = line.split(';');
-      if (parts.length < 2) parts = line.split(',');
-
-      // pode haver vírgulas no número; junta de volta tudo após a 1ª coluna
-      const categoria = (parts[0]||'').trim();
-      const valorRaw  = (parts.slice(1).join(',')||'').trim();
-
-      // “tem valor?” = há dígitos
-      const hasValor = /[0-9]/.test(valorRaw);
-      const valor = hasValor ? parseBR(valorRaw) : 0;
-
-      rows.push({ categoria, valor, hasValor, valorRaw });
+    const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    const rows=[];
+    for(let raw of lines){
+      raw=raw.replace(/^\ufeff/,'');
+      let parts=raw.split(';'); if(parts.length<2) parts=raw.split(',');
+      const categoria=(parts[0]||'').trim();
+      const valorRaw=(parts.slice(1).join(',')||'').trim();
+      const hasValor=/[0-9]/.test(valorRaw);
+      const valor=hasValor? parseBR(valorRaw): 0;
+      rows.push({categoria, valor, hasValor});
     }
     return rows;
   }
 
-  // ========= NOVO: ignora cabeçalhos, subtotais e linhas vazias =========
-  function isHeaderOrSubtotal(catName){
-    const nk = normalizeName(catName);
-    if (!nk) return true; // em branco
-    if (SKIP_NAMES.has(nk)) return true;
-    // match amplo p/ casos corrompidos: começa com “total”, “entrada”, “saida”, etc.
-    if (/^(total|sub|entrada|entradas|saida|saidas|categoria|categorias|grupo|grupos|resumo)\b/.test(nk)) return true;
-    return false;
-  }
-
   async function salvarConsolidado(ano, mes, items, catIndex){
-    const desconhecidas = [];
-    const byId = {};
+    const desconhecidas=[]; const ignoradas=[]; const mapeadas=[];
+    const byId={};
 
-    items.forEach(it=>{
-      const nk = normalizeName(it.categoria);
+    for(const it of items){
+      if(isHeaderOrSubtotal(it.categoria) && !it.hasValor){ ignoradas.push(it.categoria); continue; }
+      if(isHeaderOrSubtotal(it.categoria) &&  it.hasValor){ ignoradas.push(it.categoria); continue; }
 
-      // Pula cabeçalhos/subtotais/linhas vazias SEM valor
-      if (isHeaderOrSubtotal(it.categoria) && !it.hasValor) return;
-
-      // Se tem valor mas é header/subtotal: ignora silenciosamente (muitos CSVs trazem subtotais)
-      if (isHeaderOrSubtotal(it.categoria) && it.hasValor) return;
-
-      // Aqui esperamos categoria válida
-      const cid = catIndex[nk];
-      if (!cid){
-        // Só acusa erro se realmente há um valor numérico associado
-        if (it.hasValor && Math.abs(it.valor) > 0){
-          desconhecidas.push(it.categoria || '(vazia)');
-        }
-        return;
+      const cid = catIndex[normalizeName(it.categoria)] || catIndex[softKey(it.categoria)];
+      if(!cid){
+        if(it.hasValor && Math.abs(it.valor)>0) desconhecidas.push(it.categoria);
+        continue;
       }
-      byId[cid] = (byId[cid]||0) + Number(it.valor||0);
-    });
-
-    if (desconhecidas.length){
-      // mostra só os 10 primeiros para não poluir
-      const preview = desconhecidas.slice(0,10).join(', ');
-      throw new Error(`Categorias não encontradas (amostra): ${preview}${desconhecidas.length>10?` … (+${desconhecidas.length-10})`:''}`);
+      mapeadas.push(it.categoria);
+      byId[cid]=(byId[cid]||0)+Number(it.valor||0);
     }
 
-    // salva
-    const updates = {};
+    if(desconhecidas.length){
+      const preview=desconhecidas.slice(0,8).join(', ');
+      const err=new Error(`Categorias desconhecidas: ${preview}${desconhecidas.length>8?` … (+${desconhecidas.length-8})`:''}. Nada foi salvo.`);
+      err.__summary={mapeadas, ignoradas, desconhecidas}; throw err;
+    }
+    if(!Object.keys(byId).length){
+      const err=new Error('Nada importado. Verifique o CSV e os nomes de categorias.');
+      err.__summary={mapeadas, ignoradas, desconhecidas}; throw err;
+    }
+
+    const updates={};
     Object.keys(byId).forEach(cid=>{
-      updates[`financeiro/consolidado/${ano}/${mes}/${cid}/valor`] = Number(byId[cid]);
+      updates[`financeiro/consolidado/${ano}/${mes}/${cid}/valor`]=Number(byId[cid]);
     });
     await db.ref().update(updates);
-    return byId;
+
+    const total=Object.values(byId).reduce((a,b)=>a+b,0);
+    return {byId,total,mapeadas,ignoradas,desconhecidas};
   }
 
   function buildCardsCamposMes(anoSel){
-    cards.innerHTML = '';
-    for (let m=1;m<=12;m++){
-      const div = document.createElement('div');
-      div.className='card';
-      div.innerHTML = `
+    cards.innerHTML='';
+    for(let m=1;m<=12;m++){
+      const div=document.createElement('div'); div.className='card';
+      div.innerHTML=`
         <h4>${mesesPt[m-1]}</h4>
         <div class="form-col" data-mes="${m}">
-          <div class="field"><label>Custo Produto Mês (R$)</label><input data-money="1" data-key="custoProdutoMes"    placeholder="0,00"></div>
-          <div class="field"><label>Valor Estoque (R$)</label>     <input data-money="1" data-key="valorEstoque"       placeholder="0,00"></div>
-          <div class="field"><label>Compra Produto Mês (R$)</label><input data-money="1" data-key="compraProdutoMes"   placeholder="0,00"></div>
+          <div class="field"><label>Custo Produto Mês (R$)</label><input data-money="1" data-key="custoProdutoMes" placeholder="0,00"></div>
+          <div class="field"><label>Valor Estoque (R$)</label><input data-money="1" data-key="valorEstoque" placeholder="0,00"></div>
+          <div class="field"><label>Compra Produto Mês (R$)</label><input data-money="1" data-key="compraProdutoMes" placeholder="0,00"></div>
           <div class="field"><label>Perda não Operacional (R$)</label><input data-money="1" data-key="perdaNaoOperacional" placeholder="0,00"></div>
           <div class="field"><label>Contas a Pagar (Compras) (R$)</label><input data-money="1" data-key="contasAPagarCompras" placeholder="0,00"></div>
           <button class="btn primary" data-save="${m}">Salvar</button>
           <div class="help" id="h-${m}"></div>
-        </div>
-      `;
+        </div>`;
       cards.appendChild(div);
     }
     enhanceMoneyInputs(cards);
   }
 
   async function carregarCamposMes(anoSel){
-    const snap = await db.ref(`financeiro/movimentacao/${anoSel}`).once('value');
-    const v = snap.val() || {};
-    for (let m=1;m<=12;m++){
-      const box = cards.querySelector(`.form-col[data-mes="${m}"]`);
-      const mes = v[m] || {};
+    const snap=await db.ref(`financeiro/movimentacao/${anoSel}`).once('value');
+    const v=snap.val()||{};
+    for(let m=1;m<=12;m++){
+      const box=cards.querySelector(`.form-col[data-mes="${m}"]`);
+      const mes=v[m]||{};
       box.querySelectorAll('input[data-money="1"]').forEach(inp=>{
-        const key = inp.dataset.key;
-        inp.value = fmtBR( Number(mes[key]||0) );
+        inp.value=fmtBR(Number(mes[inp.dataset.key]||0));
       });
     }
   }
 
-  async function salvarCamposMes(anoSel, mes, box){
-    const data = {};
-    box.querySelectorAll('input[data-money="1"]').forEach(inp=>{
-      data[inp.dataset.key] = parseBR(inp.value);
+  function enhanceMoneyInputs(root){
+    root.querySelectorAll('input[data-money="1"]').forEach(inp=>{
+      inp.addEventListener('blur', ()=>{ const n=parseBR(inp.value); inp.value=fmtBR(n); }, {passive:true});
     });
-    await db.ref(`financeiro/movimentacao/${anoSel}/${mes}`).set(data);
   }
 
   async function carregar(anoSel){
-    clearDiag();
-    if (!db){ showDiag('Firebase não inicializado.', 'err'); return; }
+    clearDiag(); if(!db){ showDiag('Firebase não inicializado.','err'); return; }
 
-    // monta header meses
     buildHeader();
-
-    // lê categorias e monta linhas
-    const categorias = await getCategorias();
+    const categorias=await getCategorias();
     buildRows(categorias);
 
-    // index por nome normalizado
-    const catIndex = {};
-    categorias.forEach(c=> catIndex[ normalizeName(c.nome) ] = c.id );
+    // índice de categorias (forte + tolerante)
+    const catIndex={};
+    categorias.forEach(c=>{
+      catIndex[ normalizeName(c.nome) ]=c.id;
+      catIndex[ softKey(c.nome) ]=c.id;
+    });
 
-    // preenche valores existentes
+    // valores atuais
     await preencherValores(anoSel);
 
-    // handlers de import
+    // handler de import
     tbody.querySelectorAll('button[data-import]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
-        const mes = Number(btn.dataset.import);
-        const file = (document.getElementById(`file-${mes}`) || {}).files?.[0];
-        const msg = document.getElementById(`msg-${mes}`);
-        msg.textContent = '';
+        const mes=Number(btn.dataset.import);
+        const file=(document.getElementById(`file-${mes}`)||{}).files?.[0];
+        const box=document.getElementById(`msg-${mes}`); box.textContent='';
         try{
-          if (!file) throw new Error('Escolha um arquivo CSV.');
-          const text = await file.text(); // se vier ISO-8859-1, ainda conseguimos ignorar cabeçalhos corrompidos
-          const items = parseCsv(text);
-          if (!items.length) throw new Error('CSV vazio.');
-          const saved = await salvarConsolidado(anoSel, mes, items, catIndex);
-          // atualiza tela do mês
-          Object.keys(saved).forEach(cid=>{
-            const td = tbody.querySelector(`td.mon.num[data-cat="${cid}"][data-mes="${mes}"]`);
-            if (td) td.textContent = fmtBR(saved[cid]);
-          });
-          msg.className='mok'; msg.textContent='Importado com sucesso.';
+          if(!file) throw new Error('Escolha um arquivo CSV.');
+          const text=await file.text();              // funciona com UTF-8/ANSI
+          const items=parseCsv(text);
+          if(!items.length) throw new Error('CSV vazio.');
+
+          const res=await salvarConsolidado(Number(anoSelect.value), mes, items, catIndex);
+
+          // recarrega o mês inteiro depois de salvar
+          await preencherValores(Number(anoSelect.value));
+
+          box.className='mok';
+          box.textContent=`Importado: ${res.mapeadas.length} linha(s), Total R$ ${fmtBR(res.total)}. `+
+                           (res.ignoradas.length?`Ignoradas: ${res.ignoradas.length}. `:'');
         }catch(e){
           console.error(e);
-          msg.className='merr'; msg.textContent = e.message || 'Falha ao importar.';
+          box.className='merr';
+          box.textContent=e.message||'Falha ao importar.';
         }
       });
     });
 
-    // monta campos do mês
+    // cards
     buildCardsCamposMes(anoSel);
     await carregarCamposMes(anoSel);
-
-    // salvar campos do mês
     cards.querySelectorAll('button[data-save]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
-        const m = Number(btn.dataset.save);
-        const box = cards.querySelector(`.form-col[data-mes="${m}"]`);
-        const hint = document.getElementById(`h-${m}`);
-        hint.textContent='';
+        const m=Number(btn.dataset.save);
+        const box=cards.querySelector(`.form-col[data-mes="${m}"]`);
+        const hint=document.getElementById(`h-${m}`); hint.textContent='';
         try{
-          await salvarCamposMes(anoSel, m, box);
+          const data={}; box.querySelectorAll('input[data-money="1"]').forEach(inp=> data[inp.dataset.key]=parseBR(inp.value));
+          await db.ref(`financeiro/movimentacao/${anoSel}/${m}`).set(data);
           hint.className='mok'; hint.textContent='Salvo.';
-        }catch(e){
-          hint.className='merr'; hint.textContent='Erro ao salvar.';
-        }
+        }catch(e){ hint.className='merr'; hint.textContent='Erro ao salvar.'; }
       });
     });
   }
 
-  // init
   (async function init(){
-    for(let y=anoAtual-2; y<=anoAtual+1; y++){
-      const opt=document.createElement('option'); opt.value=y; opt.textContent=y;
-      if(y===anoAtual) opt.selected=true; anoSelect.appendChild(opt);
-    }
+    for(let y=anoAtual-2;y<=anoAtual+1;y++){ const o=document.createElement('option'); o.value=y; o.textContent=y; if(y===anoAtual) o.selected=true; anoSelect.appendChild(o); }
     await carregar(Number(anoSelect.value));
-    anoSelect.addEventListener('change', ()=> carregar(Number(anoSelect.value)));
+    anoSelect.addEventListener('change', ()=>carregar(Number(anoSelect.value)));
   })();
 })();
 </script>
