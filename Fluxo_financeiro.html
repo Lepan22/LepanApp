@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fluxo Financeiro</title>
+
+<link rel="stylesheet" href="assets/base.css"/>
+<link rel="stylesheet" href="assets/menu-styles.css"/>
+
+<style>
+  .main-content { padding:16px 20px; }
+
+  .page-header h1 { margin:6px 0 6px; }
+  .page-header p  { margin:0 0 12px; color:#666; font-size:13px; }
+
+  .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
+  .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+  .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+  .diag.ok   { background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; }
+
+  .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .filters .btn { padding:6px 10px; border:1px solid #ddd; background:#fff; border-radius:8px; font-size:12px; cursor:pointer; }
+  .btn.primary { background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
+
+  .saldo-box { display:flex; align-items:center; gap:8px; }
+  .saldo-box input { width:140px; padding:6px 8px; border:1px solid #ddd; border-radius:6px; font-size:13px; text-align:right; }
+
+  .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
+
+  /* 1 col. 360 + 12 * 120 = 1.800 → min 1.900 */
+  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width:1900px; background:#fff; }
+  .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
+
+  .fx thead th { background:#fff7ec; color:#000; font-weight:600; }
+
+  /* Coluna dos indicadores (fixa e mais larga) */
+  .fx th.ind, .fx td.ind {
+    position:sticky; left:0; z-index:2;
+    background:#fafafa;
+    min-width:360px;
+    text-align:left;
+    white-space:nowrap;
+  }
+
+  /* Demais colunas (meses) estreitas e iguais */
+  .fx th:not(.ind), .fx td:not(.ind) { width:120px; }
+
+  .num { text-align:right; }
+  .sub { color:#6b7280; }
+  .strong { font-weight:600; }
+  .total { background:#f9fafb; font-weight:700; }
+
+  /* Passado / presente / futuro */
+  .past   { background:#fbfbfb; }
+  .today  { background:#fffbe6; }
+  .future { background:#ffffff; }
+
+  .legend { font-size:11.5px; color:#666; display:flex; gap:10px; align-items:center; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:3px; vertical-align:middle; margin-right:4px; }
+  .dot.past   { background:#f1f5f9; border:1px solid #e5e7eb; }
+  .dot.today  { background:#fff3c4; border:1px solid #fde68a; }
+  .dot.future { background:#ffffff; border:1px solid #e5e7eb; }
+</style>
+
+<script defer src="assets/menu.js"></script>
+
+<!-- Firebase v8 (sem módulos) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+  <div id="menuLateral" class="sidebar"></div>
+
+  <div class="main-content">
+    <div class="page-header">
+      <h1>Fluxo Financeiro</h1>
+      <p>Resumo mensal do fluxo <strong>passado, presente e futuro</strong> com base no consolidado por categoria e nos campos de movimentação do mês.</p>
+      <div id="diag" class="diag warn"></div>
+    </div>
+
+    <section class="filters">
+      <label>Ano Fiscal:
+        <select id="anoSelect"></select>
+      </label>
+
+      <div class="saldo-box">
+        Saldo Inicial:
+        <input id="inpSaldoInicial" type="number" step="0.01" placeholder="R$ 0,00"/>
+        <button id="btnSalvarSaldo" class="btn primary">Salvar saldo</button>
+        <span id="saldoMsg" class="sub"></span>
+      </div>
+
+      <span class="legend">
+        <span><span class="dot past"></span>Passado</span>
+        <span><span class="dot today"></span>Hoje</span>
+        <span><span class="dot future"></span>Futuro</span>
+      </span>
+    </section>
+
+    <div class="table-wrap">
+      <table class="fx" id="tblFluxo">
+        <thead>
+          <tr id="hdrMeses">
+            <th class="ind">Indicador</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const diag = document.getElementById('diag');
+  const showDiag = (msg, type="warn") => { diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display = 'block'; };
+  const clearDiag = () => { diag.style.display = 'none'; diag.textContent = ''; };
+
+  // Firebase (mesma config do projeto)
+  try {
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  } catch(e){
+    console.error(e); showDiag('Falha ao inicializar Firebase.', 'err');
+  }
+  const db = firebase.apps.length ? firebase.database() : null;
+
+  const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth()+1;
+  const anoAtual = hoje.getFullYear();
+
+  const anoSelect = document.getElementById('anoSelect');
+  const hdrMeses  = document.getElementById('hdrMeses');
+  const tbody     = document.getElementById('tbody');
+  const inpSaldoInicial = document.getElementById('inpSaldoInicial');
+  const btnSalvarSaldo  = document.getElementById('btnSalvarSaldo');
+  const saldoMsg        = document.getElementById('saldoMsg');
+
+  const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  function num(n){ n = Number(n); return isNaN(n) ? 0 : n; }
+
+  function normalizeCC(s){ return String(s||'').trim().toLowerCase(); }
+
+  function paintCell(td, m, anoSel){
+    const isTodayCol = (m===mesAtual && anoSel===anoAtual);
+    td.classList.add(isTodayCol ? 'today' : ( (anoSel<anoAtual || (anoSel===anoAtual && m<mesAtual)) ? 'past' : 'future'));
+  }
+
+  function buildHeader(){
+    hdrMeses.innerHTML = '<th class="ind">Indicador</th>';
+    for (let m=1;m<=12;m++){
+      const th = document.createElement('th');
+      th.textContent = mesesPt[m-1];
+      hdrMeses.appendChild(th);
+    }
+  }
+
+  function emptyRow(label, cls=''){
+    const tr = document.createElement('tr');
+    const th = document.createElement('td');
+    th.className = 'ind ' + cls;
+    th.textContent = label;
+    tr.appendChild(th);
+    for (let m=1;m<=12;m++){
+      const td = document.createElement('td'); td.className='num';
+      td.textContent = '—';
+      tr.appendChild(td);
+    }
+    return tr;
+  }
+
+  async function readSaldoInicial(ano){
+    try{
+      const snap = await db.ref(`financeiro/fluxo/${ano}/saldoInicial`).once('value');
+      return num(snap.val());
+    }catch(e){ console.error(e); return 0; }
+  }
+
+  async function saveSaldoInicial(ano, valor){
+    try{
+      await db.ref(`financeiro/fluxo/${ano}/saldoInicial`).set(num(valor));
+      saldoMsg.textContent = 'Saldo salvo.'; setTimeout(()=>saldoMsg.textContent='', 2000);
+    }catch(e){ console.error(e); saldoMsg.textContent='Erro ao salvar.'; }
+  }
+
+  async function fetchCategorias(){
+    try{
+      const snap = await db.ref('financeiro/categorias').once('value');
+      const val = snap.val() || {};
+      const byId = {};
+      Object.keys(val).forEach(id=> byId[id] = val[id] || {});
+      return byId;
+    }catch(e){ console.error(e); showDiag('Erro ao ler categorias.', 'err'); return {}; }
+  }
+
+  async function fetchConsolidado(ano){
+    try{
+      const snap = await db.ref(`financeiro/consolidado/${ano}`).once('value');
+      return snap.val() || {};
+    }catch(e){ console.error(e); return {}; }
+  }
+
+  async function fetchMov(ano){
+    try{
+      const snap = await db.ref(`financeiro/movimentacao/${ano}`).once('value');
+      return snap.val() || {};
+    }catch(e){ console.error(e); return {}; }
+  }
+
+  async function carregar(anoSel){
+    if (!db) return;
+
+    clearDiag();
+    buildHeader();
+    tbody.innerHTML = '';
+
+    // Estrutura das linhas
+    const rows = {
+      receita: emptyRow('Receita', 'strong'),
+      cmv: emptyRow('CMV', 'strong'),
+      desp: emptyRow('Despesas', 'strong'),
+      resop: emptyRow('Resultado Operacional', 'total'),
+
+      compra: emptyRow('Compra Produto Mês', 'sub'),
+      perda:  emptyRow('Perda Produto não Operacional', 'sub'),
+      cpagar: emptyRow('Contas a Pagar (Compras)', 'sub'),
+
+      fluxo: emptyRow('Fluxo Líquido do Mês', 'total'),
+      saldo: emptyRow('Saldo Acumulado', 'total')
+    };
+
+    Object.values(rows).forEach(tr=> tbody.appendChild(tr));
+
+    const cats = await fetchCategorias();
+    const dados = await fetchConsolidado(anoSel);
+    const mov   = await fetchMov(anoSel);
+    const saldoInicial = await readSaldoInicial(anoSel);
+    inpSaldoInicial.value = saldoInicial.toFixed(2);
+
+    // Acumula por mês
+    let saldo = saldoInicial;
+
+    for (let m=1;m<=12;m++){
+      let rec=0, cmv=0, dep=0;
+      const porCat = (dados[m] || {});
+      Object.keys(porCat).forEach(catId=>{
+        const v = num( porCat[catId]?.valor );
+        const cc = normalizeCC(cats[catId]?.centroDeCusto);
+        if (cc==='receita') rec += v;
+        else if (cc==='cmv') cmv += v;
+        else dep += v;
+      });
+
+      const rOp = rec - cmv - dep;
+
+      const mv = mov[m] || {};
+      const compra = num(mv.compraProdutoMes);
+      const perda  = num(mv.perdaNaoOperacional);
+      const cpagar = num(mv.contasAPagarCompras);
+
+      const fluxo = rOp - compra - perda - cpagar;
+      saldo += fluxo;
+
+      // Preenche células
+      rows.receita.children[m].textContent = rec ? rec.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+      rows.cmv.children[m].textContent     = cmv ? cmv.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+      rows.desp.children[m].textContent    = dep ? dep.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+      rows.resop.children[m].textContent   = rOp.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+
+      rows.compra.children[m].textContent  = compra ? compra.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+      rows.perda.children[m].textContent   = perda ? perda.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+      rows.cpagar.children[m].textContent  = cpagar ? cpagar.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) : '—';
+
+      rows.fluxo.children[m].textContent   = fluxo.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+      rows.saldo.children[m].textContent   = saldo.toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+
+      // pinta passado/presente/futuro
+      Object.values(rows).forEach(tr=>{
+        const td = tr.children[m];
+        paintCell(td, m, anoSel);
+      });
+    }
+  }
+
+  // Inicialização
+  (async function init(){
+    // Anos
+    for (let y=anoAtual-2; y<=anoAtual+1; y++){
+      const opt = document.createElement('option');
+      opt.value = y; opt.textContent = y;
+      if (y===anoAtual) opt.selected = true;
+      anoSelect.appendChild(opt);
+    }
+
+    await carregar(Number(anoSelect.value));
+    anoSelect.addEventListener('change', async ()=> { await carregar(Number(anoSelect.value)); });
+
+    btnSalvarSaldo.addEventListener('click', async ()=>{
+      await saveSaldoInicial(Number(anoSelect.value), Number(inpSaldoInicial.value || 0));
+      await carregar(Number(anoSelect.value));
+    });
+  })();
+})();
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Importar DRE</title>
+  <link rel="stylesheet" href="assets/base.css" />
+  <link rel="stylesheet" href="assets/menu-styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script type="module" src="assets/firebase-config.js"></script>
+  <script defer src="assets/menu.js"></script>
+  <style>
+    .form-filtro { margin: 10px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+    table { margin-top: 20px; font-size: 12px; }
+    td.valor { text-align: right; }
+    .grupo { background: #f0f0f0; font-weight: bold; }
+    button { margin-top: 15px; }
+  </style>
+</head>
+<body>
+  <div id="menuLateral" class="sidebar"></div>
+
+  <div class="main-content">
+    <h2>Importar Planilha Consolidada DRE</h2>
+
+    <div class="form-filtro">
+      <label>Mês:
+        <select id="filtroMes">
+          <option value="1">Janeiro</option>
+          <option value="2">Fevereiro</option>
+          <option value="3">Março</option>
+          <option value="4">Abril</option>
+          <option value="5">Maio</option>
+          <option value="6" selected>Junho</option>
+          <option value="7">Julho</option>
+          <option value="8">Agosto</option>
+          <option value="9">Setembro</option>
+          <option value="10">Outubro</option>
+          <option value="11">Novembro</option>
+          <option value="12">Dezembro</option>
+        </select>
+      </label>
+
+      <label>Ano:
+        <select id="filtroAno">
+          <option value="2024">2024</option>
+          <option value="2025" selected>2025</option>
+        </select>
+      </label>
+    </div>
+
+    <input type="file" id="arquivoExcel" accept=".xls,.xlsx" />
+    <div id="resultadoDRE"></div>
+    <button id="salvarBtn" style="display:none;">Salvar Consolidação no Firebase</button>
+  </div>
+
+  <script type="module">
+    import { db } from './assets/firebase-config.js';
+    import { ref, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    let consolidadoBruto = { entradas: {}, saidas: {}, totalEntrada: 0, totalSaida: 0 };
+
+    function normalizarTexto(txt) {
+      return txt.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+    }
+
+    function extrairValor(valorRaw) {
+      if (!valorRaw) return 0;
+      let str = valorRaw.toString().trim();
+
+      // Remove R$ e espaços
+      str = str.replace(/R\$/g, "").replace(/\s/g, "");
+
+      // Detecta formato brasileiro com milhar e vírgula decimal
+      if (str.match(/\.\d{3},\d{2}$/)) {
+        str = str.replace(/\./g, "").replace(",", ".");
+      } else if (str.match(/,\d{2}$/)) {
+        str = str.replace(",", ".");
+      }
+
+      return parseFloat(str) || 0;
+    }
+
+    document.getElementById('arquivoExcel').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const linhasOriginais = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+        const entrada = {}, saida = {};
+        let totalEntrada = 0, totalSaida = 0;
+
+        linhasOriginais.forEach(linha => {
+          const novaLinha = {};
+          for (let chave in linha) {
+            novaLinha[normalizarTexto(chave)] = linha[chave];
+          }
+
+          const tipo = normalizarTexto(novaLinha["tipo"] || "");
+          const categoria = novaLinha["categoria"] || "Outros";
+          const valor = extrairValor(novaLinha["valor"]);
+
+          if (["entrada", "entradas"].includes(tipo)) {
+            entrada[categoria] = (entrada[categoria] || 0) + valor;
+            totalEntrada += valor;
+          } else if (["saida", "saidas", "saída", "saídas"].includes(tipo)) {
+            saida[categoria] = (saida[categoria] || 0) + valor;
+            totalSaida += valor;
+          }
+        });
+
+        consolidadoBruto = { entradas: entrada, saidas: saida, totalEntrada, totalSaida };
+        const lucro = totalEntrada - totalSaida;
+
+        renderizarDRE(entrada, saida, lucro);
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
+    function renderizarDRE(entrada, saida, lucro) {
+      const div = document.getElementById('resultadoDRE');
+      let html = '<table><thead><tr><th>Categoria</th><th>Valor (R$)</th></tr></thead><tbody>';
+      html += '<tr class="grupo"><td>Entradas</td><td></td></tr>';
+      for (let cat in entrada) {
+        html += `<tr><td>${cat}</td><td class="valor">${entrada[cat].toFixed(2)}</td></tr>`;
+      }
+      html += '<tr class="grupo"><td>Saídas</td><td></td></tr>';
+      for (let cat in saida) {
+        html += `<tr><td>${cat}</td><td class="valor">-${saida[cat].toFixed(2)}</td></tr>`;
+      }
+      html += `<tr class="grupo"><td>Lucro Líquido</td><td class="valor">${lucro.toFixed(2)}</td></tr>`;
+      html += '</tbody></table>';
+      div.innerHTML = html;
+      document.getElementById('salvarBtn').style.display = 'inline-block';
+    }
+
+    document.getElementById('salvarBtn').addEventListener('click', () => {
+      const mes = parseInt(document.getElementById('filtroMes').value);
+      const ano = parseInt(document.getElementById('filtroAno').value);
+      const lucroLiquido = consolidadoBruto.totalEntrada - consolidadoBruto.totalSaida;
+
+      const consolidado = {
+        ano,
+        mes,
+        entradas: consolidadoBruto.entradas,
+        saidas: consolidadoBruto.saidas,
+        lucroLiquido: parseFloat(lucroLiquido.toFixed(2))
+      };
+
+      const caminho = `financeiro/consolidado/${ano}_${String(mes).padStart(2, '0')}`;
+      set(ref(db, caminho), consolidado)
+        .then(() => alert('Consolidação salva com sucesso!'))
+        .catch(() => alert('Erro ao salvar no Firebase.'));
+    });
+  </script>
+</body>
+</html>
