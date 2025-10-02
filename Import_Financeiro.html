@@ -50,7 +50,7 @@
   /* Faixa de import por mês */
   .import-row td { background:#f8fafc; }
 
-  /* Campos do mês (grid por mês) */
+  /* Cards dos campos do mês */
   .cards { display:grid; grid-template-columns: repeat(12, minmax(var(--mon-w), 1fr)); gap:8px; overflow-x:auto; }
   .card { border:1px solid #e5e7eb; border-radius:10px; padding:8px; background:#fff; min-width:var(--mon-w); }
   .card h4 { margin:0 0 6px; font-size:12px; font-weight:700; text-align:center; }
@@ -76,7 +76,7 @@
 
   <div class="main-content">
     <h1>Importar Consolidado por Categoria</h1>
-    <div class="sub">Liste e importe os valores mensais por <strong>categoria</strong>. Se o CSV tiver categoria desconhecida, a importação é cancelada e o erro é exibido.</div>
+    <div class="sub">Importa valores mensais por <strong>categoria</strong>. Linhas de cabeçalho/subtotal (ex.: “Entradas”, “Saídas”, “Total”) são automaticamente ignoradas.</div>
     <div id="diag" class="diag warn"></div>
 
     <div class="controls">
@@ -138,12 +138,29 @@
     let s = v.trim();
     if (!s) return 0;
     s = s.replace(/[R$\s]/gi,'');
-    // se tem vírgula e ponto, assume vírgula decimal
     if (s.includes(',') && s.includes('.')) { s = s.replace(/\./g,'').replace(',', '.'); }
     else if (s.includes(','))             { s = s.replace(',', '.'); }
-    // remove separadores não-numéricos restantes
     s = s.replace(/[^\d\.\-]/g,'');
     return Number(s)||0;
+  }
+
+  // ========= NOVO: nomes a ignorar (cabeçalhos/subtotais) =========
+  const SKIP_NAMES = new Set([
+    'entradas','entrada','saidas','saidas-','saída','saidas-subtotal','saidas-total',
+    'saidas subtotal','saidas total','saidas (subtotal)','saidas (total)',
+    'categoria','categorias','grupo','grupos','resumo',
+    'total','totais','subtotal','subtotais'
+  ].map(s=>normalizeName(s)));
+
+  function normalizeName(s){
+    return String(s||'')
+      .replace(/^\ufeff/, '')                    // remove BOM
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // tira acentos
+      .replace(/&/g,'e')
+      .replace(/[^\w\s]/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
   }
 
   // Máscara leve: formata ao sair do campo; permite digitar livre
@@ -211,9 +228,8 @@
     });
   }
 
-  async function preencherValores(anoSel, categorias){
+  async function preencherValores(anoSel){
     const dados = await getConsolidado(anoSel);
-    // mapa rápido catId-> linha cells
     const cellMap = {}; // key `${id}-${m}` -> td
     Array.from(tbody.querySelectorAll('td.mon.num')).forEach(td=>{
       cellMap[`${td.dataset.cat}-${td.dataset.mes}`] = td;
@@ -231,46 +247,81 @@
     });
   }
 
-  function normalizeName(s){
-    return String(s||'').toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/&/g,'e').replace(/[^\w\s]/g,'').replace(/\s+/g,' ').trim();
+  // ========= NOVO: parser que detecta se há valor “de verdade” na linha =========
+  function parseCsv(text){
+    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    const rows = [];
+
+    for (const raw of lines){
+      let line = raw.replace(/^\ufeff/,''); // BOM
+      // remove aspas no início/fim
+      if (line.startsWith('"') && line.endsWith('"')) line = line.slice(1,-1);
+
+      // tenta ; depois ,
+      let parts = line.split(';');
+      if (parts.length < 2) parts = line.split(',');
+
+      // pode haver vírgulas no número; junta de volta tudo após a 1ª coluna
+      const categoria = (parts[0]||'').trim();
+      const valorRaw  = (parts.slice(1).join(',')||'').trim();
+
+      // “tem valor?” = há dígitos
+      const hasValor = /[0-9]/.test(valorRaw);
+      const valor = hasValor ? parseBR(valorRaw) : 0;
+
+      rows.push({ categoria, valor, hasValor, valorRaw });
+    }
+    return rows;
   }
 
-  function parseCsv(text){
-    // aceita ; ou , como separador, e preserva número BR
-    return text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
-      // tenta primeiro ; depois ,
-      let parts = l.split(';');
-      if (parts.length<2) parts = l.split(',');
-      const categoria = (parts[0]||'').trim();
-      const valorStr  = (parts.slice(1).join(',')||'').trim(); // caso tenha vírgula no número
-      return {categoria, valor: parseBR(valorStr)};
-    });
+  // ========= NOVO: ignora cabeçalhos, subtotais e linhas vazias =========
+  function isHeaderOrSubtotal(catName){
+    const nk = normalizeName(catName);
+    if (!nk) return true; // em branco
+    if (SKIP_NAMES.has(nk)) return true;
+    // match amplo p/ casos corrompidos: começa com “total”, “entrada”, “saida”, etc.
+    if (/^(total|sub|entrada|entradas|saida|saidas|categoria|categorias|grupo|grupos|resumo)\b/.test(nk)) return true;
+    return false;
   }
 
   async function salvarConsolidado(ano, mes, items, catIndex){
-    // valida categorias
     const desconhecidas = [];
     const byId = {};
+
     items.forEach(it=>{
       const nk = normalizeName(it.categoria);
+
+      // Pula cabeçalhos/subtotais/linhas vazias SEM valor
+      if (isHeaderOrSubtotal(it.categoria) && !it.hasValor) return;
+
+      // Se tem valor mas é header/subtotal: ignora silenciosamente (muitos CSVs trazem subtotais)
+      if (isHeaderOrSubtotal(it.categoria) && it.hasValor) return;
+
+      // Aqui esperamos categoria válida
       const cid = catIndex[nk];
-      if (!cid) desconhecidas.push(it.categoria);
-      else {
-        byId[cid] = (byId[cid]||0) + Number(it.valor||0);
+      if (!cid){
+        // Só acusa erro se realmente há um valor numérico associado
+        if (it.hasValor && Math.abs(it.valor) > 0){
+          desconhecidas.push(it.categoria || '(vazia)');
+        }
+        return;
       }
+      byId[cid] = (byId[cid]||0) + Number(it.valor||0);
     });
+
     if (desconhecidas.length){
-      throw new Error('Categorias não encontradas: ' + desconhecidas.join(', '));
+      // mostra só os 10 primeiros para não poluir
+      const preview = desconhecidas.slice(0,10).join(', ');
+      throw new Error(`Categorias não encontradas (amostra): ${preview}${desconhecidas.length>10?` … (+${desconhecidas.length-10})`:''}`);
     }
+
     // salva
     const updates = {};
     Object.keys(byId).forEach(cid=>{
       updates[`financeiro/consolidado/${ano}/${mes}/${cid}/valor`] = Number(byId[cid]);
     });
     await db.ref().update(updates);
-    return byId; // para atualizar tela
+    return byId;
   }
 
   function buildCardsCamposMes(anoSel){
@@ -332,7 +383,7 @@
     categorias.forEach(c=> catIndex[ normalizeName(c.nome) ] = c.id );
 
     // preenche valores existentes
-    await preencherValores(anoSel, categorias);
+    await preencherValores(anoSel);
 
     // handlers de import
     tbody.querySelectorAll('button[data-import]').forEach(btn=>{
@@ -343,7 +394,7 @@
         msg.textContent = '';
         try{
           if (!file) throw new Error('Escolha um arquivo CSV.');
-          const text = await file.text();
+          const text = await file.text(); // se vier ISO-8859-1, ainda conseguimos ignorar cabeçalhos corrompidos
           const items = parseCsv(text);
           if (!items.length) throw new Error('CSV vazio.');
           const saved = await salvarConsolidado(anoSel, mes, items, catIndex);
