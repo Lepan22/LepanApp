@@ -3,49 +3,77 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Importar Consolidado por Categoria</title>
+<title>Importação Financeira (Consolidado por Categoria)</title>
 
 <link rel="stylesheet" href="assets/base.css"/>
 <link rel="stylesheet" href="assets/menu-styles.css"/>
 
 <style>
-  :root{ --cat-w:170px; --mon-w:120px; }
-  .main-content{ padding:16px 20px; }
-  h1{ margin:6px 0 10px; }
-  .sub{ color:#666; font-size:13px; margin-bottom:12px; }
-  .diag{ margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
-  .diag.warn{ background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
-  .diag.err{  background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
-  .diag.ok{   background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; }
-  .controls{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-  .btn{ padding:6px 10px; border:1px solid #ddd; background:#fff; border-radius:8px; font-size:12px; cursor:pointer; }
-  .btn.primary{ background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
-  .table-wrap{ overflow-x:auto; border:1px solid #eee; border-radius:8px; }
-  table.fin{ width:100%; border-collapse:collapse; table-layout:fixed; min-width:calc(var(--cat-w)+12*var(--mon-w)); background:#fff; }
-  .fin th,.fin td{ border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
-  .fin thead th{ background:#fff7ec; color:#000; font-weight:600; }
-  .fin th.cat,.fin td.cat{
-    position:sticky; left:0; z-index:2; background:#fafafa;
-    width:var(--cat-w); min-width:var(--cat-w); max-width:var(--cat-w);
-    text-align:left; white-space:normal;
+  .main-content { padding:16px 20px; }
+
+  .page-header h1 { margin:6px 0 6px; }
+  .page-header p  { margin:0 0 12px; color:#666; font-size:13px; }
+
+  .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
+  .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+  .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+
+  .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
+
+  .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
+
+  /* 1 col. de 480 + 12 * 120 = 1.920 → folga: 2.000px */
+  table.fin { width:100%; border-collapse:collapse; min-width:2000px; table-layout:fixed; background:#fff; }
+  .fin th, .fin td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
+
+  /* Cabeçalho em preto e um pouco mais compacto */
+  .fin thead th { background:#fff7ec; color:#000 !important; font-weight:600; }
+
+  /* SOMENTE a coluna Categoria é larga e sem quebra */
+  .fin th.cat, .fin td.cat {
+    position: sticky; left: 0; z-index: 2;
+    background:#fafafa;
+    min-width: 480px;          /* ajustado */
+    text-align: left;
+    white-space: nowrap;
   }
-  .fin th.mon,.fin td.mon{ width:var(--mon-w); }
-  .num{ text-align:right; }
-  .import-row td{ background:#f8fafc; }
-  .cards{ display:grid; grid-template-columns:repeat(12, minmax(var(--mon-w),1fr)); gap:8px; overflow-x:auto; }
-  .card{ border:1px solid #e5e7eb; border-radius:10px; padding:8px; background:#fff; min-width:var(--mon-w); }
-  .card h4{ margin:0 0 6px; font-size:12px; font-weight:700; text-align:center; }
-  .form-col{ display:flex; flex-direction:column; gap:6px; }
-  .field{ display:flex; align-items:center; gap:6px; }
-  .field label{ font-size:11.5px; color:#555; }
-  .field input{ width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:12.5px; text-align:right; }
-  .card .btn{ width:100%; margin-top:4px; }
-  .help{ font-size:12px; color:#475569; }
-  .merr{ color:#991b1b; font-size:12px; }
-  .mok{  color:#065f46; font-size:12px; }
+
+  /* Demais colunas (meses) estreitas */
+  .fin th:not(.cat), .fin td:not(.cat) { width:120px; }
+
+  .controls { font-size:12px; }
+  .controls input[type="file"] { width:100%; }
+  .controls .btn { width:100%; margin-top:4px; }
+
+  .btn { cursor:pointer; border:1px solid #ddd; background:#fff; padding:5px 8px; border-radius:8px; font-size:12px; }
+  .btn.primary { background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
+  .status { font-size:12px; margin-top:4px; min-height:16px; }
+  .num { text-align:right; }
+  .ok  { color:#1a7f37; }
+  .err { color:#b42318; }
+
+  /* Rodapé: legenda compacta na coluna Categoria; inputs compactos nos meses */
+  tfoot td.month-cell { vertical-align: top; }
+  .legend { font-size:12px; color:#333; margin-top:4px; }
+  .legend ul { margin:6px 0 0; padding-left:16px; }
+  .legend li { line-height:1.3; margin:0; }
+
+  .inputs-grid { display:grid; grid-template-columns: 1fr; gap:4px; }
+  .inputs-grid input {
+    width:100%; padding:4px 6px; border:1px solid #ddd; border-radius:6px; font-size:12px; line-height:1.2;
+  }
+  .mini-muted { font-size:11px; color:#777; margin-top:4px; }
+
+  @media (max-width:1100px){
+    .fin th, .fin td { padding:5px 6px; font-size:12px; }
+    .fin th.cat, .fin td.cat { min-width:420px; } /* mobile */
+  }
 </style>
 
 <script defer src="assets/menu.js"></script>
+
+<!-- Firebase v8 (sem módulos) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
@@ -53,293 +81,239 @@
   <div id="menuLateral" class="sidebar"></div>
 
   <div class="main-content">
-    <h1>Importar Consolidado por Categoria</h1>
-    <div class="sub">
-      Importa valores mensais por <strong>categoria</strong>.
-      Linhas de cabeçalho/subtotal (ex.: “Entradas”, “Saídas”, “Total”) são ignoradas.
+    <div class="page-header">
+      <h1>Importar Consolidado por Categoria</h1>
+      <p>Importe valores mensais por <strong>categoria</strong>. Se o CSV tiver categoria desconhecida, a importação é cancelada e o erro é exibido.</p>
+      <div id="diag" class="diag warn"></div>
     </div>
-    <div id="diag" class="diag warn"></div>
 
-    <div class="controls">
-      <label>Ano Fiscal: <select id="anoSelect"></select></label>
-      <span class="help">CSV: <code>categoria;valor</code> ou <code>categoria,valor</code> — aceita <em>24.671,87</em> ou <em>24671.87</em></span>
-    </div>
+    <section class="filters">
+      <label>Ano Fiscal:
+        <select id="anoSelect"></select>
+      </label>
+      <span class="badge">CSV: <code>categoria;valor</code> ou <code>categoria,valor</code> · aceita vírgula/ponto</span>
+    </section>
 
     <div class="table-wrap">
-      <table class="fin" id="tbl">
-        <thead><tr id="hdr"><th class="cat">Categoria</th></tr></thead>
+      <table class="fin" id="tabela">
+        <thead>
+          <tr id="hdrMeses">
+            <th class="cat">Categoria</th>
+          </tr>
+          <tr id="hdrImport">
+            <th class="cat">Importar por mês</th>
+          </tr>
+        </thead>
         <tbody id="tbody"></tbody>
+        <tfoot>
+          <tr>
+            <th class="cat">
+              <strong>Campos do mês</strong>
+              <div class="legend">
+                <ul>
+                  <li>Custo Produto Mês (R$)</li>
+                  <li>Valor Estoque (R$)</li>
+                  <li>Compra Produto Mês (R$)</li>
+                  <li>Perda Produto não Operacional (R$)</li>
+                  <li>Contas a Pagar (Compras) (R$)</li>
+                </ul>
+              </div>
+            </th>
+            <td class="month-cell" data-mes="1"></td>
+            <td class="month-cell" data-mes="2"></td>
+            <td class="month-cell" data-mes="3"></td>
+            <td class="month-cell" data-mes="4"></td>
+            <td class="month-cell" data-mes="5"></td>
+            <td class="month-cell" data-mes="6"></td>
+            <td class="month-cell" data-mes="7"></td>
+            <td class="month-cell" data-mes="8"></td>
+            <td class="month-cell" data-mes="9"></td>
+            <td class="month-cell" data-mes="10"></td>
+            <td class="month-cell" data-mes="11"></td>
+            <td class="month-cell" data-mes="12"></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
-
-    <h3 style="margin:18px 0 8px;">Campos do mês</h3>
-    <div class="cards" id="cards"></div>
   </div>
 
 <script>
 (function(){
   const diag = document.getElementById('diag');
-  const showDiag = (msg,type="warn")=>{ diag.className=`diag ${type}`; diag.textContent=msg; diag.style.display='block'; };
-  const clearDiag = ()=>{ diag.style.display='none'; diag.textContent=''; };
+  const showDiag = (msg, type="warn") => { diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display = 'block'; };
+  const clearDiag = () => { diag.style.display = 'none'; diag.textContent = ''; };
 
-  try{
+  /* Firebase inline */
+  try {
     const firebaseConfig = {
-      apiKey:"AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain:"lepanapp.firebaseapp.com",
-      databaseURL:"https://lepanapp-default-rtdb.firebaseio.com",
-      projectId:"lepanapp",
-      storageBucket:"lepanapp.appspot.com",
-      messagingSenderId:"542989944344",
-      appId:"1:542989944344:web:576e28199960fd5440a56d",
-      measurementId:"G-VTNGJR7YRL"
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
     };
-    if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  }catch(e){ console.error(e); showDiag('Falha ao inicializar Firebase.','err'); }
-  const db = firebase.apps.length? firebase.database(): null;
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  } catch (e) { console.error(e); showDiag('Falha ao inicializar Firebase.', 'err'); }
+  const db = firebase.apps.length ? firebase.database() : null;
 
-  const mesesPt=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-  const hoje=new Date(); const mesAtual=hoje.getMonth()+1; const anoAtual=hoje.getFullYear();
+  const mesesPt   = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const anoSelect = document.getElementById('anoSelect');
+  const hdrMeses  = document.getElementById('hdrMeses');
+  const hdrImport = document.getElementById('hdrImport');
+  const tbody     = document.getElementById('tbody');
 
-  const anoSelect=document.getElementById('anoSelect');
-  const hdr=document.getElementById('hdr');
-  const tbody=document.getElementById('tbody');
-  const cards=document.getElementById('cards');
+  const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  function parseNumber(txt){ if (txt==null) return 0; let s=String(txt).trim(); if(!s) return 0; if(s.includes(',')) s=s.replace(/\./g,'').replace(',','.'); const v=Number(s); return isNaN(v)?0:v; }
+  async function readCSVText(file){ const buf=await file.arrayBuffer(); let text=new TextDecoder('utf-8',{fatal:false}).decode(buf); if(/\uFFFD/.test(text)){ try{text=new TextDecoder('windows-1252',{fatal:false}).decode(buf);}catch(e){} } return text; }
+  function parseCSV(text){
+    const linhas=String(text).split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    if(!linhas.length) return {rows:[],err:"CSV vazio."};
+    const head=linhas[0].split(/[;,]/).map(h=>h.trim().toLowerCase());
+    const iCat=head.indexOf('categoria'); const iVal=head.indexOf('valor');
+    if(iCat===-1||iVal===-1) return {rows:[],err:"Cabeçalho inválido. Use 'categoria;valor'."};
+    const rows=[]; for(let i=1;i<linhas.length;i++){ const cols=linhas[i].split(/[;,]/); const cat=(cols[iCat]||"").trim(); const val=parseNumber(cols[iVal]); if(cat) rows.push({categoria:cat,valor:val}); }
+    return {rows,err:null};
+  }
+  function normalizeName(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' e ').replace(/[^\p{L}\p{N} ]+/gu,' ').replace(/\s+/g,' ').trim(); }
+  const anoAtual = () => new Date().getFullYear();
 
-  const fmtBR=n=>Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  function parseBR(v){
-    if(v==null) return 0;
-    if(typeof v!=='string') return Number(v)||0;
-    let s=v.trim(); if(!s) return 0;
-    s=s.replace(/[R$\s]/gi,'');
-    if(s.includes(',')&&s.includes('.')) s=s.replace(/\./g,'').replace(',', '.');
-    else if(s.includes(',')) s=s.replace(',', '.');
-    s=s.replace(/[^\d\.\-]/g,'');
-    return Number(s)||0;
+  function sortFluxo(cats){
+    const pri=c=>{ const cc=(c.centroDeCusto||'').toLowerCase(); if(cc==='receita')return 0; if(cc==='cmv')return 1; return 2; };
+    return cats.sort((a,b)=>{ const pa=pri(a), pb=pri(b); if(pa!==pb) return pa-pb; return (a.nome||'').localeCompare(b.nome||''); });
   }
 
-  // —— normalização & skip
-  const SKIP_NAMES=new Set(['entradas','entrada','saidas','saida','categoria','categorias','grupo','grupos','resumo','total','totais','subtotal','subtotais']);
-  function normalizeName(s){
-    return String(s||'').replace(/^\ufeff/,'').toLowerCase()
-      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-      .replace(/&/g,'e').replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();
-  }
-  function softKey(s){
-    let k=normalizeName(s);
-    k=k.replace(/\b(de|da|do|em|para|por|no|na|um|uma|os|as|o|a|e)\b/g,' ').replace(/\s+/g,' ').trim();
-    k=k.replace(/\b(\w+?)s\b/g,'$1'); // plural simples
-    return k;
-  }
-  function isHeaderOrSubtotal(name){
-    const nk=normalizeName(name);
-    if(!nk) return true;
-    if(SKIP_NAMES.has(nk)) return true;
-    if(/^(total|sub|entrada|entradas|saida|saidas|categoria|categorias|grupo|grupos|resumo)\b/.test(nk)) return true;
-    return false;
-  }
-
-  function buildHeader(){
-    hdr.innerHTML='<th class="cat">Categoria</th>';
-    for(let m=1;m<=12;m++){ const th=document.createElement('th'); th.className='mon'; th.textContent=mesesPt[m-1]; hdr.appendChild(th); }
-  }
-
-  async function getCategorias(){
-    const snap=await db.ref('financeiro/categorias').once('value');
-    const v=snap.val()||{};
-    return Object.keys(v).map(id=>({id, nome:v[id]?.nome||'(sem nome)'}))
-      .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
-  }
-  async function getConsolidado(ano){
-    const snap=await db.ref(`financeiro/consolidado/${ano}`).once('value');
-    return snap.val()||{};
-  }
-
-  function buildRows(categorias){
-    tbody.innerHTML='';
-    const trImport=document.createElement('tr'); trImport.className='import-row';
-    const td0=document.createElement('td'); td0.className='cat'; td0.innerHTML='<b>Importar por mês</b>'; trImport.appendChild(td0);
-    for(let m=1;m<=12;m++){
-      const td=document.createElement('td'); td.className='mon';
-      td.innerHTML=`
-        <input type="file" accept=".csv" id="file-${m}" style="width:100%; font-size:12px; margin-bottom:4px;">
-        <button class="btn primary" data-import="${m}" style="width:100%;">Importar</button>
-        <div id="msg-${m}" class="merr"></div>`;
-      trImport.appendChild(td);
+  function buildHeaders(){
+    for (let m=1;m<=12;m++){
+      const th=document.createElement('th'); th.textContent=mesesPt[m-1]; hdrMeses.appendChild(th);
+      const thImp=document.createElement('th'); thImp.className='controls';
+      thImp.innerHTML=`
+        <input type="file" accept=".csv" id="file_${m}">
+        <button class="btn primary" data-mes="${m}">Importar</button>
+        <div class="status" id="st_${m}"></div>`;
+      thImp.querySelector('button').addEventListener('click', ()=> onImportClick(m));
+      hdrImport.appendChild(thImp);
     }
-    tbody.appendChild(trImport);
+  }
 
-    categorias.forEach(c=>{
+  function buildBody(categorias){
+    tbody.innerHTML='';
+    if(!categorias.length){
       const tr=document.createElement('tr');
-      const tdCat=document.createElement('td'); tdCat.className='cat'; tdCat.textContent=c.nome; tr.appendChild(tdCat);
-      for(let m=1;m<=12;m++){ const td=document.createElement('td'); td.className='mon num'; td.dataset.cat=c.id; td.dataset.mes=m; td.textContent='—'; tr.appendChild(td); }
+      const td=document.createElement('td'); td.className='cat'; td.colSpan=13; td.textContent='Nenhuma categoria encontrada.';
+      tr.appendChild(td); tbody.appendChild(tr); return;
+    }
+    categorias.forEach(cat=>{
+      const tr=document.createElement('tr');
+      const tdCat=document.createElement('td'); tdCat.className='cat'; tdCat.textContent=cat.nome||'(sem nome)'; tr.appendChild(tdCat);
+      for(let m=1;m<=12;m++){ const td=document.createElement('td'); td.className='num'; td.id=`v_${cat.id}_${m}`; td.textContent='—'; tr.appendChild(td); }
       tbody.appendChild(tr);
     });
-  }
 
-  async function preencherValores(anoSel){
-    const dados=await getConsolidado(anoSel);
-    Array.from(tbody.querySelectorAll('td.mon.num')).forEach(td=>{
-      const v=Number(dados?.[td.dataset.mes]?.[td.dataset.cat]?.valor||0);
-      td.textContent= v? fmtBR(v) : '—';
-    });
-  }
-
-  function parseCsv(text){
-    const lines=text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
-    const rows=[];
-    for(let raw of lines){
-      raw=raw.replace(/^\ufeff/,'');
-      let parts=raw.split(';'); if(parts.length<2) parts=raw.split(',');
-      const categoria=(parts[0]||'').trim();
-      const valorRaw=(parts.slice(1).join(',')||'').trim();
-      const hasValor=/[0-9]/.test(valorRaw);
-      const valor=hasValor? parseBR(valorRaw): 0;
-      rows.push({categoria, valor, hasValor});
-    }
-    return rows;
-  }
-
-  async function salvarConsolidado(ano, mes, items, catIndex){
-    const desconhecidas=[]; const ignoradas=[]; const mapeadas=[];
-    const byId={};
-
-    for(const it of items){
-      if(isHeaderOrSubtotal(it.categoria) && !it.hasValor){ ignoradas.push(it.categoria); continue; }
-      if(isHeaderOrSubtotal(it.categoria) &&  it.hasValor){ ignoradas.push(it.categoria); continue; }
-
-      const cid = catIndex[normalizeName(it.categoria)] || catIndex[softKey(it.categoria)];
-      if(!cid){
-        if(it.hasValor && Math.abs(it.valor)>0) desconhecidas.push(it.categoria);
-        continue;
-      }
-      mapeadas.push(it.categoria);
-      byId[cid]=(byId[cid]||0)+Number(it.valor||0);
-    }
-
-    if(desconhecidas.length){
-      const preview=desconhecidas.slice(0,8).join(', ');
-      const err=new Error(`Categorias desconhecidas: ${preview}${desconhecidas.length>8?` … (+${desconhecidas.length-8})`:''}. Nada foi salvo.`);
-      err.__summary={mapeadas, ignoradas, desconhecidas}; throw err;
-    }
-    if(!Object.keys(byId).length){
-      const err=new Error('Nada importado. Verifique o CSV e os nomes de categorias.');
-      err.__summary={mapeadas, ignoradas, desconhecidas}; throw err;
-    }
-
-    const updates={};
-    Object.keys(byId).forEach(cid=>{
-      updates[`financeiro/consolidado/${ano}/${mes}/${cid}/valor`]=Number(byId[cid]);
-    });
-    await db.ref().update(updates);
-
-    const total=Object.values(byId).reduce((a,b)=>a+b,0);
-    return {byId,total,mapeadas,ignoradas,desconhecidas};
-  }
-
-  function buildCardsCamposMes(anoSel){
-    cards.innerHTML='';
-    for(let m=1;m<=12;m++){
-      const div=document.createElement('div'); div.className='card';
-      div.innerHTML=`
-        <h4>${mesesPt[m-1]}</h4>
-        <div class="form-col" data-mes="${m}">
-          <div class="field"><label>Custo Produto Mês (R$)</label><input data-money="1" data-key="custoProdutoMes" placeholder="0,00"></div>
-          <div class="field"><label>Valor Estoque (R$)</label><input data-money="1" data-key="valorEstoque" placeholder="0,00"></div>
-          <div class="field"><label>Compra Produto Mês (R$)</label><input data-money="1" data-key="compraProdutoMes" placeholder="0,00"></div>
-          <div class="field"><label>Perda não Operacional (R$)</label><input data-money="1" data-key="perdaNaoOperacional" placeholder="0,00"></div>
-          <div class="field"><label>Contas a Pagar (Compras) (R$)</label><input data-money="1" data-key="contasAPagarCompras" placeholder="0,00"></div>
-          <button class="btn primary" data-save="${m}">Salvar</button>
-          <div class="help" id="h-${m}"></div>
-        </div>`;
-      cards.appendChild(div);
-    }
-    enhanceMoneyInputs(cards);
-  }
-
-  async function carregarCamposMes(anoSel){
-    const snap=await db.ref(`financeiro/movimentacao/${anoSel}`).once('value');
-    const v=snap.val()||{};
-    for(let m=1;m<=12;m++){
-      const box=cards.querySelector(`.form-col[data-mes="${m}"]`);
-      const mes=v[m]||{};
-      box.querySelectorAll('input[data-money="1"]').forEach(inp=>{
-        inp.value=fmtBR(Number(mes[inp.dataset.key]||0));
-      });
-    }
-  }
-
-  function enhanceMoneyInputs(root){
-    root.querySelectorAll('input[data-money="1"]').forEach(inp=>{
-      inp.addEventListener('blur', ()=>{ const n=parseBR(inp.value); inp.value=fmtBR(n); }, {passive:true});
-    });
-  }
-
-  async function carregar(anoSel){
-    clearDiag(); if(!db){ showDiag('Firebase não inicializado.','err'); return; }
-
-    buildHeader();
-    const categorias=await getCategorias();
-    buildRows(categorias);
-
-    // índice de categorias (forte + tolerante)
-    const catIndex={};
-    categorias.forEach(c=>{
-      catIndex[ normalizeName(c.nome) ]=c.id;
-      catIndex[ softKey(c.nome) ]=c.id;
+    // Inputs compactos por mês (sem rótulo nos meses)
+    document.querySelectorAll('tfoot td.month-cell').forEach(td=>{
+      const mes=parseInt(td.getAttribute('data-mes'),10);
+      td.innerHTML=`
+        <div class="inputs-grid">
+          <input type="number" step="0.01" class="inp_mov" data-key="custoProdutoMes" data-mes="${mes}" placeholder="R$">
+          <input type="number" step="0.01" class="inp_mov" data-key="valorEstoque" data-mes="${mes}" placeholder="R$">
+          <input type="number" step="0.01" class="inp_mov" data-key="compraProdutoMes" data-mes="${mes}" placeholder="R$">
+          <input type="number" step="0.01" class="inp_mov" data-key="perdaNaoOperacional" data-mes="${mes}" placeholder="R$">
+          <input type="number" step="0.01" class="inp_mov" data-key="contasAPagarCompras" data-mes="${mes}" placeholder="R$">
+        </div>
+        <button class="btn primary saveMov" data-mes="${mes}">Salvar</button>
+        <div class="mini-muted" id="mov_${mes}"></div>`;
     });
 
-    // valores atuais
-    await preencherValores(anoSel);
-
-    // handler de import
-    tbody.querySelectorAll('button[data-import]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        const mes=Number(btn.dataset.import);
-        const file=(document.getElementById(`file-${mes}`)||{}).files?.[0];
-        const box=document.getElementById(`msg-${mes}`); box.textContent='';
-        try{
-          if(!file) throw new Error('Escolha um arquivo CSV.');
-          const text=await file.text();              // funciona com UTF-8/ANSI
-          const items=parseCsv(text);
-          if(!items.length) throw new Error('CSV vazio.');
-
-          const res=await salvarConsolidado(Number(anoSelect.value), mes, items, catIndex);
-
-          // recarrega o mês inteiro depois de salvar
-          await preencherValores(Number(anoSelect.value));
-
-          box.className='mok';
-          box.textContent=`Importado: ${res.mapeadas.length} linha(s), Total R$ ${fmtBR(res.total)}. `+
-                           (res.ignoradas.length?`Ignoradas: ${res.ignoradas.length}. `:'');
-        }catch(e){
-          console.error(e);
-          box.className='merr';
-          box.textContent=e.message||'Falha ao importar.';
-        }
+    document.querySelectorAll('.saveMov').forEach(btn=>{
+      btn.addEventListener('click', async (e)=>{
+        const mes=parseInt(e.currentTarget.dataset.mes,10);
+        const ano=Number(anoSelect.value);
+        const bloco=e.currentTarget.parentElement;
+        const vals={};
+        bloco.querySelectorAll('.inp_mov').forEach(inp=>{ vals[inp.dataset.key]=parseNumber(inp.value); });
+        try{ await db.ref(`financeiro/movimentacao/${ano}/${mes}`).set(vals);
+          document.getElementById(`mov_${mes}`).innerHTML='<span class="ok">Salvo.</span>';
+        }catch(err){ console.error(err); document.getElementById(`mov_${mes}`).innerHTML='<span class="err">Erro ao salvar.</span>'; }
       });
     });
+  }
 
-    // cards
-    buildCardsCamposMes(anoSel);
-    await carregarCamposMes(anoSel);
-    cards.querySelectorAll('button[data-save]').forEach(btn=>{
-      btn.addEventListener('click', async ()=>{
-        const m=Number(btn.dataset.save);
-        const box=cards.querySelector(`.form-col[data-mes="${m}"]`);
-        const hint=document.getElementById(`h-${m}`); hint.textContent='';
-        try{
-          const data={}; box.querySelectorAll('input[data-money="1"]').forEach(inp=> data[inp.dataset.key]=parseBR(inp.value));
-          await db.ref(`financeiro/movimentacao/${anoSel}/${m}`).set(data);
-          hint.className='mok'; hint.textContent='Salvo.';
-        }catch(e){ hint.className='merr'; hint.textContent='Erro ao salvar.'; }
+  function fillYearOptions(){
+    const a=anoAtual();
+    for(let y=a-2;y<=a+1;y++){ const opt=document.createElement('option'); opt.value=y; opt.textContent=y; if(y===a) opt.selected=true; anoSelect.appendChild(opt); }
+  }
+
+  async function fetchCategorias(){
+    if(!db){ showDiag('Firebase não inicializado.', 'err'); return []; }
+    try{ const snap=await db.ref('financeiro/categorias').once('value'); const val=snap.val()||{}; const cats=Object.keys(val).map(id=>({id,...val[id]})); clearDiag(); return sortFluxo(cats);
+    }catch(err){ console.error(err); showDiag('Erro ao ler categorias (regras de leitura/conexão).', 'err'); return []; }
+  }
+
+  async function loadYearData(year){
+    if(!db) return;
+    try{
+      const snap=await db.ref(`financeiro/consolidado/${year}`).once('value');
+      const dados=snap.val()||{};
+      document.querySelectorAll('[id^="v_"]').forEach(td=>td.textContent='—');
+      Object.keys(dados).forEach(mes=>{
+        const porCat=dados[mes]||{};
+        Object.keys(porCat).forEach(catId=>{
+          const td=document.getElementById(`v_${catId}_${mes}`);
+          if(td){ const v=Number((porCat[catId]&&porCat[catId].valor)||0); td.textContent=fmt(v); }
+        });
       });
-    });
+
+      const movSnap=await db.ref(`financeiro/movimentacao/${year}`).once('value');
+      const mov=movSnap.val()||{};
+      document.querySelectorAll('.inp_mov').forEach(inp=>{
+        const mes=inp.dataset.mes, key=inp.dataset.key;
+        const val=mov[mes] && mov[mes][key]!=null ? mov[mes][key] : '';
+        inp.value = val;
+      });
+
+      clearDiag();
+    }catch(err){ console.error(err); showDiag('Erro ao carregar dados do ano.', 'err'); }
+  }
+
+  async function onImportClick(mes){
+    const st=document.getElementById(`st_${mes}`); st.textContent='';
+    if(!db){ st.innerHTML='<span class="err">Firebase não inicializado.</span>'; return; }
+    const fileEl=document.getElementById(`file_${mes}`); const file=fileEl.files&&fileEl.files[0];
+    if(!file){ st.innerHTML='<span class="err">Selecione um CSV.</span>'; return; }
+
+    const year=Number(anoSelect.value);
+    const text=await readCSVText(file);
+    const {rows,err}=parseCSV(text);
+    if(err){ st.innerHTML=`<span class="err">${err}</span>`; return; }
+    if(!rows.length){ st.innerHTML='<span class="err">CSV sem linhas válidas.</span>'; return; }
+
+    let allCats={};
+    try{ const snapCats=await db.ref('financeiro/categorias').once('value'); allCats=snapCats.val()||{}; }
+    catch(e){ console.error(e); st.innerHTML='<span class="err">Erro ao ler categorias.</span>'; return; }
+    const nomeToCat={}; Object.keys(allCats).forEach(id=>{ const nrm=normalizeName(allCats[id]?.nome); if(nrm) nomeToCat[nrm]={id,...allCats[id]}; });
+
+    const desconhecidas=[]; const normalizadas=rows.map(r=>{ const key=normalizeName(r.categoria); const cat=nomeToCat[key]||null; if(!cat) desconhecidas.push(r.categoria); return {cat, valor:r.valor}; });
+
+    if(desconhecidas.length){ st.innerHTML=`<span class="err">Categorias não encontradas: ${desconhecidas.join(', ')}. Nada foi salvo.</span>`; return; }
+
+    const updates={}; normalizadas.forEach(it=>{ const base=`financeiro/consolidado/${year}/${mes}/${it.cat.id}`; updates[`${base}/valor`]=it.valor; });
+
+    try{ await db.ref().update(updates);
+      st.innerHTML=`<span class="ok">Importado com sucesso (${rows.length} linhas).</span>`;
+      normalizadas.forEach(it=>{ const td=document.getElementById(`v_${it.cat.id}_${mes}`); if(td) td.textContent=fmt(it.valor); });
+    }catch(e){ console.error(e); st.innerHTML=`<span class="err">Erro ao salvar.</span>`; }
   }
 
   (async function init(){
-    for(let y=anoAtual-2;y<=anoAtual+1;y++){ const o=document.createElement('option'); o.value=y; o.textContent=y; if(y===anoAtual) o.selected=true; anoSelect.appendChild(o); }
-    await carregar(Number(anoSelect.value));
-    anoSelect.addEventListener('change', ()=>carregar(Number(anoSelect.value)));
+    buildHeaders();
+    fillYearOptions();
+    const categorias=await fetchCategorias();
+    buildBody(categorias);
+    await loadYearData(Number(anoSelect.value));
+    anoSelect.addEventListener('change', ()=> loadYearData(Number(anoSelect.value)));
   })();
 })();
 </script>
