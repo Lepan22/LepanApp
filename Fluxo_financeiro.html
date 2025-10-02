@@ -335,4 +335,52 @@
     const resArr = initArr();
     const cmvArr   = getGrp('CMV');
     const dvArr    = getGrp('Despesa Variável');
-    const dfA
+    const dfArr    = getGrp('Despesa Fixa');
+    const invArr   = getGrp('Investimento');
+    const retArr   = getGrp('Retirada');
+
+    for (let m=1;m<=12;m++){
+      resArr[m-1] = (recArr[m-1] - cmvArr[m-1] - dvArr[m-1] - dfArr[m-1] - invArr[m-1] - retArr[m-1]);
+      const td = trRes.children[m+1];
+      paintCell(td, m, anoSel);
+      setCellValueWithPct(td, resArr[m-1], recMes(m));
+    }
+    const resAno = sum(resArr);
+    setCellValueWithPct(trRes.children[1], resAno, recAno);
+
+    // === zebra (após montar tudo) ===
+    let idx = 0;
+    tbody.querySelectorAll('tr').forEach(tr=>{
+      tr.classList.add( (idx%2===0) ? 'row-odd' : 'row-even' );
+      // não conta header de centro duas vezes
+      idx++;
+    });
+
+    // collapse/expand
+    tbody.querySelectorAll('.toggle').forEach(tg=>{
+      tg.addEventListener('click', ()=>{
+        const grp = tg.dataset.grp;
+        const open = tg.dataset.open==='1';
+        tg.dataset.open = open ? '0':'1';
+        tg.querySelector('.caret').textContent = open ? '►':'▼';
+        tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
+      });
+    });
+  }
+
+  // Init
+  (async function init(){
+    for(let y=anoAtual-2; y<=anoAtual+1; y++){
+      const opt=document.createElement('option'); opt.value=y; opt.textContent=y;
+      if(y===anoAtual) opt.selected=true; anoSelect.appendChild(opt);
+    }
+    for (let m=1;m<=12;m++){
+      const th=document.createElement('th'); th.textContent=mesesPt[m-1]; hdrMeses.appendChild(th);
+    }
+    await carregar(Number(anoSelect.value));
+    anoSelect.addEventListener('change', ()=> carregar(Number(anoSelect.value)));
+  })();
+})();
+</script>
+</body>
+</html>
