@@ -20,8 +20,7 @@
 
   .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
   .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
-
-  .legend { font-size:11.5px; color:#666; display:flex; gap:10px; align-items:center; }
+  .legend  { font-size:11.5px; color:#666; display:flex; gap:10px; align-items:center; }
   .dot { display:inline-block; width:10px; height:10px; border-radius:3px; vertical-align:middle; margin-right:4px; }
   .dot.past   { background:#f1f5f9; border:1px solid #e5e7eb; }
   .dot.today  { background:#fff3c4; border:1px solid #fde68a; }
@@ -29,8 +28,8 @@
 
   .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
 
-  /* 1ª col 420 + 2ª col 160 + 12 * 120 = 2.000 → min 2.050 */
-  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width:2050px; background:#fff; }
+  /* 1ª col 420 + 2ª col 160 + 12*120 = 2.000 → min 2.040 */
+  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width:2040px; background:#fff; }
   .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
 
   .fx thead th { background:#fff7ec; color:#000; font-weight:600; }
@@ -50,37 +49,37 @@
     width:160px; min-width:160px; max-width:160px;
   }
 
-  /* Demais colunas (meses) */
+  /* Meses */
   .fx th:not(.ind):not(.year), .fx td:not(.ind):not(.year) { width:120px; }
 
   .num { text-align:right; }
-  .muted { color:#6b7280; }
-  .pct { color:#475569; font-size:11.5px; }
+  .pct { color:#475569; font-size:11.2px; display:block; }
 
-  /* Destaques de cor por grupo */
+  /* Destaques por grupo */
   .grp-receita   > td.ind { background:#ecfdf5; font-weight:700; }   /* verde claro */
   .grp-cmv       > td.ind { background:#fff7ed; font-weight:700; }   /* laranja claro */
-  .grp-despesa   > td.ind { background:#fef2f2; font-weight:700; }   /* vermelho claro */
-  .totais-row    > td.ind { background:#f1f5f9; font-weight:800; }   /* cinza claro */
+  .grp-despesa-variavel > td.ind { background:#fef9c3; font-weight:700; } /* amarelo claro */
+  .grp-despesa-fixa     > td.ind { background:#fef2f2; font-weight:700; }  /* vermelho claro */
+  .grp-investimento     > td.ind { background:#e0f2fe; font-weight:700; }  /* azul claro */
+  .grp-retirada         > td.ind { background:#e9d5ff; font-weight:700; }  /* roxo claro */
+  .grp-outros           > td.ind { background:#f1f5f9; font-weight:700; }  /* cinza claro */
 
-  /* Passado / hoje / futuro nas células de meses */
+  .totais-row > td.ind { background:#e5e7eb; font-weight:800; }
+
+  /* Passado/Hoje/Futuro */
   .past   { background:#fbfbfb; }
   .today  { background:#fffbe6; }
   .future { background:#ffffff; }
 
-  .toggle {
-    display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none;
-  }
-  .caret { font-size:12px; color:#555; width:14px; text-align:center; }
+  .toggle { display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
+  .caret  { font-size:12px; color:#555; width:14px; text-align:center; }
 
-  /* Linhas colapsáveis (categorias) */
-  tr.cat-row { transition: height .15s ease; }
   tr.cat-row.hidden { display:none; }
 </style>
 
 <script defer src="assets/menu.js"></script>
 
-<!-- Firebase v8 (sem módulos) -->
+<!-- Firebase v8 -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
@@ -90,7 +89,7 @@
   <div class="main-content">
     <div class="page-header">
       <h1>Fluxo Financeiro</h1>
-      <p>Quebra por <strong>Centro de Custo</strong> e <strong>Categoria</strong>, com <em>Consolidado no Ano</em> e percentuais sobre a Receita.</p>
+      <p>Centros e categorias <strong>exatamente como no cadastro</strong>, com consolidado anual fixo e <strong>percentuais no ano e no mês</strong> (sempre sobre a Receita).</p>
       <div id="diag" class="diag warn"></div>
     </div>
 
@@ -98,7 +97,7 @@
       <label>Ano Fiscal:
         <select id="anoSelect"></select>
       </label>
-      <span class="badge">Percentuais calculados sobre a <strong>Receita</strong> do ano selecionado.</span>
+      <span class="badge">%</span> = valor ÷ <strong>Receita</strong> (do ano/ do mês) × 100
       <span class="legend">
         <span><span class="dot past"></span>Passado</span>
         <span><span class="dot today"></span>Hoje</span>
@@ -150,7 +149,12 @@
 
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   const num = v => isNaN(Number(v)) ? 0 : Number(v);
-  const ccKey = cc => (String(cc||'despesa').trim().toLowerCase()==='receita' ? 'receita' : (String(cc||'').trim().toLowerCase()==='cmv' ? 'cmv' : 'despesa'));
+
+  // Ordem pedida
+  const ORDEM_CENTROS = ["Receita","CMV","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
+  const slug = s => String(s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 
   function paintCell(td, m, anoSel){
     const isTodayCol = (m===mesAtual && anoSel===anoAtual);
@@ -167,10 +171,22 @@
   async function getCategorias(){
     const snap = await db.ref('financeiro/categorias').once('value');
     const v = snap.val() || {};
-    const arr = Object.keys(v).map(id => ({ id, nome: v[id]?.nome || '(sem nome)', grupo: ccKey(v[id]?.centroDeCusto) }));
-    // ordena: Receita, CMV, Despesa; dentro, por nome
-    const order = { receita:0, cmv:1, despesa:2 };
-    arr.sort((a,b)=> (order[a.grupo]-order[b.grupo]) || a.nome.localeCompare(b.nome));
+    const arr = Object.keys(v).map(id => ({
+      id,
+      nome: v[id]?.nome || '(sem nome)',
+      centro: v[id]?.centroDeCusto || 'Outros'
+    }));
+    // ordena por ORDEM_CENTROS; centros não listados vão para o fim (ordem alfabética)
+    arr.sort((a,b)=>{
+      const ia = ORDEM_CENTROS.indexOf(a.centro), ib = ORDEM_CENTROS.indexOf(b.centro);
+      if (ia!==-1 || ib!==-1){
+        if (ia===-1) return 1;
+        if (ib===-1) return -1;
+        if (ia!==ib) return ia-ib;
+      }
+      if (a.centro!==b.centro) return a.centro.localeCompare(b.centro);
+      return a.nome.localeCompare(b.nome);
+    });
     return arr;
   }
 
@@ -180,31 +196,32 @@
   }
 
   function buildRow(label, cls){
-    const tr = document.createElement('tr');
-    tr.className = cls || '';
-    const tdInd  = document.createElement('td'); tdInd.className = 'ind'; tdInd.textContent = label;
-    const tdYear = document.createElement('td'); tdYear.className = 'year num'; tdYear.textContent = '—';
+    const tr = document.createElement('tr'); tr.className = cls || '';
+    const tdInd  = document.createElement('td'); tdInd.className = 'ind';  tdInd.textContent = label;
+    const tdYear = document.createElement('td'); tdYear.className = 'year num'; tdYear.innerHTML = '—';
     tr.appendChild(tdInd); tr.appendChild(tdYear);
     for (let m=1;m<=12;m++){
-      const td = document.createElement('td'); td.className='num'; td.textContent='—'; tr.appendChild(td);
+      const td = document.createElement('td'); td.className='num'; td.innerHTML='—'; tr.appendChild(td);
     }
     return tr;
   }
 
-  function buildGroupHeader(grpKey, label, startOpen=true){
-    const tr = document.createElement('tr');
-    tr.className = `grp-${grpKey}`;
+  function buildGroupHeader(centro, startOpen=true){
+    const key = slug(centro||'Outros');
+    const tr = document.createElement('tr'); tr.className = `grp-${key}`;
     const tdInd = document.createElement('td'); tdInd.className='ind';
-    tdInd.innerHTML = `<span class="toggle" data-grp="${grpKey}" data-open="${startOpen? '1':'0'}">
-      <span class="caret">${startOpen ? '▼' : '►'}</span> ${label}
+    tdInd.innerHTML = `<span class="toggle" data-grp="${key}" data-open="${startOpen? '1':'0'}">
+      <span class="caret">${startOpen ? '▼' : '►'}</span> ${centro}
     </span>`;
-    const tdYear = document.createElement('td'); tdYear.className='year num'; tdYear.textContent='—';
+    const tdYear = document.createElement('td'); tdYear.className='year num'; tdYear.innerHTML='—';
     tr.appendChild(tdInd); tr.appendChild(tdYear);
     for (let m=1;m<=12;m++){
       const td=document.createElement('td'); td.className='num'; tr.appendChild(td);
       paintCell(td, m, Number(anoSelect.value));
-      td.textContent='—';
+      td.innerHTML='—';
     }
+    tr.dataset.grpkey = key;
+    tr.dataset.rotulo = centro;
     return tr;
   }
 
@@ -215,11 +232,18 @@
         const open = tg.dataset.open==='1';
         tg.dataset.open = open ? '0':'1';
         tg.querySelector('.caret').textContent = open ? '►':'▼';
-        tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=>{
-          r.classList.toggle('hidden', open);
-        });
+        tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
       });
     });
+  }
+
+  function setCellValueWithPct(td, valor, basePct){
+    const hasVal = Math.abs(valor) > 0.0000001;
+    const pct = (basePct>0) ? (valor/basePct*100) : null;
+    if (!hasVal && pct===null){ td.innerHTML = '—'; return; }
+    const vStr = fmt(valor);
+    const pStr = (pct===null) ? '—' : `${pct.toFixed(1)}%`;
+    td.innerHTML = `${vStr}<span class="pct">${pStr}</span>`;
   }
 
   async function carregar(anoSel){
@@ -227,108 +251,117 @@
     buildHeader();
     tbody.innerHTML = '';
 
-    // Header de grupos
-    const grpLabels = { receita: 'Receita', cmv: 'CMV', despesa: 'Despesas' };
-    const headers = {
-      receita: buildGroupHeader('receita', grpLabels.receita, true),
-      cmv:     buildGroupHeader('cmv',     grpLabels.cmv,     true),
-      despesa: buildGroupHeader('despesa', grpLabels.despesa, true)
-    };
-    tbody.appendChild(headers.receita);
-    tbody.appendChild(headers.cmv);
-    tbody.appendChild(headers.despesa);
-
-    // Linhas de categorias (inicialmente visíveis)
     const categorias = await getCategorias();
-    const linhasCat = {}; // id -> tr
-    categorias.forEach(cat=>{
-      const tr = buildRow(cat.nome, 'cat-row'); tr.dataset.grp = cat.grupo; tr.classList.add('cat-row');
-      tbody.appendChild(tr);
-      linhasCat[cat.id] = { tr, grupo: cat.grupo };
-    });
-
-    // Linha de totais (ano/mês)
-    const trTot = buildRow('Resultado Operacional (Receita − CMV − Despesas)', 'totais-row');
-    tbody.appendChild(trTot);
-
-    // Dados
     const dados = await getConsolidado(anoSel);
 
-    // Acumuladores por grupo e por categoria
-    const initArr = ()=> Array.from({length:12}, ()=>0);
-    const grp = { receita:initArr(), cmv:initArr(), despesa:initArr() };
-    const catSum = {}; // id -> [12]
+    // Lista de centros, na ordem
+    const centrosSet = new Map();
+    ORDEM_CENTROS.forEach(c=>centrosSet.set(c,true));
+    categorias.forEach(c=>{ if(!centrosSet.has(c.centro)) centrosSet.set(c.centro,true); });
+    const centros = Array.from(centrosSet.keys());
 
-    // Preenchimento
+    // Cria headers de grupo
+    const headers = {}; // centro -> <tr>
+    centros.forEach(c=>{
+      const tr = buildGroupHeader(c, true);
+      headers[c] = tr;
+      tbody.appendChild(tr);
+    });
+
+    // Cria linhas de categorias
+    const linhasCat = {}; // id -> {tr, centro}
+    categorias.forEach(cat=>{
+      const tr = buildRow(cat.nome, 'cat-row'); 
+      tr.dataset.grp = slug(cat.centro);
+      tbody.appendChild(tr);
+      linhasCat[cat.id] = { tr, centro: cat.centro };
+      // insere cada cat logo depois do header do seu grupo:
+      tbody.insertBefore(tr, headers[cat.centro].nextSibling);
+    });
+
+    // Acumular valores por mês para grupo e categoria
+    const initArr = ()=> Array.from({length:12}, ()=>0);
+    const grpSums = {}; // centro -> [12]
+    const catSums = {}; // id -> [12]
+    centros.forEach(c=> grpSums[c] = initArr() );
+
     Object.keys(dados).forEach(m=>{
       const i = Number(m)-1;
       const porCat = dados[m] || {};
       Object.keys(porCat).forEach(id=>{
         const v = num(porCat[id]?.valor);
-        if (!catSum[id]) catSum[id] = initArr();
-        catSum[id][i] += v;
-        const g = linhasCat[id]?.grupo || 'despesa';
-        grp[g][i] += v;
+        if (!catSums[id]) catSums[id] = initArr();
+        catSums[id][i] += v;
+
+        const centro = linhasCat[id]?.centro || 'Outros';
+        if (!grpSums[centro]) grpSums[centro] = initArr();
+        grpSums[centro][i] += v;
       });
     });
 
-    // Totais por mês e por ano
+    // Receita mês a mês e do ano (base de %)
     const sum = arr => arr.reduce((a,b)=>a+num(b),0);
-    const anoReceita = sum(grp.receita);
-    const anoCMV     = sum(grp.cmv);
-    const anoDesp    = sum(grp.despesa);
-    const anoRO      = anoReceita - anoCMV - anoDesp;
+    const recArr = (grpSums["Receita"] || initArr());
+    const recAno = sum(recArr);
+    const recMes = m => num(recArr[m-1]);
 
-    // Preencher cabeçalhos dos grupos (valores + % no ano)
-    function fillGroupRow(trHeader, arr, anoTotal, anoReceitaBase){
-      // Consolidado ano
-      const pct = anoReceitaBase ? (anoTotal/anoReceitaBase*100) : 0;
-      trHeader.children[1].innerHTML = `${anoTotal? anoTotal.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}<br><span class="pct">${pct.toFixed(1)}%</span>`;
+    // Preencher headers de grupo com valor e %
+ (ano e mês)
+    centros.forEach(c=>{
+      const tr = headers[c];
+      const arr = grpSums[c] || initArr();
+      const anoVal = sum(arr);
+
+      // Consolidado no ano (valor + % sobre Receita do ano)
+      setCellValueWithPct(tr.children[1], anoVal, recAno);
+
       // Meses
-      for(let m=1;m<=12;m++){
-        const td = trHeader.children[m+1];
-        paintCell(td, m, anoSel);
-        const v = arr[m-1];
-        td.textContent = v ? v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-      }
-    }
-    fillGroupRow(headers.receita, grp.receita, anoReceita, anoReceita);
-    fillGroupRow(headers.cmv,     grp.cmv,     anoCMV,     anoReceita);
-    fillGroupRow(headers.despesa, grp.despesa, anoDesp,    anoReceita);
-
-    // Preencher categorias
-    categorias.forEach(cat=>{
-      const tr = linhasCat[cat.id].tr;
-      const arr = catSum[cat.id] || initArr();
-      const anoCat = sum(arr);
-      const base = (cat.grupo==='receita') ? anoReceita : anoReceita; // todos % sobre receita
-      const pct = base ? (anoCat/base*100) : 0;
-
-      // Consolidado ano com %
-      tr.children[1].innerHTML = `${anoCat? anoCat.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}):'—'}<br><span class="pct">${pct.toFixed(1)}%</span>`;
-
-      for(let m=1;m<=12;m++){
+      for (let m=1;m<=12;m++){
         const td = tr.children[m+1];
         paintCell(td, m, anoSel);
-        const v = arr[m-1];
-        td.textContent = v ? v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
-        if (anoReceita) td.title = `${((v/anoReceita)*100).toFixed(2)}% da Receita no ano`;
+        setCellValueWithPct(td, arr[m-1], recMes(m));
       }
-
-      // Insere a categoria logo após o header do seu grupo (mantendo bloco coeso)
-      const grpHeader = headers[cat.grupo];
-      tbody.insertBefore(tr, grpHeader.nextSibling);
     });
 
-    // Resultado Operacional
-    trTot.children[1].textContent = anoRO.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    for(let m=1;m<=12;m++){
-      const v = grp.receita[m-1] - grp.cmv[m-1] - grp.despesa[m-1];
-      const td = trTot.children[m+1];
-      paintCell(td, m, anoSel);
-      td.textContent = v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-    }
+    // Preencher linhas de categorias
+    categorias.forEach(cat=>{
+      const tr = linhasCat[cat.id].tr;
+      const arr = catSums[cat.id] || initArr();
+      const anoVal = sum(arr);
 
+      // Ano
+      setCellValueWithPct(tr.children[1], anoVal, recAno);
+
+      // Meses
+      for (let m=1;m<=12;m++){
+        const td = tr.children[m+1];
+        paintCell(td, m, anoSel);
+        setCellValueWithPct(td, arr[m-1], recMes(m));
+      }
+    });
+
+    // Linha Resultado
+    const trRes = buildRow('Resultado', 'totais-row');
+    tbody.appendChild(trRes);
+
+    const getGrp = nome => grpSums[nome] || initArr();
+    const resArr = initArr();
+    const cmvArr   = getGrp('CMV');
+    const dvArr    = getGrp('Despesa Variável');
+    const dfArr    = getGrp('Despesa Fixa');
+    const invArr   = getGrp('Investimento');
+    const retArr   = getGrp('Retirada');
+
+    for (let m=1;m<=12;m++){
+      resArr[m-1] = (recArr[m-1] - cmvArr[m-1] - dvArr[m-1] - dfArr[m-1] - invArr[m-1] - retArr[m-1]);
+      const td = trRes.children[m+1];
+      paintCell(td, m, anoSel);
+      setCellValueWithPct(td, resArr[m-1], recMes(m));
+    }
+    const resAno = sum(resArr);
+    setCellValueWithPct(trRes.children[1], resAno, recAno);
+
+    // Ativa colapsar/expandir
     attachToggle();
   }
 
@@ -338,7 +371,6 @@
       const opt=document.createElement('option'); opt.value=y; opt.textContent=y;
       if(y===anoAtual) opt.selected=true; anoSelect.appendChild(opt);
     }
-    // header meses
     for (let m=1;m<=12;m++){
       const th=document.createElement('th'); th.textContent=mesesPt[m-1]; hdrMeses.appendChild(th);
     }
