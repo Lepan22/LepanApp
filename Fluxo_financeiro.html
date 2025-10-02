@@ -10,8 +10,8 @@
 
 <style>
   :root{
-    --ind-w: 340px;   /* largura col. Centro/Categoria */
-    --year-w: 160px;  /* largura col. Consolidado (Ano) */
+    --ind-w: 170px;  /* largura da coluna Centro/Categoria (metade do anterior) */
+    --year-w: 160px; /* largura da coluna Consolidado (Ano) */
   }
   .main-content { padding:16px 20px; }
 
@@ -24,28 +24,28 @@
 
   .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
   .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
-
   .legend  { font-size:11.5px; color:#666; display:flex; gap:10px; align-items:center; }
   .dot { display:inline-block; width:10px; height:10px; border-radius:3px; vertical-align:middle; margin-right:4px; }
   .dot.today  { background:#fff3c4; border:1px solid #fde68a; }
 
   .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
 
-  /* 1ª col var(--ind-w) + 2ª col var(--year-w) + 12*120 = ~ var */
+  /* min-width: 170 + 160 + 12*120 = 1770px */
   table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width: calc(var(--ind-w) + var(--year-w) + 1440px); background:#fff; }
   .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
 
   .fx thead th { background:#fff7ec; color:#000; font-weight:600; }
 
-  /* Coluna “Centro/Categoria” fixa e menor */
+  /* Coluna Centro/Categoria fixa e compacta */
   .fx th.ind, .fx td.ind {
     position:sticky; left:0; z-index:3;
     background:#fafafa;
     width:var(--ind-w); min-width:var(--ind-w); max-width:var(--ind-w);
-    text-align:left; white-space:nowrap;
+    text-align:left;
+    white-space: normal; /* permite quebrar */
   }
 
-  /* 2ª coluna fixa: “Consolidado (Ano)” — nota: left = --ind-w */
+  /* Coluna fixa: Consolidado (Ano) → offset alinhado à largura da 1ª coluna */
   .fx th.year, .fx td.year {
     position:sticky; left:var(--ind-w); z-index:2;
     background:#fafafa;
@@ -60,10 +60,10 @@
   /* Valor e % na MESMA linha */
   .pct { color:#475569; font-size:11.2px; display:inline; margin-left:6px; }
 
-  /* Destaque do mês atual */
+  /* Destaque do mês atual apenas */
   .today { background:#fffbe6 !important; }
 
-  /* Zebra (facilita seguir a linha pelos meses) */
+  /* Zebra por linha (melhor rastrear horizontalmente) */
   .fx tbody tr.row-odd  td { background:#ffffff; }
   .fx tbody tr.row-even td { background:#f7f7fb; }
 
@@ -150,7 +150,7 @@
 
   function paintCell(td, m, anoSel){
     const isTodayCol = (m===mesAtual && anoSel===anoAtual);
-    if (isTodayCol) td.classList.add('today');  // só destacamos o mês atual
+    if (isTodayCol) td.classList.add('today');
   }
 
   function buildHeader(){
@@ -168,7 +168,7 @@
       nome: v[id]?.nome || '(sem nome)',
       centro: v[id]?.centroDeCusto || 'Outros'
     }));
-    // ordena por ORDEM_CENTROS; centros não listados vão para o fim (alfabético)
+    // ordena por ORDEM_CENTROS; centros fora da lista vão ao fim (alfabético)
     arr.sort((a,b)=>{
       const ia = ORDEM_CENTROS.indexOf(a.centro), ib = ORDEM_CENTROS.indexOf(b.centro);
       if (ia!==-1 || ib!==-1){
@@ -246,7 +246,7 @@
     const categorias = await getCategorias();
     const dados = await getConsolidado(anoSel);
 
-    // Lista de centros, na ordem
+    // Centros (na ordem pedida + extras)
     const centrosSet = new Map();
     ORDEM_CENTROS.forEach(c=>centrosSet.set(c,true));
     categorias.forEach(c=>{ if(!centrosSet.has(c.centro)) centrosSet.set(c.centro,true); });
@@ -289,13 +289,13 @@
       });
     });
 
-    // Receita mês a mês e do ano (base de %)
+    // Receita (base de %)
     const sum = arr => arr.reduce((a,b)=>a+num(b),0);
     const recArr = (grpSums["Receita"] || initArr());
     const recAno = sum(recArr);
     const recMes = m => num(recArr[m-1]);
 
-    // Preencher headers de grupo (valor + % no ano e no mês)
+    // Preenche headers de grupo (ano e meses)
     centros.forEach(c=>{
       const tr = headers[c];
       const arr = grpSums[c] || initArr();
@@ -327,7 +327,7 @@
       }
     });
 
-    // Linha Resultado
+    // Resultado
     const trRes = buildRow('Resultado', 'totais-row');
     tbody.appendChild(trRes);
 
@@ -348,24 +348,15 @@
     const resAno = sum(resArr);
     setCellValueWithPct(trRes.children[1], resAno, recAno);
 
-    // === zebra (após montar tudo) ===
+    // Zebra
     let idx = 0;
     tbody.querySelectorAll('tr').forEach(tr=>{
       tr.classList.add( (idx%2===0) ? 'row-odd' : 'row-even' );
-      // não conta header de centro duas vezes
       idx++;
     });
 
-    // collapse/expand
-    tbody.querySelectorAll('.toggle').forEach(tg=>{
-      tg.addEventListener('click', ()=>{
-        const grp = tg.dataset.grp;
-        const open = tg.dataset.open==='1';
-        tg.dataset.open = open ? '0':'1';
-        tg.querySelector('.caret').textContent = open ? '►':'▼';
-        tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
-      });
-    });
+    // Collapse/expand
+    attachToggle();
   }
 
   // Init
