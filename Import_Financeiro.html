@@ -3,75 +3,66 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Fluxo Financeiro</title>
+<title>Importar Consolidado por Categoria</title>
 
 <link rel="stylesheet" href="assets/base.css"/>
 <link rel="stylesheet" href="assets/menu-styles.css"/>
 
 <style>
   :root{
-    --ind-w: 170px;  /* largura da coluna Centro/Categoria (metade do anterior) */
-    --year-w: 160px; /* largura da coluna Consolidado (Ano) */
+    --cat-w: 170px;   /* largura da coluna Categoria (metade) */
+    --mon-w: 120px;   /* largura de cada mês */
   }
-  .main-content { padding:16px 20px; }
 
-  .page-header h1 { margin:6px 0 6px; }
-  .page-header p  { margin:0 0 12px; color:#666; font-size:13px; }
+  .main-content { padding:16px 20px; }
+  h1 { margin:6px 0 10px; }
+  .sub { color:#666; font-size:13px; margin-bottom:12px; }
 
   .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
   .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
   .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+  .diag.ok   { background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; }
 
-  .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-  .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
-  .legend  { font-size:11.5px; color:#666; display:flex; gap:10px; align-items:center; }
-  .dot { display:inline-block; width:10px; height:10px; border-radius:3px; vertical-align:middle; margin-right:4px; }
-  .dot.today  { background:#fff3c4; border:1px solid #fde68a; }
+  .controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .btn { padding:6px 10px; border:1px solid #ddd; background:#fff; border-radius:8px; font-size:12px; cursor:pointer; }
+  .btn.primary { background:#ff7f2a; color:#fff; border-color:#ff7f2a; }
 
   .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
 
-  /* min-width: 170 + 160 + 12*120 = 1770px */
-  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width: calc(var(--ind-w) + var(--year-w) + 1440px); background:#fff; }
-  .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
+  /* Tabela principal */
+  table.fin { width:100%; border-collapse:collapse; table-layout:fixed; min-width: calc(var(--cat-w) + 12*var(--mon-w)); background:#fff; }
+  .fin th, .fin td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
+  .fin thead th { background:#fff7ec; color:#000; font-weight:600; }
 
-  .fx thead th { background:#fff7ec; color:#000; font-weight:600; }
-
-  /* Coluna Centro/Categoria fixa e compacta */
-  .fx th.ind, .fx td.ind {
-    position:sticky; left:0; z-index:3;
+  /* Coluna Categoria (fixa e compacta) */
+  .fin th.cat, .fin td.cat {
+    position:sticky; left:0; z-index:2;
     background:#fafafa;
-    width:var(--ind-w); min-width:var(--ind-w); max-width:var(--ind-w);
-    text-align:left;
-    white-space: normal; /* permite quebrar */
+    width:var(--cat-w); min-width:var(--cat-w); max-width:var(--cat-w);
+    text-align:left; white-space:normal;
   }
 
-  /* Coluna fixa: Consolidado (Ano) → offset alinhado à largura da 1ª coluna */
-  .fx th.year, .fx td.year {
-    position:sticky; left:var(--ind-w); z-index:2;
-    background:#fafafa;
-    width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
-  }
-
-  /* Meses */
-  .fx th:not(.ind):not(.year), .fx td:not(.ind):not(.year) { width:120px; }
+  /* Demais colunas (meses) */
+  .fin th.mon, .fin td.mon { width:var(--mon-w); }
 
   .num { text-align:right; }
 
-  /* Valor e % na MESMA linha */
-  .pct { color:#475569; font-size:11.2px; display:inline; margin-left:6px; }
+  /* Faixa de import por mês */
+  .import-row td { background:#f8fafc; }
 
-  /* Destaque do mês atual apenas */
-  .today { background:#fffbe6 !important; }
+  /* Campos do mês (grid por mês) */
+  .cards { display:grid; grid-template-columns: repeat(12, minmax(var(--mon-w), 1fr)); gap:8px; overflow-x:auto; }
+  .card { border:1px solid #e5e7eb; border-radius:10px; padding:8px; background:#fff; min-width:var(--mon-w); }
+  .card h4 { margin:0 0 6px; font-size:12px; font-weight:700; text-align:center; }
+  .form-col { display:flex; flex-direction:column; gap:6px; }
+  .field { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .field label { font-size:11.5px; color:#555; }
+  .field input { width:100%; padding:6px 8px; border:1px solid #ddd; border-radius:8px; font-size:12.5px; text-align:right; }
+  .card .btn { width:100%; margin-top:4px; }
 
-  /* Zebra por linha (melhor rastrear horizontalmente) */
-  .fx tbody tr.row-odd  td { background:#ffffff; }
-  .fx tbody tr.row-even td { background:#f7f7fb; }
-
-  .toggle { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-weight:700; }
-  .caret  { font-size:12px; color:#555; width:14px; text-align:center; }
-
-  tr.cat-row.hidden { display:none; }
-  .totais-row > td.ind { font-weight:800; }
+  .help { font-size:12px; color:#475569; }
+  .merr { color:#991b1b; font-size:12px; }
+  .mok  { color:#065f46; font-size:12px; }
 </style>
 
 <script defer src="assets/menu.js"></script>
@@ -84,38 +75,37 @@
   <div id="menuLateral" class="sidebar"></div>
 
   <div class="main-content">
-    <div class="page-header">
-      <h1>Fluxo Financeiro</h1>
-      <p>Centros e categorias <strong>exatamente como no cadastro</strong>, com <strong>Consolidado (Ano)</strong> fixo e percentuais <strong>no ano e no mês</strong> (sempre sobre a Receita).</p>
-      <div id="diag" class="diag warn"></div>
-    </div>
+    <h1>Importar Consolidado por Categoria</h1>
+    <div class="sub">Liste e importe os valores mensais por <strong>categoria</strong>. Se o CSV tiver categoria desconhecida, a importação é cancelada e o erro é exibido.</div>
+    <div id="diag" class="diag warn"></div>
 
-    <section class="filters">
+    <div class="controls">
       <label>Ano Fiscal:
         <select id="anoSelect"></select>
       </label>
-      <span class="badge">% = valor ÷ <strong>Receita</strong> (do ano/ do mês) × 100</span>
-      <span class="legend"><span class="dot today"></span>Hoje</span>
-    </section>
+      <span class="help">CSV: <code>categoria;valor</code> ou <code>categoria,valor</code> — aceita <em>24.671,87</em> ou <em>24671.87</em></span>
+    </div>
 
     <div class="table-wrap">
-      <table class="fx" id="tbl">
+      <table class="fin" id="tbl">
         <thead>
-          <tr id="hdrMeses">
-            <th class="ind">Centro/Categoria</th>
-            <th class="year">Consolidado (Ano)</th>
+          <tr id="hdr">
+            <th class="cat">Categoria</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
+
+    <h3 style="margin:18px 0 8px;">Campos do mês</h3>
+    <div class="cards" id="cards"></div>
   </div>
 
 <script>
 (function(){
   const diag = document.getElementById('diag');
-  const showDiag = (msg, type="warn") => { diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display = 'block'; };
-  const clearDiag = () => { diag.style.display = 'none'; diag.textContent = ''; };
+  const showDiag = (msg, type="warn") => { diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display='block'; };
+  const clearDiag = () => { diag.style.display='none'; diag.textContent=''; };
 
   // Firebase
   try {
@@ -137,49 +127,41 @@
   const hoje = new Date(); const mesAtual = hoje.getMonth()+1; const anoAtual = hoje.getFullYear();
 
   const anoSelect = document.getElementById('anoSelect');
-  const hdrMeses  = document.getElementById('hdrMeses');
-  const tbody     = document.getElementById('tbody');
+  const hdr = document.getElementById('hdr');
+  const tbody = document.getElementById('tbody');
+  const cards = document.getElementById('cards');
 
-  const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
-  const num = v => isNaN(Number(v)) ? 0 : Number(v);
-
-  const ORDEM_CENTROS = ["Receita","CMV","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
-  const slug = s => String(s||'').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
-
-  function paintCell(td, m, anoSel){
-    const isTodayCol = (m===mesAtual && anoSel===anoAtual);
-    if (isTodayCol) td.classList.add('today');
+  const fmtBR = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  function parseBR(v){
+    if (v===null || v===undefined) return 0;
+    if (typeof v !== 'string') return Number(v)||0;
+    let s = v.trim();
+    if (!s) return 0;
+    s = s.replace(/[R$\s]/gi,'');
+    // se tem vírgula e ponto, assume vírgula decimal
+    if (s.includes(',') && s.includes('.')) { s = s.replace(/\./g,'').replace(',', '.'); }
+    else if (s.includes(','))             { s = s.replace(',', '.'); }
+    // remove separadores não-numéricos restantes
+    s = s.replace(/[^\d\.\-]/g,'');
+    return Number(s)||0;
   }
 
-  function buildHeader(){
-    hdrMeses.innerHTML = '<th class="ind">Centro/Categoria</th><th class="year">Consolidado (Ano)</th>';
-    for (let m=1;m<=12;m++){
-      const th = document.createElement('th'); th.textContent = mesesPt[m-1]; hdrMeses.appendChild(th);
-    }
+  // Máscara leve: formata ao sair do campo; permite digitar livre
+  function enhanceMoneyInputs(root){
+    root.querySelectorAll('input[data-money="1"]').forEach(inp=>{
+      inp.addEventListener('blur', ()=>{
+        const n = parseBR(inp.value);
+        inp.value = fmtBR(n);
+      }, {passive:true});
+    });
   }
 
   async function getCategorias(){
     const snap = await db.ref('financeiro/categorias').once('value');
     const v = snap.val() || {};
-    const arr = Object.keys(v).map(id => ({
-      id,
-      nome: v[id]?.nome || '(sem nome)',
-      centro: v[id]?.centroDeCusto || 'Outros'
-    }));
-    // ordena por ORDEM_CENTROS; centros fora da lista vão ao fim (alfabético)
-    arr.sort((a,b)=>{
-      const ia = ORDEM_CENTROS.indexOf(a.centro), ib = ORDEM_CENTROS.indexOf(b.centro);
-      if (ia!==-1 || ib!==-1){
-        if (ia===-1) return 1;
-        if (ib===-1) return -1;
-        if (ia!==ib) return ia-ib;
-      }
-      if (a.centro!==b.centro) return a.centro.localeCompare(b.centro);
-      return a.nome.localeCompare(b.nome);
-    });
-    return arr;
+    // ordem por nome
+    return Object.keys(v).map(id => ({ id, nome: v[id]?.nome || '(sem nome)' }))
+                         .sort((a,b)=> a.nome.localeCompare(b.nome, 'pt-BR'));
   }
 
   async function getConsolidado(ano){
@@ -187,186 +169,223 @@
     return snap.val() || {};
   }
 
-  function buildRow(label, cls){
-    const tr = document.createElement('tr'); tr.className = cls || '';
-    const tdInd  = document.createElement('td'); tdInd.className = 'ind';  tdInd.textContent = label;
-    const tdYear = document.createElement('td'); tdYear.className = 'year num'; tdYear.innerHTML = '—';
-    tr.appendChild(tdInd); tr.appendChild(tdYear);
-    for (let m=1;m<=12;m++){
-      const td = document.createElement('td'); td.className='num'; td.innerHTML='—'; tr.appendChild(td);
+  function buildHeader(){
+    hdr.innerHTML = '<th class="cat">Categoria</th>';
+    for(let m=1;m<=12;m++){
+      const th = document.createElement('th');
+      th.className = 'mon';
+      th.textContent = mesesPt[m-1];
+      hdr.appendChild(th);
     }
-    return tr;
   }
 
-  function buildGroupHeader(centro, startOpen=true){
-    const key = slug(centro||'Outros');
-    const tr = document.createElement('tr');
-    const tdInd = document.createElement('td'); tdInd.className='ind';
-    tdInd.innerHTML = `<span class="toggle" data-grp="${key}" data-open="${startOpen? '1':'0'}">
-      <span class="caret">${startOpen ? '▼' : '►'}</span> ${centro}
-    </span>`;
-    const tdYear = document.createElement('td'); tdYear.className='year num'; tdYear.innerHTML='—';
-    tr.appendChild(tdInd); tr.appendChild(tdYear);
+  function buildRows(categorias){
+    tbody.innerHTML = '';
+    // Linha de Import por mês
+    const trImport = document.createElement('tr');
+    trImport.className='import-row';
+    const td0 = document.createElement('td'); td0.className='cat'; td0.innerHTML = '<b>Importar por mês</b>';
+    trImport.appendChild(td0);
+
     for (let m=1;m<=12;m++){
-      const td=document.createElement('td'); td.className='num'; tr.appendChild(td);
-      paintCell(td, m, Number(anoSelect.value));
-      td.innerHTML='—';
+      const td = document.createElement('td'); td.className='mon';
+      td.innerHTML = `
+        <input type="file" accept=".csv" id="file-${m}" style="width:100%; font-size:12px; margin-bottom:4px;">
+        <button class="btn primary" data-import="${m}" style="width:100%;">Importar</button>
+        <div id="msg-${m}" class="merr"></div>
+      `;
+      trImport.appendChild(td);
     }
-    tr.dataset.grpkey = key;
-    tr.dataset.rotulo = centro;
-    return tr;
+    tbody.appendChild(trImport);
+
+    // Demais linhas (categorias)
+    categorias.forEach(c=>{
+      const tr = document.createElement('tr');
+      const tdCat = document.createElement('td'); tdCat.className='cat'; tdCat.textContent = c.nome;
+      tr.appendChild(tdCat);
+      for(let m=1;m<=12;m++){
+        const td = document.createElement('td'); td.className='mon num'; td.dataset.cat = c.id; td.dataset.mes=m; td.textContent = '—';
+        tr.appendChild(td);
+      }
+      tbody.appendChild(tr);
+    });
   }
 
-  function attachToggle(){
-    tbody.querySelectorAll('.toggle').forEach(tg=>{
-      tg.addEventListener('click', ()=>{
-        const grp = tg.dataset.grp;
-        const open = tg.dataset.open==='1';
-        tg.dataset.open = open ? '0':'1';
-        tg.querySelector('.caret').textContent = open ? '►':'▼';
-        tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
+  async function preencherValores(anoSel, categorias){
+    const dados = await getConsolidado(anoSel);
+    // mapa rápido catId-> linha cells
+    const cellMap = {}; // key `${id}-${m}` -> td
+    Array.from(tbody.querySelectorAll('td.mon.num')).forEach(td=>{
+      cellMap[`${td.dataset.cat}-${td.dataset.mes}`] = td;
+    });
+
+    Object.keys(dados||{}).forEach(m=>{
+      const porCat = dados[m] || {};
+      Object.keys(porCat).forEach(id=>{
+        const td = cellMap[`${id}-${m}`];
+        if (td){
+          const v = Number(porCat[id]?.valor)||0;
+          td.textContent = v ? fmtBR(v) : '—';
+        }
       });
     });
   }
 
-  function setCellValueWithPct(td, valor, basePct){
-    const hasVal = Math.abs(valor) > 0.0000001;
-    const pct = (basePct>0) ? (valor/basePct*100) : null;
-    if (!hasVal && pct===null){ td.innerHTML = '—'; return; }
-    const vStr = fmt(valor);
-    const pStr = (pct===null) ? '—' : `${pct.toFixed(1)}%`;
-    td.innerHTML = `${vStr}<span class="pct">${pStr}</span>`;
+  function normalizeName(s){
+    return String(s||'').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/&/g,'e').replace(/[^\w\s]/g,'').replace(/\s+/g,' ').trim();
+  }
+
+  function parseCsv(text){
+    // aceita ; ou , como separador, e preserva número BR
+    return text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(l=>{
+      // tenta primeiro ; depois ,
+      let parts = l.split(';');
+      if (parts.length<2) parts = l.split(',');
+      const categoria = (parts[0]||'').trim();
+      const valorStr  = (parts.slice(1).join(',')||'').trim(); // caso tenha vírgula no número
+      return {categoria, valor: parseBR(valorStr)};
+    });
+  }
+
+  async function salvarConsolidado(ano, mes, items, catIndex){
+    // valida categorias
+    const desconhecidas = [];
+    const byId = {};
+    items.forEach(it=>{
+      const nk = normalizeName(it.categoria);
+      const cid = catIndex[nk];
+      if (!cid) desconhecidas.push(it.categoria);
+      else {
+        byId[cid] = (byId[cid]||0) + Number(it.valor||0);
+      }
+    });
+    if (desconhecidas.length){
+      throw new Error('Categorias não encontradas: ' + desconhecidas.join(', '));
+    }
+    // salva
+    const updates = {};
+    Object.keys(byId).forEach(cid=>{
+      updates[`financeiro/consolidado/${ano}/${mes}/${cid}/valor`] = Number(byId[cid]);
+    });
+    await db.ref().update(updates);
+    return byId; // para atualizar tela
+  }
+
+  function buildCardsCamposMes(anoSel){
+    cards.innerHTML = '';
+    for (let m=1;m<=12;m++){
+      const div = document.createElement('div');
+      div.className='card';
+      div.innerHTML = `
+        <h4>${mesesPt[m-1]}</h4>
+        <div class="form-col" data-mes="${m}">
+          <div class="field"><label>Custo Produto Mês (R$)</label><input data-money="1" data-key="custoProdutoMes"    placeholder="0,00"></div>
+          <div class="field"><label>Valor Estoque (R$)</label>     <input data-money="1" data-key="valorEstoque"       placeholder="0,00"></div>
+          <div class="field"><label>Compra Produto Mês (R$)</label><input data-money="1" data-key="compraProdutoMes"   placeholder="0,00"></div>
+          <div class="field"><label>Perda não Operacional (R$)</label><input data-money="1" data-key="perdaNaoOperacional" placeholder="0,00"></div>
+          <div class="field"><label>Contas a Pagar (Compras) (R$)</label><input data-money="1" data-key="contasAPagarCompras" placeholder="0,00"></div>
+          <button class="btn primary" data-save="${m}">Salvar</button>
+          <div class="help" id="h-${m}"></div>
+        </div>
+      `;
+      cards.appendChild(div);
+    }
+    enhanceMoneyInputs(cards);
+  }
+
+  async function carregarCamposMes(anoSel){
+    const snap = await db.ref(`financeiro/movimentacao/${anoSel}`).once('value');
+    const v = snap.val() || {};
+    for (let m=1;m<=12;m++){
+      const box = cards.querySelector(`.form-col[data-mes="${m}"]`);
+      const mes = v[m] || {};
+      box.querySelectorAll('input[data-money="1"]').forEach(inp=>{
+        const key = inp.dataset.key;
+        inp.value = fmtBR( Number(mes[key]||0) );
+      });
+    }
+  }
+
+  async function salvarCamposMes(anoSel, mes, box){
+    const data = {};
+    box.querySelectorAll('input[data-money="1"]').forEach(inp=>{
+      data[inp.dataset.key] = parseBR(inp.value);
+    });
+    await db.ref(`financeiro/movimentacao/${anoSel}/${mes}`).set(data);
   }
 
   async function carregar(anoSel){
     clearDiag();
+    if (!db){ showDiag('Firebase não inicializado.', 'err'); return; }
+
+    // monta header meses
     buildHeader();
-    tbody.innerHTML = '';
 
+    // lê categorias e monta linhas
     const categorias = await getCategorias();
-    const dados = await getConsolidado(anoSel);
+    buildRows(categorias);
 
-    // Centros (na ordem pedida + extras)
-    const centrosSet = new Map();
-    ORDEM_CENTROS.forEach(c=>centrosSet.set(c,true));
-    categorias.forEach(c=>{ if(!centrosSet.has(c.centro)) centrosSet.set(c.centro,true); });
-    const centros = Array.from(centrosSet.keys());
+    // index por nome normalizado
+    const catIndex = {};
+    categorias.forEach(c=> catIndex[ normalizeName(c.nome) ] = c.id );
 
-    // Headers de grupo
-    const headers = {}; // centro -> <tr>
-    centros.forEach(c=>{
-      const tr = buildGroupHeader(c, true);
-      headers[c] = tr;
-      tbody.appendChild(tr);
-    });
+    // preenche valores existentes
+    await preencherValores(anoSel, categorias);
 
-    // Linhas de categorias
-    const linhasCat = {}; // id -> {tr, centro}
-    categorias.forEach(cat=>{
-      const tr = buildRow(cat.nome, 'cat-row'); 
-      tr.dataset.grp = slug(cat.centro);
-      tbody.insertBefore(tr, headers[cat.centro].nextSibling);
-      linhasCat[cat.id] = { tr, centro: cat.centro };
-    });
-
-    // Acumular valores por mês para grupo e categoria
-    const initArr = ()=> Array.from({length:12}, ()=>0);
-    const grpSums = {}; // centro -> [12]
-    const catSums = {}; // id -> [12]
-    centros.forEach(c=> grpSums[c] = initArr() );
-
-    Object.keys(dados).forEach(m=>{
-      const i = Number(m)-1;
-      const porCat = dados[m] || {};
-      Object.keys(porCat).forEach(id=>{
-        const v = num(porCat[id]?.valor);
-        if (!catSums[id]) catSums[id] = initArr();
-        catSums[id][i] += v;
-
-        const centro = linhasCat[id]?.centro || 'Outros';
-        if (!grpSums[centro]) grpSums[centro] = initArr();
-        grpSums[centro][i] += v;
+    // handlers de import
+    tbody.querySelectorAll('button[data-import]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const mes = Number(btn.dataset.import);
+        const file = (document.getElementById(`file-${mes}`) || {}).files?.[0];
+        const msg = document.getElementById(`msg-${mes}`);
+        msg.textContent = '';
+        try{
+          if (!file) throw new Error('Escolha um arquivo CSV.');
+          const text = await file.text();
+          const items = parseCsv(text);
+          if (!items.length) throw new Error('CSV vazio.');
+          const saved = await salvarConsolidado(anoSel, mes, items, catIndex);
+          // atualiza tela do mês
+          Object.keys(saved).forEach(cid=>{
+            const td = tbody.querySelector(`td.mon.num[data-cat="${cid}"][data-mes="${mes}"]`);
+            if (td) td.textContent = fmtBR(saved[cid]);
+          });
+          msg.className='mok'; msg.textContent='Importado com sucesso.';
+        }catch(e){
+          console.error(e);
+          msg.className='merr'; msg.textContent = e.message || 'Falha ao importar.';
+        }
       });
     });
 
-    // Receita (base de %)
-    const sum = arr => arr.reduce((a,b)=>a+num(b),0);
-    const recArr = (grpSums["Receita"] || initArr());
-    const recAno = sum(recArr);
-    const recMes = m => num(recArr[m-1]);
+    // monta campos do mês
+    buildCardsCamposMes(anoSel);
+    await carregarCamposMes(anoSel);
 
-    // Preenche headers de grupo (ano e meses)
-    centros.forEach(c=>{
-      const tr = headers[c];
-      const arr = grpSums[c] || initArr();
-      const anoVal = sum(arr);
-
-      // Ano
-      setCellValueWithPct(tr.children[1], anoVal, recAno);
-
-      // Meses
-      for (let m=1;m<=12;m++){
-        const td = tr.children[m+1];
-        paintCell(td, m, anoSel);
-        setCellValueWithPct(td, arr[m-1], recMes(m));
-      }
+    // salvar campos do mês
+    cards.querySelectorAll('button[data-save]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const m = Number(btn.dataset.save);
+        const box = cards.querySelector(`.form-col[data-mes="${m}"]`);
+        const hint = document.getElementById(`h-${m}`);
+        hint.textContent='';
+        try{
+          await salvarCamposMes(anoSel, m, box);
+          hint.className='mok'; hint.textContent='Salvo.';
+        }catch(e){
+          hint.className='merr'; hint.textContent='Erro ao salvar.';
+        }
+      });
     });
-
-    // Categorias
-    categorias.forEach(cat=>{
-      const tr = linhasCat[cat.id].tr;
-      const arr = catSums[cat.id] || initArr();
-      const anoVal = sum(arr);
-
-      setCellValueWithPct(tr.children[1], anoVal, recAno);
-
-      for (let m=1;m<=12;m++){
-        const td = tr.children[m+1];
-        paintCell(td, m, anoSel);
-        setCellValueWithPct(td, arr[m-1], recMes(m));
-      }
-    });
-
-    // Resultado
-    const trRes = buildRow('Resultado', 'totais-row');
-    tbody.appendChild(trRes);
-
-    const getGrp = nome => grpSums[nome] || initArr();
-    const resArr = initArr();
-    const cmvArr   = getGrp('CMV');
-    const dvArr    = getGrp('Despesa Variável');
-    const dfArr    = getGrp('Despesa Fixa');
-    const invArr   = getGrp('Investimento');
-    const retArr   = getGrp('Retirada');
-
-    for (let m=1;m<=12;m++){
-      resArr[m-1] = (recArr[m-1] - cmvArr[m-1] - dvArr[m-1] - dfArr[m-1] - invArr[m-1] - retArr[m-1]);
-      const td = trRes.children[m+1];
-      paintCell(td, m, anoSel);
-      setCellValueWithPct(td, resArr[m-1], recMes(m));
-    }
-    const resAno = sum(resArr);
-    setCellValueWithPct(trRes.children[1], resAno, recAno);
-
-    // Zebra
-    let idx = 0;
-    tbody.querySelectorAll('tr').forEach(tr=>{
-      tr.classList.add( (idx%2===0) ? 'row-odd' : 'row-even' );
-      idx++;
-    });
-
-    // Collapse/expand
-    attachToggle();
   }
 
-  // Init
+  // init
   (async function init(){
     for(let y=anoAtual-2; y<=anoAtual+1; y++){
       const opt=document.createElement('option'); opt.value=y; opt.textContent=y;
       if(y===anoAtual) opt.selected=true; anoSelect.appendChild(opt);
-    }
-    for (let m=1;m<=12;m++){
-      const th=document.createElement('th'); th.textContent=mesesPt[m-1]; hdrMeses.appendChild(th);
     }
     await carregar(Number(anoSelect.value));
     anoSelect.addEventListener('change', ()=> carregar(Number(anoSelect.value)));
