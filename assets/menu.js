@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="financeiro" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-              <a href="/LepanApp/Index_Fincanceiro.html">Gestao Financeira</a>
+              <a href="/LepanApp/Index_Financeiro.html">Gestao Financeira</a>
               <a href="/LepanApp/Fluxo_financeiro.html">Fluxo</a>
               <a href="/LepanApp/DRE.html">DRE</a>
               <a href="/LepanApp/analise_estoque.html">Estoque</a>
@@ -85,8 +85,6 @@ document.addEventListener('DOMContentLoaded', function () {
               <a href="/LepanApp/logistica.html">Cadastrar Logística</a>
               <a href="/LepanApp/produto.html">Cadastro Produtos</a>
               <a href="/LepanApp/equipamentos.html">Cadastro Equipamentos</a>
-              <a href="/LepanApp/projecao_eventos.html">Gerar Previsão Eventos</a>
-              <a href="/LepanApp/previsao_receita.html">Gerar Previsão Receita</a>
               <a href="/LepanApp/gestao_agenda.html">Gestão da Agenda</a>
               <a href="/LepanApp/configuracao.html">Parâmetros Gerais</a>
               <a href="/LepanApp/Categoria_Fin.html">Cadastro Centro Custo</a>
