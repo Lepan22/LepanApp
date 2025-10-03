@@ -128,7 +128,8 @@
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   const num = v => isNaN(Number(v)) ? 0 : Number(v);
 
-  const ORDEM = ["Receita","CMV","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
+  /* Ordem de centros com "Despesas Operacionais" após CMV */
+  const ORDEM = ["Receita","CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
 
   const norm = s => String(s||'').toLowerCase()
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
@@ -156,17 +157,17 @@
       dre_percentual_base: (v[id]?.dre_percentual_base!=null) ? Number(v[id].dre_percentual_base) : null,
       dre_media_janela: v[id]?.dre_media_janela ? Number(v[id].dre_media_janela) : null
     }));
-    // >>> mesma organização do Fluxo
+    // mesma organização do Fluxo, agora com "Despesas Operacionais" após CMV
     const prioridadeCentro = c => {
       const cc = (c.centro||'').toLowerCase();
       if (cc==='receita') return 0;
       if (cc==='cmv')     return 1;
-      if (cc==='despesa variável') return 2;
-      if (cc==='despesa variavel') return 2;
-      if (cc==='despesa fixa')     return 3;
-      if (cc==='investimento')     return 4;
-      if (cc==='retirada')         return 5;
-      return 6;
+      if (cc==='despesas operacionais') return 2;
+      if (cc==='despesa variável' || cc==='despesa variavel') return 3;
+      if (cc==='despesa fixa')     return 4;
+      if (cc==='investimento')     return 5;
+      if (cc==='retirada')         return 6;
+      return 7;
     };
     arr.sort((a,b)=>{
       const pa = prioridadeCentro(a), pb = prioridadeCentro(b);
@@ -226,7 +227,7 @@
         const grp = tg.dataset.grp;
         const open = tg.dataset.open==='1';
         tg.dataset.open = open ? '0':'1';
-        tg.querySelector('.caret').textContent = open ? '►':'▼';
+        tg.querySelector('.caret').textContent = open ? '►' : '▼';
         tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
       });
     });
@@ -285,10 +286,10 @@
     });
     const receitaAnoCorte = sumTo(receitaMes, mesLimite);
 
-    // centros na ordem do Fluxo
+    // centros na ordem do Fluxo (com "Despesas Operacionais")
     const centros = [];
     const seen = new Set();
-    const ordem = ["Receita","CMV","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
+    const ordem = ORDEM.slice();
     ordem.forEach(c=>{ seen.add(c); centros.push(c); });
     cats.forEach(c=>{ if(!seen.has(c.centro)){ seen.add(c.centro); centros.push(c.centro); } });
 
@@ -302,19 +303,17 @@
     cats.forEach(cat=>{
       let centroEf = cat.centro;
       let label = cat.nome;
+
+      // Regra especial: "Compras" vira "Custo de Produto" DENTRO de CMV
       if (cat.dre_regra === 'especial' && norm(cat.nome)==='compras'){
-        centroEf = 'Custo de Produto';
-        if (!headers[centroEf]){
-          const tr = buildGroupHeader(centroEf, true);
-          headers[centroEf] = tr; tbody.appendChild(tr);
-          centros.push(centroEf);
-        }
-        label = 'Custo de Produto';
+        centroEf = 'CMV';            // agrupa no CMV
+        label = 'Custo de Produto';  // nome da linha
       }
+
       const tr = buildRow(label, 'cat-row');
       tr.dataset.grp = (centroEf||'').toLowerCase().replace(/\s+/g,'-');
       tbody.insertBefore(tr, headers[centroEf].nextSibling);
-      linhasCat[cat.id] = { tr, centroEf, cat };
+      linhasCat[cat.id] = { tr, centroEf, cat, label };
     });
 
     const initArr = ()=> Array.from({length:12}, ()=>0);
@@ -323,7 +322,7 @@
 
     // calcula por regra
     for (const id in linhasCat){
-      const { cat, centroEf } = linhasCat[id];
+      const { cat, centroEf, label } = linhasCat[id];
       const regra = cat.dre_regra || 'caixa';
       const arr = initArr();
 
@@ -338,12 +337,13 @@
           const N = cat.dre_media_janela ? Number(cat.dre_media_janela) : 0;
           val = mediaUltimosN(id, m, N, consAno, consPrev);
         } else if (regra === 'especial' && norm(cat.nome)==='compras'){
+          // custo de produto informado em movimentacao
           val = num( movAno?.[m]?.custoProdutoMes || 0 );
         } else {
           val = num( consAno?.[m]?.[id]?.valor || 0 );
         }
         arr[m-1] = val;
-        grpSums[centroEf][m-1] += val;
+        grpSums[centroEf][m-1] += val;  // soma no grupo efetivo (CMV, etc.)
       }
       catSums[id] = arr;
     }
@@ -374,20 +374,22 @@
       }
     });
 
-    // Resultado
+    // ========= Resultado =========
     const trRes = buildRow('Resultado', 'totais-row');
     tbody.appendChild(trRes);
     const get = n => grpSums[n] || initArr();
-    const cProd = get('Custo de Produto');
+
+    const rec   = get('Receita');
+    const cmv   = get('CMV');                      // inclui "Custo de Produto"
+    const dop   = get('Despesas Operacionais');    // novo centro
     const dv    = get('Despesa Variável');
     const df    = get('Despesa Fixa');
     const inv   = get('Investimento');
     const ret   = get('Retirada');
-    const rec   = get('Receita');
 
     const rArr = initArr();
     for (let m=1;m<=12;m++){
-      rArr[m-1] = (rec[m-1] - cProd[m-1] - dv[m-1] - df[m-1] - inv[m-1] - ret[m-1]);
+      rArr[m-1] = (rec[m-1] - cmv[m-1] - dop[m-1] - dv[m-1] - df[m-1] - inv[m-1] - ret[m-1]);
       const td = trRes.children[m+1];
       paintCell(td, m, anoSel);
       setCell(td, rArr[m-1], receitaMes[m-1]);
