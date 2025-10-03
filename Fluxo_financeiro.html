@@ -1,84 +1,58 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Fluxo Financeiro</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fluxo Financeiro</title>
 
-<link rel="stylesheet" href="assets/base.css"/>
-<link rel="stylesheet" href="assets/menu-styles.css"/>
+  <!-- Estilos base do seu projeto -->
+  <link rel="stylesheet" href="../assets/base.css"/>
+  <link rel="stylesheet" href="../assets/menu-styles.css"/>
 
-<style>
-  :root{
-    --ind-w: 170px;  /* largura da coluna Centro/Categoria (metade do anterior) */
-    --year-w: 160px; /* largura da coluna Consolidado (Ano) */
-  }
-  .main-content { padding:16px 20px; }
+  <!-- Firebase v8 (mantendo o padrão do projeto) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-  .page-header h1 { margin:6px 0 6px; }
-  .page-header p  { margin:0 0 12px; color:#666; font-size:13px; }
+  <!-- Menu lateral -->
+  <script defer src="../assets/menu.js"></script>
 
-  .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
-  .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
-  .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+  <style>
+    .page-header h1{ margin-bottom:6px }
+    .page-header p{ margin:0 0 8px 0; color:#6b7280; font-size:12.5px }
+    .diag{ display:none; padding:8px 10px; margin:8px 0; border-radius:8px; font-size:12.5px }
+    .diag.warn{ background:#fff7ec; border:1px solid #f59e0b; color:#92400e }
+    .diag.err{ background:#fef2f2; border:1px solid #ef4444; color:#991b1b }
+    .filters{ display:flex; align-items:center; gap:12px; margin-bottom:10px; flex-wrap:wrap }
+    .filters label{ font-size:12.5px; color:#374151 }
+    .filters select{ padding:6px 8px; font-size:12.5px }
+    .badge{ font-size:11.5px; color:#6b7280; background:#f3f4f6; border:1px solid #e5e7eb; padding:4px 6px; border-radius:6px }
+    .legend{ font-size:11.5px; color:#6b7280; display:flex; align-items:center; gap:6px }
+    .dot{ width:8px; height:8px; border-radius:50%; display:inline-block }
+    .dot.today{ background:#111827 }
 
-  .filters { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
-  .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
-  .legend  { font-size:11.5px; color:#666; display:flex; gap:10px; align-items:center; }
-  .dot { display:inline-block; width:10px; height:10px; border-radius:3px; vertical-align:middle; margin-right:4px; }
-  .dot.today  { background:#fff3c4; border:1px solid #fde68a; }
+    .table-wrap{ width:100%; overflow:auto; border:1px solid #e5e7eb; border-radius:10px; background:#fff }
+    table.fx{ width:100%; border-collapse:separate; border-spacing:0 }
+    table.fx thead th{ position:sticky; top:0; background:#fff7ec; z-index:2; font-weight:600; font-size:12.5px; border-bottom:1px solid #e5e7eb }
+    table.fx th, table.fx td{ padding:8px 10px; border-bottom:1px solid #f3f4f6; font-size:12.5px; text-align:left; vertical-align:top }
+    th.ind, td.ind{ width:300px }
+    th.year, td.year{ width:140px }
+    td.num, th.num{ text-align:right; white-space:nowrap }
+    tr.grp{ background:#fff; font-weight:600 }
+    tr.grp td.ind .caret{ display:inline-block; width:14px; margin-right:6px }
+    tr.grp .toggle{ cursor:pointer; user-select:none }
+    .muted{ color:#6b7280; font-size:11px; display:block; margin-top:2px }
+    .today-col{ background:#f9fafb }
+    .right{ text-align:right }
+    .sticky-first{ position:sticky; left:0; background:#fff; z-index:1 }
+    .sticky-first.grp{ background:#fff7ec }
 
-  .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
-
-  /* min-width: 170 + 160 + 12*120 = 1770px */
-  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; min-width: calc(var(--ind-w) + var(--year-w) + 1440px); background:#fff; }
-  .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
-
-  .fx thead th { background:#fff7ec; color:#000; font-weight:600; }
-
-  /* Coluna Centro/Categoria fixa e compacta */
-  .fx th.ind, .fx td.ind {
-    position:sticky; left:0; z-index:3;
-    background:#fafafa;
-    width:var(--ind-w); min-width:var(--ind-w); max-width:var(--ind-w);
-    text-align:left;
-    white-space: normal; /* permite quebrar */
-  }
-
-  /* Coluna fixa: Consolidado (Ano) → offset alinhado à largura da 1ª coluna */
-  .fx th.year, .fx td.year {
-    position:sticky; left:var(--ind-w); z-index:2;
-    background:#fafafa;
-    width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
-  }
-
-  /* Meses */
-  .fx th:not(.ind):not(.year), .fx td:not(.ind):not(.year) { width:120px; }
-
-  .num { text-align:right; }
-
-  /* Valor e % na MESMA linha */
-  .pct { color:#475569; font-size:11.2px; display:inline; margin-left:6px; }
-
-  /* Destaque do mês atual apenas */
-  .today { background:#fffbe6 !important; }
-
-  /* Zebra por linha (melhor rastrear horizontalmente) */
-  .fx tbody tr.row-odd  td { background:#ffffff; }
-  .fx tbody tr.row-even td { background:#f7f7fb; }
-
-  .toggle { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-weight:700; }
-  .caret  { font-size:12px; color:#555; width:14px; text-align:center; }
-
-  tr.cat-row.hidden { display:none; }
-  .totais-row > td.ind { font-weight:800; }
-</style>
-
-<script defer src="assets/menu.js"></script>
-
-<!-- Firebase v8 -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    /* celular */
+    @media (max-width: 980px){
+      th.ind, td.ind{ width: 220px }
+      th.year, td.year{ width: 120px }
+      table.fx th, table.fx td{ padding:6px 8px; font-size:12px }
+    }
+  </style>
 </head>
 <body>
   <div id="menuLateral" class="sidebar"></div>
@@ -94,7 +68,7 @@
       <label>Ano Fiscal:
         <select id="anoSelect"></select>
       </label>
-      <span class="badge">% = valor ÷ <strong>Receita</strong> (do ano/ do mês) × 100</span>
+      <span class="badge">% = valor ÷ <strong>Receita</strong> (do ano / do mês) × 100</span>
       <span class="legend"><span class="dot today"></span>Hoje</span>
     </section>
 
@@ -102,8 +76,8 @@
       <table class="fx" id="tbl">
         <thead>
           <tr id="hdrMeses">
-            <th class="ind">Centro/Categoria</th>
-            <th class="year">Consolidado (Ano)</th>
+            <th class="ind sticky-first">Centro/Categoria</th>
+            <th class="year num">Consolidado (Ano)</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -111,267 +85,287 @@
     </div>
   </div>
 
-<script>
-(function(){
-  const diag = document.getElementById('diag');
-  const showDiag = (msg, type="warn") => { diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display = 'block'; };
-  const clearDiag = () => { diag.style.display = 'none'; diag.textContent = ''; };
+  <script>
+  (function(){
+    const diag = document.getElementById('diag');
+    const showDiag = (msg, type="warn") => { diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display = 'block'; };
+    const clearDiag = () => { diag.style.display = 'none'; diag.textContent = ''; };
 
-  // Firebase
-  try {
-    const firebaseConfig = {
-      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-      authDomain: "lepanapp.firebaseapp.com",
-      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-      projectId: "lepanapp",
-      storageBucket: "lepanapp.appspot.com",
-      messagingSenderId: "542989944344",
-      appId: "1:542989944344:web:576e28199960fd5440a56d",
-      measurementId: "G-VTNGJR7YRL"
-    };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  } catch(e){ console.error(e); showDiag('Falha ao inicializar Firebase.', 'err'); }
-  const db = firebase.apps.length ? firebase.database() : null;
+    // Firebase
+    try{
+      const firebaseConfig = {
+        apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+        authDomain: "lepanapp.firebaseapp.com",
+        databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+        projectId: "lepanapp",
+        storageBucket: "lepanapp.appspot.com",
+        messagingSenderId: "542989944344",
+        appId: "1:542989944344:web:576e28199960fd5440a56d",
+        measurementId: "G-VTNGJR7YRL"
+      };
+      if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    }catch(e){ console.error(e); showDiag('Falha ao inicializar Firebase.', 'err'); }
+    const db = firebase.apps.length ? firebase.database() : null;
 
-  const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-  const hoje = new Date(); const mesAtual = hoje.getMonth()+1; const anoAtual = hoje.getFullYear();
+    const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth()+1; // 1..12
+    const anoAtual = hoje.getFullYear();
 
-  const anoSelect = document.getElementById('anoSelect');
-  const hdrMeses  = document.getElementById('hdrMeses');
-  const tbody     = document.getElementById('tbody');
+    const anoSelect = document.getElementById('anoSelect');
+    const hdrMeses  = document.getElementById('hdrMeses');
+    const tbody     = document.getElementById('tbody');
 
-  const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
-  const num = v => isNaN(Number(v)) ? 0 : Number(v);
+    const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+    const num = v => isNaN(Number(v)) ? 0 : Number(v);
 
-  const ORDEM_CENTROS = ["Receita","CMV","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
-  const slug = s => String(s||'').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+    // >>>>>> NOVA ORDEM: incluímos "Despesas Operacionais" após CMV <<<<<<
+    const ORDEM_CENTROS = [
+      "Receita",
+      "CMV",
+      "Despesas Operacionais",
+      "Despesa Variável",
+      "Despesa Fixa",
+      "Investimento",
+      "Retirada"
+    ];
 
-  function paintCell(td, m, anoSel){
-    const isTodayCol = (m===mesAtual && anoSel===anoAtual);
-    if (isTodayCol) td.classList.add('today');
-  }
+    const slug = s => String(s||'').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 
-  function buildHeader(){
-    hdrMeses.innerHTML = '<th class="ind">Centro/Categoria</th><th class="year">Consolidado (Ano)</th>';
-    for (let m=1;m<=12;m++){
-      const th = document.createElement('th'); th.textContent = mesesPt[m-1]; hdrMeses.appendChild(th);
-    }
-  }
-
-  async function getCategorias(){
-    const snap = await db.ref('financeiro/categorias').once('value');
-    const v = snap.val() || {};
-    const arr = Object.keys(v).map(id => ({
-      id,
-      nome: v[id]?.nome || '(sem nome)',
-      centro: v[id]?.centroDeCusto || 'Outros'
-    }));
-    // ordena por ORDEM_CENTROS; centros fora da lista vão ao fim (alfabético)
-    arr.sort((a,b)=>{
-      const ia = ORDEM_CENTROS.indexOf(a.centro), ib = ORDEM_CENTROS.indexOf(b.centro);
-      if (ia!==-1 || ib!==-1){
-        if (ia===-1) return 1;
-        if (ib===-1) return -1;
-        if (ia!==ib) return ia-ib;
-      }
-      if (a.centro!==b.centro) return a.centro.localeCompare(b.centro);
-      return a.nome.localeCompare(b.nome);
-    });
-    return arr;
-  }
-
-  async function getConsolidado(ano){
-    const snap = await db.ref(`financeiro/consolidado/${ano}`).once('value');
-    return snap.val() || {};
-  }
-
-  function buildRow(label, cls){
-    const tr = document.createElement('tr'); tr.className = cls || '';
-    const tdInd  = document.createElement('td'); tdInd.className = 'ind';  tdInd.textContent = label;
-    const tdYear = document.createElement('td'); tdYear.className = 'year num'; tdYear.innerHTML = '—';
-    tr.appendChild(tdInd); tr.appendChild(tdYear);
-    for (let m=1;m<=12;m++){
-      const td = document.createElement('td'); td.className='num'; td.innerHTML='—'; tr.appendChild(td);
-    }
-    return tr;
-  }
-
-  function buildGroupHeader(centro, startOpen=true){
-    const key = slug(centro||'Outros');
-    const tr = document.createElement('tr');
-    const tdInd = document.createElement('td'); tdInd.className='ind';
-    tdInd.innerHTML = `<span class="toggle" data-grp="${key}" data-open="${startOpen? '1':'0'}">
-      <span class="caret">${startOpen ? '▼' : '►'}</span> ${centro}
-    </span>`;
-    const tdYear = document.createElement('td'); tdYear.className='year num'; tdYear.innerHTML='—';
-    tr.appendChild(tdInd); tr.appendChild(tdYear);
-    for (let m=1;m<=12;m++){
-      const td=document.createElement('td'); td.className='num'; tr.appendChild(td);
-      paintCell(td, m, Number(anoSelect.value));
-      td.innerHTML='—';
-    }
-    tr.dataset.grpkey = key;
-    tr.dataset.rotulo = centro;
-    return tr;
-  }
-
-  function attachToggle(){
-    tbody.querySelectorAll('.toggle').forEach(tg=>{
-      tg.addEventListener('click', ()=>{
-        const grp = tg.dataset.grp;
-        const open = tg.dataset.open==='1';
-        tg.dataset.open = open ? '0':'1';
-        tg.querySelector('.caret').textContent = open ? '►':'▼';
-        tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
+    // ------- Leitura das Categorias -------
+    async function getCategorias(){
+      const snap = await db.ref('financeiro/categorias').once('value');
+      const v = snap.val() || {};
+      const arr = Object.keys(v).map(id => ({
+        id,
+        nome: v[id]?.nome || '(sem nome)',
+        centro: v[id]?.centroDeCusto || 'Outros'
+      }));
+      // Ordena por ordem fixa de centros; centros fora da lista vão ao fim (alfabético)
+      arr.sort((a,b)=>{
+        const ia = ORDEM_CENTROS.indexOf(a.centro), ib = ORDEM_CENTROS.indexOf(b.centro);
+        if (ia!==-1 || ib!==-1){
+          if (ia===-1) return 1;
+          if (ib===-1) return -1;
+          if (ia!==ib) return ia-ib;
+        }
+        if (a.centro!==b.centro) return a.centro.localeCompare(b.centro);
+        return a.nome.localeCompare(b.nome);
       });
-    });
-  }
+      return arr;
+    }
 
-  function setCellValueWithPct(td, valor, basePct){
-    const hasVal = Math.abs(valor) > 0.0000001;
-    const pct = (basePct>0) ? (valor/basePct*100) : null;
-    if (!hasVal && pct===null){ td.innerHTML = '—'; return; }
-    const vStr = fmt(valor);
-    const pStr = (pct===null) ? '—' : `${pct.toFixed(1)}%`;
-    td.innerHTML = `${vStr}<span class="pct">${pStr}</span>`;
-  }
+    // ------- Leitura do Consolidado -------
+    async function getConsolidado(ano){
+      const snap = await db.ref(`financeiro/consolidado/${ano}`).once('value');
+      return snap.val() || {};
+    }
 
-  async function carregar(anoSel){
-    clearDiag();
-    buildHeader();
-    tbody.innerHTML = '';
+    // ------- Cabeçalho dos meses -------
+    function renderHeader(){
+      // remove se já existir meses antigos
+      while (hdrMeses.children.length > 2) hdrMeses.removeChild(hdrMeses.lastChild);
+      for (let m=1;m<=12;m++){
+        const th = document.createElement('th');
+        th.className = 'num' + (m===mesAtual ? ' today-col' : '');
+        th.textContent = mesesPt[m-1];
+        hdrMeses.appendChild(th);
+      }
+    }
 
-    const categorias = await getCategorias();
-    const dados = await getConsolidado(anoSel);
+    // ------- Linha base com 1 coluna Ano + 12 meses -------
+    function buildRow(label, cls){
+      const tr = document.createElement('tr'); tr.className = cls || '';
+      const tdInd  = document.createElement('td'); tdInd.className = 'ind sticky-first';  tdInd.textContent = label;
+      const tdYear = document.createElement('td'); tdYear.className = 'year num'; tdYear.innerHTML = '—';
+      tr.appendChild(tdInd); tr.appendChild(tdYear);
+      for (let m=1;m<=12;m++){
+        const td = document.createElement('td'); td.className='num' + (m===mesAtual ? ' today-col' : ''); td.innerHTML='—'; tr.appendChild(td);
+      }
+      return tr;
+    }
 
-    // Centros (na ordem pedida + extras)
-    const centrosSet = new Map();
-    ORDEM_CENTROS.forEach(c=>centrosSet.set(c,true));
-    categorias.forEach(c=>{ if(!centrosSet.has(c.centro)) centrosSet.set(c.centro,true); });
-    const centros = Array.from(centrosSet.keys());
+    // ------- Grupo (Centro) -------
+    function buildGroupHeader(centro, startOpen=true){
+      const key = slug(centro||'Outros');
+      const tr = document.createElement('tr'); tr.className = 'grp';
+      const tdInd = document.createElement('td'); tdInd.className='ind sticky-first grp';
+      tdInd.innerHTML = `<span class="toggle" data-grp="${key}" data-open="${startOpen? '1':'0'}">
+        <span class="caret">${startOpen ? '▼' : '►'}</span> ${centro}
+      </span>`;
+      const tdYear = document.createElement('td'); tdYear.className='year num'; tdYear.innerHTML='—';
+      tr.appendChild(tdInd); tr.appendChild(tdYear);
+      for (let m=1;m<=12;m++){
+        const td=document.createElement('td'); td.className='num' + (m===mesAtual ? ' today-col' : ''); tr.appendChild(td);
+        td.innerHTML='—';
+      }
+      tr.dataset.grpkey = key;
+      tr.dataset.rotulo = centro;
+      return tr;
+    }
 
-    // Headers de grupo
-    const headers = {}; // centro -> <tr>
-    centros.forEach(c=>{
-      const tr = buildGroupHeader(c, true);
-      headers[c] = tr;
-      tbody.appendChild(tr);
-    });
-
-    // Linhas de categorias
-    const linhasCat = {}; // id -> {tr, centro}
-    categorias.forEach(cat=>{
-      const tr = buildRow(cat.nome, 'cat-row'); 
-      tr.dataset.grp = slug(cat.centro);
-      tbody.insertBefore(tr, headers[cat.centro].nextSibling);
-      linhasCat[cat.id] = { tr, centro: cat.centro };
-    });
-
-    // Acumular valores por mês para grupo e categoria
-    const initArr = ()=> Array.from({length:12}, ()=>0);
-    const grpSums = {}; // centro -> [12]
-    const catSums = {}; // id -> [12]
-    centros.forEach(c=> grpSums[c] = initArr() );
-
-    Object.keys(dados).forEach(m=>{
-      const i = Number(m)-1;
-      const porCat = dados[m] || {};
-      Object.keys(porCat).forEach(id=>{
-        const v = num(porCat[id]?.valor);
-        if (!catSums[id]) catSums[id] = initArr();
-        catSums[id][i] += v;
-
-        const centro = linhasCat[id]?.centro || 'Outros';
-        if (!grpSums[centro]) grpSums[centro] = initArr();
-        grpSums[centro][i] += v;
+    function attachToggle(){
+      tbody.querySelectorAll('.toggle').forEach(tg=>{
+        tg.addEventListener('click', ()=>{
+          const grp = tg.dataset.grp;
+          const open = tg.dataset.open === '1';
+          tg.dataset.open = open ? '0' : '1';
+          tg.querySelector('.caret').textContent = open ? '►' : '▼';
+          // esconde/mostra linhas dos filhos
+          let run = false;
+          tbody.querySelectorAll('tr').forEach(tr=>{
+            if (tr.dataset && tr.dataset.grpkey === grp){
+              run = true; // cabeçalho
+              return;
+            }
+            if (run){
+              if (tr.classList.contains('grp')){ // chegou no próximo grupo
+                run = false;
+                return;
+              }
+              // é filho do grupo atual
+              tr.style.display = open ? 'none' : '';
+            }
+          });
+        });
       });
-    });
+    }
 
-    // Receita (base de %)
-    const sum = arr => arr.reduce((a,b)=>a+num(b),0);
-    const recArr = (grpSums["Receita"] || initArr());
-    const recAno = sum(recArr);
-    const recMes = m => num(recArr[m-1]);
+    // ------- Aplica cor de "hoje" no cabeçalho do mês atual (já aplicado nas células) -------
 
-    // Preenche headers de grupo (ano e meses)
-    centros.forEach(c=>{
-      const tr = headers[c];
-      const arr = grpSums[c] || initArr();
-      const anoVal = sum(arr);
+    // ------- Preenche tabela -------
+    async function render(){
+      clearDiag();
+      tbody.innerHTML = '';
+      renderHeader();
 
-      // Ano
-      setCellValueWithPct(tr.children[1], anoVal, recAno);
+      const ano = Number(anoSelect.value || anoAtual);
+      const [cats, cons] = await Promise.all([getCategorias(), getConsolidado(ano)]);
 
-      // Meses
-      for (let m=1;m<=12;m++){
-        const td = tr.children[m+1];
-        paintCell(td, m, anoSel);
-        setCellValueWithPct(td, arr[m-1], recMes(m));
+      // Mapas auxiliares
+      const byCenter = new Map(); // centro => [{id, nome, centro}]
+      const catMap = new Map();   // id => {nome, centro}
+      cats.forEach(c=>{
+        catMap.set(c.id, c);
+        if (!byCenter.has(c.centro)) byCenter.set(c.centro, []);
+        byCenter.get(c.centro).push(c);
+      });
+
+      // Funções para buscar valores no consolidado:
+      // Estrutura esperada: cons[mes][categoriaId].valor  (mes: "1".."12")
+      // Se não houver 'valor' no ano consolidado, somamos os meses.
+      const getValMes = (m, catId) => {
+        const mes = String(m);
+        const base = cons && cons[mes] && cons[mes][catId];
+        return num(base && (base.valor!=null ? base.valor : base));
+      };
+      const getValAno = (catId) => {
+        // se houver nó "ano" com valor direto, usa; senão, soma meses 1..12
+        const anoNode = cons && cons['ano'] && cons['ano'][catId];
+        if (anoNode!=null){
+          return num(anoNode && (anoNode.valor!=null ? anoNode.valor : anoNode));
+        }
+        let s=0; for(let m=1;m<=12;m++) s += getValMes(m, catId);
+        return s;
+      };
+
+      // Totais de Receita para % (ano e por mês)
+      const isReceita = (catId)=> (catMap.get(catId)?.centro === 'Receita');
+      const catsReceita = cats.filter(c=>c.centro==='Receita').map(c=>c.id);
+
+      const receitaAno = (()=> {
+        let s=0; catsReceita.forEach(id=> s += getValAno(id)); return s;
+      })();
+
+      const receitaMes = Array.from({length:12}, (_,i)=>{
+        let s=0; catsReceita.forEach(id=> s += getValMes(i+1, id)); return s;
+      });
+
+      // Helper para desenhar célula com valor e % sobre Receita
+      function cellHtml(v, ref){
+        // ref = { tipo: 'ano'|'mes', mes?:1..12 }
+        let pct = 0;
+        if (ref.tipo==='ano'){
+          pct = receitaAno>0 ? (v/receitaAno*100) : 0;
+        }else{
+          const base = receitaMes[ref.mes-1] || 0;
+          pct = base>0 ? (v/base*100) : 0;
+        }
+        return `<div>R$ ${fmt(v)}</div><span class="muted">${pct.toLocaleString('pt-BR',{maximumFractionDigits:2})}%</span>`;
       }
-    });
 
-    // Categorias
-    categorias.forEach(cat=>{
-      const tr = linhasCat[cat.id].tr;
-      const arr = catSums[cat.id] || initArr();
-      const anoVal = sum(arr);
+      // Ordem de centros: fixa (ORDEM_CENTROS) + extras (alfabético)
+      const centrosExistentes = Array.from(byCenter.keys());
+      const extras = centrosExistentes.filter(c => !ORDEM_CENTROS.includes(c)).sort((a,b)=>a.localeCompare(b));
+      const ordemFinal = ORDEM_CENTROS.concat(extras).filter(c => byCenter.has(c));
 
-      setCellValueWithPct(tr.children[1], anoVal, recAno);
+      // Monta tabela
+      ordemFinal.forEach(centro=>{
+        // Cabeçalho do grupo
+        const trGrp = buildGroupHeader(centro, true);
+        tbody.appendChild(trGrp);
 
-      for (let m=1;m<=12;m++){
-        const td = tr.children[m+1];
-        paintCell(td, m, anoSel);
-        setCellValueWithPct(td, arr[m-1], recMes(m));
+        // Linhas de categorias (já vêm ordenadas alfabeticamente pelo getCategorias)
+        const list = byCenter.get(centro) || [];
+        list.forEach(cat=>{
+          const tr = buildRow(cat.nome);
+          tr.dataset.grpkey = slug(centro);
+          tbody.appendChild(tr);
+
+          // Preenche ano
+          const vAno = getValAno(cat.id);
+          tr.children[1].innerHTML = cellHtml(vAno, {tipo:'ano'});
+
+          // Preenche meses
+          for(let m=1;m<=12;m++){
+            const v = getValMes(m, cat.id);
+            tr.children[m+1].innerHTML = cellHtml(v, {tipo:'mes', mes:m});
+          }
+        });
+      });
+
+      attachToggle();
+
+      // Diagnóstico rápido
+      if (!cats.length){
+        showDiag('Nenhuma categoria encontrada em financeiro/categorias. Cadastre categorias para visualizar o Fluxo.', 'warn');
       }
-    });
-
-    // Resultado
-    const trRes = buildRow('Resultado', 'totais-row');
-    tbody.appendChild(trRes);
-
-    const getGrp = nome => grpSums[nome] || initArr();
-    const resArr = initArr();
-    const cmvArr   = getGrp('CMV');
-    const dvArr    = getGrp('Despesa Variável');
-    const dfArr    = getGrp('Despesa Fixa');
-    const invArr   = getGrp('Investimento');
-    const retArr   = getGrp('Retirada');
-
-    for (let m=1;m<=12;m++){
-      resArr[m-1] = (recArr[m-1] - cmvArr[m-1] - dvArr[m-1] - dfArr[m-1] - invArr[m-1] - retArr[m-1]);
-      const td = trRes.children[m+1];
-      paintCell(td, m, anoSel);
-      setCellValueWithPct(td, resArr[m-1], recMes(m));
     }
-    const resAno = sum(resArr);
-    setCellValueWithPct(trRes.children[1], resAno, recAno);
 
-    // Zebra
-    let idx = 0;
-    tbody.querySelectorAll('tr').forEach(tr=>{
-      tr.classList.add( (idx%2===0) ? 'row-odd' : 'row-even' );
-      idx++;
-    });
-
-    // Collapse/expand
-    attachToggle();
-  }
-
-  // Init
-  (async function init(){
-    for(let y=anoAtual-2; y<=anoAtual+1; y++){
-      const opt=document.createElement('option'); opt.value=y; opt.textContent=y;
-      if(y===anoAtual) opt.selected=true; anoSelect.appendChild(opt);
+    async function carregarAnos(){
+      // tenta descobrir anos pelo nó consolidado
+      const snap = await db.ref('financeiro/consolidado').once('value');
+      const v = snap.val() || {};
+      const anos = Object.keys(v).filter(a=>/^\d{4}$/.test(a)).sort();
+      anoSelect.innerHTML = '';
+      if (!anos.length){
+        // fallback: usa ano atual
+        const opt = document.createElement('option');
+        opt.value = String(anoAtual);
+        opt.textContent = String(anoAtual);
+        anoSelect.appendChild(opt);
+      }else{
+        anos.forEach(a=>{
+          const opt = document.createElement('option');
+          opt.value = a; opt.textContent = a;
+          anoSelect.appendChild(opt);
+        });
+        // seleciona ano atual se existir
+        if (anos.includes(String(anoAtual))) anoSelect.value = String(anoAtual);
+      }
     }
-    for (let m=1;m<=12;m++){
-      const th=document.createElement('th'); th.textContent=mesesPt[m-1]; hdrMeses.appendChild(th);
-    }
-    await carregar(Number(anoSelect.value));
-    anoSelect.addEventListener('change', ()=> carregar(Number(anoSelect.value)));
+
+    anoSelect.addEventListener('change', render);
+
+    // boot
+    (async function init(){
+      await carregarAnos();
+      await render();
+    })();
+
   })();
-})();
-</script>
+  </script>
 </body>
 </html>
