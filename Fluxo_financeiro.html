@@ -143,7 +143,9 @@
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   const num = v => isNaN(Number(v)) ? 0 : Number(v);
 
-  /* >>> ÚNICA ALTERAÇÃO: inclui "Despesas Operacionais" logo após "CMV" <<< */
+  /* >>> ALTERAÇÕES <<<
+     1) Inclui "Despesas Operacionais" após "CMV"
+  */
   const ORDEM_CENTROS = ["Receita","CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
 
   const slug = s => String(s||'').toLowerCase()
@@ -256,6 +258,7 @@
 
     // Headers de grupo
     const headers = {}; // centro -> <tr>
+    headers.__order__ = centros.map(c=>c);
     centros.forEach(c=>{
       const tr = buildGroupHeader(c, true);
       headers[c] = tr;
@@ -329,20 +332,21 @@
       }
     });
 
-    // Resultado
+    // ========= Resultado (ajustado para subtrair Despesas Operacionais) =========
     const trRes = buildRow('Resultado', 'totais-row');
     tbody.appendChild(trRes);
 
     const getGrp = nome => grpSums[nome] || initArr();
-    const resArr = initArr();
     const cmvArr   = getGrp('CMV');
+    const doArr    = getGrp('Despesas Operacionais'); // << novo centro incluído no Resultado
     const dvArr    = getGrp('Despesa Variável');
     const dfArr    = getGrp('Despesa Fixa');
     const invArr   = getGrp('Investimento');
     const retArr   = getGrp('Retirada');
 
+    const resArr = initArr();
     for (let m=1;m<=12;m++){
-      resArr[m-1] = (recArr[m-1] - cmvArr[m-1] - dvArr[m-1] - dfArr[m-1] - invArr[m-1] - retArr[m-1]);
+      resArr[m-1] = (recArr[m-1] - cmvArr[m-1] - doArr[m-1] - dvArr[m-1] - dfArr[m-1] - invArr[m-1] - retArr[m-1]);
       const td = trRes.children[m+1];
       paintCell(td, m, anoSel);
       setCellValueWithPct(td, resArr[m-1], recMes(m));
