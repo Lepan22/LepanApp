@@ -52,7 +52,7 @@
         </div>
       </form>
 
-      <!-- === NOVO BLOCO: DRE (YTD até mês anterior) === -->
+      <!-- === DRE (YTD até mês anterior) === -->
       <section class="cards">
         <div class="card">
           <h3 style="margin:0 0 8px 0;">DRE (YTD até mês anterior)</h3>
@@ -151,7 +151,7 @@
           const data = snapshot.val() || {};
           capacidadeInput.value = data.capacidadeEventos ?? '';
           percentualCMVInput.value = data.percentualCMV ?? '';
-          percentualLucroInput.value = data.percentualLucro ?? 40; // default sugerido
+          percentualLucroInput.value = data.percentualLucro ?? 40;
         })
         .catch(() => { statusMsg.textContent = 'Erro ao carregar configuração.'; });
     }
@@ -185,50 +185,107 @@
         .catch(() => { msgBackup.textContent = 'Erro ao gerar backup.'; });
     });
 
-    // ===== DRE (YTD até mês anterior) =====
+    // ======= Funções p/ DRE (mesma lógica do DRE.html) =======
     async function getCategorias(){
       const snap = await db.ref('financeiro/categorias').once('value');
       const v = snap.val() || {};
-      // id -> centro
       const map = {};
-      Object.keys(v).forEach(id => { map[id] = v[id]?.centroDeCusto || 'Outros'; });
+      Object.keys(v).forEach(id=>{
+        map[id] = {
+          centro: v[id]?.centroDeCusto || 'Outros',
+          nome:   v[id]?.nome || '(sem nome)',
+          regra:  v[id]?.dre_regra || 'caixa',
+          pbase:  (v[id]?.dre_percentual_base!=null) ? Number(v[id].dre_percentual_base) : null,
+          janela: v[id]?.dre_media_janela ? Number(v[id].dre_media_janela) : null
+        };
+      });
       return map;
     }
-
     async function getConsolidadoAno(ano){
       const snap = await db.ref(`financeiro/consolidado/${ano}`).once('value');
       return snap.val() || {};
+    }
+    async function getConsolidadoAnoPrev(ano){
+      const snap = await db.ref(`financeiro/consolidado/${ano-1}`).once('value');
+      return snap.val() || {};
+    }
+    async function getMovAno(ano){
+      const snap = await db.ref(`financeiro/movimentacao/${ano}`).once('value');
+      return snap.val() || {};
+    }
+
+    const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    const sum  = arr => arr.reduce((a,b)=> a + (isNaN(+b)?0:+b), 0);
+    const arr12= ()=> Array.from({length:12}, ()=>0);
+
+    function mediaUltimosN(catId, m, N, consAno, consPrev){
+      if (!N || N<=0) return 0;
+      const vals=[];
+      for (let mm=m-1; mm>=1 && vals.length<N; mm--){
+        const raw = consAno?.[mm]?.[catId];
+        const val = Number(raw?.valor ?? raw ?? 0);
+        if (val!==0) vals.push(val);
+      }
+      for (let mm=12; mm>=1 && vals.length<N; mm--){
+        const raw = consPrev?.[mm]?.[catId];
+        const val = Number(raw?.valor ?? raw ?? 0);
+        if (val!==0) vals.push(val);
+      }
+      return vals.length ? sum(vals)/vals.length : 0;
     }
 
     async function calcularDREYTD(){
       dreRef.textContent = 'Calculando...';
       try{
-        const [catCenter, consAno] = await Promise.all([ getCategorias(), getConsolidadoAno(refAno) ]);
+        const [cats, consAno, consPrev, movAno] = await Promise.all([
+          getCategorias(), getConsolidadoAno(refAno), getConsolidadoAnoPrev(refAno), getMovAno(refAno)
+        ]);
 
-        // soma YTD por centro (até refMes)
-        const soma = { Receita:0, CMV:0, 'Despesas Operacionais':0 };
-        for (let m=1; m<=refMes; m++){
-          const row = consAno?.[m] || {};
+        // Receita por mês (base p/ drivers)
+        const receitaMes = arr12();
+        Object.keys(consAno||{}).forEach(m=>{
+          const row = consAno[m] || {};
           Object.keys(row).forEach(id=>{
-            const raw = row[id];
-            const val = num(raw?.valor ?? raw);
-            const centro = catCenter[id] || 'Outros';
-            if (centro==='Receita' || centro==='CMV' || centro==='Despesas Operacionais'){
-              soma[centro] += val;
-            }
+            const raw = row[id]; const val = Number(raw?.valor ?? raw ?? 0);
+            if ((cats[id]?.centro||'') === 'Receita'){ receitaMes[+m-1] += val; }
           });
-        }
+        });
 
-        const receita = soma['Receita'] || 0;
-        const cmv = soma['CMV'] || 0;
-        const dop = soma['Despesas Operacionais'] || 0;
+        // Somas por centro conforme regra do DRE
+        const grp = {};  // centro -> [12]
+        const take = (nome)=> (grp[nome] ||= arr12());
 
-        const cmvPct = receita>0 ? (cmv/receita*100) : 0;
-        const dopPct = receita>0 ? (dop/receita*100) : 0;
-        const lucroOpVal = receita - cmv - dop;
-        const lucroOpPct = receita>0 ? (lucroOpVal/receita*100) : 0;
+        Object.keys(cats).forEach(id=>{
+          const c = cats[id]; const regra = c.regra || 'caixa';
+          for (let m=1;m<=12;m++){
+            let v = 0;
+            if (regra === 'caixa'){
+              const raw = consAno?.[m]?.[id]; v = Number(raw?.valor ?? raw ?? 0);
+            } else if (regra === 'competencia_driver'){
+              const p = c.pbase || 0; v = p * (receitaMes[m-1] || 0);
+            } else if (regra === 'competencia_media'){
+              const N = c.janela || 0; v = mediaUltimosN(id, m, N, consAno, consPrev);
+            } else if (regra === 'especial' && norm(c.nome)==='compras'){
+              v = Number(movAno?.[m]?.custoProdutoMes || 0); // Custo de Produto
+            } else {
+              const raw = consAno?.[m]?.[id]; v = Number(raw?.valor ?? raw ?? 0);
+            }
+            take(c.centro)[m-1] += v;
+          }
+        });
 
-        // pinta na tela
+        // YTD até o mês de referência
+        const ytd = nome => sum((grp[nome]||arr12()).slice(0, refMes));
+        const receita = ytd('Receita');
+        const cmv     = ytd('CMV');
+        const dop     = ytd('Despesas Operacionais');
+
+        const cmvPct      = receita>0 ? (cmv/receita*100) : 0;
+        const dopPct      = receita>0 ? (dop/receita*100) : 0;
+        const lucroOpVal  = receita - cmv - dop;
+        const lucroOpPct  = receita>0 ? (lucroOpVal/receita*100) : 0;
+
+        // UI
         dreRef.textContent = `Base: Jan → ${mesesPt[refMes-1]} de ${refAno}`;
         kpiReceitaVal.textContent = 'R$ ' + fmt(receita);
         kpiCmvPct.textContent = isFinite(cmvPct) ? cmvPct.toFixed(1) + '%' : '—';
@@ -238,7 +295,7 @@
         kpiLucroOpPct.textContent = isFinite(lucroOpPct) ? lucroOpPct.toFixed(1) + '%' : '—';
         kpiLucroOpVal.textContent = 'R$ ' + fmt(lucroOpVal);
 
-        // preenche botão de uso
+        // botão de preenchimento
         btnUsarDRE.onclick = () => {
           if (isFinite(cmvPct)) percentualCMVInput.value = cmvPct.toFixed(1);
           if (isFinite(lucroOpPct)) percentualLucroInput.value = lucroOpPct.toFixed(1);
@@ -255,8 +312,6 @@
     // boot
     (async function init(){
       carregarConfiguracao();
-
-      // ajusta referência para mês anterior (ex.: em jan usa dez do ano anterior)
       if (mesAtual===1){ refMes = 12; refAno = anoAtual-1; } else { refMes = mesAtual-1; refAno = anoAtual; }
       await calcularDREYTD();
     })();
