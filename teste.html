@@ -12,28 +12,29 @@
   :root{
     --card-gap: 10px;
     --card-pad: 10px;
-    --kpi-h: 86px;
+    --kpi-h: 64px;     /* KPIs menores */
     --chart-h: 160px;
-    --accent: #0ea5e9;
-    --accent-2: #22c55e;
-    --warn: #f59e0b;
     --muted: #6b7280;
   }
   .main-content{ padding:16px 20px; }
 
   .page-header h1{ margin:6px 0 6px; }
-  .page-header p{ margin:0 0 12px; color:#667085; font-size:13px; }
+  .page-header p{ margin:0 0 10px; color:#667085; font-size:12.5px; }
 
-  .filters{
-    display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px;
+  .quick-links{
+    display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;
   }
-  .filters label{ font-size:13px; color:#374151 }
-  .filters select{ padding:6px 8px; font-size:13px }
+  .quick-links a{
+    display:inline-block; padding:6px 10px; border:1px solid #e5e7eb; border-radius:8px;
+    background:#fff; color:#111827; text-decoration:none; font-size:12.5px;
+  }
+  .quick-links a:hover{ background:#f9fafb; }
 
-  .grid{
-    display:grid; gap:var(--card-gap);
-  }
-  /* Layout: 12 col base */
+  .filters{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .filters label{ font-size:12.5px; color:#374151 }
+  .filters select{ padding:6px 8px; font-size:12.5px }
+
+  .grid{ display:grid; gap:var(--card-gap); }
   .grid.kpis{ grid-template-columns: repeat(12, 1fr); }
   .grid.two{ grid-template-columns: 7fr 5fr; }
   .grid.three{ grid-template-columns: 4fr 4fr 4fr; }
@@ -43,18 +44,16 @@
   }
   .kpi{
     height:var(--kpi-h);
-    display:flex; flex-direction:column; justify-content:space-between;
+    display:flex; flex-direction:column; justify-content:center; gap:2px;
   }
-  .kpi .label{ color:#475569; font-size:12px }
-  .kpi .value{ font-weight:800; font-size:20px; letter-spacing:.2px; }
-  .kpi .sub{ color:#64748b; font-size:11.5px }
+  .kpi .label{ color:#475569; font-size:11.5px; line-height:1; }
+  .kpi .value{ font-weight:800; font-size:17px; letter-spacing:.2px; line-height:1; }
+  .kpi .sub{ color:#64748b; font-size:11px; line-height:1; }
 
   .num-pos{ color:#065f46 }   /* verde */
   .num-neg{ color:#b91c1c }   /* vermelho */
 
-  .section-title{
-    font-size:13px; font-weight:700; color:#111827; margin-bottom:6px;
-  }
+  .section-title{ font-size:13px; font-weight:700; color:#111827; margin-bottom:6px; }
   .muted{ color: var(--muted); font-size:12px; }
 
   .chart-box{ height:var(--chart-h); }
@@ -65,13 +64,11 @@
   .lg-cmv{ background:#ef4444 }
   .lg-do{  background:#f59e0b }
 
-  /* Top categorias (barras horizontais puras em CSS) */
   .barlist{ display:flex; flex-direction:column; gap:8px; margin-top:6px; }
   .baritem .row{ display:flex; justify-content:space-between; gap:10px; font-size:12px; }
   .bar{ height:10px; background:#eef2ff; border-radius:6px; overflow:hidden; }
   .bar > span{ display:block; height:100%; background:#6366f1; width:0%; }
 
-  /* Tabela-resumo por centro */
   table.small{ width:100%; border-collapse:collapse; }
   table.small th, table.small td{
     border:1px solid #e5e7eb; padding:6px 8px; font-size:12.5px; text-align:right;
@@ -79,7 +76,6 @@
   table.small th:first-child, table.small td:first-child{ text-align:left; }
   table.small thead th{ background:#fff7ec; font-weight:700; }
 
-  /* Responsivo */
   @media(max-width:1100px){
     .grid.kpis{ grid-template-columns: repeat(6, 1fr); }
     .grid.two{ grid-template-columns: 1fr; }
@@ -106,7 +102,13 @@
   <div class="main-content">
     <div class="page-header">
       <h1>BI Financeiro</h1>
-      <p>KPIs, evolução e composição de custos com base em <strong>financeiro/consolidado</strong> e <strong>financeiro/categorias</strong>. Resultado = Receita – CMV – Despesas Operacionais – Despesa Variável – Despesa Fixa – Investimento – Retirada.</p>
+      <p>KPIs, evolução e composição de custos. <strong>Período padrão: mês anterior</strong>. Resultado = Receita – CMV – Despesas Operacionais – Despesa Variável – Despesa Fixa – Investimento – Retirada.</p>
+      <div class="quick-links">
+        <a href="Fluxo_financeiro.html">↗ Fluxo</a>
+        <a href="DRE.html">↗ DRE</a>
+        <a href="analise_estoque.html">↗ Análise de Estoque</a>
+        <a href="import_financeiro.html">↗ Importação</a>
+      </div>
       <div id="diag" class="diag warn"></div>
     </div>
 
@@ -117,16 +119,16 @@
       <label>Mês:
         <select id="mesSelect"></select>
       </label>
-      <span class="muted">As % são calculadas sobre a Receita (Mês e Ano).</span>
+      <span class="muted">As % são calculadas sobre a Receita (Mês e YTD).</span>
     </section>
 
     <!-- KPIs -->
     <section class="grid kpis" id="kpiGrid">
-      <!-- 12 col → 8 KPIs (cada um ocupa 3 col em telas largas) -->
+      <!-- 12 col → 12 KPIs (cada um ocupa 3 col em telas largas) -->
       <div class="card kpi" style="grid-column: span 3;">
         <div class="label">Receita (mês)</div>
         <div class="value" id="kpiRecMes">—</div>
-        <div class="sub muted" id="kpiRecMesPct">—</div>
+        <div class="sub muted" id="kpiRecMesPct">Base: Receita mês</div>
       </div>
       <div class="card kpi" style="grid-column: span 3;">
         <div class="label">Lucro (mês)</div>
@@ -164,6 +166,27 @@
         <div class="value" id="kpiDFPctMes">—</div>
         <div class="sub muted" id="kpiDFValorMes">—</div>
       </div>
+
+      <div class="card kpi" style="grid-column: span 3;">
+        <div class="label">Valor de Estoque</div>
+        <div class="value" id="kpiEstoqueValor">—</div>
+        <div class="sub muted">Movimentação</div>
+      </div>
+      <div class="card kpi" style="grid-column: span 3;">
+        <div class="label">Compra Produto (mês)</div>
+        <div class="value" id="kpiCompraMes">—</div>
+        <div class="sub muted">Categoria "Compras"</div>
+      </div>
+      <div class="card kpi" style="grid-column: span 3;">
+        <div class="label">Contas a Pagar (Compras)</div>
+        <div class="value" id="kpiPagarCompras">—</div>
+        <div class="sub muted">Movimentação</div>
+      </div>
+      <div class="card kpi" style="grid-column: span 3;">
+        <div class="label">Mês selecionado</div>
+        <div class="value" id="kpiRefMes">—</div>
+        <div class="sub muted" id="kpiRefAno">—</div>
+      </div>
     </section>
 
     <!-- Gráficos e Top listas -->
@@ -183,7 +206,7 @@
 
       <div class="card">
         <div class="section-title">Top Despesas do mês (categorias)</div>
-        <div class="muted">Considera Desp. Operacionais, Variáveis, Fixas, Investimento e Retirada.</div>
+        <div class="muted">Considera DO, Variáveis, Fixas, Investimento e Retirada.</div>
         <div id="topMes" class="barlist"></div>
 
         <div class="section-title" style="margin-top:14px;">Top Despesas (YTD)</div>
@@ -211,8 +234,8 @@
       <div class="card">
         <div class="section-title">Observações</div>
         <ul class="muted" style="margin-top:6px; line-height:1.35;">
-          <li>Se algum centro não tiver dados, ele não aparece.</li>
-          <li>As % são sempre baseadas na Receita do período (mês/YTD).</li>
+          <li>Período padrão: mês anterior ao atual.</li>
+          <li>As % são baseadas na Receita do período (mês/YTD).</li>
           <li>Resultado = Receita – CMV – Despesas Operacionais – Despesa Variável – Despesa Fixa – Investimento – Retirada.</li>
         </ul>
       </div>
@@ -243,7 +266,12 @@
 
   // Util
   const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-  const hoje = new Date(); const mesAtual = hoje.getMonth()+1; const anoAtual = hoje.getFullYear();
+  const hoje = new Date(); 
+  const mesAtual = hoje.getMonth()+1; 
+  const anoAtual = hoje.getFullYear();
+  const mesPadrao = (mesAtual===1 ? 12 : mesAtual-1);    // mês anterior
+  const anoPadrao = (mesAtual===1 ? anoAtual-1 : anoAtual);
+
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   const perc = n => Number(n||0).toLocaleString('pt-BR',{maximumFractionDigits:1}) + '%';
   const num = v => isNaN(Number(v)) ? 0 : Number(v);
@@ -272,6 +300,13 @@
     dvValMes: document.getElementById('kpiDVValorMes'),
     dfPctMes: document.getElementById('kpiDFPctMes'),
     dfValMes: document.getElementById('kpiDFValorMes'),
+
+    estoqueValor: document.getElementById('kpiEstoqueValor'),
+    compraMes: document.getElementById('kpiCompraMes'),
+    pagarCompras: document.getElementById('kpiPagarCompras'),
+
+    refMes: document.getElementById('kpiRefMes'),
+    refAno: document.getElementById('kpiRefAno'),
   };
 
   const svg12 = document.getElementById('svg12');
@@ -306,6 +341,10 @@
     const snap = await db.ref(`financeiro/consolidado/${ano}`).once('value');
     return snap.val() || {};
   }
+  async function getMov(ano){
+    const snap = await db.ref(`financeiro/movimentacao/${ano}`).once('value');
+    return snap.val() || {};
+  }
 
   // Helpers
   const sum = arr => arr.reduce((a,b)=>a+num(b),0);
@@ -322,7 +361,8 @@
     for (let m=1;m<=12;m++){
       const row = consAno?.[m] || {};
       Object.keys(row).forEach(id=>{
-        const v = num(row[id]?.valor ?? row[id]);
+        const raw = row[id];
+        const v = num(raw?.valor ?? raw);
         if (!byCatMes[id]) byCatMes[id] = arr12();
         byCatMes[id][m-1] += v;
 
@@ -338,7 +378,7 @@
     const rec = byCenterMes['Receita'] || arr12();
     const cmv = byCenterMes['CMV'] || arr12();
     const dop = byCenterMes['Despesas Operacionais'] || arr12();
-    const dv  = byCenterMes['Despesa Variável'] || arr12();
+    const dv  = byCenterMes['Despesa Variável'] || byCenterMes['Despesa Variavel'] || arr12();
     const df  = byCenterMes['Despesa Fixa'] || arr12();
     const inv = byCenterMes['Investimento'] || arr12();
     const ret = byCenterMes['Retirada'] || arr12();
@@ -350,7 +390,7 @@
   function setText(el, txt){ el.textContent = txt; }
   function clsNum(v){ return v>=0 ? 'num-pos':'num-neg'; }
 
-  function fillKPIs(m, byCenterMes){
+  function fillKPIs(m, byCenterMes, byCatMes, catTo, movAno){
     const {rec, cmv, dop, dv, df, inv, ret, res} = resultadoArr(byCenterMes);
 
     const recMes = rec[m-1]||0, resMes = res[m-1]||0;
@@ -393,8 +433,32 @@
     kpi.dvValMes.textContent  = 'R$ ' + fmt(dvMes);
     kpi.dfValMes.textContent  = 'R$ ' + fmt(dfMes);
 
-    // texto auxiliar: % receita no mês (para Receita em si faz pouco sentido; deixo uma info curtinha)
-    kpi.recMesPct.textContent = 'Base: Receita mês';
+    // --- ESTOQUE & COMPRAS & PAGAR ---
+    // Valor de Estoque (movimentacao/{ano}/{mes}/valorEstoque)
+    const movMes = movAno?.[m] || {};
+    const estoqueValor = num(movMes?.valorEstoque);
+    setText(kpi.estoqueValor, estoqueValor ? 'R$ ' + fmt(estoqueValor) : '—');
+
+    // Compra Produto (mês) = categoria "Compras" do consolidado
+    let compraMesVal = 0;
+    // procura categoria "Compras"
+    let idCompras = null;
+    Object.keys(byCatMes).some(id=>{
+      if ((catTo[id]?.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') === 'compras'){
+        idCompras = id; return true;
+      }
+      return false;
+    });
+    if (idCompras) compraMesVal = byCatMes[idCompras]?.[m-1] || 0;
+    setText(kpi.compraMes, compraMesVal ? 'R$ ' + fmt(compraMesVal) : '—');
+
+    // Contas a Pagar (Compras) (movimentacao/{ano}/{mes}/contasPagarCompras)
+    const pagarCompras = num(movMes?.contasPagarCompras);
+    setText(kpi.pagarCompras, pagarCompras ? 'R$ ' + fmt(pagarCompras) : '—');
+
+    // Referência do mês
+    setText(kpi.refMes, mesesPt[m-1]);
+    setText(kpi.refAno, 'Ano ' + anoSel.value);
   }
 
   function makeLine(points, color, stroke=2){
@@ -403,8 +467,6 @@
   }
 
   function render12mChart(series, labels){
-    // series: { name, color, data[12] } — já no ano selecionado
-    // Plot simples: padding 30, range baseado no max de Receita
     const W=1000, H=300, padL=40, padR=10, padT=20, padB=24;
     const w = W - padL - padR, h = H - padT - padB;
 
@@ -433,7 +495,6 @@
   }
 
   function fillBarList(container, items){
-    // items: [{nome, valor}] — assume valores positivos (tomaremos abs)
     container.innerHTML = '';
     if (!items.length){
       container.innerHTML = '<div class="muted">Sem dados no período.</div>'; return;
@@ -483,7 +544,6 @@
   }
 
   function topDespesasMes(byCatMes, catTo, m){
-    // considera centros de despesa (tudo exceto Receita)
     const itens=[];
     Object.keys(byCatMes).forEach(id=>{
       const centro = catTo[id]?.centro || 'Outros';
@@ -512,13 +572,12 @@
 
     const ano = Number(anoSel.value);
     const mes = Number(mesSel.value);
-
-    const [cats, consAno, consPrev] = await Promise.all([ getCategorias(), getCons(ano), getCons(ano-1) ]);
+    const [cats, consAno, movAno] = await Promise.all([ getCategorias(), getCons(ano), getMov(ano) ]);
 
     const {byCenterMes, byCatMes, catTo} = agruparPorCentro(cats, consAno);
 
     // KPIs
-    fillKPIs(mes, byCenterMes);
+    fillKPIs(mes, byCenterMes, byCatMes, catTo, movAno);
 
     // Evolução 12 meses (do ano selecionado)
     const series = (()=>{
@@ -548,20 +607,25 @@
     const anos = Object.keys(v).filter(a=>/^\d{4}$/.test(a)).map(Number).sort((a,b)=>a-b);
     anoSel.innerHTML = '';
     if (!anos.length){
-      const opt=document.createElement('option'); opt.value=anoAtual; opt.textContent=anoAtual; anoSel.appendChild(opt);
+      const opt=document.createElement('option'); opt.value=anoPadrao; opt.textContent=anoPadrao; anoSel.appendChild(opt);
     }else{
       anos.forEach(a=>{
         const opt=document.createElement('option'); opt.value=a; opt.textContent=a;
-        if (a===anoAtual) opt.selected=true;
         anoSel.appendChild(opt);
       });
+      // seleciona ano padrão (pode ser o anterior)
+      anoSel.value = String(anos.includes(anoPadrao)? anoPadrao : anos[anos.length-1]);
     }
+    // meses
     mesSel.innerHTML = '';
     for (let m=1;m<=12;m++){
       const opt=document.createElement('option'); opt.value=m; opt.textContent=(m.toString().padStart(2,'0'))+' - '+mesesPt[m-1];
       mesSel.appendChild(opt);
     }
-    mesSel.value = String(mesAtual);
+    // seleciona mês padrão (anterior)
+    mesSel.value = String(mesPadrao);
+    // se ano padrão não existe, mantém o último ano disponível e deixa o mês como 12
+    if (Number(anoSel.value)!==anoPadrao && mesPadrao!==12) { mesSel.value = '12'; }
   }
 
   anoSel.addEventListener('change', render);
