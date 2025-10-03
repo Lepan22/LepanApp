@@ -50,8 +50,10 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="financeiro" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
+              <a href="/LepanApp/Index_Fincanceiro.hmtl">Gestao Financeira</a>
               <a href="/LepanApp/Fluxo_financeiro.html">Fluxo</a>
               <a href="/LepanApp/DRE.html">DRE</a>
+              <a href="/LepanApp/analise_estoque.html">Estoque</a>
               <a href="/LepanApp/Import_Financeiro.html">Importação Consolidada</a>
             </div>
           </div>
