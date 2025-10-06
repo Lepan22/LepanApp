@@ -3,17 +3,19 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>regras de DRE por Categoria</title>
+  <title>Regras de DRE por Categoria</title>
 
+  <!-- Estilos padrão do sistema -->
   <link rel="stylesheet" href="assets/base.css"/>
   <link rel="stylesheet" href="assets/menu-styles.css"/>
 
+  <!-- Firebase config (v9 modular) + menu -->
   <script type="module" src="assets/firebase-config.js"></script>
   <script defer src="assets/menu.js"></script>
 
   <style>
     .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-    .page-header h1{margin:0;font-size:20px;color:#111827;}
+    .page-header h1{margin:0;font-size:20px;color:#111827;} /* força texto escuro */
     .page-header .muted{color:#6b7280;}
 
     .filters{display:grid;grid-template-columns:1fr 180px 160px;gap:10px;margin-bottom:10px;align-items:end;}
@@ -23,7 +25,10 @@
     .filters button{height:32px;border:1px solid #ddd;border-radius:8px;background:#ff7f2a;color:#fff;cursor:pointer;}
 
     table{width:100%;border-collapse:collapse;background:#fff;}
-    thead th{background:#fff7ec;color:#111827;text-align:left;border:1px solid #e5e7eb;padding:8px;font-size:12.5px;}
+    thead th{
+      background:#fff7ec;color:#111827; /* cabeçalho visível */
+      text-align:left;border:1px solid #e5e7eb;padding:8px;font-size:12.5px;
+    }
     tbody td{border:1px solid #e5e7eb;padding:6px 8px;font-size:12.5px;vertical-align:top;}
     .nowrap{white-space:nowrap;}
     .muted{color:#6b7280;font-size:11.5px;}
@@ -31,7 +36,7 @@
     .param-wrap{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
     .param-wrap>div{display:none;}
     .param-wrap[data-mode="competencia_driver"] .param-driver{display:block;grid-column:span 2;}
-    .param-wrap[data-mode="competencia_media"] .param-media{display:block;}
+    .param-wrap[data-mode="competencia_media"]  .param-media {display:block;}
     .row-actions button{font-size:11.5px;padding:6px 10px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer;}
     .row-actions button:hover{background:#f3f4f6;}
     .save-all{margin-top:10px;display:inline-flex;gap:8px;}
@@ -52,6 +57,7 @@
       <span class="muted">Edite regra, parâmetros e Valor DRE. Acompanhe acumulado anual e média mensal.</span>
     </div>
 
+    <!-- Filtros -->
     <div class="filters">
       <label>
         Busca (nome / centro de custo)
@@ -69,6 +75,7 @@
       <button id="limparFiltros">Limpar filtros</button>
     </div>
 
+    <!-- Tabela -->
     <table id="tabela">
       <thead>
         <tr>
@@ -96,7 +103,7 @@
     import { db } from './assets/firebase-config.js';
     import { ref, onValue, update } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
 
-    // --------- elementos
+    // ---------- Elementos
     const elBusca = document.getElementById('busca');
     const elFiltroTipo = document.getElementById('filtroTipo');
     const elLimparFiltros = document.getElementById('limparFiltros');
@@ -105,24 +112,20 @@
     const btnDescartarAlteracoes = document.getElementById('descartarAlteracoes');
     const badgeAlteracoes = document.getElementById('badgeAlteracoes');
 
-    // --------- estados
-    const cache = new Map();         // id -> categoria
-    const edits = new Map();         // id -> edits
-    const idxNome = new Map();       // nome lower -> id
-    const resumoAno = new Map();     // id -> { soma:number, meses:Set<number> }
-
-    // snapshots para recomputar juntos
-    let fluxSnap = null;  // financeiro/fluxo
-    let importSnap = null; // Import_Financeiro
+    // ---------- Estados
+    const cache = new Map();   // id -> categoria
+    const edits = new Map();   // id -> { dre_regra, dre_percentual_base, dre_media_janela, dre_valor }
+    const resumoAno = new Map(); // id -> { soma:number }
 
     const hoje = new Date();
     const ANO = hoje.getFullYear();
-    const MES_IDX_ATUAL = hoje.getMonth();
+    const MES_IDX_ATUAL = hoje.getMonth(); // 0..11
     const MESES_DECORRIDOS = MES_IDX_ATUAL + 1;
 
-    // --------- utils
-    const esc = (s='') => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;')
-      .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#39;");
+    // ---------- Utils
+    const esc = (s='') => String(s)
+      .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+      .replaceAll('"','&quot;').replaceAll("'","&#39;");
     const fmtMoeda = (n=0) => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 
     function parsePercentToDecimal(txt){
@@ -137,7 +140,8 @@
     }
     function formatDecimalToPercent(dec){
       if (dec == null || dec === '') return '';
-      const n = Number(dec); if (isNaN(n)) return '';
+      const n = Number(dec);
+      if (isNaN(n)) return '';
       return (n*100).toLocaleString('pt-BR',{maximumFractionDigits:2}) + '%';
     }
     function rowDirty(id){
@@ -156,7 +160,7 @@
       badgeAlteracoes.textContent = `${count} alteração(ões)`;
     }
 
-    // --------- render
+    // ---------- Render
     function render(){
       const q = (elBusca.value || '').toLowerCase();
       const tipo = elFiltroTipo.value;
@@ -178,8 +182,7 @@
         const mediaN = (e.dre_media_janela ?? cat.dre_media_janela);
         const valorDRE = (e.dre_valor ?? cat.dre_valor);
 
-        const r = resumoAno.get(id) || { soma:0, meses:new Set() };
-        const somaAno = Number(r.soma || 0);
+        const somaAno = Number((resumoAno.get(id) || {}).soma || 0);
         const mediaMes = somaAno / Math.max(1, MESES_DECORRIDOS);
 
         const tr = document.createElement('tr');
@@ -317,139 +320,70 @@
     btnSalvarAlteracoes.addEventListener('click', saveAll);
     btnDescartarAlteracoes.addEventListener('click', discardAll);
 
-    // --------- categorias
+    // ---------- Categorias
     onValue(ref(db,'financeiro/categorias'), snap=>{
-      cache.clear(); idxNome.clear();
+      cache.clear();
       if (snap.exists()){
-        snap.forEach(ch=>{
-          const id = ch.key; const v = ch.val() || {};
-          cache.set(id, v);
-          const nome = (v.nome||'').trim().toLowerCase();
-          if (nome) idxNome.set(nome, id);
+        snap.forEach(child=>{
+          cache.set(child.key, child.val() || {});
         });
       }
-      recomputeResumo(); // render será chamado dentro
+      render(); // mostra zero até carregar o consolidado
     });
 
-    // --------- ouvintes para as duas fontes
-    onValue(ref(db,'financeiro/fluxo'), snap=>{ fluxSnap = snap.exists()? snap.val() : null; recomputeResumo(); });
-    onValue(ref(db,'Import_Financeiro'), snap=>{ importSnap = snap.exists()? snap.val() : null; recomputeResumo(); });
+    // ---------- Consolidado por categoria (fonte oficial para a coluna de resumo)
+    onValue(ref(db, `financeiro/consolidado/${ANO}`), snap=>{
+      // Zera e refaz o resumo
+      resumoAno.clear();
+      cache.forEach((_, id)=> resumoAno.set(id, { soma:0 }) );
 
-    // --------- recomposição do resumo
-    function recomputeResumo(){
-      // zera
-      resumoAno.clear(); cache.forEach((_, id)=> resumoAno.set(id,{soma:0,meses:new Set()}) );
+      if (snap.exists()){
+        const anoNode = snap.val();
 
-      // agrega as duas raízes, se existirem
-      if (fluxSnap)  scanRoot(fluxSnap);
-      if (importSnap) scanRoot(importSnap);
+        // Pode vir como array (índices 1..12) OU objeto com chaves '1','2','...'
+        const mesesKeys = Array.isArray(anoNode)
+          ? Object.keys(anoNode)                    // pega índices existentes
+          : Object.keys(anoNode);                   // pega chaves do objeto
 
-      render();
-    }
+        mesesKeys.forEach(k=>{
+          // Ignora índices não numéricos
+          const mesNum = Number(k);
+          if (Number.isNaN(mesNum)) return;
+          if (mesNum < 1 || mesNum > 12) return;
 
-    // Caminhos aceitos:
-    // - raiz[YYYY-MM] ou raiz[YYYY/MM] -> bloco de mês com coleções {lancamentos|Lancamentos|itens|movimentos|...}
-    // - raiz[YYYY][MM] -> idem
-    const YM_RE = /^(\d{4})[-/](\d{1,2})$/;
+          // Apenas até o mês atual (acumulado YTD)
+          if (mesNum > (MES_IDX_ATUAL + 1)) return;
 
-    function scanRoot(rootObj){
-      if (!rootObj || typeof rootObj !== 'object') return;
+          const mesNode = Array.isArray(anoNode) ? anoNode[k] : anoNode[k];
+          if (!mesNode || typeof mesNode !== 'object') return;
 
-      Object.entries(rootObj).forEach(([k, bloco])=>{
-        // Formato YYYY-MM ou YYYY/MM
-        const m = k.match(YM_RE);
-        if (m){
-          const ano = Number(m[1]);
-          if (ano !== ANO) return;
-          const mesI = clampMes(Number(m[2]) - 1);
-          scanMonthBlock(bloco, ano, mesI);
-          return;
-        }
+          // Estrutura esperada: categoriaId -> valor OU categoriaId -> { valor: N }
+          Object.entries(mesNode).forEach(([catId, val])=>{
+            const base = resumoAno.get(catId) || { soma:0 };
+            let numero = 0;
 
-        // Formato Ano -> {meses}
-        if (/^\d{4}$/.test(k)){
-          const ano = Number(k);
-          if (ano !== ANO) return;
-          Object.entries(bloco || {}).forEach(([mesStr, sub])=>{
-            const mesI = clampMes(Number(mesStr) - 1);
-            if (mesI == null) return;
-            scanMonthBlock(sub, ano, mesI);
+            if (typeof val === 'number'){
+              numero = val;
+            } else if (val && typeof val === 'object'){
+              // tenta campos comuns
+              const cands = [val.valor, val.total, val.amount, val.Valor, val.valorReal, val.valor_liquido, val.valorBruto];
+              for (const v of cands){
+                const n = Number(v);
+                if (!Number.isNaN(n) && n !== 0){ numero = n; break; }
+              }
+              // se não achou, aceita 0
+            }
+
+            base.soma += Number(numero)||0;
+            resumoAno.set(catId, base);
           });
-          return;
-        }
-      });
-    }
-
-    function clampMes(i){
-      if (Number.isNaN(i)) return null;
-      return Math.max(0, Math.min(11, i));
-    }
-
-    // Procura coleções de lançamentos dentro do bloco do mês
-    function scanMonthBlock(node, ano, mesI){
-      if (!node) return;
-      const possiveis = ['lancamentos','Lancamentos','itens','Itens','movimentos','Movimentos','registros','Registros'];
-      let conjuntos = [];
-
-      for (const key of possiveis){
-        if (node[key]) conjuntos.push(node[key]);
-      }
-
-      // Se não achou pelos nomes comuns, tenta heurística
-      if (conjuntos.length === 0){
-        if (pareceColecaoLanc(node)) conjuntos.push(node);
-        else Object.values(node).forEach(v=>{ if (pareceColecaoLanc(v)) conjuntos.push(v); });
-      }
-
-      conjuntos.forEach(coll=>{
-        Object.values(coll || {}).forEach(l=>{
-          const catId = matchCategoria(l);
-          if (!catId) return;
-          const v = getValor(l);
-          if (!v) return; // ignora zeros
-          addResumo(catId, v, mesI);
         });
-      });
-    }
-
-    function pareceColecaoLanc(obj){
-      if (!obj || typeof obj !== 'object') return false;
-      const vals = Object.values(obj);
-      if (vals.length === 0) return false;
-      let score = 0;
-      for (const x of vals){
-        if (!x || typeof x !== 'object') continue;
-        if ('valor' in x || 'Valor' in x || 'valorPago' in x || 'valorReal' in x || 'amount' in x || 'total' in x || 'valor_liquido' in x || 'valorBruto' in x) score++;
-        if ('categoriaId' in x || 'categoria' in x || 'categoria_id' in x || 'categoriaNome' in x || 'nomeCategoria' in x || 'nome_categoria' in x) score++;
       }
-      return score >= 1;
-    }
 
-    function addResumo(catId, valor, mesIdx){
-      if (!resumoAno.has(catId)) resumoAno.set(catId,{soma:0,meses:new Set()});
-      const r = resumoAno.get(catId);
-      r.soma += Number(valor) || 0;
-      r.meses.add(mesIdx);
-    }
+      // Re-render para aplicar os números
+      render();
+    });
 
-    function matchCategoria(l){
-      const idPref = l.categoriaId || l.categoria || l.categoria_id || null;
-      if (idPref && cache.has(String(idPref))) return String(idPref);
-      const nome = (l.categoriaNome || l.nomeCategoria || l.nome_categoria || '').trim().toLowerCase();
-      if (nome && idxNome.has(nome)) return idxNome.get(nome);
-      return null;
-    }
-
-    function getValor(l){
-      const cands = [l.valor, l.Valor, l.valorPago, l.valorReal, l.amount, l.total, l.valor_liquido, l.valorBruto];
-      for (const v of cands){
-        const n = Number(v);
-        if (!Number.isNaN(n) && n !== 0) return n;
-      }
-      if ('valor' in l) return Number(l.valor)||0;
-      if ('Valor' in l) return Number(l.Valor)||0;
-      return 0;
-    }
   </script>
 </body>
 </html>
