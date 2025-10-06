@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', function () {
               <a href="/LepanApp/gestao_agenda.html">Gestão da Agenda</a>
               <a href="/LepanApp/configuracao.html">Parâmetros Gerais</a>
               <a href="/LepanApp/Categoria_Fin.html">Cadastro Centro Custo</a>
+              <a href="/LepanApp/Regra_DRE.html">Regra DRE</a>
               <a href="/LepanApp/media_cliente.html">Gerar Média PDV</a>
               <a href="/LepanApp/media_produtos.html">Gerar Média Produto</a>
             </div>
