@@ -15,7 +15,7 @@
 
   <style>
     .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-    .page-header h1{margin:0;font-size:20px;color:#111827;} /* força texto escuro */
+    .page-header h1{margin:0;font-size:20px;color:#111827;}
     .page-header .muted{color:#6b7280;}
 
     .filters{display:grid;grid-template-columns:1fr 180px 160px;gap:10px;margin-bottom:10px;align-items:end;}
@@ -26,7 +26,7 @@
 
     table{width:100%;border-collapse:collapse;background:#fff;}
     thead th{
-      background:#fff7ec;color:#111827; /* cabeçalho visível */
+      background:#fff7ec;color:#111827;
       text-align:left;border:1px solid #e5e7eb;padding:8px;font-size:12.5px;
     }
     tbody td{border:1px solid #e5e7eb;padding:6px 8px;font-size:12.5px;vertical-align:top;}
@@ -54,7 +54,7 @@
   <div class="main-content">
     <div class="page-header">
       <h1>Regras de DRE por Categoria</h1>
-      <span class="muted">Edite regra, parâmetros e Valor DRE. Acompanhe acumulado anual e média mensal.</span>
+      <span class="muted">Edite regra, parâmetros e Valor DRE. Veja o valor calculado e o acumulado anual.</span>
     </div>
 
     <!-- Filtros -->
@@ -79,13 +79,14 @@
     <table id="tabela">
       <thead>
         <tr>
-          <th style="width:22%;">Categoria</th>
+          <th style="width:20%;">Categoria</th>
           <th style="width:10%;">Tipo</th>
-          <th style="width:20%;">Centro de Custo</th>
-          <th style="width:14%;">Regra DRE</th>
+          <th style="width:16%;">Centro de Custo</th>
+          <th style="width:12%;">Regra DRE</th>
           <th style="width:16%;">Parâmetros</th>
           <th style="width:10%;">Valor DRE</th>
-          <th style="width:18%;" class="nowrap">Acumulado (ano) / Média mensal</th>
+          <th style="width:12%;">DRE (calc.)</th>
+          <th style="width:16%;" class="nowrap">Acumulado (ano) / Média mensal</th>
           <th class="nowrap">Ações</th>
         </tr>
       </thead>
@@ -113,12 +114,15 @@
     const badgeAlteracoes = document.getElementById('badgeAlteracoes');
 
     // ---------- Estados
-    const cache = new Map();   // id -> categoria
-    const edits = new Map();   // id -> { dre_regra, dre_percentual_base, dre_media_janela, dre_valor }
-    const resumoAno = new Map(); // id -> { soma:number }
-
+    const cache = new Map();      // id -> categoria
+    const edits = new Map();      // id -> { dre_regra, dre_percentual_base, dre_media_janela, dre_valor }
+    const resumoAno = new Map();  // id -> { soma:number }
+    const mensais = new Map();    // id -> Array(24) [ANO-1: 0..11, ANO: 12..23]
+    const valorMesAtual = new Map(); // id -> number (mês atual)
+    let somaEntradasMesAtual = 0; // base do driver (% sobre entradas)
     const hoje = new Date();
     const ANO = hoje.getFullYear();
+    const ANO_ANT = ANO - 1;
     const MES_IDX_ATUAL = hoje.getMonth(); // 0..11
     const MESES_DECORRIDOS = MES_IDX_ATUAL + 1;
 
@@ -160,6 +164,46 @@
       badgeAlteracoes.textContent = `${count} alteração(ões)`;
     }
 
+    // ---------- Cálculo do DRE (calc.)
+    function calcDREValue(id){
+      const base = cache.get(id) || {};
+      const e = edits.get(id) || {};
+      const regra = (e.dre_regra ?? base.dre_regra) || null;
+
+      if (!regra) return { valor: 0, desc: '—' };
+
+      if (regra === 'caixa'){
+        const v = Number(valorMesAtual.get(id) || 0);
+        return { valor: v, desc: 'mês atual (caixa)' };
+      }
+
+      if (regra === 'competencia_media'){
+        const n = Number((e.dre_media_janela ?? base.dre_media_janela) || 0);
+        const serie = mensais.get(id) || Array(24).fill(0);
+        const idxAtual = 12 + MES_IDX_ATUAL; // posição do mês atual no ano ANO
+        let soma = 0, count = 0;
+        if (n > 0){
+          for (let i = idxAtual - (n - 1); i <= idxAtual; i++){
+            if (i >= 0 && i < serie.length){
+              soma += Number(serie[i] || 0);
+              count++;
+            }
+          }
+        }
+        const media = count ? (soma / count) : 0;
+        return { valor: media, desc: `média ${n}m` };
+      }
+
+      if (regra === 'competencia_driver'){
+        const p = Number((e.dre_percentual_base ?? base.dre_percentual_base) || 0);
+        const v = p * Number(somaEntradasMesAtual || 0);
+        return { valor: v, desc: `${(p*100).toLocaleString('pt-BR',{maximumFractionDigits:2})}% das entradas (mês)` };
+      }
+
+      // especial / desconhecido
+      return { valor: 0, desc: 'especial' };
+    }
+
     // ---------- Render
     function render(){
       const q = (elBusca.value || '').toLowerCase();
@@ -183,7 +227,9 @@
         const valorDRE = (e.dre_valor ?? cat.dre_valor);
 
         const somaAno = Number((resumoAno.get(id) || {}).soma || 0);
-        const mediaMes = somaAno / Math.max(1, MESES_DECORRIDOS);
+        const mediaMesYTD = somaAno / Math.max(1, MESES_DECORRIDOS);
+
+        const { valor: dreCalc, desc: dreDesc } = calcDREValue(id);
 
         const tr = document.createElement('tr');
         if (rowDirty(id)) tr.classList.add('changed');
@@ -218,16 +264,29 @@
           <td>
             <input class="dre-input vright" data-k="dre_valor" data-id="${id}" placeholder="0,00"
               value="${valorDRE!=null ? esc(String(valorDRE).replace('.',',')) : ''}">
-            <div class="muted">Salvo em: <code>categorias/${esc(id)}/dre_valor</code></div>
+            <div class="muted">Manual: <code>categorias/${esc(id)}/dre_valor</code></div>
+          </td>
+          <td class="vright">
+            <div><strong>${fmtMoeda(dreCalc)}</strong></div>
+            <div class="muted">${esc(dreDesc)}</div>
           </td>
           <td class="vright">
             <div><strong>${fmtMoeda(somaAno)}</strong></div>
-            <div class="muted">/ ${fmtMoeda(mediaMes)}</div>
+            <div class="muted">/ ${fmtMoeda(mediaMesYTD)}</div>
             <div class="muted">Ano ${ANO}</div>
           </td>
           <td class="row-actions nowrap"><button data-save="${id}">Salvar</button></td>
         `;
         tbody.appendChild(tr);
+      });
+
+      // atualiza visibilidade de parâmetros por regra
+      tbody.querySelectorAll('.param-wrap').forEach(w=>{
+        const id = w.getAttribute('data-id');
+        const cat = cache.get(id) || {};
+        const e = edits.get(id) || {};
+        const regra = (e.dre_regra ?? cat.dre_regra) || '';
+        w.setAttribute('data-mode', regra || '');
       });
 
       bindRowEvents();
@@ -249,7 +308,7 @@
           if (wrap) wrap.setAttribute('data-mode', v || '');
           const tr = sel.closest('tr');
           if (rowDirty(id)) tr.classList.add('changed'); else tr.classList.remove('changed');
-          refreshBadge();
+          render(); // re-render para recalcular DRE (calc.)
         });
       });
 
@@ -275,7 +334,7 @@
 
           const tr = inp.closest('tr');
           if (rowDirty(id)) tr.classList.add('changed'); else tr.classList.remove('changed');
-          refreshBadge();
+          render(); // re-render para recalcular DRE (calc.)
         });
       });
 
@@ -306,6 +365,7 @@
       await update(ref(db, `financeiro/categorias/${id}`), payload);
       edits.delete(id);
       refreshBadge();
+      render();
     }
 
     function discardAll(){ edits.clear(); refreshBadge(); render(); }
@@ -328,62 +388,86 @@
           cache.set(child.key, child.val() || {});
         });
       }
-      render(); // mostra zero até carregar o consolidado
+      render(); // mostra até carregar consolidado
     });
 
-    // ---------- Consolidado por categoria (fonte oficial para a coluna de resumo)
+    // ---------- Consolidado: precisamos do ano atual e do anterior (para janelas que cruzam o ano)
+    onValue(ref(db, `financeiro/consolidado/${ANO_ANT}`), snap=>{
+      recomputeConsolidado(ANO_ANT, snap.exists() ? snap.val() : null);
+    });
     onValue(ref(db, `financeiro/consolidado/${ANO}`), snap=>{
-      // Zera e refaz o resumo
+      recomputeConsolidado(ANO, snap.exists() ? snap.val() : null);
+    });
+
+    // Mantém uma cópia dos dois anos lidos
+    const consolidadoCache = new Map(); // ano -> node
+
+    function recomputeConsolidado(ano, node){
+      consolidadoCache.set(ano, node);
+
+      // zera estruturas
       resumoAno.clear();
-      cache.forEach((_, id)=> resumoAno.set(id, { soma:0 }) );
+      valorMesAtual.clear();
+      mensais.clear();
+      somaEntradasMesAtual = 0;
 
-      if (snap.exists()){
-        const anoNode = snap.val();
+      // prepara arrays 24 pos.
+      cache.forEach((_, id)=> mensais.set(id, Array(24).fill(0)) );
 
-        // Pode vir como array (índices 1..12) OU objeto com chaves '1','2','...'
-        const mesesKeys = Array.isArray(anoNode)
-          ? Object.keys(anoNode)                    // pega índices existentes
-          : Object.keys(anoNode);                   // pega chaves do objeto
+      // processa anos na ordem (ANO-1 depois ANO)
+      [ANO_ANT, ANO].forEach(a=>{
+        const n = consolidadoCache.get(a);
+        if (!n) return;
 
-        mesesKeys.forEach(k=>{
-          // Ignora índices não numéricos
+        const baseOffset = (a === ANO) ? 12 : 0;
+        const keys = Object.keys(n);
+        keys.forEach(k=>{
           const mesNum = Number(k);
-          if (Number.isNaN(mesNum)) return;
-          if (mesNum < 1 || mesNum > 12) return;
-
-          // Apenas até o mês atual (acumulado YTD)
-          if (mesNum > (MES_IDX_ATUAL + 1)) return;
-
-          const mesNode = Array.isArray(anoNode) ? anoNode[k] : anoNode[k];
+          if (Number.isNaN(mesNum) || mesNum < 1 || mesNum > 12) return;
+          const mesIdx = mesNum - 1;
+          const mesNode = n[k];
           if (!mesNode || typeof mesNode !== 'object') return;
 
-          // Estrutura esperada: categoriaId -> valor OU categoriaId -> { valor: N }
+          // percorre categorias do mês
           Object.entries(mesNode).forEach(([catId, val])=>{
-            const base = resumoAno.get(catId) || { soma:0 };
             let numero = 0;
-
-            if (typeof val === 'number'){
-              numero = val;
-            } else if (val && typeof val === 'object'){
-              // tenta campos comuns
+            if (typeof val === 'number') numero = val;
+            else if (val && typeof val === 'object'){
               const cands = [val.valor, val.total, val.amount, val.Valor, val.valorReal, val.valor_liquido, val.valorBruto];
               for (const v of cands){
-                const n = Number(v);
-                if (!Number.isNaN(n) && n !== 0){ numero = n; break; }
+                const num = Number(v);
+                if (!Number.isNaN(num) && num !== 0){ numero = num; break; }
               }
-              // se não achou, aceita 0
+            }
+            const arr = mensais.get(catId) || Array(24).fill(0);
+            arr[baseOffset + mesIdx] = Number(numero) || 0;
+            mensais.set(catId, arr);
+
+            // YTD do ano atual (até mês corrente)
+            if (a === ANO && mesNum <= (MES_IDX_ATUAL + 1)){
+              const r = resumoAno.get(catId) || { soma:0 };
+              r.soma += Number(numero) || 0;
+              resumoAno.set(catId, r);
             }
 
-            base.soma += Number(numero)||0;
-            resumoAno.set(catId, base);
+            // valor do mês atual por categoria (base "caixa")
+            if (a === ANO && mesNum === (MES_IDX_ATUAL + 1)){
+              valorMesAtual.set(catId, Number(numero) || 0);
+            }
           });
         });
-      }
+      });
 
-      // Re-render para aplicar os números
+      // soma das Entradas no mês atual (driver)
+      cache.forEach((cat, id)=>{
+        const tipo = (cat?.tipo)||'';
+        if (tipo === 'Entrada'){
+          somaEntradasMesAtual += Number(valorMesAtual.get(id) || 0);
+        }
+      });
+
       render();
-    });
-
+    }
   </script>
 </body>
 </html>
