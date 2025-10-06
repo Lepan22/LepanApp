@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Configuração</title>
+  <title>configuração</title>
 
   <link rel="stylesheet" href="assets/menu-styles.css">
   <link rel="stylesheet" href="assets/base.css">
@@ -34,6 +34,7 @@
           <input type="number" id="percentualLucro" step="0.01" placeholder="ex.: 40" required />
         </div>
 
+        <!-- ADIÇÕES -->
         <div style="display: flex; flex-direction: column;">
           <label for="valorEstoqueInicial">Valor do Estoque Inicial (R$)</label>
           <input type="number" id="valorEstoqueInicial" step="0.01" placeholder="ex.: 15000" />
@@ -43,6 +44,7 @@
           <label for="dataEstoqueInicial">Data do Estoque Inicial</label>
           <input type="date" id="dataEstoqueInicial" />
         </div>
+        <!-- FIM ADIÇÕES -->
 
         <div style="flex-basis: 100%;">
           <button type="submit">Atualizar Configurações</button>
@@ -91,7 +93,7 @@
           const data = snapshot.val() || {};
           capacidadeInput.value = data.capacidadeEventos ?? '';
           percentualCMVInput.value = data.percentualCMV ?? '';
-          percentualLucroInput.value = data.percentualLucro ?? 40;
+          percentualLucroInput.value = data.percentualLucro ?? 40; // default sugerido
           valorEstoqueInicialInput.value = data.valorEstoqueInicial ?? '';
           dataEstoqueInicialInput.value = data.dataEstoqueInicial ?? '';
         })
@@ -103,14 +105,15 @@
       const capacidadeEventos = Number(capacidadeInput.value);
       const percentualCMV = parseFloat(percentualCMVInput.value);
       const percentualLucro = parseFloat(percentualLucroInput.value);
-      const valorEstoqueInicial = parseFloat(valorEstoqueInicialInput.value) || 0;
+      const valorEstoqueInicial = parseFloat(valorEstoqueInicialInput.value);
       const dataEstoqueInicial = dataEstoqueInicialInput.value || '';
 
-      db.ref('configuracao').set({
+      // update para não sobrescrever outras chaves existentes em /configuracao
+      db.ref('configuracao').update({
         capacidadeEventos,
         percentualCMV,
         percentualLucro,
-        valorEstoqueInicial,
+        valorEstoqueInicial: isNaN(valorEstoqueInicial) ? null : valorEstoqueInicial,
         dataEstoqueInicial
       })
         .then(() => { statusMsg.textContent = 'Configurações atualizadas com sucesso!'; })
