@@ -24,16 +24,13 @@
   .filters{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
   .filters label{ font-size:12.5px; color:#374151 }
   .filters select{ padding:6px 8px; font-size:12.5px }
-  .filters .inline{ display:flex; gap:8px; align-items:center; }
 
   .grid{ display:grid; gap:var(--card-gap); }
   .grid.kpis{ grid-template-columns: repeat(12, 1fr); }
   .grid.two{ grid-template-columns: 7fr 5fr; }
   .grid.full{ grid-template-columns: 1fr; }
 
-  .card{
-    background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:var(--card-pad);
-  }
+  .card{ background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:var(--card-pad); }
   .kpi{
     height:var(--kpi-h);
     display:flex; flex-direction:column; justify-content:center; gap:2px;
@@ -43,9 +40,6 @@
   .kpi .sub{ color:#64748b; font-size:11px; line-height:1; }
 
   .section-title{ font-size:13px; font-weight:700; color:#111827; margin-bottom:6px; }
-  /* força título específico a preto, independente do tema */
-  #tituloRecon{ color:#000 !important; }
-
   .muted{ color: var(--muted); font-size:12px; }
 
   .chart-box{ height:var(--chart-h); }
@@ -85,23 +79,21 @@
   <div class="main-content">
     <div class="page-header">
       <h1>Análise de Estoque</h1>
-      <p>Foco em <strong>estoque, compras e CPV</strong>. Padrão abre no <strong>mês anterior</strong>. Reconciliação: <em>CPV ≈ Compras − ΔEstoque</em>.</p>
+      <p>Foco em <strong>estoque, compras e CPV</strong>. Reconciliação: <em>CPV ≈ Compras − ΔEstoque</em>.</p>
       <div id="diag" class="diag warn" style="display:none"></div>
     </div>
 
     <section class="filters">
       <label>Ano: <select id="anoSelect"></select></label>
       <label>Mês: <select id="mesSelect"></select></label>
-      <div class="inline">
-        <label>Janela Cobertura:
-          <select id="janelaCob">
-            <option value="3">3 meses</option>
-            <option value="6">6 meses</option>
-            <option value="12" selected>12 meses</option>
-          </select>
-        </label>
-      </div>
-      <span class="muted">Cobertura = Estoque final ÷ média CPV da janela (em meses).</span>
+      <label>Janela Cobertura:
+        <select id="janelaCob">
+          <option value="3">3 meses</option>
+          <option value="6">6 meses</option>
+          <option value="12" selected>12 meses</option>
+        </select>
+      </label>
+      <span class="muted">Cobertura = Estoque final ÷ média CPV da janela (meses).</span>
     </section>
 
     <!-- KPIs -->
@@ -114,7 +106,7 @@
       <div class="card kpi" style="grid-column: span 3;">
         <div class="label">Compra Produto (mês)</div>
         <div class="value" id="kpiCompras">—</div>
-        <div class="sub muted">Categoria "Compras"</div>
+        <div class="sub muted">movimentação.compraProdutoMes</div>
       </div>
       <div class="card kpi" style="grid-column: span 3;">
         <div class="label">Custo de Produto (mês)</div>
@@ -149,7 +141,7 @@
       </div>
     </section>
 
-    <!-- Gráficos -->
+    <!-- Gráficos + Tabela -->
     <section class="grid two" style="margin-top:10px;">
       <div class="card">
         <div class="section-title">Evolução (12 meses): Estoque × Compras × CPV</div>
@@ -164,7 +156,7 @@
       </div>
 
       <div class="card">
-        <div class="section-title" id="tituloRecon">Reconciliação Rápida</div>
+        <div class="section-title" id="tituloRecon" style="color:#000 !important;">Reconciliação Rápida</div>
         <p class="muted" id="diagRecon">Valida se <em>CPV ≈ Compras − ΔEstoque</em> no mês.</p>
         <table class="sm" id="tblRecon">
           <thead>
@@ -182,19 +174,6 @@
           </thead>
           <tbody></tbody>
         </table>
-      </div>
-    </section>
-
-    <!-- Observações -->
-    <section class="grid full" style="margin-top:10px;">
-      <div class="card">
-        <div class="section-title">Observações</div>
-        <ul class="muted" style="margin-top:6px; line-height:1.35;">
-          <li>Para <strong>janeiro</strong>, o <strong>Estoque inicial</strong> é sempre o valor configurado em <code>Configuração → Valor do Estoque Inicial</code> (se existir). Se não houver, usa-se o estoque de dezembro do ano anterior.</li>
-          <li>CPV (mov) vem de <code>financeiro/movimentacao/{ano}/{mes}/custoProdutoMes</code>.</li>
-          <li>Compras vem da categoria “Compras” em <code>financeiro/consolidado</code>.</li>
-          <li>Contas a Pagar (Compras) vem de <code>financeiro/movimentacao/{ano}/{mes}/contasPagarCompras</code>.</li>
-        </ul>
       </div>
     </section>
   </div>
@@ -231,8 +210,6 @@
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   const num = v => isNaN(Number(v)) ? 0 : Number(v);
   const perc = v => Number(v||0).toLocaleString('pt-BR',{maximumFractionDigits:1}) + '%';
-  const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-
   const hasVal = v => v!==undefined && v!==null && !(typeof v==='number' && isNaN(v));
 
   // ---------- Elements ----------
@@ -260,16 +237,6 @@
   const diagRecon = document.getElementById('diagRecon');
 
   // ---------- Data ----------
-  async function getCategorias(){
-    const snap = await db.ref('financeiro/categorias').once('value');
-    const v = snap.val() || {};
-    const arr = Object.keys(v).map(id => ({ id, nome: v[id]?.nome || '(sem nome)' }));
-    return arr;
-  }
-  async function getCons(ano){
-    const snap = await db.ref(`financeiro/consolidado/${ano}`).once('value');
-    return snap.val() || {};
-  }
   async function getMov(ano){
     const snap = await db.ref(`financeiro/movimentacao/${ano}`).once('value');
     return snap.val() || {};
@@ -279,30 +246,30 @@
     return snap.val() || {};
   }
 
-  // ---------- Helpers ----------
+  // séries a partir dos EXTRAS DO MÊS
+  function seriesFromExtras(movAno){
+    const compras = Array.from({length:12}, (_,i)=> num(movAno?.[i+1]?.compraProdutoMes));
+    const cpv     = Array.from({length:12}, (_,i)=> num(movAno?.[i+1]?.custoProdutoMes));
+    const estoque = Array.from({length:12}, (_,i)=> num(movAno?.[i+1]?.valorEstoque));
+    const perdaNP = Array.from({length:12}, (_,i)=> num(movAno?.[i+1]?.perdaProdutoNaoOperacional));
+    const pagar   = Array.from({length:12}, (_,i)=> num(movAno?.[i+1]?.contasPagarCompras));
+    return { compras, cpv, estoque, perdaNP, pagar };
+  }
+
+  // estoque inicial (jan usa config.valorEstoqueInicial)
+  function estoqueInicialDoMes(ano, mes, movAno, movPrev, cfg){
+    const cfgInicial = Number(cfg?.valorEstoqueInicial);
+    if (mes === 1){
+      if (isFinite(cfgInicial) && cfgInicial > 0) return cfgInicial;
+      const prevDec = movPrev?.[12]?.valorEstoque;
+      return hasVal(prevDec) ? num(prevDec) : null;
+    }
+    const prev = movAno?.[mes-1]?.valorEstoque;
+    return hasVal(prev) ? num(prev) : null;
+  }
+
   const arr12 = ()=> Array.from({length:12}, ()=>0);
   const sum = a => a.reduce((x,y)=> x+num(y), 0);
-
-  function findCategoriaIdByName(categorias, alvo){
-    const n = norm(alvo);
-    const f = categorias.find(c => norm(c.nome) === n);
-    return f ? f.id : null;
-  }
-
-  function series12m(consAno, movAno, idCompras){
-    const compras = arr12(), cpv = arr12(), estoque = arr12(), pagar = arr12();
-    for (let m=1;m<=12;m++){
-      const row = consAno?.[m] || {};
-      const raw = row?.[idCompras];
-      const v = num(raw?.valor ?? raw);
-      compras[m-1] = v;
-
-      cpv[m-1] = num(movAno?.[m]?.custoProdutoMes);
-      estoque[m-1] = num(movAno?.[m]?.valorEstoque);
-      pagar[m-1] = num(movAno?.[m]?.contasPagarCompras);
-    }
-    return {compras, cpv, estoque, pagar};
-  }
 
   function coberturaMes(estoqueFinal, cpvHist, janela){
     const base = cpvHist.slice(-janela).filter(v=>v!=null).map(num);
@@ -368,33 +335,6 @@
     svg12.innerHTML = svg;
   }
 
-  // ---------- Lógica do Estoque Inicial ----------
-  function parseCfgDate(dstr){
-    if (!dstr || typeof dstr !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(dstr)) return {y:null,m:null};
-    const y = Number(dstr.slice(0,4));
-    const m = Number(dstr.slice(5,7));
-    return {y, m};
-  }
-
-  function estoqueInicialDoMes(ano, mes, movAno, movPrev, cfg){
-    const cfgVal = Number(cfg?.valorEstoqueInicial);
-    const {y: cfgY, m: cfgM} = parseCfgDate(cfg?.dataEstoqueInicial);
-
-    if (mes === 1){
-      // PRIORIDADE: valor configurado, independente de data
-      if (isFinite(cfgVal) && cfgVal > 0) return cfgVal;
-      const prevDec = movPrev?.[12]?.valorEstoque;
-      if (hasVal(prevDec)) return num(prevDec);
-      return null;
-    } else {
-      const prev = movAno?.[mes-1]?.valorEstoque;
-      if (hasVal(prev)) return num(prev);
-      // opcional: se a data configurada coincidir com o mês atual, usar também
-      if (cfgY === ano && cfgM === mes && isFinite(cfgVal)) return cfgVal;
-      return null;
-    }
-  }
-
   // ---------- Render ----------
   async function render(){
     clearDiag();
@@ -403,12 +343,11 @@
     const mes = Number(mesSel.value);
     const jan = Number(janelaCob.value);
 
-    const [cats, consAno, consPrev, movAno, movPrev, cfg] = await Promise.all([
-      getCategorias(), getCons(ano), getCons(ano-1), getMov(ano), getMov(ano-1), getConfig()
+    const [movAno, movPrev, cfg] = await Promise.all([
+      getMov(ano), getMov(ano-1), getConfig()
     ]);
 
-    const idCompras = findCategoriaIdByName(cats, 'compras');
-    const {compras, cpv, estoque, pagar} = series12m(consAno, movAno, idCompras);
+    const { compras, cpv, estoque, perdaNP, pagar } = seriesFromExtras(movAno);
 
     // KPIs do mês selecionado
     const estFim = hasVal(estoque[mes-1]) ? num(estoque[mes-1]) : null;
@@ -474,7 +413,7 @@
     }
     diagRecon.textContent = diagFlag
       ? 'Atenção: há meses com diferença acima de 10% entre CPV e (Compras − ΔEstoque). Verifique cadastros/lançamentos.'
-      : 'OK: reconciliação dentro da tolerância (±10%) em todos os meses com dados.';
+      : 'OK: reconciliação dentro da tolerância (±10%) nos meses com dados.';
 
     // Gráfico 12m
     drawComboChart(mesesPt, estoque, compras, cpv);
@@ -482,20 +421,17 @@
     // Referências
     setText(kpi.refMes, mesesPt[mes-1]);
     setText(kpi.refAno, 'Ano ' + ano);
-    // KPI Recon do mês escolhido
-    const {dif: dfM, difPct: dpM} = reconRow(estIni, comprasMes, estFim, cpvMes);
+    const {dif: dfM, difPct: dpM} = reconRow(
+      estoqueInicialDoMes(ano, mes, movAno, movPrev, cfg),
+      comprasMes, estFim, cpvMes
+    );
     setText(kpi.reconDiff, (dfM!=null) ? 'R$ ' + fmt(dfM) : '—');
     setText(kpi.reconPct, (dpM!=null && isFinite(dpM)) ? perc(dpM) : '—');
   }
 
   async function carregarAnosEMeses(){
-    const [cons, mov] = await Promise.all([
-      db.ref('financeiro/consolidado').once('value'),
-      db.ref('financeiro/movimentacao').once('value')
-    ]);
-    const anosC = Object.keys(cons.val()||{}).filter(a=>/^\d{4}$/.test(a)).map(Number);
-    const anosM = Object.keys(mov.val()||{}).filter(a=>/^\d{4}$/.test(a)).map(Number);
-    const anos = Array.from(new Set([...anosC, ...anosM])).sort((a,b)=>a-b);
+    const movAll = await db.ref('financeiro/movimentacao').once('value');
+    const anos = Object.keys(movAll.val()||{}).filter(a=>/^\d{4}$/.test(a)).map(Number).sort((a,b)=>a-b);
 
     anoSel.innerHTML = '';
     if (!anos.length){
