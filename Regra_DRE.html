@@ -14,13 +14,11 @@
     .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
     .page-header h1{margin:0;font-size:20px;color:#111827;}
     .muted{color:#6b7280;font-size:11.5px;}
-    .kpis{display:flex;gap:12px;flex-wrap:wrap;margin:8px 0 14px}
-    .kpi{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;min-width:230px}
-    .kpi strong{display:block;font-size:18px}
-    .filters{display:grid;grid-template-columns:1fr 180px 160px;gap:10px;margin-bottom:10px;align-items:end;}
-    @media (max-width:900px){.filters{grid-template-columns:1fr 1fr;}}
+
+    .filters{display:grid;grid-template-columns:1fr 160px;gap:10px;margin-bottom:10px;align-items:end;}
+    @media (max-width:900px){.filters{grid-template-columns:1fr;}}
     .filters label{font-size:12px;color:#374151;}
-    .filters input,.filters select,.filters button{width:100%;box-sizing:border-box;padding:6px;font-size:12px;}
+    .filters input,.filters button{width:100%;box-sizing:border-box;padding:6px;font-size:12px;}
     .filters button{height:32px;border:1px solid #ddd;border-radius:8px;background:#ff7f2a;color:#fff;cursor:pointer;}
 
     table{width:100%;border-collapse:collapse;background:#fff;}
@@ -52,27 +50,12 @@
       <span class="muted">Base de cálculo: mês anterior. YTD até o mês anterior.</span>
     </div>
 
-    <!-- KPIs de FLUXO (global) -->
-    <div class="kpis">
-      <div class="kpi">
-        <div class="muted">Fluxo Anual (YTD)</div>
-        <strong id="kpiFluxoAnual">R$ 0,00</strong>
-        <div class="muted">Somando <span id="kpiFluxoMeses">0</span> meses</div>
-      </div>
-      <div class="kpi">
-        <div class="muted">Média Mensal do Fluxo</div>
-        <strong id="kpiFluxoMedia">R$ 0,00</strong>
-        <div class="muted">Fonte: financeiro/movimentacao/{ano}</div>
-      </div>
-    </div>
-
     <!-- Filtros -->
     <div class="filters">
       <label>
         Busca (nome)
         <input type="text" id="busca" placeholder="Digite para filtrar…">
       </label>
-      <div></div>
       <button id="limparFiltros">Limpar filtros</button>
     </div>
 
@@ -80,13 +63,13 @@
     <table id="tabela">
       <thead>
         <tr>
-          <th style="width:24%;">Categoria</th>
+          <th style="width:26%;">Categoria</th>
           <th style="width:12%;">Regra DRE</th>
           <th style="width:18%;">Parâmetros</th>
           <th style="width:10%;">Valor DRE</th>
           <th style="width:12%;">DRE (calc.)</th>
-          <th style="width:12%;" class="nowrap">DRE (Anual / Média)</th>
-          <th style="width:12%;" class="nowrap">Fluxo (Anual / Média)</th>
+          <th style="width:11%;" class="nowrap">DRE (Anual/Média)</th>
+          <th style="width:11%;" class="nowrap">Fluxo (Anual/Média)</th>
           <th class="nowrap">Ações</th>
         </tr>
       </thead>
@@ -111,34 +94,27 @@
     const btnSalvarAlteracoes = document.getElementById('salvarAlteracoes');
     const btnDescartarAlteracoes = document.getElementById('descartarAlteracoes');
     const badgeAlteracoes = document.getElementById('badgeAlteracoes');
-    const kpiFluxoAnual = document.getElementById('kpiFluxoAnual');
-    const kpiFluxoMedia = document.getElementById('kpiFluxoMedia');
-    const kpiFluxoMeses = document.getElementById('kpiFluxoMeses');
 
     // ---------- Estados
-    const cache = new Map();      // id -> categoria
-    const edits = new Map();      // id -> { dre_regra, dre_percentual_base, dre_media_janela, dre_valor }
-    const resumoDRE = new Map();  // id -> { soma:number } (YTD até mês base)
-    const mensais = new Map();    // id -> Array(24) [ANO-1: 0..11, ANO: 12..23]
-    const valorMesBase = new Map(); // id -> number (mês base)
-    let somaEntradasMesBase = 0;    // base do driver (% sobre entradas)
-    // Fluxo global
-    let fluxoYTD = 0;
-    let fluxoMesesConsiderados = 0;
+    const cache = new Map();        // id -> categoria
+    const edits = new Map();        // id -> { dre_regra, dre_percentual_base, dre_media_janela, dre_valor }
+    const dreYTD = new Map();       // id -> soma YTD (até mês base)
+    const fluxoYTD = new Map();     // id -> soma YTD (até mês base)
+    const mensais = new Map();      // id -> Array(24) [ANO-1: 0..11, ANO: 12..23]
+    const valorMesBase = new Map(); // id -> valor do mês base (anterior)
+    let somaEntradasMesBase = 0;    // p/ competencia_driver
 
     const hoje = new Date();
     const ANO = hoje.getFullYear();
     const ANO_ANT = ANO - 1;
     const MES_ATUAL = hoje.getMonth(); // 0..11
-    // >>> MÊS BASE = mês anterior
-    const MES_BASE = (MES_ATUAL - 1 + 12) % 12;
-    const ANO_BASE = (MES_ATUAL === 0) ? ANO_ANT : ANO;
-    const MESES_YTD_BASE = (ANO_BASE === ANO_ANT) ? 12 : (MES_BASE + 1); // quantos meses no YTD até o mês base
+    const MES_BASE = (MES_ATUAL - 1 + 12) % 12;        // mês anterior
+    const ANO_BASE = (MES_ATUAL === 0) ? ANO_ANT : ANO; // ano do mês base
+    const MESES_YTD_BASE = (ANO_BASE === ANO_ANT) ? 12 : (MES_BASE + 1);
 
     // ---------- Utils
-    const esc = (s='') => String(s)
-      .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-      .replaceAll('"','&quot;').replaceAll("'","&#39;");
+    const esc = (s='') => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+                                   .replaceAll('"','&quot;').replaceAll("'","&#39;");
     const fmtMoeda = (n=0) => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 
     function parsePercentToDecimal(txt){
@@ -153,8 +129,7 @@
     }
     function formatDecimalToPercent(dec){
       if (dec == null || dec === '') return '';
-      const n = Number(dec);
-      if (isNaN(n)) return '';
+      const n = Number(dec); if (isNaN(n)) return '';
       return (n*100).toLocaleString('pt-BR',{maximumFractionDigits:2}) + '%';
     }
     function rowDirty(id){
@@ -173,7 +148,7 @@
       badgeAlteracoes.textContent = `${count} alteração(ões)`;
     }
 
-    // ---------- Cálculo do DRE (calc.) com base no MÊS ANTERIOR
+    // ---------- Cálculo DRE (calc.) — mês anterior
     function calcDREValue(id){
       const base = cache.get(id) || {};
       const e = edits.get(id) || {};
@@ -189,15 +164,11 @@
       if (regra === 'competencia_media'){
         const n = Number((e.dre_media_janela ?? base.dre_media_janela) || 0);
         const serie = mensais.get(id) || Array(24).fill(0);
-        // índice absoluto do mês base
-        const idxBase = (ANO_BASE === ANO ? 12 : 0) + MES_BASE;
+        const idxBase = (ANO_BASE === ANO ? 12 : 0) + MES_BASE; // índice absoluto do mês base
         let soma = 0, count = 0;
         if (n > 0){
           for (let i = idxBase - (n - 1); i <= idxBase; i++){
-            if (i >= 0 && i < serie.length){
-              soma += Number(serie[i] || 0);
-              count++;
-            }
+            if (i >= 0 && i < serie.length){ soma += Number(serie[i] || 0); count++; }
           }
         }
         const media = count ? (soma / count) : 0;
@@ -215,11 +186,6 @@
 
     // ---------- Render
     function render(){
-      // KPIs de fluxo (global)
-      kpiFluxoAnual.textContent = fmtMoeda(fluxoYTD);
-      kpiFluxoMeses.textContent = String(MESES_YTD_BASE);
-      kpiFluxoMedia.textContent = fmtMoeda(fluxoYTD / Math.max(1, MESES_YTD_BASE));
-
       const q = (elBusca.value || '').toLowerCase();
       const rows = [];
       cache.forEach((cat,id)=>{
@@ -237,8 +203,12 @@
         const mediaN = (e.dre_media_janela ?? cat.dre_media_janela);
         const valorDRE = (e.dre_valor ?? cat.dre_valor);
 
-        const somaYTD = Number((resumoDRE.get(id) || {}).soma || 0); // YTD até mês base
-        const mediaYTD = somaYTD / Math.max(1, MESES_YTD_BASE);
+        const somaDRE = Number((dreYTD.get(id) || 0));          // YTD DRE por categoria
+        const mediaDRE = somaDRE / Math.max(1, MESES_YTD_BASE);
+
+        const somaFluxo = Number((fluxoYTD.get(id) || 0));      // YTD Fluxo por categoria
+        const mediaFluxo = somaFluxo / Math.max(1, MESES_YTD_BASE);
+
         const { valor: dreCalc, desc: dreDesc } = calcDREValue(id);
 
         const tr = document.createElement('tr');
@@ -279,21 +249,21 @@
             <div class="muted">${esc(dreDesc)}</div>
           </td>
           <td class="vright">
-            <div><strong>${fmtMoeda(somaYTD)}</strong></div>
-            <div class="muted">/ ${fmtMoeda(mediaYTD)}</div>
+            <div><strong>${fmtMoeda(somaDRE)}</strong></div>
+            <div class="muted">/ ${fmtMoeda(mediaDRE)}</div>
             <div class="muted">DRE YTD (até mês ant.)</div>
           </td>
           <td class="vright">
-            <div><strong>${fmtMoeda(fluxoYTD)}</strong></div>
-            <div class="muted">/ ${fmtMoeda(fluxoYTD / Math.max(1, MESES_YTD_BASE))}</div>
-            <div class="muted">Fluxo YTD (global)</div>
+            <div><strong>${fmtMoeda(somaFluxo)}</strong></div>
+            <div class="muted">/ ${fmtMoeda(mediaFluxo)}</div>
+            <div class="muted">Fluxo YTD (até mês ant.)</div>
           </td>
           <td class="row-actions nowrap"><button data-save="${id}">Salvar</button></td>
         `;
         tbody.appendChild(tr);
       });
 
-      // atualiza visibilidade de parâmetros por regra
+      // visibilidade de parâmetros
       tbody.querySelectorAll('.param-wrap').forEach(w=>{
         const id = w.getAttribute('data-id');
         const cat = cache.get(id) || {};
@@ -316,7 +286,7 @@
           if (v !== 'competencia_driver') e.dre_percentual_base = null;
           if (v !== 'competencia_media')  e.dre_media_janela = null;
           edits.set(id, e);
-          render(); // recalc imediato
+          render();
         });
       });
 
@@ -339,7 +309,7 @@
             e[k] = isNaN(n) ? null : n;
           }
           edits.set(id, e);
-          render(); // recalc imediato
+          render();
         });
       });
 
@@ -392,10 +362,10 @@
           cache.set(child.key, child.val() || {});
         });
       }
-      render(); // mostra até carregar consolidado/movimentacao
+      render(); // até consolidado carregar
     });
 
-    // ---------- Consolidado (ANO-1 e ANO) para série mensal e DRE YTD (até mês base)
+    // ---------- Consolidado (ANO-1 e ANO) para compor séries, DRE YTD e FLUXO YTD por categoria
     onValue(ref(db, `financeiro/consolidado/${ANO_ANT}`), snap=>{
       recomputeConsolidado(ANO_ANT, snap.exists() ? snap.val() : null);
     });
@@ -408,13 +378,14 @@
     function recomputeConsolidado(ano, node){
       consolidadoCache.set(ano, node);
 
-      // zera estruturas
-      resumoDRE.clear();
+      // zera agregados
+      dreYTD.clear();
+      fluxoYTD.clear();
       valorMesBase.clear();
       mensais.clear();
       somaEntradasMesBase = 0;
 
-      // prepara arrays 24 pos.
+      // arrays base
       cache.forEach((_, id)=> mensais.set(id, Array(24).fill(0)) );
 
       // processa anos na ordem (ANO-1 depois ANO)
@@ -442,18 +413,19 @@
                 if (!Number.isNaN(num) && num !== 0){ numero = num; break; }
               }
             }
+
+            // série mensal por categoria
             const arr = mensais.get(catId) || Array(24).fill(0);
             arr[baseOffset + mesIdx] = Number(numero) || 0;
             mensais.set(catId, arr);
 
-            // YTD até MÊS BASE do ANO corrente
+            // YTD (DRE e Fluxo) até MÊS BASE do ANO corrente
             if (a === ANO && mesNum <= (MES_BASE + 1)){
-              const r = resumoDRE.get(catId) || { soma:0 };
-              r.soma += Number(numero) || 0;
-              resumoDRE.set(catId, r);
+              dreYTD.set(catId, Number(dreYTD.get(catId) || 0) + (Number(numero) || 0));
+              fluxoYTD.set(catId, Number(fluxoYTD.get(catId) || 0) + (Number(numero) || 0));
             }
 
-            // valor do MÊS BASE por categoria (base "caixa"/janela)
+            // valor do MÊS BASE por categoria (para regra caixa/média)
             const isMesBase = ( (a === ANO_BASE) && (mesIdx === MES_BASE) );
             if (isMesBase){
               valorMesBase.set(catId, Number(numero) || 0);
@@ -462,7 +434,7 @@
         });
       });
 
-      // soma das Entradas no MÊS BASE (driver)
+      // soma das Entradas no MÊS BASE (competencia_driver)
       cache.forEach((cat, id)=>{
         const tipo = (cat?.tipo)||'';
         if (tipo === 'Entrada'){
@@ -472,31 +444,6 @@
 
       render();
     }
-
-    // ---------- FLUXO global (movimentacao/{ANO})
-    onValue(ref(db, `financeiro/movimentacao/${ANO}`), snap=>{
-      fluxoYTD = 0;
-      if (snap.exists()){
-        const node = snap.val() || {};
-        const keys = Object.keys(node)
-          .map(k=>Number(k))
-          .filter(n=>!Number.isNaN(n) && n>=1 && n<=12)
-          .filter(m=> (ANO === ANO_BASE ? m <= (MES_BASE + 1) : true)); // se base é ano anterior, considera os 12 meses
-        // Heurística: somo todos os campos numéricos de cada mês (seu nó é agregado)
-        keys.forEach(m=>{
-          const mesNode = node[m] || {};
-          Object.values(mesNode).forEach(v=>{
-            const n = Number(v);
-            if (!Number.isNaN(n)) fluxoYTD += n;
-          });
-        });
-        fluxoMesesConsiderados = (ANO === ANO_BASE) ? (MES_BASE + 1) : 12;
-      } else {
-        fluxoMesesConsiderados = (ANO === ANO_BASE) ? (MES_BASE + 1) : 12;
-      }
-      render();
-    });
-
   </script>
 </body>
 </html>
