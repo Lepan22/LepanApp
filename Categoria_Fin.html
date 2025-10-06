@@ -2,302 +2,232 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Categorias Financeiras</title>
+
   <link rel="stylesheet" href="assets/base.css" />
   <link rel="stylesheet" href="assets/menu-styles.css" />
   <script type="module" src="assets/firebase-config.js"></script>
   <script defer src="assets/menu.js"></script>
+
   <style>
-    .form-linha {
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 12px;
-      margin-bottom: 20px;
-      align-items: end;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
     }
-    .form-linha label { font-size: 12px; color:#374151; }
-    .form-linha input, .form-linha select, .form-linha textarea {
+
+    .form-grid input,
+    .form-grid select,
+    .form-grid button {
       padding: 6px;
-      font-size: 12px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .form-linha textarea {
-      height: 50px;
-      resize: vertical;
-    }
-    .form-linha .row-span-2 { grid-column: span 2; }
-    .form-linha button {
-      height: 32px;
-      padding: 0 10px;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      background: #ff7f2a;
-      color: #fff;
-      cursor: pointer;
-      font-size: 12px;
+      font-size: 13px;
     }
 
-    .param-wrap { display: contents; } /* ocupa slots do grid */
-    .param-hidden { display: none !important; }
-
-    table.tabela-categorias {
+    table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 8px;
       background: #fff;
     }
-    .tabela-categorias th, .tabela-categorias td {
+
+    th, td {
       border: 1px solid #e5e7eb;
-      padding: 6px 8px;
-      font-size: 12.5px;
+      padding: 8px;
       text-align: left;
-      vertical-align: top;
+      font-size: 13px;
     }
-    .tabela-categorias thead th { background:#fff7ec; }
-    .acoes { white-space: nowrap; }
-    .acoes button {
-      margin-right: 6px;
-      font-size: 11.5px;
+
+    th {
+      background: #fff7ec;
+    }
+
+    .actions button {
+      font-size: 12px;
       padding: 4px 8px;
-      border: 1px solid #ddd;
-      background: #fff;
+      margin-right: 4px;
       border-radius: 6px;
       cursor: pointer;
     }
-    .acoes button:hover { background:#f3f4f6; }
-    .muted { color:#6b7280; font-size: 11.5px; }
+
+    .actions .edit { background: #10b981; color: #fff; border: none; }
+    .actions .del { background: #ef4444; color: #fff; border: none; }
+
+    @media (max-width: 900px) {
+      .form-grid { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
   <div id="menuLateral" class="sidebar"></div>
 
   <div class="main-content">
-    <h2>Categorias Financeiras</h2>
+    <div class="page-header">
+      <h1>Categorias Financeiras</h1>
+      <span class="muted">Cadastro e manutenção de categorias</span>
+    </div>
 
-    <form id="formCategoria" class="form-linha">
-      <label>
-        Nome<br>
-        <input type="text" id="nomeCategoria" required />
-      </label>
+    <!-- Formulário -->
+    <div class="form-grid">
+      <input type="text" id="nome" placeholder="Nome da Categoria" />
+      <select id="tipo">
+        <option value="">Tipo</option>
+        <option value="Entrada">Entrada</option>
+        <option value="Saída">Saída</option>
+        <option value="Entrada/Saída">Entrada/Saída</option>
+      </select>
+      <input type="text" id="centro" placeholder="Centro de Custo" />
+      <button id="salvar">Salvar Categoria</button>
+    </div>
 
-      <label>
-        Tipo<br>
-        <select id="tipoCategoria" required>
-          <option value="">Selecione</option>
-          <option value="Entrada">Entrada</option>
-          <option value="Saída">Saída</option>
-          <option value="Entrada/Saída">Entrada/Saída</option>
-        </select>
-      </label>
+    <!-- Filtro -->
+    <div class="form-grid" style="grid-template-columns: 1fr 150px 150px;">
+      <input type="text" id="busca" placeholder="Buscar categoria..." />
+      <select id="filtroTipo">
+        <option value="">Todos os tipos</option>
+        <option value="Entrada">Entrada</option>
+        <option value="Saída">Saída</option>
+        <option value="Entrada/Saída">Entrada/Saída</option>
+      </select>
+      <button id="limparFiltros">Limpar</button>
+    </div>
 
-      <label class="row-span-2">
-        Centro de Custo<br>
-        <textarea id="centroDeCustoCategoria" placeholder="Ex.: Receita, CMV, Despesa Variável, Despesa Fixa, Investimento, Retirada"></textarea>
-      </label>
-
-      <!-- DRE Regra -->
-      <label>
-        Regra DRE<br>
-        <select id="dreRegra" required>
-          <option value="">Selecione</option>
-          <option value="caixa">caixa</option>
-          <option value="competencia_driver">competencia_driver</option>
-          <option value="competencia_media">competencia_media</option>
-          <option value="especial">especial</option>
-        </select>
-      </label>
-
-      <!-- Parâmetros dinâmicos -->
-      <div class="param-wrap" id="paramDriver">
-        <label>
-          % Receita (driver)<br>
-          <input type="text" id="dreDriverPct" placeholder="Ex.: 5% ou 0,05" />
-        </label>
-      </div>
-
-      <div class="param-wrap" id="paramMedia">
-        <label>
-          N meses (média)<br>
-          <input type="number" id="dreMediaN" min="1" step="1" placeholder="Ex.: 6" />
-        </label>
-      </div>
-
-      <button type="submit">Salvar</button>
-      <input type="hidden" id="categoriaId" />
-    </form>
-
-    <table class="tabela-categorias">
+    <!-- Tabela -->
+    <table>
       <thead>
         <tr>
           <th>Nome</th>
           <th>Tipo</th>
           <th>Centro de Custo</th>
-          <th>Regra DRE</th>
-          <th>Parâmetros</th>
+          <th>ID</th>
           <th>Ações</th>
         </tr>
       </thead>
-      <tbody id="listaCategorias"></tbody>
+      <tbody id="lista"></tbody>
     </table>
   </div>
 
   <script type="module">
-    import { db } from './assets/firebase-config.js';
-    import { ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { db } from "./assets/firebase-config.js";
+    import {
+      ref,
+      push,
+      set,
+      onValue,
+      remove,
+      update
+    } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-    const form = document.getElementById('formCategoria');
-    const nome = document.getElementById('nomeCategoria');
-    const tipo = document.getElementById('tipoCategoria');
-    const centro = document.getElementById('centroDeCustoCategoria');
-    const categoriaId = document.getElementById('categoriaId');
+    const nome = document.getElementById("nome");
+    const tipo = document.getElementById("tipo");
+    const centro = document.getElementById("centro");
+    const salvar = document.getElementById("salvar");
 
-    const dreRegra = document.getElementById('dreRegra');
-    const paramDriver = document.getElementById('paramDriver');
-    const paramMedia  = document.getElementById('paramMedia');
-    const dreDriverPct = document.getElementById('dreDriverPct');
-    const dreMediaN    = document.getElementById('dreMediaN');
+    const busca = document.getElementById("busca");
+    const filtroTipo = document.getElementById("filtroTipo");
+    const limparFiltros = document.getElementById("limparFiltros");
 
-    const lista = document.getElementById('listaCategorias');
+    const lista = document.getElementById("lista");
+    let categorias = {};
+    let editandoId = null;
 
-    const cacheCats = new Map(); // id -> objeto categoria
+    function renderizarTabela() {
+      const termo = busca.value.toLowerCase();
+      const tipoFiltro = filtroTipo.value;
+      lista.innerHTML = "";
 
-    function escapeHtml(s=''){
-      return String(s)
-        .replaceAll('&','&amp;')
-        .replaceAll('<','&lt;')
-        .replaceAll('>','&gt;')
-        .replaceAll('"','&quot;')
-        .replaceAll("'","&#39;");
+      Object.entries(categorias)
+        .filter(([id, c]) => {
+          const texto = `${c.nome || ""} ${c.centroDeCusto || ""}`.toLowerCase();
+          const tipoOk = tipoFiltro ? c.tipo === tipoFiltro : true;
+          return texto.includes(termo) && tipoOk;
+        })
+        .sort((a, b) => (a[1].nome || "").localeCompare(b[1].nome || ""))
+        .forEach(([id, c]) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${c.nome || ""}</td>
+            <td>${c.tipo || ""}</td>
+            <td>${c.centroDeCusto || ""}</td>
+            <td>${id}</td>
+            <td class="actions">
+              <button class="edit" data-id="${id}">Editar</button>
+              <button class="del" data-id="${id}">Excluir</button>
+            </td>
+          `;
+          lista.appendChild(tr);
+        });
+
+      document.querySelectorAll(".edit").forEach((b) =>
+        b.addEventListener("click", () => editarCategoria(b.dataset.id))
+      );
+      document.querySelectorAll(".del").forEach((b) =>
+        b.addEventListener("click", () => excluirCategoria(b.dataset.id))
+      );
     }
 
-    function showDreParamsUI(){
-      const r = dreRegra.value;
-      // mostra somente os parâmetros relevantes
-      paramDriver.classList.toggle('param-hidden', r !== 'competencia_driver');
-      paramMedia .classList.toggle('param-hidden', r !== 'competencia_media');
-    }
-    dreRegra.addEventListener('change', showDreParamsUI);
-
-    // parse de % (aceita "5", "5%", "0,05", "0.05")
-    function parsePercentToDecimal(txt){
-      if (txt == null) return null;
-      let s = String(txt).trim();
-      if (!s) return null;
-      s = s.replace('%','').replace(/\s+/g,'').replace(',','.');
-      let v = Number(s);
-      if (isNaN(v)) return null;
-      if (v > 1) v = v / 100; // se veio 5 → 0.05
-      return v; // decimal
+    function limparFormulario() {
+      nome.value = "";
+      tipo.value = "";
+      centro.value = "";
+      editandoId = null;
+      salvar.textContent = "Salvar Categoria";
     }
 
-    // form submit
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (!nome.value || !tipo.value || !dreRegra.value) return;
+    function editarCategoria(id) {
+      const c = categorias[id];
+      nome.value = c.nome || "";
+      tipo.value = c.tipo || "";
+      centro.value = c.centroDeCusto || "";
+      editandoId = id;
+      salvar.textContent = "Atualizar";
+    }
 
-      const payload = {
-        nome: nome.value,
+    function excluirCategoria(id) {
+      if (confirm("Excluir esta categoria?")) {
+        remove(ref(db, `financeiro/categorias/${id}`));
+      }
+    }
+
+    salvar.addEventListener("click", async () => {
+      const dados = {
+        nome: nome.value.trim(),
         tipo: tipo.value,
-        centroDeCusto: centro.value || '',
-        dre_regra: dreRegra.value
+        centroDeCusto: centro.value.trim()
       };
-
-      if (dreRegra.value === 'competencia_driver') {
-        const p = parsePercentToDecimal(dreDriverPct.value);
-        payload.dre_percentual_base = (p == null ? null : p);
-      } else {
-        payload.dre_percentual_base = null;
+      if (!dados.nome) {
+        alert("Informe o nome da categoria.");
+        return;
       }
 
-      if (dreRegra.value === 'competencia_media') {
-        const n = Number(dreMediaN.value || 0);
-        payload.dre_media_janela = (n > 0 ? Math.floor(n) : null);
+      if (editandoId) {
+        await update(ref(db, `financeiro/categorias/${editandoId}`), dados);
       } else {
-        payload.dre_media_janela = null;
+        await set(push(ref(db, "financeiro/categorias")), dados);
       }
 
-      if (categoriaId.value) {
-        await update(ref(db, `financeiro/categorias/${categoriaId.value}`), payload);
-      } else {
-        const novaRef = push(ref(db, 'financeiro/categorias'));
-        await set(novaRef, payload);
-      }
-
-      form.reset();
-      categoriaId.value = '';
-      dreRegra.value = '';
-      showDreParamsUI();
+      limparFormulario();
     });
 
-    // listar categorias
-    onValue(ref(db, 'financeiro/categorias'), snapshot => {
-      lista.innerHTML = '';
-      cacheCats.clear();
-      snapshot.forEach(child => {
-        const id = child.key;
-        const cat = child.val() || {};
-        cacheCats.set(id, cat);
-
-        // monta texto dos parâmetros
-        let paramTxt = '—';
-        const regra = cat.dre_regra || '—';
-        if (regra === 'competencia_driver') {
-          const p = (cat.dre_percentual_base != null) ? (cat.dre_percentual_base * 100) : null;
-          paramTxt = (p != null ? `${p.toLocaleString('pt-BR',{maximumFractionDigits:2})}% Receita` : '—');
-        } else if (regra === 'competencia_media') {
-          paramTxt = (cat.dre_media_janela ? `N=${cat.dre_media_janela}` : 'N não definido');
-        } else if (regra === 'caixa' || regra === 'especial') {
-          paramTxt = '—';
-        }
-
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${escapeHtml(cat.nome||'')}</td>
-          <td>${escapeHtml(cat.tipo||'')}</td>
-          <td>${escapeHtml(cat.centroDeCusto||'')}</td>
-          <td>${escapeHtml(regra)}</td>
-          <td>${escapeHtml(paramTxt)}</td>
-          <td class="acoes">
-            <button data-edit="${id}">Editar</button>
-            <button data-del="${id}">Excluir</button>
-          </td>
-        `;
-        lista.appendChild(tr);
-      });
-
-      // bind ações
-      lista.querySelectorAll('[data-edit]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const id = btn.getAttribute('data-edit');
-          const cat = cacheCats.get(id) || {};
-          document.getElementById('categoriaId').value = id;
-          nome.value  = cat.nome || '';
-          tipo.value  = cat.tipo || '';
-          centro.value= cat.centroDeCusto || '';
-          dreRegra.value = cat.dre_regra || '';
-          dreDriverPct.value = (cat.dre_percentual_base != null)
-            ? ( (cat.dre_percentual_base*100).toLocaleString('pt-BR', {maximumFractionDigits:2}) + '%' )
-            : '';
-          dreMediaN.value = cat.dre_media_janela || '';
-          showDreParamsUI();
-          window.scrollTo({top:0, behavior:'smooth'});
-        });
-      });
-      lista.querySelectorAll('[data-del]').forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          const id = btn.getAttribute('data-del');
-          const cat = cacheCats.get(id) || {};
-          if (confirm(`Deseja excluir a categoria "${cat.nome||''}"?`)) {
-            remove(ref(db, `financeiro/categorias/${id}`));
-          }
-        });
-      });
+    busca.addEventListener("input", renderizarTabela);
+    filtroTipo.addEventListener("change", renderizarTabela);
+    limparFiltros.addEventListener("click", () => {
+      busca.value = "";
+      filtroTipo.value = "";
+      renderizarTabela();
     });
 
-    // estado inicial dos parâmetros
-    showDreParamsUI();
+    onValue(ref(db, "financeiro/categorias"), (snap) => {
+      categorias = snap.exists() ? snap.val() : {};
+      renderizarTabela();
+    });
   </script>
 </body>
 </html>
