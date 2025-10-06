@@ -10,6 +10,19 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="assets/menu.js" defer></script>
+
+  <style>
+    .cards { display:grid; gap:10px; grid-template-columns: repeat(12, 1fr); margin-top:16px; }
+    .card  { grid-column: span 12; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:12px; }
+    .kpis  { display:grid; gap:10px; grid-template-columns: repeat(12, 1fr); }
+    .kpi   { grid-column: span 3; background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:10px; }
+    .kpi .label{ font-size:12px; color:#475569; }
+    .kpi .value{ font-weight:800; font-size:18px; }
+    .muted { color:#6b7280; font-size:12px; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    @media(max-width:900px){ .kpi{ grid-column: span 6; } }
+    @media(max-width:560px){ .kpi{ grid-column: span 12; } }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -18,7 +31,7 @@
     <main class="main-content">
       <h2>Configuração</h2>
 
-      <form id="formConfiguracao" style="display: flex; flex-wrap: wrap; gap: 12px; max-width: 420px;">
+      <form id="formConfiguracao" style="display: flex; flex-wrap: wrap; gap: 12px; max-width: 520px;">
         <div style="display: flex; flex-direction: column;">
           <label for="capacidadeEventos">Capacidade de Eventos no Mês</label>
           <input type="number" id="capacidadeEventos" required />
@@ -26,12 +39,12 @@
 
         <div style="display: flex; flex-direction: column;">
           <label for="percentualCMV">Percentual CMV Real (%)</label>
-          <input type="number" id="percentualCMV" step="0.01" required />
+          <input type="number" id="percentualCMV" step="0.1" required />
         </div>
 
         <div style="display: flex; flex-direction: column;">
           <label for="percentualLucro">% Lucro para Estimativa (mês)</label>
-          <input type="number" id="percentualLucro" step="0.01" placeholder="ex.: 40" required />
+          <input type="number" id="percentualLucro" step="0.1" placeholder="ex.: 40" required />
         </div>
 
         <!-- ADIÇÕES -->
@@ -50,6 +63,42 @@
           <button type="submit">Atualizar Configurações</button>
         </div>
       </form>
+
+      <!-- === DRE (YTD até mês anterior) === -->
+      <section class="cards">
+        <div class="card">
+          <h3 style="margin:0 0 8px 0;">DRE (YTD até mês anterior)</h3>
+          <div class="muted" id="dreRef">—</div>
+
+          <div class="kpis" style="margin-top:10px;">
+            <div class="kpi">
+              <div class="label">CMV (DRE)</div>
+              <div class="value" id="kpiCmvPct">—</div>
+              <div class="muted" id="kpiCmvVal">—</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Lucro Operacional (DRE)</div>
+              <div class="value" id="kpiLucroOpPct">—</div>
+              <div class="muted" id="kpiLucroOpVal">= Receita − CMV − DO</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Receita (YTD)</div>
+              <div class="value" id="kpiReceitaVal">—</div>
+              <div class="muted">Soma Jan → mês ref.</div>
+            </div>
+            <div class="kpi">
+              <div class="label">Despesas Operacionais (YTD)</div>
+              <div class="value" id="kpiDoVal">—</div>
+              <div class="muted" id="kpiDoPct">—</div>
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="btnUsarDRE" type="button">Usar valores do DRE</button>
+            <button id="btnRecalcular" type="button">Recalcular agora</button>
+          </div>
+        </div>
+      </section>
 
       <hr style="margin: 30px 0;">
 
@@ -87,13 +136,37 @@
     const botaoBackup = document.getElementById('botaoBackup');
     const msgBackup = document.getElementById('msgBackup');
 
+    // DRE UI
+    const dreRef = document.getElementById('dreRef');
+    const kpiCmvPct = document.getElementById('kpiCmvPct');
+    const kpiCmvVal = document.getElementById('kpiCmvVal');
+    const kpiLucroOpPct = document.getElementById('kpiLucroOpPct');
+    const kpiLucroOpVal = document.getElementById('kpiLucroOpVal');
+    const kpiReceitaVal = document.getElementById('kpiReceitaVal');
+    const kpiDoVal = document.getElementById('kpiDoVal');
+    const kpiDoPct = document.getElementById('kpiDoPct');
+    const btnUsarDRE = document.getElementById('btnUsarDRE');
+    const btnRecalcular = document.getElementById('btnRecalcular');
+
+    const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth()+1;
+    const anoAtual = hoje.getFullYear();
+    // referência padrão (mês anterior)
+    let refMes = (mesAtual===1 ? 12 : mesAtual-1);
+    let refAno = (mesAtual===1 ? anoAtual-1 : anoAtual);
+
+    const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+    const num = v => isNaN(Number(v)) ? 0 : Number(v);
+
     function carregarConfiguracao() {
       db.ref('configuracao').once('value')
         .then(snapshot => {
           const data = snapshot.val() || {};
           capacidadeInput.value = data.capacidadeEventos ?? '';
           percentualCMVInput.value = data.percentualCMV ?? '';
-          percentualLucroInput.value = data.percentualLucro ?? 40; // default sugerido
+          percentualLucroInput.value = data.percentualLucro ?? 40;
+          // novos campos
           valorEstoqueInicialInput.value = data.valorEstoqueInicial ?? '';
           dataEstoqueInicialInput.value = data.dataEstoqueInicial ?? '';
         })
@@ -108,7 +181,7 @@
       const valorEstoqueInicial = parseFloat(valorEstoqueInicialInput.value);
       const dataEstoqueInicial = dataEstoqueInicialInput.value || '';
 
-      // update para não sobrescrever outras chaves existentes em /configuracao
+      // update para NÃO sobrescrever outras chaves existentes em /configuracao
       db.ref('configuracao').update({
         capacidadeEventos,
         percentualCMV,
@@ -138,7 +211,136 @@
         .catch(() => { msgBackup.textContent = 'Erro ao gerar backup.'; });
     });
 
-    carregarConfiguracao();
+    // ======= Funções p/ DRE (mesma lógica do DRE.html) =======
+    async function getCategorias(){
+      const snap = await db.ref('financeiro/categorias').once('value');
+      const v = snap.val() || {};
+      const map = {};
+      Object.keys(v).forEach(id=>{
+        map[id] = {
+          centro: v[id]?.centroDeCusto || 'Outros',
+          nome:   v[id]?.nome || '(sem nome)',
+          regra:  v[id]?.dre_regra || 'caixa',
+          pbase:  (v[id]?.dre_percentual_base!=null) ? Number(v[id].dre_percentual_base) : null,
+          janela: v[id]?.dre_media_janela ? Number(v[id].dre_media_janela) : null
+        };
+      });
+      return map;
+    }
+    async function getConsolidadoAno(ano){
+      const snap = await db.ref(`financeiro/consolidado/${ano}`).once('value');
+      return snap.val() || {};
+    }
+    async function getConsolidadoAnoPrev(ano){
+      const snap = await db.ref(`financeiro/consolidado/${ano-1}`).once('value');
+      return snap.val() || {};
+    }
+    async function getMovAno(ano){
+      const snap = await db.ref(`financeiro/movimentacao/${ano}`).once('value');
+      return snap.val() || {};
+    }
+
+    const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    const sum  = arr => arr.reduce((a,b)=> a + (isNaN(+b)?0:+b), 0);
+    const arr12= ()=> Array.from({length:12}, ()=>0);
+
+    function mediaUltimosN(catId, m, N, consAno, consPrev){
+      if (!N || N<=0) return 0;
+      const vals=[];
+      for (let mm=m-1; mm>=1 && vals.length<N; mm--){
+        const raw = consAno?.[mm]?.[catId];
+        const val = Number(raw?.valor ?? raw ?? 0);
+        if (val!==0) vals.push(val);
+      }
+      for (let mm=12; mm>=1 && vals.length<N; mm--){
+        const raw = consPrev?.[mm]?.[catId];
+        const val = Number(raw?.valor ?? raw ?? 0);
+        if (val!==0) vals.push(val);
+      }
+      return vals.length ? sum(vals)/vals.length : 0;
+    }
+
+    async function calcularDREYTD(){
+      dreRef.textContent = 'Calculando...';
+      try{
+        const [cats, consAno, consPrev, movAno] = await Promise.all([
+          getCategorias(), getConsolidadoAno(refAno), getConsolidadoAnoPrev(refAno), getMovAno(refAno)
+        ]);
+
+        // Receita por mês (base p/ drivers)
+        const receitaMes = arr12();
+        Object.keys(consAno||{}).forEach(m=>{
+          const row = consAno[m] || {};
+          Object.keys(row).forEach(id=>{
+            const raw = row[id]; const val = Number(raw?.valor ?? raw ?? 0);
+            if ((cats[id]?.centro||'') === 'Receita'){ receitaMes[+m-1] += val; }
+          });
+        });
+
+        // Somas por centro conforme regra do DRE
+        const grp = {};  // centro -> [12]
+        const take = (nome)=> (grp[nome] ||= arr12());
+
+        Object.keys(cats).forEach(id=>{
+          const c = cats[id]; const regra = c.regra || 'caixa';
+          for (let m=1;m<=12;m++){
+            let v = 0;
+            if (regra === 'caixa'){
+              const raw = consAno?.[m]?.[id]; v = Number(raw?.valor ?? raw ?? 0);
+            } else if (regra === 'competencia_driver'){
+              const p = c.pbase || 0; v = p * (receitaMes[m-1] || 0);
+            } else if (regra === 'competencia_media'){
+              const N = c.janela || 0; v = mediaUltimosN(id, m, N, consAno, consPrev);
+            } else if (regra === 'especial' && norm(c.nome)==='compras'){
+              v = Number(movAno?.[m]?.custoProdutoMes || 0); // Custo de Produto
+            } else {
+              const raw = consAno?.[m]?.[id]; v = Number(raw?.valor ?? raw ?? 0);
+            }
+            take(c.centro)[m-1] += v;
+          }
+        });
+
+        // YTD até o mês de referência
+        const ytd = nome => sum((grp[nome]||arr12()).slice(0, refMes));
+        const receita = ytd('Receita');
+        const cmv     = ytd('CMV');
+        const dop     = ytd('Despesas Operacionais');
+
+        const cmvPct      = receita>0 ? (cmv/receita*100) : 0;
+        const dopPct      = receita>0 ? (dop/receita*100) : 0;
+        const lucroOpVal  = receita - cmv - dop;
+        const lucroOpPct  = receita>0 ? (lucroOpVal/receita*100) : 0;
+
+        // UI
+        dreRef.textContent = `Base: Jan → ${mesesPt[refMes-1]} de ${refAno}`;
+        kpiReceitaVal.textContent = 'R$ ' + fmt(receita);
+        kpiCmvPct.textContent = isFinite(cmvPct) ? cmvPct.toFixed(1) + '%' : '—';
+        kpiCmvVal.textContent = 'R$ ' + fmt(cmv);
+        kpiDoVal.textContent  = 'R$ ' + fmt(dop);
+        kpiDoPct.textContent  = isFinite(dopPct) ? dopPct.toFixed(1) + '%' : '—';
+        kpiLucroOpPct.textContent = isFinite(lucroOpPct) ? lucroOpPct.toFixed(1) + '%' : '—';
+        kpiLucroOpVal.textContent = 'R$ ' + fmt(lucroOpVal);
+
+        // botão de preenchimento
+        btnUsarDRE.onclick = () => {
+          if (isFinite(cmvPct)) percentualCMVInput.value = cmvPct.toFixed(1);
+          if (isFinite(lucroOpPct)) percentualLucroInput.value = lucroOpPct.toFixed(1);
+          statusMsg.textContent = 'Campos preenchidos com os percentuais do DRE (não salvo ainda).';
+        };
+      }catch(e){
+        console.error(e);
+        dreRef.textContent = 'Falha ao calcular DRE (YTD).';
+      }
+    }
+
+    btnRecalcular.addEventListener('click', calcularDREYTD);
+
+    // boot
+    (async function init(){
+      carregarConfiguracao();
+      if (mesAtual===1){ refMes = 12; refAno = anoAtual-1; } else { refMes = mesAtual-1; refAno = anoAtual; }
+      await calcularDREYTD();
+    })();
   </script>
 </body>
 </html>
