@@ -98,11 +98,17 @@
     // ---------- Estados
     const cache = new Map();        // id -> categoria
     const edits = new Map();        // id -> { dre_regra, dre_percentual_base, dre_media_janela, dre_valor }
-    const dreYTD = new Map();       // id -> soma YTD (até mês base)
-    const fluxoYTD = new Map();     // id -> soma YTD (até mês base)
-    const mensais = new Map();      // id -> Array(24) [ANO-1: 0..11, ANO: 12..23]
-    const valorMesBase = new Map(); // id -> valor do mês base (anterior)
-    let somaEntradasMesBase = 0;    // p/ competencia_driver
+
+    // DRE (competência)
+    const dreYTD = new Map();          // id -> soma YTD até mês base (consolidado)
+    const mensaisDRE = new Map();      // id -> série mensal (consolidado)
+    const valorMesBaseDRE = new Map(); // id -> valor mês base (consolidado)
+
+    // Fluxo (caixa)
+    const fluxoYTD = new Map();            // id -> soma YTD até mês base (movimentação)
+    const mensaisFluxo = new Map();        // id -> série mensal (movimentação)
+    const valorMesBaseFluxo = new Map();   // id -> valor mês base (movimentação)
+    let somaEntradasMesBase = 0;           // p/ competencia_driver (somatório das categorias tipo Entrada em movimentação)
 
     const hoje = new Date();
     const ANO = hoje.getFullYear();
@@ -157,13 +163,13 @@
       if (!regra) return { valor: 0, desc: '—' };
 
       if (regra === 'caixa'){
-        const v = Number(valorMesBase.get(id) || 0);
+        const v = Number(valorMesBaseFluxo.get(id) || 0);
         return { valor: v, desc: 'mês anterior (caixa)' };
       }
 
       if (regra === 'competencia_media'){
         const n = Number((e.dre_media_janela ?? base.dre_media_janela) || 0);
-        const serie = mensais.get(id) || Array(24).fill(0);
+        const serie = mensaisDRE.get(id) || Array(24).fill(0);
         const idxBase = (ANO_BASE === ANO ? 12 : 0) + MES_BASE; // índice absoluto do mês base
         let soma = 0, count = 0;
         if (n > 0){
@@ -203,10 +209,11 @@
         const mediaN = (e.dre_media_janela ?? cat.dre_media_janela);
         const valorDRE = (e.dre_valor ?? cat.dre_valor);
 
-        const somaDRE = Number((dreYTD.get(id) || 0));          // YTD DRE por categoria
+        // YTDs e médias (até mês base)
+        const somaDRE = Number((dreYTD.get(id) || 0));
         const mediaDRE = somaDRE / Math.max(1, MESES_YTD_BASE);
 
-        const somaFluxo = Number((fluxoYTD.get(id) || 0));      // YTD Fluxo por categoria
+        const somaFluxo = Number((fluxoYTD.get(id) || 0));
         const mediaFluxo = somaFluxo / Math.max(1, MESES_YTD_BASE);
 
         const { valor: dreCalc, desc: dreDesc } = calcDREValue(id);
@@ -358,78 +365,110 @@
     onValue(ref(db,'financeiro/categorias'), snap=>{
       cache.clear();
       if (snap.exists()){
-        snap.forEach(child=>{
-          cache.set(child.key, child.val() || {});
-        });
+        snap.forEach(child=>{ cache.set(child.key, child.val() || {}); });
       }
-      render(); // até consolidado carregar
+      render(); // até consolidados/movimentação carregarem
     });
 
-    // ---------- Consolidado (ANO-1 e ANO) para compor séries, DRE YTD e FLUXO YTD por categoria
-    onValue(ref(db, `financeiro/consolidado/${ANO_ANT}`), snap=>{
-      recomputeConsolidado(ANO_ANT, snap.exists() ? snap.val() : null);
-    });
-    onValue(ref(db, `financeiro/consolidado/${ANO}`), snap=>{
-      recomputeConsolidado(ANO, snap.exists() ? snap.val() : null);
-    });
+    // ---------- CONSOLIDADO (DRE) — ANO-1 e ANO
+    const consCache = new Map(); // ano -> nó
+    onValue(ref(db, `financeiro/consolidado/${ANO_ANT}`), s => recomputeDRE(ANO_ANT, s.exists()?s.val():null));
+    onValue(ref(db, `financeiro/consolidado/${ANO}`),     s => recomputeDRE(ANO,     s.exists()?s.val():null));
 
-    const consolidadoCache = new Map(); // ano -> node
+    function recomputeDRE(ano, node){
+      consCache.set(ano, node);
 
-    function recomputeConsolidado(ano, node){
-      consolidadoCache.set(ano, node);
-
-      // zera agregados
+      // zera estruturas DRE
       dreYTD.clear();
-      fluxoYTD.clear();
-      valorMesBase.clear();
-      mensais.clear();
-      somaEntradasMesBase = 0;
+      valorMesBaseDRE.clear();
+      mensaisDRE.clear();
 
-      // arrays base
-      cache.forEach((_, id)=> mensais.set(id, Array(24).fill(0)) );
+      // garante arrays por categoria
+      cache.forEach((_, id)=> mensaisDRE.set(id, Array(24).fill(0)) );
 
-      // processa anos na ordem (ANO-1 depois ANO)
+      // processa anos em ordem
       [ANO_ANT, ANO].forEach(a=>{
-        const n = consolidadoCache.get(a);
+        const n = consCache.get(a);
         if (!n) return;
 
         const baseOffset = (a === ANO) ? 12 : 0;
-        const keys = Object.keys(n);
-        keys.forEach(k=>{
-          const mesNum = Number(k);
-          if (Number.isNaN(mesNum) || mesNum < 1 || mesNum > 12) return;
+        Object.keys(n).forEach(k=>{
+          const mesNum = Number(k); if (!mesNum || mesNum<1 || mesNum>12) return;
           const mesIdx = mesNum - 1;
           const mesNode = n[k];
           if (!mesNode || typeof mesNode !== 'object') return;
 
-          // percorre categorias do mês
           Object.entries(mesNode).forEach(([catId, val])=>{
             let numero = 0;
             if (typeof val === 'number') numero = val;
             else if (val && typeof val === 'object'){
               const cands = [val.valor, val.total, val.amount, val.Valor, val.valorReal, val.valor_liquido, val.valorBruto];
-              for (const v of cands){
-                const num = Number(v);
-                if (!Number.isNaN(num) && num !== 0){ numero = num; break; }
-              }
+              for (const v of cands){ const num = Number(v); if (!Number.isNaN(num) && num !== 0){ numero = num; break; } }
             }
 
-            // série mensal por categoria
-            const arr = mensais.get(catId) || Array(24).fill(0);
+            const arr = mensaisDRE.get(catId) || Array(24).fill(0);
             arr[baseOffset + mesIdx] = Number(numero) || 0;
-            mensais.set(catId, arr);
+            mensaisDRE.set(catId, arr);
 
-            // YTD (DRE e Fluxo) até MÊS BASE do ANO corrente
             if (a === ANO && mesNum <= (MES_BASE + 1)){
               dreYTD.set(catId, Number(dreYTD.get(catId) || 0) + (Number(numero) || 0));
+            }
+
+            const isMesBase = ( (a === ANO_BASE) && (mesIdx === MES_BASE) );
+            if (isMesBase){ valorMesBaseDRE.set(catId, Number(numero) || 0); }
+          });
+        });
+      });
+
+      // não recalcula driver aqui (usa movimentação)
+      render();
+    }
+
+    // ---------- MOVIMENTAÇÃO (Fluxo) — ANO-1 e ANO
+    const movCache = new Map(); // ano -> nó
+    onValue(ref(db, `financeiro/movimentacao/${ANO_ANT}`), s => recomputeFluxo(ANO_ANT, s.exists()?s.val():null));
+    onValue(ref(db, `financeiro/movimentacao/${ANO}`),     s => recomputeFluxo(ANO,     s.exists()?s.val():null));
+
+    function recomputeFluxo(ano, node){
+      movCache.set(ano, node);
+
+      // zera estruturas Fluxo
+      fluxoYTD.clear();
+      valorMesBaseFluxo.clear();
+      mensaisFluxo.clear();
+      somaEntradasMesBase = 0;
+
+      cache.forEach((_, id)=> mensaisFluxo.set(id, Array(24).fill(0)) );
+
+      [ANO_ANT, ANO].forEach(a=>{
+        const n = movCache.get(a);
+        if (!n) return;
+
+        const baseOffset = (a === ANO) ? 12 : 0;
+        Object.keys(n).forEach(k=>{
+          const mesNum = Number(k); if (!mesNum || mesNum<1 || mesNum>12) return;
+          const mesIdx = mesNum - 1;
+          const mesNode = n[k];
+          if (!mesNode || typeof mesNode !== 'object') return;
+
+          Object.entries(mesNode).forEach(([catId, val])=>{
+            let numero = 0;
+            if (typeof val === 'number') numero = val;
+            else if (val && typeof val === 'object'){
+              const cands = [val.valor, val.total, val.amount, val.Valor, val.valorReal, val.valor_liquido, val.valorBruto];
+              for (const v of cands){ const num = Number(v); if (!Number.isNaN(num) && num !== 0){ numero = num; break; } }
+            }
+
+            const arr = mensaisFluxo.get(catId) || Array(24).fill(0);
+            arr[baseOffset + mesIdx] = Number(numero) || 0;
+            mensaisFluxo.set(catId, arr);
+
+            if (a === ANO && mesNum <= (MES_BASE + 1)){
               fluxoYTD.set(catId, Number(fluxoYTD.get(catId) || 0) + (Number(numero) || 0));
             }
 
-            // valor do MÊS BASE por categoria (para regra caixa/média)
             const isMesBase = ( (a === ANO_BASE) && (mesIdx === MES_BASE) );
-            if (isMesBase){
-              valorMesBase.set(catId, Number(numero) || 0);
-            }
+            if (isMesBase){ valorMesBaseFluxo.set(catId, Number(numero) || 0); }
           });
         });
       });
@@ -438,7 +477,7 @@
       cache.forEach((cat, id)=>{
         const tipo = (cat?.tipo)||'';
         if (tipo === 'Entrada'){
-          somaEntradasMesBase += Number(valorMesBase.get(id) || 0);
+          somaEntradasMesBase += Number(valorMesBaseFluxo.get(id) || 0);
         }
       });
 
