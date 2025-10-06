@@ -14,24 +14,16 @@
   <script defer src="assets/menu.js"></script>
 
   <style>
-    /* Cabeçalho da página */
     .page-header {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 12px;
     }
     .page-header h1 { margin: 0; font-size: 20px; }
-
-    /* Barra de filtros */
     .filters {
-      display: grid;
-      grid-template-columns: 1fr 180px 160px;
-      gap: 10px;
-      margin-bottom: 10px;
-      align-items: end;
+      display: grid; grid-template-columns: 1fr 180px 160px;
+      gap: 10px; margin-bottom: 10px; align-items: end;
     }
-    @media (max-width: 900px){
-      .filters { grid-template-columns: 1fr 1fr; }
-    }
+    @media (max-width: 900px){ .filters { grid-template-columns: 1fr 1fr; } }
     .filters label { font-size: 12px; color:#374151; }
     .filters input, .filters select, .filters button {
       width: 100%; box-sizing: border-box; padding: 6px; font-size: 12px;
@@ -40,47 +32,34 @@
       height: 32px; border: 1px solid #ddd; border-radius: 8px;
       background: #ff7f2a; color: #fff; cursor: pointer;
     }
-
-    /* Tabela */
-    table {
-      width: 100%; border-collapse: collapse; background: #fff;
-    }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
     thead th {
-      background: #fff7ec; text-align: left; border: 1px solid #e5e7eb; padding: 8px; font-size: 12.5px;
+      background: #fff7ec; text-align: left; border: 1px solid #e5e7eb;
+      padding: 8px; font-size: 12.5px;
     }
     tbody td {
       border: 1px solid #e5e7eb; padding: 6px 8px; font-size: 12.5px; vertical-align: top;
     }
     .nowrap { white-space: nowrap; }
     .muted { color:#6b7280; font-size: 11.5px; }
-
-    /* Inputs na tabela */
-    .dre-select, .dre-input {
-      width: 100%; box-sizing: border-box; padding: 5px; font-size: 12px;
-    }
+    .dre-select, .dre-input { width: 100%; box-sizing: border-box; padding: 5px; font-size: 12px; }
     .param-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .param-wrap > div { display: none; }
     .param-wrap[data-mode="competencia_driver"] .param-driver { display: block; grid-column: span 2; }
-    .param-wrap[data-mode="competencia_media"] .param-media { display: block; }
-
+    .param-wrap[data-mode="competencia_media"]  .param-media  { display: block; }
     .row-actions button {
       font-size: 11.5px; padding: 6px 10px; border: 1px solid #ddd; background: #fff; border-radius: 6px; cursor: pointer;
     }
     .row-actions button:hover { background:#f3f4f6; }
-    .save-all {
-      margin-top: 10px; display: inline-flex; gap: 8px;
-    }
+    .save-all { margin-top: 10px; display: inline-flex; gap: 8px; }
     .save-all button {
       height: 34px; padding: 0 12px; border:1px solid #ddd; border-radius: 8px; cursor: pointer; font-size: 12px;
     }
     .save { background:#10b981; color:#fff; border-color:#0ea5e9; }
     .reset { background:#fff; }
-
-    /* Estado alterado */
     tr.changed { background: #f8fffb; }
-    .pill {
-      display:inline-block; padding:2px 6px; border-radius:999px; font-size:11px; border:1px solid #e5e7eb; background:#fff;
-    }
+    .pill { display:inline-block; padding:2px 6px; border-radius:999px; font-size:11px; border:1px solid #e5e7eb; background:#fff; }
+    .vright { text-align: right; }
   </style>
 </head>
 <body>
@@ -89,7 +68,7 @@
   <div class="main-content">
     <div class="page-header">
       <h1>Regras de DRE por Categoria</h1>
-      <span class="muted">Edição focada apenas em regra e parâmetros do DRE</span>
+      <span class="muted">Edite regra, parâmetros e Valor DRE. Acompanhe acumulado anual e média mensal.</span>
     </div>
 
     <!-- Filtros -->
@@ -114,11 +93,13 @@
     <table id="tabela">
       <thead>
         <tr>
-          <th style="width: 26%;">Categoria</th>
-          <th style="width: 12%;">Tipo</th>
-          <th style="width: 26%;">Centro de Custo</th>
-          <th style="width: 16%;">Regra DRE</th>
-          <th>Parâmetros</th>
+          <th style="width: 22%;">Categoria</th>
+          <th style="width: 10%;">Tipo</th>
+          <th style="width: 20%;">Centro de Custo</th>
+          <th style="width: 14%;">Regra DRE</th>
+          <th style="width: 16%;">Parâmetros</th>
+          <th style="width: 10%;">Valor DRE</th>
+          <th style="width: 18%;" class="nowrap">Acumulado (ano) / Média mensal</th>
           <th class="nowrap">Ações</th>
         </tr>
       </thead>
@@ -138,6 +119,7 @@
       ref, onValue, update
     } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
 
+    // ---- Elementos
     const elBusca = document.getElementById('busca');
     const elFiltroTipo = document.getElementById('filtroTipo');
     const elLimparFiltros = document.getElementById('limparFiltros');
@@ -146,14 +128,24 @@
     const btnDescartarAlteracoes = document.getElementById('descartarAlteracoes');
     const badgeAlteracoes = document.getElementById('badgeAlteracoes');
 
-    const cache = new Map();          // id -> categoria original
-    const edits = new Map();          // id -> { dre_regra, dre_percentual_base, dre_media_janela }
-    let viewRows = [];                // ids após filtro
+    // ---- Estados
+    const cache = new Map();   // id -> categoria original do DB
+    const edits = new Map();   // id -> campos editados (dre_regra, dre_percentual_base, dre_media_janela, dre_valor)
+    let viewRows = [];         // ids após filtro
 
-    // Utils
+    // Resumo financeiro por categoria no ano atual
+    const resumoAno = new Map(); // id -> { soma: number, mesesComDados: Set<number> }
+    const anoAtual = new Date().getFullYear();
+    const mesAtualIndex = new Date().getMonth(); // 0..11
+    const mesesDecorridos = mesAtualIndex + 1;
+
+    // ---- Utils
     const esc = (s='') => String(s)
       .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
       .replaceAll('"','&quot;').replaceAll("'","&#39;");
+
+    const fmtMoeda = (n=0) =>
+      Number(n||0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
     function parsePercentToDecimal(txt){
       if (txt == null) return null;
@@ -180,7 +172,8 @@
       return (
         (e.dre_regra ?? base.dre_regra) !== base.dre_regra ||
         (e.dre_percentual_base ?? base.dre_percentual_base) !== base.dre_percentual_base ||
-        (e.dre_media_janela ?? base.dre_media_janela) !== base.dre_media_janela
+        (e.dre_media_janela ?? base.dre_media_janela) !== base.dre_media_janela ||
+        (e.dre_valor ?? base.dre_valor) !== base.dre_valor
       );
     }
 
@@ -189,7 +182,7 @@
       badgeAlteracoes.textContent = `${count} alteração(ões)`;
     }
 
-    // Render
+    // ---- Render
     function render(){
       const q = (elBusca.value || '').toLowerCase();
       const tipo = elFiltroTipo.value;
@@ -201,7 +194,6 @@
         if (tipo && cat.tipo !== tipo) return;
         rows.push({id, cat});
       });
-      // ordena por nome
       rows.sort((a,b)=> (a.cat?.nome||'').localeCompare(b.cat?.nome||''));
 
       viewRows = rows.map(r=>r.id);
@@ -212,6 +204,11 @@
         const regra = (e.dre_regra ?? cat.dre_regra) || '';
         const driver = (e.dre_percentual_base ?? cat.dre_percentual_base);
         const mediaN = (e.dre_media_janela ?? cat.dre_media_janela);
+        const valorDRE = (e.dre_valor ?? cat.dre_valor);
+
+        const resumo = resumoAno.get(id) || { soma: 0, mesesComDados: new Set() };
+        const somaAno = Number(resumo.soma || 0);
+        const mediaMes = somaAno / Math.max(1, mesesDecorridos);
 
         const tr = document.createElement('tr');
         if (rowDirty(id)) tr.classList.add('changed');
@@ -243,6 +240,16 @@
               </div>
             </div>
           </td>
+          <td>
+            <input class="dre-input vright" data-k="dre_valor" data-id="${id}" placeholder="0,00"
+                   value="${valorDRE!=null ? esc(String(valorDRE).replace('.',',')) : ''}">
+            <div class="muted">Salvo em: <code>categorias/${esc(id)}/dre_valor</code></div>
+          </td>
+          <td class="vright">
+            <div><strong>${fmtMoeda(somaAno)}</strong></div>
+            <div class="muted">/ ${fmtMoeda(mediaMes)}</div>
+            <div class="muted">Ano ${anoAtual}</div>
+          </td>
           <td class="row-actions nowrap">
             <button data-save="${id}">Salvar</button>
           </td>
@@ -264,25 +271,21 @@
           const e = edits.get(id) || {};
           e[k] = v || null;
 
-          // Zera params se trocar tipo
           if (v !== 'competencia_driver') e.dre_percentual_base = null;
           if (v !== 'competencia_media')  e.dre_media_janela = null;
 
           edits.set(id, e);
 
-          // Atualiza UI dos parâmetros
           const wrap = tbody.querySelector(`.param-wrap[data-id="${id}"]`);
           if (wrap) wrap.setAttribute('data-mode', v || '');
 
-          // Visual de alterado
           const tr = sel.closest('tr');
           if (rowDirty(id)) tr.classList.add('changed'); else tr.classList.remove('changed');
-
           refreshBadge();
         });
       });
 
-      // Inputs de parâmetros
+      // Inputs de parâmetros + Valor DRE
       tbody.querySelectorAll('.dre-input').forEach(inp=>{
         inp.addEventListener('input', ()=>{
           const id = inp.getAttribute('data-id');
@@ -296,13 +299,17 @@
           } else if (k === 'dre_media_janela') {
             const n = Number(v);
             e[k] = (!v ? null : (isNaN(n) || n <= 0 ? null : Math.floor(n)));
+          } else if (k === 'dre_valor') {
+            // aceitar vírgula e ponto, armazenar como número (pt-BR -> .)
+            const s = String(v).trim().replace(/\./g,'').replace(',','.');
+            const n = Number(s);
+            e[k] = isNaN(n) ? null : n;
           }
+
           edits.set(id, e);
 
-          // Visual de alterado
           const tr = inp.closest('tr');
           if (rowDirty(id)) tr.classList.add('changed'); else tr.classList.remove('changed');
-
           refreshBadge();
         });
       });
@@ -320,19 +327,20 @@
       const base = cache.get(id) || {};
       const e = edits.get(id) || {};
 
-      // Monta payload somente com campos DRE
+      const regraAtual = (e.dre_regra ?? base.dre_regra) || null;
+
       const payload = {
-        dre_regra: (e.dre_regra ?? base.dre_regra) || null,
-        dre_percentual_base: (e.dre_regra ?? base.dre_regra) === 'competencia_driver'
+        dre_regra: regraAtual,
+        dre_percentual_base: regraAtual === 'competencia_driver'
           ? (e.dre_percentual_base ?? base.dre_percentual_base ?? null)
           : null,
-        dre_media_janela: (e.dre_regra ?? base.dre_regra) === 'competencia_media'
+        dre_media_janela: regraAtual === 'competencia_media'
           ? (e.dre_media_janela ?? base.dre_media_janela ?? null)
-          : null
+          : null,
+        dre_valor: (e.dre_valor ?? base.dre_valor ?? null)
       };
 
       await update(ref(db, `financeiro/categorias/${id}`), payload);
-      // Após salvar, sincronização pelo onValue atualizará cache; aqui só limpamos a marca da linha
       edits.delete(id);
       refreshBadge();
     }
@@ -350,7 +358,7 @@
       render();
     }
 
-    // Eventos globais
+    // ---- Eventos globais
     elBusca.addEventListener('input', render);
     elFiltroTipo.addEventListener('change', render);
     elLimparFiltros.addEventListener('click', ()=>{
@@ -361,7 +369,7 @@
     btnSalvarAlteracoes.addEventListener('click', saveAll);
     btnDescartarAlteracoes.addEventListener('click', discardAll);
 
-    // Carregamento inicial
+    // ---- Carregamento de categorias
     onValue(ref(db, 'financeiro/categorias'), snap=>{
       cache.clear();
       if (snap.exists()){
@@ -369,8 +377,73 @@
           cache.set(child.key, child.val() || {});
         });
       }
+      render(); // renderiza mesmo antes do resumo (mostra 0 até carregar)
+    });
+
+    // ---- Carregamento do resumo do ano (acumulado/média)
+    // Estrutura esperada (flexível):
+    // financeiro/fluxo/{YYYY-MM}/lancamentos/{idLanc} = {
+    //   valor: number, categoriaId?: string, categoria?: string, categoriaNome?: string
+    // }
+    function zeraResumo(){
+      resumoAno.clear();
+      cache.forEach((_, id)=>{
+        resumoAno.set(id, { soma: 0, mesesComDados: new Set() });
+      });
+    }
+
+    function acumulaParaCategoria(catId, valor, mesIndex){
+      if (!resumoAno.has(catId)) resumoAno.set(catId, { soma: 0, mesesComDados: new Set() });
+      const r = resumoAno.get(catId);
+      r.soma += Number(valor)||0;
+      r.mesesComDados.add(mesIndex);
+      resumoAno.set(catId, r);
+    }
+
+    // Observa todo o nó 'financeiro/fluxo'
+    onValue(ref(db, 'financeiro/fluxo'), snap=>{
+      zeraResumo();
+      if (snap.exists()){
+        const val = snap.val() || {};
+        // chaves no formato YYYY-MM
+        Object.keys(val).forEach(ym=>{
+          const [y, m] = ym.split('-');
+          const ano = Number(y);
+          if (ano !== anoAtual) return;
+          const mesIndex = Math.max(0, Math.min(11, Number(m)-1));
+
+          const bloco = val[ym] || {};
+          const lancs = bloco.lancamentos || bloco.Lancamentos || {};
+          Object.values(lancs).forEach(lanc=>{
+            const v = Number(lanc.valor || lanc.Valor || 0);
+            if (!v) return;
+
+            // mapeamento de categoria
+            const idPrefer = lanc.categoriaId || lanc.categoria || null;
+            const nomeLanc = (lanc.categoriaNome || lanc.nomeCategoria || '').trim();
+            let matched = false;
+
+            if (idPrefer && cache.has(idPrefer)) {
+              acumulaParaCategoria(idPrefer, v, mesIndex);
+              matched = true;
+            }
+
+            if (!matched && nomeLanc){
+              // tenta por nome (case-insensitive)
+              cache.forEach((c, idCat)=>{
+                if ((c?.nome||'').toLowerCase() === nomeLanc.toLowerCase()){
+                  acumulaParaCategoria(idCat, v, mesIndex);
+                  matched = true;
+                }
+              });
+            }
+          });
+        });
+      }
+      // re-renderiza para atualizar a coluna de acumulado/média
       render();
     });
+
   </script>
 </body>
 </html>
