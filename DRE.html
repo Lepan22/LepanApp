@@ -13,37 +13,31 @@
   <style>
     :root{
       --muted:#6b7280; --ink:#111827; --line:#e5e7eb; --brand:#ff7f2a; --soft:#fff7ec;
-      --bg:#ffffff;
     }
     body{background:#f8fafc;}
     .page{max-width:1200px;margin:0 auto;padding:16px;}
     .header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;}
-    h1{margin:0;font-size:20px;color:var(--ink);}
+    h1{margin:0;font-size:20px;color:#111827;}
     .muted{color:var(--muted);font-size:12px;}
     .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
-    .controls .btn{height:34px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;}
-    .controls .btn.brand{background:var(--brand);color:#fff;border-color:#f97316;}
-    .controls .btn:hover{background:#f3f4f6;}
+    .btn{height:34px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;}
+    .btn.brand{background:var(--brand);color:#fff;border-color:#f97316;}
+    .btn.danger{color:#b91c1c;border-color:#fecaca;background:#fff;}
     .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:12px;color:var(--muted);}
-    .legend{display:flex;gap:8px;flex-wrap:wrap;}
     .grid{overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;}
-    table{width:100%;border-collapse:collapse;background:#fff;}
-    thead th{position:sticky;top:0;background:var(--soft);border-bottom:1px solid var(--line);padding:8px;font-size:12px;color:var(--ink);text-align:left;z-index:1;}
+    table{width:100%;border-collapse:collapse;}
+    thead th{position:sticky;top:0;background:var(--soft);border-bottom:1px solid var(--line);padding:8px;font-size:12px;text-align:left;z-index:1;}
     tbody td, tbody th{border-top:1px solid var(--line);padding:6px 8px;font-size:12.5px;vertical-align:top;}
     tbody th{background:#fbfbfb;font-weight:600;color:#111827;}
     .num{text-align:right;white-space:nowrap;}
     .pct{color:#065f46;font-size:11.5px;}
     .group{background:#fcfcff;}
     .result{background:#f8faff;font-weight:700;}
-    .center-title{font-size:12.5px;color:#111827;}
-    .sub-muted{color:#9ca3af;font-size:11px;}
-    .tag{display:inline-block;padding:2px 6px;border-radius:999px;border:1px solid var(--line);font-size:11px;}
-    .warn{color:#b45309;}
-    .ok{color:#065f46;}
-    .sep{height:8px;}
-    code{font-size:11px;background:#f3f4f6;padding:2px 6px;border-radius:6px;}
     .sticky-left{position:sticky;left:0;background:inherit;z-index:2;box-shadow:1px 0 0 0 var(--line);}
     .ytd-cell{background:#fffdfa;}
+    .legend{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+    .sub-muted{color:#9ca3af;font-size:11px;}
+    code{font-size:11px;background:#f3f4f6;padding:2px 6px;border-radius:6px;}
   </style>
 </head>
 <body>
@@ -53,35 +47,33 @@
     <div class="header">
       <div>
         <h1>DRE (Competência)</h1>
-        <div class="muted">Mostrando o ano corrente até o <strong>mês anterior</strong>. Regras “congeladas” por mês via histórico e/ou snapshot.</div>
+        <div class="muted">Ano corrente até o <strong>mês anterior</strong>. Regras congeladas por mês via histórico e/ou snapshot.</div>
       </div>
       <div class="controls">
         <button id="btnFecharMes" class="btn brand">Fechar DRE do mês (salvar snapshot)</button>
+        <button id="btnReabrirMes" class="btn danger">Reabrir mês (apagar snapshot)</button>
         <label class="muted" style="display:inline-flex;gap:6px;align-items:center;">
-          <input type="checkbox" id="ckForcar"/> sobrescrever mês fechado
+          <input type="checkbox" id="ckForcar"/> sobrescrever se já existir
         </label>
-        <span id="badgeSnapshot" class="pill">Snapshot: <strong id="snapStatus">—</strong></span>
+        <span class="pill">Snapshot: <strong id="snapStatus">—</strong></span>
       </div>
     </div>
 
     <div class="legend">
-      <span class="pill">Base: <strong id="txtBase"></strong></span>
-      <span class="pill">Receita do mês: <strong id="txtReceitaMes"></strong></span>
-      <span class="pill">Receita YTD: <strong id="txtReceitaYTD"></strong></span>
+      <span class="pill">Base: <strong id="txtBase">—</strong></span>
+      <span class="pill">Receita do mês: <strong id="txtReceitaMes">—</strong></span>
+      <span class="pill">Receita YTD: <strong id="txtReceitaYTD">—</strong></span>
     </div>
-
-    <div class="sep"></div>
 
     <div class="grid">
       <table id="tblDRE">
         <thead id="thead"></thead>
-        <tbody id="tbody"></tbody>
+        <tbody id="tbody"><tr><td class="muted" style="padding:16px;">Carregando…</td></tr></tbody>
         <tfoot id="tfoot"></tfoot>
       </table>
     </div>
 
-    <div class="sep"></div>
-    <div class="muted">
+    <div class="muted" style="margin-top:10px;">
       Notas:
       <ul>
         <li>Regra <code>especial</code> usa <code>dre_valor</code> quando a categoria <strong>não</strong> é “Compras”.</li>
@@ -92,42 +84,61 @@
 
   <script type="module">
     import { db } from './assets/firebase-config.js';
-    import { ref, onValue, get, child, update } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+    import { ref, onValue, get, child, update, remove } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
 
-    // ===================== Datas base =====================
+    // =============== Datas base (sempre até mês anterior) ===============
     const hoje = new Date();
     const ANO = hoje.getFullYear();
     const ANO_ANT = ANO - 1;
     const MES_ATUAL = hoje.getMonth();           // 0..11
-    const MES_BASE  = (MES_ATUAL - 1 + 12) % 12; // mês anterior (0..11)
+    const MES_BASE  = (MES_ATUAL - 1 + 12) % 12; // mês anterior
     const ANO_BASE  = (MES_ATUAL === 0) ? ANO_ANT : ANO;
 
-    // ===================== Dom =====================
+    // =============== DOM ===============
     const thead = document.getElementById('thead');
     const tbody = document.getElementById('tbody');
     const tfoot = document.getElementById('tfoot');
     const txtBase = document.getElementById('txtBase');
     const txtReceitaMes = document.getElementById('txtReceitaMes');
     const txtReceitaYTD = document.getElementById('txtReceitaYTD');
-    const badgeSnapshot = document.getElementById('snapStatus');
+    const snapStatus = document.getElementById('snapStatus');
     const btnFecharMes = document.getElementById('btnFecharMes');
+    const btnReabrirMes = document.getElementById('btnReabrirMes');
     const ckForcar = document.getElementById('ckForcar');
 
-    // ===================== Caches =====================
-    const categorias = new Map();     // id -> { nome, centro, tipo, dre_*, dre_valor }
-    const regrasHist = new Map();     // "YYYYMM" -> Map(catId -> regra/vigência)
-    const cons = { [ANO_ANT]: null, [ANO]: null };       // consolidado por categoria
-    const dreFechado = { base: null };                   // snapshot do mês base (se houver)
+    // =============== Caches ===============
+    const categorias = new Map();                 // id -> { nome, centro, tipo, dre_*, dre_valor }
+    const regrasHist = new Map();                 // "YYYYMM" -> Map(catId -> regra)
+    const cons = { [ANO_ANT]: null, [ANO]: null };// consolidado
+    let snapshotAtual = null;                     // snapshot do mês base (se existir)
 
-    // ===================== Consts =====================
-    const ORDEM_CENTROS = ['Receita','CMV','Despesa Operacional','Despesa Variável','Despesa Fixa','Investimento','Retirada'];
-
-    // ===================== Utils =====================
+    // =============== Utils ===============
     const fmt = (n=0)=> Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
     const pct = (n=0)=> (Number(n||0)*100).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
     const yyyymmKey = (y,m0)=> `${y}${String(m0+1).padStart(2,'0')}`;
     const snapPath = (y,m0)=> `financeiro/dre_fechado/${y}/${String(m0+1).padStart(2,'0')}`;
     const isCompras = (cat)=> String(cat?.nome||'').trim().toLowerCase()==='compras';
+
+    // normaliza nomes de centro (trata plurais/sotaques comuns)
+    function normCentro(c){
+      const s = String(c||'').trim();
+      if (/^despesas? operacionais?$/i.test(s)) return 'Despesa Operacional';
+      if (/^despesas? vari[aá]veis?$/i.test(s)) return 'Despesa Variável';
+      if (/^despesas? fixas?$/i.test(s)) return 'Despesa Fixa';
+      return s;
+    }
+
+    // ordem preferencial + quaisquer centros extras no fim
+    function ordemCentrosUsada(){
+      const prefer = ['Receita','CMV','Despesa Operacional','Despesa Variável','Despesa Fixa','Investimento','Retirada'];
+      const vistos = new Set(prefer);
+      const extras = [];
+      categorias.forEach(cat=>{
+        const c = normCentro(cat.centro);
+        if (!vistos.has(c)){ vistos.add(c); extras.push(c); }
+      });
+      return [...prefer, ...extras];
+    }
 
     function parseNumber(v){
       if (typeof v==='number') return v;
@@ -138,23 +149,23 @@
       const n = Number(v); return Number.isNaN(n) ? 0 : n;
     }
 
+    function valCons(catId, y, m0){
+      const node = cons[y]; if (!node) return 0;
+      // Formato esperado: node[1..12][catId] = número|obj
+      const mesNode = node[m0+1];
+      return parseNumber(mesNode?.[catId] ?? 0);
+    }
+
     function receitaDoMes(y,m0){
       let soma = 0;
-      categorias.forEach((cat, id)=>{
-        const centro = (cat.centro||'').toLowerCase();
+      categorias.forEach((cat,id)=>{
+        const centro = normCentro(cat.centro).toLowerCase();
         const tipo   = (cat.tipo||'').toLowerCase();
         if (centro === 'receita' || tipo === 'entrada'){
           soma += valCons(id,y,m0);
         }
       });
       return soma;
-    }
-
-    function valCons(catId, y, m0){
-      const node = cons[y];
-      if (!node) return 0;
-      const mesNode = node[m0+1];
-      return parseNumber(mesNode?.[catId] ?? 0);
     }
 
     function mediaCat(catId, y, m0, n){
@@ -208,62 +219,53 @@
     }
 
     function ytdCat(catId, y, m0){
-      let s=0;
-      for (let i=0;i<=m0;i++) s+=valorDREMes(catId,y,i);
-      return s;
+      let s=0; for (let i=0;i<=m0;i++) s+=valorDREMes(catId,y,i); return s;
     }
 
-    // ===================== Snapshot (fechamento) =====================
+    // =============== Snapshot helpers ===============
     async function carregarSnapshot(){
-      const snapRef = child(ref(db), snapPath(ANO_BASE, MES_BASE));
-      const s = await get(snapRef);
-      dreFechado.base = s.exists()? s.val(): null;
-      badgeSnapshot.textContent = dreFechado.base ? 'EXISTE' : 'ausente';
-      badgeSnapshot.className = dreFechado.base ? 'ok' : 'warn';
+      const s = await get(child(ref(db), snapPath(ANO_BASE, MES_BASE)));
+      snapshotAtual = s.exists()? s.val(): null;
+      snapStatus.textContent = snapshotAtual ? 'EXISTE' : '—';
     }
-
     async function fecharMes(forcar=false){
-      await carregarSnapshot();
-      if (dreFechado.base && !forcar){
-        alert('Já existe snapshot do mês. Marque "sobrescrever" para refazer.');
-        return;
-      }
+      if (!forcar && snapshotAtual){ alert('Já existe snapshot do mês. Marque "sobrescrever" para refazer.'); return; }
 
-      // monta porCategoria e grupos
+      // monta pacotes
       const porCategoria = {};
-      const grupos = Object.fromEntries(ORDEM_CENTROS.map(c=>[c,{mes:0,ytd:0}]));
+      const grupos = {};
+      ordemCentrosUsada().forEach(c=>{ grupos[c] = {mes:0,ytd:0}; });
 
       categorias.forEach((cat,id)=>{
         const vMes  = valorDREMes(id, ANO_BASE, MES_BASE);
         const vYTD  = ytdCat(id, ANO_BASE, MES_BASE);
-        const regra = regraEfetiva(id, ANO_BASE, MES_BASE);
+        const r     = regraEfetiva(id, ANO_BASE, MES_BASE);
 
         porCategoria[id] = {
-          nome:cat.nome||'', centro:cat.centro||'', tipo:cat.tipo||'',
+          nome:cat.nome||'', centro:normCentro(cat.centro||''), tipo:cat.tipo||'',
           regra_usada:{
-            dre_regra:regra.dre_regra||'',
-            dre_media_janela:regra.dre_media_janela??null,
-            dre_percentual_base:regra.dre_percentual_base??null,
-            dre_valor:regra.dre_valor??null
+            dre_regra:r.dre_regra||'',
+            dre_media_janela:r.dre_media_janela??null,
+            dre_percentual_base:r.dre_percentual_base??null,
+            dre_valor:r.dre_valor??null
           },
           valorMes:vMes, valorYTD:vYTD
         };
 
-        const centro = (cat.centro||'').trim();
-        if (grupos[centro]){
-          grupos[centro].mes += vMes;
-          grupos[centro].ytd += vYTD;
-        }
+        const centro = normCentro(cat.centro||'');
+        if (!grupos[centro]) grupos[centro] = {mes:0,ytd:0};
+        grupos[centro].mes += vMes;
+        grupos[centro].ytd += vYTD;
       });
 
       const soma = k=> (grupos[k]?.mes||0);
       const somaY= k=> (grupos[k]?.ytd||0);
 
-      const receitaMes = soma('Receita');
-      const receitaYTD = somaY('Receita');
+      const receitaMesV = soma('Receita');
+      const receitaYTDV = somaY('Receita');
 
       const resultadoMes =
-        receitaMes
+        receitaMesV
         - soma('CMV')
         - soma('Despesa Operacional')
         - soma('Despesa Variável')
@@ -272,7 +274,7 @@
         - soma('Retirada');
 
       const resultadoYTD =
-        receitaYTD
+        receitaYTDV
         - somaY('CMV')
         - somaY('Despesa Operacional')
         - somaY('Despesa Variável')
@@ -291,22 +293,31 @@
         grupos,
         resultado:{
           mes: resultadoMes, ytd: resultadoYTD,
-          margemMes: receitaMes ? (resultadoMes/receitaMes) : 0,
-          margemYTD: receitaYTD ? (resultadoYTD/receitaYTD) : 0
+          margemMes: receitaMesV ? (resultadoMes/receitaMesV) : 0,
+          margemYTD: receitaYTDV ? (resultadoYTD/receitaYTDV) : 0
         }
       };
 
       await update(ref(db, snapPath(ANO_BASE, MES_BASE)), payload);
       await carregarSnapshot();
       alert('DRE do mês fechado e salvo.');
-      render(); // recarrega a visão já priorizando o snapshot
+      render();
+    }
+    async function reabrirMes(){
+      if (!snapshotAtual){ alert('Não existe snapshot para reabrir.'); return; }
+      const ok = confirm('Confirmar reabertura? O snapshot do mês será removido.');
+      if (!ok) return;
+      await remove(ref(db, snapPath(ANO_BASE, MES_BASE)));
+      await carregarSnapshot();
+      alert('Snapshot removido. O mês voltou a calcular on-the-fly.');
+      render();
     }
 
-    // ===================== Render =====================
+    // =============== Render ===============
     function montarHead(){
       const meses = [];
-      const fmtMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-      for (let m=0;m<=MES_BASE;m++) meses.push(fmtMes[m]);
+      const nom = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      for (let m=0;m<=MES_BASE;m++) meses.push(nom[m]); // só até mês anterior
 
       thead.innerHTML = '';
       const tr = document.createElement('tr');
@@ -323,7 +334,7 @@
     function linhaGrupo(cabeca){
       const tr = document.createElement('tr');
       tr.className = 'group';
-      tr.innerHTML = `<th class="sticky-left center-title">${cabeca}</th>`;
+      tr.innerHTML = `<th class="sticky-left">${cabeca}</th>`;
       for (let m=0;m<=MES_BASE;m++){
         tr.innerHTML += `<td class="num" data-g="${cabeca}" data-m="${m}">R$ 0,00<br><span class="pct sub-muted">0%</span></td>`;
       }
@@ -333,118 +344,117 @@
 
     function linhaCat(catId, cat){
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="sticky-left">${cat.nome||''}<div class="sub-muted">${cat.centro||''}</div></td>`;
+      tr.innerHTML = `<td class="sticky-left">${cat.nome||''}<div class="sub-muted">${normCentro(cat.centro)||''}</div></td>`;
 
       for (let m=0;m<=MES_BASE;m++){
         let v;
-        if (dreFechado.base?.categorias?.[catId]){
-          // snapshot tem só mês base e YTD. Para meses anteriores, calcula on the fly (mantemos simples).
+        if (snapshotAtual?.categorias?.[catId]){
           v = (m===MES_BASE)
-              ? Number(dreFechado.base.categorias[catId].valorMes||0)
-              : valorDREMes(catId, ANO_BASE, m);
+                ? Number(snapshotAtual.categorias[catId].valorMes||0)
+                : valorDREMes(catId, ANO_BASE, m);
         }else{
           v = valorDREMes(catId, ANO_BASE, m);
         }
         tr.innerHTML += `<td class="num">${fmt(v)}</td>`;
       }
 
-      // YTD
-      let ytdV;
-      if (dreFechado.base?.categorias?.[catId]){
-        ytdV = Number(dreFechado.base.categorias[catId].valorYTD||0);
-      }else{
-        ytdV = ytdCat(catId, ANO_BASE, MES_BASE);
-      }
-      tr.innerHTML += `<td class="num ytd-cell">${fmt(ytdV)}</td>`;
+      const ytdV = snapshotAtual?.categorias?.[catId]
+        ? Number(snapshotAtual.categorias[catId].valorYTD||0)
+        : ytdCat(catId, ANO_BASE, MES_BASE);
 
+      tr.innerHTML += `<td class="num ytd-cell">${fmt(ytdV)}</td>`;
       return tr;
     }
 
     function render(){
-      if (!cons[ANO] || categorias.size===0) return;
+      // só renderiza quando houver dados mínimos
+      if (!cons[ANO] || categorias.size===0){
+        return;
+      }
+
       montarHead();
       tbody.innerHTML = '';
       tfoot.innerHTML = '';
 
-      // receita do mês / YTD para % das células de grupo
-      const receitaMes = receitaDoMes(ANO_BASE, MES_BASE);
-      let receitaYTD = 0;
-      for (let m=0;m<=MES_BASE;m++) receitaYTD += receitaDoMes(ANO_BASE, m);
-      txtReceitaMes.textContent = fmt(receitaMes);
-      txtReceitaYTD.textContent = fmt(receitaYTD);
+      // receita do mês / YTD
+      const receitaMesV = receitaDoMes(ANO_BASE, MES_BASE);
+      let receitaYTDV = 0; for (let m=0;m<=MES_BASE;m++) receitaYTDV += receitaDoMes(ANO_BASE, m);
+      txtReceitaMes.textContent = fmt(receitaMesV);
+      txtReceitaYTD.textContent = fmt(receitaYTDV);
 
-      // agrupa categorias por centro
-      const porCentro = new Map(ORDEM_CENTROS.map(c=>[c,[]]));
+      // agrupa por centro (dinâmico)
+      const ORDEM = ordemCentrosUsada();
+      const porCentro = new Map(ORDEM.map(c=>[c,[]]));
       categorias.forEach((cat,id)=>{
-        const c = (cat.centro||'').trim();
-        if (porCentro.has(c)) porCentro.get(c).push({id,cat});
+        const c = normCentro(cat.centro);
+        if (!porCentro.has(c)) porCentro.set(c,[]);
+        porCentro.get(c).push({id,cat});
       });
 
-      // desenha grupos
-      const groupTotalsMes = {};  // g|m -> total
-      const groupTotalsYTD = {};  // g -> total
+      // desenha grupos e acumula totais
+      const totalMes = {}; // g|m -> valor
+      const totalYTD = {}; // g -> valor
 
-      for (const centro of ORDEM_CENTROS){
-        const itens = porCentro.get(centro)||[];
+      for (const centro of ORDEM){
+        const itens = (porCentro.get(centro)||[]).sort((a,b)=> (a.cat?.nome||'').localeCompare(b.cat?.nome||''));
         if (itens.length===0) continue;
 
         tbody.appendChild(linhaGrupo(centro));
-        itens.sort((a,b)=> (a.cat?.nome||'').localeCompare(b.cat?.nome||''));
+
         itens.forEach(({id,cat})=>{
           tbody.appendChild(linhaCat(id, cat));
 
-          // acumula totais do grupo
           for (let m=0;m<=MES_BASE;m++){
             const v = valorDREMes(id, ANO_BASE, m);
-            groupTotalsMes[`${centro}|${m}`] = (groupTotalsMes[`${centro}|${m}`]||0) + v;
+            totalMes[`${centro}|${m}`] = (totalMes[`${centro}|${m}`]||0) + v;
           }
-          groupTotalsYTD[centro] = (groupTotalsYTD[centro]||0) + ytdCat(id, ANO_BASE, MES_BASE);
+          totalYTD[centro] = (totalYTD[centro]||0) + ytdCat(id, ANO_BASE, MES_BASE);
         });
       }
 
-      // preenche células dos grupos com valor e %
- sobre receita
+      // preenche células dos grupos
       tbody.querySelectorAll('td[data-g]').forEach(td=>{
         const g = td.getAttribute('data-g');
         const m = td.getAttribute('data-m');
         if (m === 'ytd'){
-          const v = groupTotalsYTD[g]||0;
-          td.innerHTML = fmt(v);
+          td.innerHTML = fmt(totalYTD[g]||0);
         }else{
           const idx = Number(m);
-          const v = groupTotalsMes[`${g}|${idx}`]||0;
+          const v = totalMes[`${g}|${idx}`]||0;
           const rec = receitaDoMes(ANO_BASE, idx);
           const prc = rec ? (v/rec) : 0;
           td.innerHTML = `${fmt(v)}<br><span class="pct">${pct(prc)}</span>`;
         }
       });
 
-      // ===== Resultado =====
+      // Resultado
       const trR = document.createElement('tr');
       trR.className = 'result';
       trR.innerHTML = `<th class="sticky-left">Resultado</th>`;
-      let resYTD = 0, recYTD = 0;
+      let resYTD = 0, recY = 0;
       for (let m=0;m<=MES_BASE;m++){
-        const receita = groupTotalsMes[`Receita|${m}`]||0;
+        const receita = totalMes[`Receita|${m}`]||0;
         const v =
           receita
-          - (groupTotalsMes[`CMV|${m}`]||0)
-          - (groupTotalsMes[`Despesa Operacional|${m}`]||0)
-          - (groupTotalsMes[`Despesa Variável|${m}`]||0)
-          - (groupTotalsMes[`Despesa Fixa|${m}`]||0)
-          - (groupTotalsMes[`Investimento|${m}`]||0)
-          - (groupTotalsMes[`Retirada|${m}`]||0);
+          - (totalMes[`CMV|${m}`]||0)
+          - (totalMes[`Despesa Operacional|${m}`]||0)
+          - (totalMes[`Despesa Variável|${m}`]||0)
+          - (totalMes[`Despesa Fixa|${m}`]||0)
+          - (totalMes[`Investimento|${m}`]||0)
+          - (totalMes[`Retirada|${m}`]||0);
         trR.innerHTML += `<td class="num">${fmt(v)}<br><span class="pct">${receita?pct(v/receita):'0%'}</span></td>`;
-        resYTD += v; recYTD += receita;
+        resYTD += v; recY += receita;
       }
-      trR.innerHTML += `<td class="num ytd-cell">${fmt(resYTD)}<br><span class="pct">${recYTD?pct(resYTD/recYTD):'0%'}</span></td>`;
+      trR.innerHTML += `<td class="num ytd-cell">${fmt(resYTD)}<br><span class="pct">${recY?pct(resYTD/recY):'0%'}</span></td>`;
       tfoot.appendChild(trR);
     }
 
-    // ===================== Listeners de dados =====================
+    // =============== Listeners de dados ===============
     onValue(ref(db,'financeiro/categorias'), s=>{
       categorias.clear();
-      if (s.exists()) s.forEach(ch=> categorias.set(ch.key, ch.val()||{}) );
+      if (s.exists()){
+        s.forEach(ch=> categorias.set(ch.key, ch.val()||{}) );
+      }
       render();
     });
 
@@ -473,12 +483,12 @@
       render();
     });
 
-    // Carrega snapshot do mês base no início
-    await carregarSnapshot();
+    // snapshot inicial
+    carregarSnapshot().then(render);
 
-    // ===================== Ações =====================
+    // =============== Ações ===============
     btnFecharMes.addEventListener('click', ()=> fecharMes(ckForcar.checked));
-
+    btnReabrirMes.addEventListener('click', ()=> reabrirMes());
   </script>
 </body>
 </html>
