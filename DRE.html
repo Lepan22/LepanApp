@@ -1,529 +1,540 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>regras de DRE por Categoria</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DRE (Competência)</title>
 
-  <link rel="stylesheet" href="assets/base.css"/>
-  <link rel="stylesheet" href="assets/menu-styles.css"/>
-  <script type="module" src="assets/firebase-config.js"></script>
-  <script defer src="assets/menu.js"></script>
+<link rel="stylesheet" href="assets/base.css"/>
+<link rel="stylesheet" href="assets/menu-styles.css"/>
 
-  <style>
-    .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-    .page-header h1{margin:0;font-size:20px;color:#111827;}
-    .muted{color:#6b7280;font-size:11.5px;}
+<style>
+  :root{
+    /* Larguras maiores para melhorar leitura */
+    --ind-w: 240px;   /* Centro/Categoria */
+    --year-w: 190px;  /* Consolidado (Ano) */
+    --col-w: 120px;   /* Cada mês */
+  }
+  .main-content { padding:16px 20px; }
 
-    .filters{display:grid;grid-template-columns:1fr 160px;gap:10px;margin-bottom:10px;align-items:end;}
-    @media (max-width:900px){.filters{grid-template-columns:1fr;}}
-    .filters label{font-size:12px;color:#374151;}
-    .filters input,.filters button{width:100%;box-sizing:border-box;padding:6px;font-size:12px;}
-    .filters button{height:32px;border:1px solid #ddd;border-radius:8px;background:#ff7f2a;color:#fff;cursor:pointer;}
+  .page-header h1 { margin:6px 0 6px; }
+  .page-header p  { margin:0 0 12px; color:#666; font-size:13px; }
 
-    .table-wrap{overflow:auto;border:1px solid #eee;border-radius:10px;background:#fff;}
-    table{width:100%;border-collapse:collapse;background:#fff;min-width:1100px;}
-    thead th{background:#fff7ec;color:#111827;text-align:left;border:1px solid #e5e7eb;padding:8px;font-size:12.5px;}
-    tbody td{border:1px solid #e5e7eb;padding:6px 8px;font-size:12.5px;vertical-align:top;}
-    .nowrap{white-space:nowrap;}
-    .dre-select,.dre-input{width:100%;box-sizing:border-box;padding:5px;font-size:12px;}
-    .param-wrap{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
-    .param-wrap>div{display:none;}
-    .param-wrap[data-mode="competencia_driver"] .param-driver{display:block;grid-column:span 2;}
-    .param-wrap[data-mode="competencia_media"]  .param-media{display:block;}
-    .row-actions button{font-size:11.5px;padding:6px 10px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer;}
-    .row-actions button:hover{background:#f3f4f6;}
-    .save-all{margin-top:10px;display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;}
-    .save-all button{height:34px;padding:0 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-size:12px;}
-    .save{background:#10b981;color:#fff;border-color:#0ea5e9;}
-    .reset{background:#fff;}
-    tr.changed{background:#f8fffb;}
-    .pill{display:inline-block;padding:2px 6px;border-radius:999px;font-size:11px;border:1px solid #e5e7eb;background:#fff;}
-    .vright{text-align:right;}
-    code{background:#f3f4f6;border-radius:6px;padding:0 4px;}
-    .wider{min-width:160px;}
-  </style>
+  .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
+  .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
+  .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
+  .btn{height:34px;padding:0 12px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;}
+  .btn.primary{background:#ff7f2a;color:#fff;border-color:#f97316;}
+  .btn.secondary{background:#fff;border-color:#e5e5e5;}
+  .btn.danger{color:#b91c1c;background:#fff;border-color:#fecaca;}
+  .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
+
+  .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
+
+  table.fx { width:100%; border-collapse:collapse; background:#fff; }
+  .fx th, .fx td { border:1px solid #e6e6e6; padding:8px 10px; font-size:13px; }
+  .fx thead th { background:#fff7ec; color:#000; font-weight:600; position:sticky; top:0; z-index:1; }
+
+  /* Colunas fixas mais largas */
+  .fx th.ind, .fx td.ind {
+    position:sticky; left:0; z-index:3;
+    background:#fafafa;
+    width:var(--ind-w); min-width:var(--ind-w); max-width:var(--ind-w);
+    text-align:left; white-space: normal;
+  }
+  .fx th.year, .fx td.year {
+    position:sticky; left:var(--ind-w); z-index:2;
+    background:#fafafa;
+    width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
+    text-align:right;
+  }
+
+  /* Colunas mensais com largura mínima */
+  .fx thead th.month, .fx tbody td.month, .fx tfoot td.month {
+    min-width:var(--col-w);
+    width:var(--col-w);
+  }
+
+  .num { text-align:right; }
+  .pct { color:#475569; font-size:11.2px; margin-left:6px; }
+
+  .fx tbody tr.row-odd  td { background:#ffffff; }
+  .fx tbody tr.row-even td { background:#f7f7fb; }
+
+  .toggle { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-weight:700; }
+  .caret  { font-size:12px; color:#555; width:14px; text-align:center; }
+  tr.cat-row.hidden { display:none; }
+  .totais-row > td.ind { font-weight:800; }
+</style>
+
+<script defer src="assets/menu.js"></script>
+
+<!-- Firebase v8 (compatível com seu projeto atual) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
 <body>
   <div id="menuLateral" class="sidebar"></div>
 
   <div class="main-content">
     <div class="page-header">
-      <h1>Regras de DRE por Categoria</h1>
-      <span class="muted">
-        Base de cálculo: <strong>mês anterior</strong> (calc.). YTD até o mês anterior.
-        DRE (Anual/Média) usa snapshots em <code>financeiro/dre_fechado</code> (competência) com fallback por regra.
-        Fluxo vem do <code>consolidado</code> (caixa).
-      </span>
+      <h1>DRE (Competência)</h1>
+      <p>Centros e categorias como no Fluxo. O <strong>Consolidado (Ano)</strong> soma <em>até o mês anterior</em> e as % são sempre sobre a Receita (mês/ano). Em <code>especial</code> (exceto “Compras”), usamos <code>dre_valor</code>. Meses com snapshot <strong>não mudam</strong>.</p>
+      <div id="diag" class="diag warn"></div>
     </div>
 
-    <!-- Filtros -->
-    <div class="filters">
-      <label>
-        Busca (nome)
-        <input type="text" id="busca" placeholder="Digite para filtrar…">
+    <section class="controls">
+      <label>Ano Fiscal:
+        <select id="anoSelect"></select>
       </label>
-      <button id="limparFiltros">Limpar filtros</button>
-    </div>
+      <button id="btnFechar" class="btn primary">Fechar mês (salvar snapshot)</button>
+      <button id="btnFecharAnteriores" class="btn secondary">Fechar meses anteriores</button>
+      <button id="btnReabrir" class="btn danger">Reabrir mês (apagar snapshot)</button>
+      <label style="display:inline-flex;align-items:center;gap:6px">
+        <input type="checkbox" id="ckOverwrite"/> sobrescrever se já existir
+      </label>
+      <span class="badge">Snapshots no ano: <span id="snapInfo">—</span></span>
+    </section>
 
-    <!-- Tabela -->
     <div class="table-wrap">
-      <table id="tabela">
+      <table class="fx" id="tbl">
         <thead>
-          <tr>
-            <th style="width:26%;">Categoria</th>
-            <th style="width:12%;">Regra DRE</th>
-            <th style="width:18%;">Parâmetros</th>
-            <th style="width:12%;">Valor DRE</th>
-            <th style="width:12%;" class="nowrap">DRE (calc.)</th>
-            <th style="width:11%;" class="nowrap wider">DRE (Anual/Média)</th>
-            <th style="width:11%;" class="nowrap wider">Fluxo (Anual/Média)</th>
-            <th class="nowrap">Ações</th>
+          <tr id="hdrMeses">
+            <th class="ind">Centro/Categoria</th>
+            <th class="year">Consolidado (Ano)</th>
           </tr>
         </thead>
-        <tbody id="lista"></tbody>
+        <tbody id="tbody"></tbody>
       </table>
-    </div>
-
-    <div class="save-all">
-      <button class="reset" id="descartarAlteracoes">Descartar alterações</button>
-      <button class="save" id="salvarAlteracoes">Salvar alterações (em lote)</button>
-      <span id="badgeAlteracoes" class="pill muted">0 alteração(ões)</span>
-      <span id="badgeContexto" class="pill muted">Ano base: — | Mês base: —</span>
-      <span id="badgeSnapshots" class="pill muted">Snapshots carregados: —</span>
     </div>
   </div>
 
-  <script type="module">
-    import { db } from './assets/firebase-config.js';
-    import { ref, onValue, update, get, child } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+<script>
+(function(){
+  const diag = document.getElementById('diag');
+  const showDiag = (msg, type="warn") => { diag.className = `diag ${type}`; diag.textContent = msg; diag.style.display='block'; };
+  const clearDiag = () => { diag.style.display='none'; diag.textContent=''; };
 
-    // ---------- Elementos
-    const elBusca = document.getElementById('busca');
-    const elLimparFiltros = document.getElementById('limparFiltros');
-    const tbody = document.getElementById('lista');
-    const btnSalvarAlteracoes = document.getElementById('salvarAlteracoes');
-    const btnDescartarAlteracoes = document.getElementById('descartarAlteracoes');
-    const badgeAlteracoes = document.getElementById('badgeAlteracoes');
-    const badgeContexto = document.getElementById('badgeContexto');
-    const badgeSnapshots = document.getElementById('badgeSnapshots');
+  // Firebase
+  try{
+    const cfg = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+  }catch(e){ console.error(e); showDiag('Falha ao inicializar Firebase.', 'err'); }
+  const db = firebase.database();
 
-    // ---------- Estados (cache de cadastro e edições)
-    const cache = new Map();        // id -> categoria
-    const edits = new Map();        // id -> { dre_regra, dre_percentual_base, dre_media_janela, dre_valor }
+  const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const hoje = new Date(); const mesAtual = hoje.getMonth()+1; const anoAtual = hoje.getFullYear();
 
-    // ---------- Séries mensais (0..11)
-    const dreMensal = new Map();    // id -> Array(12) (competência: snapshot ou fallback por regra)
-    const fluxoMensal = new Map();  // id -> Array(12) (caixa: consolidado)
+  const anoSelect       = document.getElementById('anoSelect');
+  const hdrMeses        = document.getElementById('hdrMeses');
+  const tbody           = document.getElementById('tbody');
+  const btnFechar       = document.getElementById('btnFechar');
+  const btnFecharAnt    = document.getElementById('btnFecharAnteriores');
+  const btnReabrir      = document.getElementById('btnReabrir');
+  const ckOverwrite     = document.getElementById('ckOverwrite');
+  const snapInfo        = document.getElementById('snapInfo');
 
-    // ---------- Contexto de datas
-    const hoje = new Date();
-    const ANO = hoje.getFullYear();
-    const ANO_ANT = ANO - 1;
-    const MES_ATUAL = hoje.getMonth(); // 0..11
-    const MES_BASE = (MES_ATUAL - 1 + 12) % 12;        // mês anterior (0..11)
-    const ANO_BASE = (MES_ATUAL === 0) ? ANO_ANT : ANO; // ano do mês base
-    const MESES_YTD_BASE = (ANO_BASE === ANO_ANT) ? 12 : (MES_BASE + 1);
+  const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const num = v => isNaN(Number(v)) ? 0 : Number(v);
+  const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
-    badgeContexto.textContent = `Ano base: ${ANO_BASE} | Mês base: ${String(MES_BASE+1).padStart(2,'0')}`;
+  const ORDEM = ["Receita","CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
 
-    // ---------- Utils
-    const esc = (s='') => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-                                   .replaceAll('"','&quot;').replaceAll("'","&#39;");
-    const fmtMoeda = (n=0) => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  // --- DB helpers ---
+  const refSnap = (ano, mes) => db.ref(`financeiro/dre_fechado/${ano}/${String(mes).padStart(2,'0')}`);
+  async function getSnapshot(ano, mes){ const s = await refSnap(ano,mes).once('value'); return s.exists()? s.val(): null; }
+  function setSnapshot(ano, mes, payload){ return refSnap(ano,mes).set(payload); }
+  function delSnapshot(ano, mes){ return refSnap(ano,mes).remove(); }
 
-    function parsePercentToDecimal(txt){
-      if (txt == null) return null;
-      let s = String(txt).trim();
-      if (!s) return null;
-      s = s.replace('%','').replace(/\s+/g,'').replace(',','.');
-      let v = Number(s);
-      if (isNaN(v)) return null;
-      if (v > 1) v = v/100;
-      return v;
+  // Lê todos os snapshots do ano (1..12) => { [mesNumber]: snapshotObj }
+  async function getSnapshotsAno(ano){
+    const s = await db.ref(`financeiro/dre_fechado/${ano}`).once('value');
+    const out = {};
+    if (s.exists()){
+      const v = s.val() || {};
+      Object.keys(v).forEach(k=>{
+        const m = Number(k);
+        if (m>=1 && m<=12) out[m] = v[k];
+      });
     }
-    function formatDecimalToPercent(dec){
-      if (dec == null || dec === '') return '';
-      const n = Number(dec); if (isNaN(n)) return '';
-      return (n*100).toLocaleString('pt-BR',{maximumFractionDigits:2}) + '%';
-    }
-    function rowDirty(id){
-      const b = cache.get(id) || {};
-      const e = edits.get(id);
-      if (!e) return false;
-      return (
-        (e.dre_regra ?? b.dre_regra) !== b.dre_regra ||
-        (e.dre_percentual_base ?? b.dre_percentual_base) !== b.dre_percentual_base ||
-        (e.dre_media_janela ?? b.dre_media_janela) !== b.dre_media_janela ||
-        (e.dre_valor ?? b.dre_valor) !== b.dre_valor
-      );
-    }
-    function refreshBadge(){
-      const count = Array.from(edits.keys()).filter(rowDirty).length;
-      badgeAlteracoes.textContent = `${count} alteração(ões)`;
-    }
+    return out;
+  }
 
-    // ========== Cálculo do DRE (calc.) — mês base (preview da regra atual)
-    // Dependências para calc (driver): receita do mês base via fluxoMensal
-    function receitaMes(m0){
+  // --- Queries ---
+  async function getCategorias(){
+    const snap = await db.ref('financeiro/categorias').once('value');
+    const v = snap.val() || {};
+    const arr = Object.keys(v).map(id => ({
+      id,
+      nome: v[id]?.nome || '(sem nome)',
+      centro: v[id]?.centroDeCusto || 'Outros',
+      dre_regra: v[id]?.dre_regra || 'caixa',
+      dre_percentual_base: (v[id]?.dre_percentual_base!=null) ? Number(v[id].dre_percentual_base) : null,
+      dre_media_janela: v[id]?.dre_media_janela ? Number(v[id].dre_media_janela) : null,
+      dre_valor: (v[id]?.dre_valor!=null) ? Number(v[id].dre_valor) : null
+    }));
+    const ordemCentro = c => {
+      const cc = norm(c.centro);
+      if (cc==='receita') return 0;
+      if (cc==='cmv') return 1;
+      if (cc==='despesas operacionais') return 2;
+      if (cc==='despesa variavel') return 3;
+      if (cc==='despesa fixa') return 4;
+      if (cc==='investimento') return 5;
+      if (cc==='retirada') return 6;
+      return 7;
+    };
+    arr.sort((a,b)=>{
+      const pa = ordemCentro(a), pb = ordemCentro(b);
+      if (pa!==pb) return pa-pb;
+      if (a.centro!==b.centro) return a.centro.localeCompare(b.centro,'pt-BR');
+      return a.nome.localeCompare(b.nome,'pt-BR');
+    });
+    return arr;
+  }
+  async function getConsolidado(ano){ const s = await db.ref(`financeiro/consolidado/${ano}`).once('value'); return s.val()||{}; }
+  async function getConsolidadoPrev(ano){ const s = await db.ref(`financeiro/consolidado/${ano-1}`).once('value'); return s.val()||{}; }
+  async function getMov(ano){ const s = await db.ref(`financeiro/movimentacao/${ano}`).once('value'); return s.val()||{}; }
+
+  // --- Helpers UI ---
+  function buildHeader(mesLimite){
+    hdrMeses.innerHTML = '<th class="ind">Centro/Categoria</th><th class="year">Consolidado (Ano)</th>';
+    for (let m=1;m<=mesLimite;m++){
+      const th = document.createElement('th'); th.textContent = mesesPt[m-1]; th.className='month'; hdrMeses.appendChild(th);
+    }
+  }
+  function buildRow(label, cols, cls){
+    const tr = document.createElement('tr'); tr.className = cls || '';
+    const tdInd  = document.createElement('td'); tdInd.className = 'ind';  tdInd.textContent = label;
+    const tdYear = document.createElement('td'); tdYear.className = 'year num'; tdYear.innerHTML = '—';
+    tr.appendChild(tdInd); tr.appendChild(tdYear);
+    for (let m=1;m<=cols;m++){
+      const td = document.createElement('td'); td.className='num month'; td.innerHTML='—'; tr.appendChild(td);
+    }
+    return tr;
+  }
+  function buildGroupHeader(label, cols){
+    const key = label.toLowerCase().replace(/\s+/g,'-');
+    const tr = document.createElement('tr');
+    const tdInd = document.createElement('td'); tdInd.className='ind';
+    tdInd.innerHTML = `<span class="toggle" data-grp="${key}" data-open="1">
+      <span class="caret">▼</span> ${label}
+    </span>`;
+    const tdYear = document.createElement('td'); tdYear.className='year num'; tdYear.innerHTML='—';
+    tr.appendChild(tdInd); tr.appendChild(tdYear);
+    for (let m=1;m<=cols;m++){
+      const td=document.createElement('td'); td.className='num month'; tr.appendChild(td);
+      td.innerHTML='—';
+    }
+    tr.dataset.grpkey = key;
+    tr.dataset.rotulo = label;
+    return tr;
+  }
+  function attachToggle(){
+    tbody.querySelectorAll('.toggle').forEach(tg=>{
+      tg.addEventListener('click', ()=>{
+        const grp = tg.dataset.grp;
+        const open = tg.dataset.open==='1';
+        tg.dataset.open = open ? '0':'1';
+        tg.querySelector('.caret').textContent = open ? '►' : '▼';
+        tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
+      });
+    });
+  }
+  function setCellWithPct(td, valor, base){
+    const hasVal = Math.abs(valor) > 1e-9;
+    const p = (base>0) ? (valor/base*100) : null;
+    if (!hasVal && p===null){ td.innerHTML = '—'; return; }
+    td.innerHTML = `${fmt(valor)}<span class="pct">${p===null?'—':p.toFixed(1)+'%'}</span>`;
+  }
+  const sumTo = (arr, mLim) => (mLim<=0 ? 0 : arr.slice(0, mLim).reduce((a,b)=>a+b,0));
+
+  // --- Cálculos auxiliares ---
+  function mediaUltimosN(catId, m, N, dadosAno, dadosPrev){
+    if (!N || N<=0) return 0;
+    const vals = [];
+    for (let mm=m-1; mm>=1 && vals.length<N; mm--){
+      const v = num( dadosAno?.[mm]?.[catId]?.valor || 0 );
+      if (v!==0) vals.push(v);
+    }
+    for (let mm=12; mm>=1 && vals.length<N; mm--){
+      const v = num( dadosPrev?.[mm]?.[catId]?.valor || 0 );
+      if (v!==0) vals.push(v);
+    }
+    if (!vals.length) return 0;
+    const soma = vals.reduce((a,b)=>a+b,0);
+    return soma / vals.length;
+  }
+
+  // --- Snapshot payload (reuso nos botões) ---
+  function buildSnapshotPayload(anoSel, mes, centros, linhasCat, catSums, grpSums){
+    // categorias
+    const porCategoria = {};
+    Object.keys(linhasCat).forEach(id=>{
+      porCategoria[id] = {
+        nome: linhasCat[id].cat.nome || '',
+        centro: linhasCat[id].centroEf || '',
+        valorMes: catSums[id]?.[mes-1] || 0,
+        valorYTD: sumTo(catSums[id]||[], mes)
+      };
+    });
+    // grupos
+    const grupos = {};
+    centros.forEach(c=>{
+      grupos[c] = {
+        mes: grpSums[c]?.[mes-1] || 0,
+        ytd: sumTo(grpSums[c]||[], mes)
+      };
+    });
+    const receitaMesV = grupos['Receita']?.mes || 0;
+    const receitaYTDV = grupos['Receita']?.ytd || 0;
+    const rMes =
+      (grpSums['Receita']?.[mes-1]||0)
+      - (grpSums['CMV']?.[mes-1]||0)
+      - (grpSums['Despesas Operacionais']?.[mes-1]||0)
+      - (grpSums['Despesa Variável']?.[mes-1]||0)
+      - (grpSums['Despesa Fixa']?.[mes-1]||0)
+      - (grpSums['Investimento']?.[mes-1]||0)
+      - (grpSums['Retirada']?.[mes-1]||0);
+    const rYTD =
+      sumTo(grpSums['Receita']||[], mes)
+      - sumTo(grpSums['CMV']||[], mes)
+      - sumTo(grpSums['Despesas Operacionais']||[], mes)
+      - sumTo(grpSums['Despesa Variável']||[], mes)
+      - sumTo(grpSums['Despesa Fixa']||[], mes)
+      - sumTo(grpSums['Investimento']||[], mes)
+      - sumTo(grpSums['Retirada']||[], mes);
+
+    return {
+      meta:{
+        ano: anoSel, mes,
+        fechadoEm: new Date().toISOString(),
+        competenciaBase: true,
+        baseCalculo: 'até o mês exibido'
+      },
+      categorias: porCategoria,
+      grupos,
+      resultado:{
+        mes: rMes,
+        ytd: rYTD,
+        margemMes: receitaMesV ? (rMes/receitaMesV) : 0,
+        margemYTD: receitaYTDV ? (rYTD/receitaYTDV) : 0
+      }
+    };
+  }
+
+  // --- Render principal ---
+  async function carregar(anoSel){
+    clearDiag();
+    tbody.innerHTML = '<tr><td class="badge" style="margin:8px">Calculando…</td></tr>';
+
+    const [cats, consAno, consPrev, movAno, snapsAno] = await Promise.all([
+      getCategorias(), getConsolidado(anoSel), getConsolidadoPrev(anoSel), getMov(anoSel), getSnapshotsAno(anoSel)
+    ]);
+
+    let mesLimite;
+    if (anoSel < anoAtual)      mesLimite = 12;
+    else if (anoSel > anoAtual) mesLimite = 0;
+    else                        mesLimite = Math.max(0, mesAtual - 1);
+
+    buildHeader(mesLimite);
+    tbody.innerHTML = '';
+
+    // receita base para % (aplica snapshot quando existir)
+    const receitaMes = Array.from({length:mesLimite}, (_,i)=>{
+      const m = i+1;
+      const snapM = snapsAno[m];
+      if (snapM?.grupos?.Receita?.mes != null){
+        return Number(snapM.grupos.Receita.mes) || 0;
+      }
+      // fallback: consolidado
       let soma = 0;
-      cache.forEach((cat, id)=>{
-        const centro = String(cat.centro||cat.centroDeCusto||'').toLowerCase();
-        const tipo   = String(cat.tipo||'').toLowerCase();
-        if (centro === 'receita' || tipo === 'entrada'){
-          soma += (fluxoMensal.get(id) || [])[m0] || 0;
+      cats.forEach(c=>{
+        if (norm(c.centro)==='receita'){
+          soma += num(consAno?.[m]?.[c.id]?.valor || 0);
         }
       });
       return soma;
-    }
+    });
+    const receitaAnoCorte = sumTo(receitaMes, mesLimite);
 
-    function calcDREValue(id){
-      const base = cache.get(id) || {};
-      const e = edits.get(id) || {};
-      const regra = (e.dre_regra ?? base.dre_regra) || null;
+    // centros
+    const centros = [];
+    const seen = new Set();
+    ORDEM.forEach(c=>{ seen.add(c); centros.push(c); });
+    cats.forEach(c=>{ if(!seen.has(c.centro)){ seen.add(c.centro); centros.push(c.centro); } });
 
-      if (!regra) return { valor: 0, desc: '—' };
-
-      if (regra === 'caixa'){
-        const v = (fluxoMensal.get(id) || [])[MES_BASE] || 0;
-        return { valor: v, desc: 'mês anterior (caixa)' };
-      }
-
-      if (regra === 'competencia_media'){
-        const n = Number((e.dre_media_janela ?? base.dre_media_janela) || 0);
-        if (!n) return { valor: 0, desc: 'média 0m' };
-        const serie = fluxoMensal.get(id) || Array(12).fill(0); // base: consolidado para média
-        const idxBase = MES_BASE;
-        let soma = 0, count = 0;
-        for (let i = idxBase - (n - 1); i <= idxBase; i++){
-          if (i >= 0){ soma += Number(serie[i] || 0); count++; } // (não volta ano anterior neste preview)
-        }
-        const media = count ? (soma / count) : 0;
-        return { valor: media, desc: `média ${n}m até mês anterior` };
-      }
-
-      if (regra === 'competencia_driver'){
-        const p = Number((e.dre_percentual_base ?? base.dre_percentual_base) || 0);
-        const v = p * Number(receitaMes(MES_BASE) || 0);
-        return { valor: v, desc: `${(p*100).toLocaleString('pt-BR',{maximumFractionDigits:2})}% das entradas (mês anterior)` };
-      }
-
-      // especial: exceto "Compras" usa dre_valor
-      if (regra === 'especial'){
-        const nome = (base?.nome||'').trim().toLowerCase();
-        if (nome === 'compras'){
-          const v = (fluxoMensal.get(id) || [])[MES_BASE] || 0;
-          return { valor: v, desc: 'mês anterior (compras/caixa)' };
-        }
-        const v = Number((e.dre_valor ?? base.dre_valor) || 0);
-        return { valor: v, desc: 'valor fixo (especial)' };
-      }
-
-      return { valor: 0, desc: '—' };
-    }
-
-    // ========== Carregamento de dados ==========
-    // 1) Categorias
-    onValue(ref(db,'financeiro/categorias'), snap=>{
-      cache.clear();
-      if (snap.exists()){
-        snap.forEach(child=> cache.set(child.key, child.val() || {}) );
-      }
-      // inicializa séries
-      cache.forEach((_, id)=>{ dreMensal.set(id, Array(12).fill(0)); fluxoMensal.set(id, Array(12).fill(0)); });
-      render();
+    const headers = {};
+    centros.forEach(c=>{
+      const tr = buildGroupHeader(c, mesLimite);
+      headers[c] = tr; tbody.appendChild(tr);
     });
 
-    // 2) Consolidado ANO-1 e ANO → enche fluxoMensal (caixa)
-    onValue(ref(db, `financeiro/consolidado/${ANO_ANT}`), s=>{
-      carregarConsolidadoAno(ANO_ANT, s.exists()? s.val(): null);
-    });
-    onValue(ref(db, `financeiro/consolidado/${ANO}`), s=>{
-      carregarConsolidadoAno(ANO, s.exists()? s.val(): null);
-    });
-
-    function carregarConsolidadoAno(ano, node){
-      if (!node) return;
-      Object.keys(node).forEach(m=>{
-        const mm = Number(m); if (!mm||mm>12) return;
-        const mesNode = node[m] || {};
-        Object.keys(mesNode).forEach(catId=>{
-          const raw = mesNode[catId];
-          let v = 0;
-          if (typeof raw === 'number') v = raw;
-          else if (raw && typeof raw === 'object'){
-            const cands = [raw.valor, raw.total, raw.amount, raw.Valor, raw.valorReal, raw.valor_liquido, raw.valorBruto];
-            for (const x of cands){ const n = Number(x); if (!Number.isNaN(n)){ v = n; break; } }
-          }
-          const arr = fluxoMensal.get(catId) || Array(12).fill(0);
-          // Usamos somente o ano base (mês base está nesse ano ou no anterior no preview; os YTD consideram até MES_BASE)
-          if (ano === ANO_BASE || (ANO_BASE===ANO && ano===ANO)){ arr[mm-1] = Number(v)||0; }
-          fluxoMensal.set(catId, arr);
-        });
-      });
-      render();
-    }
-
-    // 3) Snapshots do ANO_BASE → enche dreMensal (competência)
-    onValue(ref(db, `financeiro/dre_fechado/${ANO_BASE}`), s=>{
-      // limpa séries
-      cache.forEach((_, id)=> dreMensal.set(id, Array(12).fill(0)) );
-      let qtd = 0;
-      if (s.exists()){
-        s.forEach(mSnap=>{
-          const mm = Number(mSnap.key); if (!mm||mm>12) return;
-          const nodo = mSnap.val() || {};
-          const cats = nodo.categorias || {};
-          Object.keys(cats).forEach(catId=>{
-            const arr = dreMensal.get(catId) || Array(12).fill(0);
-            arr[mm-1] = Number(cats[catId].valorMes||0);
-            dreMensal.set(catId, arr);
-          });
-          qtd++;
-        });
+    const linhasCat = {};
+    cats.forEach(cat=>{
+      let centroEf = cat.centro;
+      let label = cat.nome;
+      if (cat.dre_regra === 'especial' && norm(cat.nome)==='compras'){
+        centroEf = 'CMV';
+        label = 'Custo de Produto';
       }
-      badgeSnapshots.textContent = `Snapshots carregados: ${qtd}`;
-      // complementa meses sem snapshot com fallback por regra
-      recomputarDREFallback();
-      render();
+      const tr = buildRow(label, mesLimite, 'cat-row');
+      tr.dataset.grp = (centroEf||'').toLowerCase().replace(/\s+/g,'-');
+      tbody.insertBefore(tr, headers[centroEf].nextSibling);
+      linhasCat[cat.id] = { tr, centroEf, cat, label };
     });
 
-    // ========== Fallback do DRE por regra (para meses SEM snapshot, 0..MES_BASE) ==========
-    function valorDRERegraMes(catId, y, m0){
-      const cat = cache.get(catId) || {};
-      const e   = edits.get(catId) || {};
-      const r   = (e.dre_regra ?? cat.dre_regra) || 'caixa';
+    const initArr = ()=> Array.from({length:mesLimite}, ()=>0);
+    const grpSums = {}; centros.forEach(c=> grpSums[c]=initArr() );
+    const catSums = {};
 
-      // especial: se NÃO for "Compras", usa dre_valor; se for "Compras", usa consolidado/fluxo
-      if (r === 'especial'){
-        const nome = String(cat.nome||'').trim().toLowerCase();
-        if (nome === 'compras') return (fluxoMensal.get(catId)||[])[m0] || 0;
-        return Number((e.dre_valor ?? cat.dre_valor) || 0);
-      }
+    // badge de snapshots existentes no ano
+    const fechados = Object.keys(snapsAno).map(n=>Number(n)).filter(n=>n>=1 && n<=mesLimite).sort((a,b)=>a-b);
+    snapInfo.textContent = fechados.length ? `${fechados[0]}–${fechados[fechados.length-1]}` : '—';
 
-      if (r === 'competencia_media'){
-        const N = Number((e.dre_media_janela ?? cat.dre_media_janela) || 0);
-        if (!N) return 0;
-        let soma=0, c=0;
-        for (let k=0;k<N;k++){
-          let idx = m0-k; let yy = y;
-          if (idx<0){ idx+=12; yy=y-1; }
-          if (yy!==ANO && yy!==ANO_ANT) continue;
-          soma += (fluxoMensal.get(catId)||[])[idx] || 0;
-          c++;
+    // cálculos por categoria/mês (respeitando snapshot de cada mês)
+    for (const id in linhasCat){
+      const { cat, centroEf } = linhasCat[id];
+      const regra = cat.dre_regra || 'caixa';
+      const arr = initArr();
+
+      for (let m=1;m<=mesLimite;m++){
+        let val = 0;
+
+        const snapM = snapsAno[m];
+        if (snapM && snapM.categorias?.[id] != null){
+          // mês congelado: usar valor salvo no snapshot
+          val = Number(snapM.categorias[id].valorMes || 0);
+        } else if (regra === 'caixa'){
+          val = num( consAno?.[m]?.[id]?.valor || 0 );
+        } else if (regra === 'competencia_driver'){
+          const p = (cat.dre_percentual_base!=null) ? Number(cat.dre_percentual_base) : 0;
+          val = p * num(receitaMes[m-1] || 0);
+        } else if (regra === 'competencia_media'){
+          const N = cat.dre_media_janela ? Number(cat.dre_media_janela) : 0;
+          val = mediaUltimosN(id, m, N, consAno, consPrev);
+        } else if (regra === 'especial' && norm(cat.nome)==='compras'){
+          val = num( movAno?.[m]?.custoProdutoMes || 0 );
+        } else if (regra === 'especial'){
+          val = Number(cat.dre_valor||0);
+        } else {
+          val = num( consAno?.[m]?.[id]?.valor || 0 );
         }
-        return c? soma/c : 0;
+
+        arr[m-1] = val;
+        grpSums[centroEf][m-1] += val;
       }
+      catSums[id] = arr;
+    }
 
-      if (r === 'competencia_driver'){
-        const p = Number((e.dre_percentual_base ?? cat.dre_percentual_base) || 0);
-        // receita do mês vem de fluxoMensal das categorias de entrada/centro Receita
-        let receita = 0;
-        cache.forEach((c,id)=>{
-          const centro = String(c.centro||c.centroDeCusto||'').toLowerCase();
-          const tipo   = String(c.tipo||'').toLowerCase();
-          if (centro==='receita' || tipo==='entrada'){
-            receita += (fluxoMensal.get(id)||[])[m0] || 0;
-          }
-        });
-        return p * receita;
+    const setCell = (td, v, base) => setCellWithPct(td, v, base);
+
+    function fillGroupRow(trHeader, arr){
+      const anoVal = sumTo(arr, mesLimite);
+      const anoPct = receitaAnoCorte ? (anoVal/receitaAnoCorte*100).toFixed(1)+'%' : '—';
+      trHeader.children[1].innerHTML = `${fmt(anoVal)}<span class="pct">${anoPct}</span>`;
+      for(let m=1;m<=mesLimite;m++){
+        const td = trHeader.children[m+1];
+        setCell(td, arr[m-1], receitaMes[m-1]);
       }
-
-      // 'caixa' (default) → consolidado do mês
-      return (fluxoMensal.get(catId)||[])[m0] || 0;
     }
+    centros.forEach(c=> fillGroupRow(headers[c], grpSums[c]||initArr()));
 
-    function recomputarDREFallback(){
-      const y = ANO_BASE;
-      cache.forEach((_, id)=>{
-        const arr = dreMensal.get(id) || Array(12).fill(0);
-        for (let m0=0; m0<=MES_BASE; m0++){
-          if (!arr[m0] || arr[m0]===0){
-            arr[m0] = valorDRERegraMes(id, y, m0);
-          }
-        }
-        dreMensal.set(id, arr);
-      });
+    Object.keys(linhasCat).forEach(id=>{
+      const { tr } = linhasCat[id];
+      const arr = catSums[id] || initArr();
+      const anoVal = sumTo(arr, mesLimite);
+      const anoPct = receitaAnoCorte ? (anoVal/receitaAnoCorte*100).toFixed(1)+'%' : '—';
+      tr.children[1].innerHTML = `${fmt(anoVal)}<span class="pct">${anoPct}</span>`;
+      for(let m=1;m<=mesLimite;m++){
+        const td = tr.children[m+1];
+        setCell(td, arr[m-1], receitaMes[m-1]);
+      }
+    });
+
+    // Resultado (abaixo dos grupos)
+    const trRes = buildRow('Resultado', mesLimite, 'totais-row');
+    tbody.appendChild(trRes);
+    const get = n => grpSums[n] || initArr();
+    const rec = get('Receita'), cmv = get('CMV'), dop = get('Despesas Operacionais'),
+          dv  = get('Despesa Variável'), df  = get('Despesa Fixa'),
+          inv = get('Investimento'), ret = get('Retirada');
+
+    const rArr = initArr();
+    for (let m=1;m<=mesLimite;m++){
+      rArr[m-1] = (rec[m-1] - cmv[m-1] - dop[m-1] - dv[m-1] - df[m-1] - inv[m-1] - ret[m-1]);
+      const td = trRes.children[m+1];
+      setCell(td, rArr[m-1], receitaMes[m-1]);
     }
+    const rAno = sumTo(rArr, mesLimite);
+    const recAno = sumTo(receitaMes, mesLimite);
+    trRes.children[1].innerHTML = `${fmt(rAno)}<span class="pct">${recAno?(rAno/recAno*100).toFixed(1)+'%':'—'}</span>`;
 
-    // ========== Render ==========
-    function render(){
-      const q = (elBusca.value || '').toLowerCase();
-      const rows = [];
-      cache.forEach((cat,id)=>{
-        const texto = `${cat.nome||''}`.toLowerCase();
-        if (q && !texto.includes(q)) return;
-        rows.push({id,cat});
-      });
-      rows.sort((a,b)=> (a.cat?.nome||'').localeCompare(b.cat?.nome||''));
+    // zebra
+    let idx=0; tbody.querySelectorAll('tr').forEach(tr=>{
+      tr.classList.add( (idx%2===0) ? 'row-odd' : 'row-even' ); idx++;
+    });
 
-      tbody.innerHTML = '';
-      rows.forEach(({id,cat})=>{
-        const e = edits.get(id) || {};
-        const regra = (e.dre_regra ?? cat.dre_regra) || '';
-        const driver = (e.dre_percentual_base ?? cat.dre_percentual_base);
-        const mediaN = (e.dre_media_janela ?? cat.dre_media_janela);
-        const valorDRE = (e.dre_valor ?? cat.dre_valor);
+    attachToggle();
 
-        // YTDs até o mês base
-        const arrDRE   = (dreMensal.get(id)   || Array(12).fill(0)).slice(0, MESES_YTD_BASE);
-        const arrFluxo = (fluxoMensal.get(id) || Array(12).fill(0)).slice(0, MESES_YTD_BASE);
+    // ---- Botões ----
+    btnFechar.onclick = async ()=>{
+      if (mesLimite<=0){ alert('Não há mês para fechar neste ano.'); return; }
+      const exists = await getSnapshot(anoSel, mesLimite);
+      if (exists && !ckOverwrite.checked){ alert('Snapshot já existe. Marque “sobrescrever” para refazer.'); return; }
+      const payload = buildSnapshotPayload(anoSel, mesLimite, centros, linhasCat, catSums, grpSums);
+      await setSnapshot(anoSel, mesLimite, payload);
+      alert('Mês de corte fechado com sucesso.');
+      carregar(anoSel);
+    };
 
-        const somaDRE = arrDRE.reduce((a,b)=>a+b,0);
-        const mediaDRE = MESES_YTD_BASE ? (somaDRE / MESES_YTD_BASE) : 0;
+    btnFecharAnt.onclick = async ()=>{
+      if (mesLimite<=1){ alert('Não há meses anteriores para fechar.'); return; }
+      let count = 0, overwritten = 0;
+      for (let m=1;m<=mesLimite-1;m++){
+        const exists = await getSnapshot(anoSel, m);
+        if (exists && !ckOverwrite.checked){ continue; }
+        const payload = buildSnapshotPayload(anoSel, m, centros, linhasCat, catSums, grpSums);
+        await setSnapshot(anoSel, m, payload);
+        count++; if (exists) overwritten++;
+      }
+      alert(`Meses anteriores fechados: ${count}${overwritten?` (sobrescritos: ${overwritten})`:''}.`);
+      carregar(anoSel);
+    };
 
-        const somaFluxo = arrFluxo.reduce((a,b)=>a+b,0);
-        const mediaFluxo = MESES_YTD_BASE ? (somaFluxo / MESES_YTD_BASE) : 0;
+    btnReabrir.onclick = async ()=>{
+      if (mesLimite<=0){ alert('Nada para reabrir.'); return; }
+      const exists = await getSnapshot(anoSel, mesLimite);
+      if (!exists){ alert('Não há snapshot para o mês de corte.'); return; }
+      const ok = confirm(`Reabrir ${anoSel}-${String(mesLimite).padStart(2,'0')}? O snapshot será apagado.`);
+      if (!ok) return;
+      await delSnapshot(anoSel, mesLimite);
+      alert('Snapshot apagado. Mês reaberto.');
+      carregar(anoSel);
+    };
+  }
 
-        const { valor: dreCalc, desc: dreDesc } = calcDREValue(id);
-
-        const tr = document.createElement('tr');
-        if (rowDirty(id)) tr.classList.add('changed');
-
-        tr.innerHTML = `
-          <td><div><strong>${esc(cat.nome||'')}</strong></div><div class="muted">${esc(id)}</div></td>
-          <td>
-            <select class="dre-select" data-k="dre_regra" data-id="${id}">
-              <option value="" ${!regra?'selected':''}>—</option>
-              <option value="caixa" ${regra==='caixa'?'selected':''}>caixa</option>
-              <option value="competencia_driver" ${regra==='competencia_driver'?'selected':''}>competencia_driver</option>
-              <option value="competencia_media" ${regra==='competencia_media'?'selected':''}>competencia_media</option>
-              <option value="especial" ${regra==='especial'?'selected':''}>especial</option>
-            </select>
-          </td>
-          <td>
-            <div class="param-wrap" data-id="${id}" data-mode="${regra||''}">
-              <div class="param-driver">
-                <label class="muted">% Receita (driver)</label>
-                <input class="dre-input" data-k="dre_percentual_base" data-id="${id}" placeholder="Ex.: 5% ou 0,05"
-                  value="${esc(formatDecimalToPercent(driver) || '')}">
-              </div>
-              <div class="param-media">
-                <label class="muted">N meses (média)</label>
-                <input class="dre-input" data-k="dre_media_janela" data-id="${id}" type="number" step="1" min="1"
-                  value="${mediaN!=null?esc(mediaN):''}">
-              </div>
-            </div>
-          </td>
-          <td>
-            <input class="dre-input vright" data-k="dre_valor" data-id="${id}" placeholder="0,00"
-              value="${valorDRE!=null ? esc(String(valorDRE).replace('.',',')) : ''}">
-            <div class="muted">Manual: <code>categorias/${esc(id)}/dre_valor</code></div>
-          </td>
-          <td class="vright">
-            <div><strong>${fmtMoeda(dreCalc)}</strong></div>
-            <div class="muted">${esc(dreDesc)}</div>
-          </td>
-          <td class="vright">
-            <div><strong>${fmtMoeda(somaDRE)}</strong></div>
-            <div class="muted">/ ${fmtMoeda(mediaDRE)}</div>
-            <div class="muted">DRE YTD (até mês ant.)</div>
-          </td>
-          <td class="vright">
-            <div><strong>${fmtMoeda(somaFluxo)}</strong></div>
-            <div class="muted">/ ${fmtMoeda(mediaFluxo)}</div>
-            <div class="muted">Fluxo YTD (até mês ant.)</div>
-          </td>
-          <td class="row-actions nowrap"><button data-save="${id}">Salvar</button></td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      // visibilidade de parâmetros
-      tbody.querySelectorAll('.param-wrap').forEach(w=>{
-        const id = w.getAttribute('data-id');
-        const cat = cache.get(id) || {};
-        const e = edits.get(id) || {};
-        const regra = (e.dre_regra ?? cat.dre_regra) || '';
-        w.setAttribute('data-mode', regra || '');
-      });
-
-      bindRowEvents();
-      refreshBadge();
+  (async function init(){
+    const ano = anoAtual;
+    for(let y=ano-2; y<=ano+1; y++){
+      const opt=document.createElement('option'); opt.value=y; opt.textContent=y;
+      if(y===ano) opt.selected=true; anoSelect.appendChild(opt);
     }
-
-    function bindRowEvents(){
-      tbody.querySelectorAll('.dre-select').forEach(sel=>{
-        sel.addEventListener('change', ()=>{
-          const id = sel.getAttribute('data-id');
-          const e = edits.get(id) || {};
-          const v = sel.value || '';
-          e.dre_regra = v || null;
-          if (v !== 'competencia_driver') e.dre_percentual_base = null;
-          if (v !== 'competencia_media')  e.dre_media_janela = null;
-          edits.set(id, e);
-          // ao mexer na regra, recomputa fallback da série DRE
-          recomputarDREFallback();
-          render();
-        });
-      });
-
-      tbody.querySelectorAll('.dre-input').forEach(inp=>{
-        inp.addEventListener('input', ()=>{
-          const id = inp.getAttribute('data-id');
-          const k  = inp.getAttribute('data-k');
-          const e  = edits.get(id) || {};
-          let v = inp.value;
-
-          if (k === 'dre_percentual_base'){
-            const dec = parsePercentToDecimal(v);
-            e[k] = (dec == null ? null : dec);
-          } else if (k === 'dre_media_janela'){
-            const n = Number(v);
-            e[k] = (!v ? null : (isNaN(n) || n <= 0 ? null : Math.floor(n)));
-          } else if (k === 'dre_valor'){
-            const s = String(v).trim().replace(/\./g,'').replace(',','.');
-            const n = Number(s);
-            e[k] = isNaN(n) ? null : n;
-          }
-          edits.set(id, e);
-          recomputarDREFallback();
-          render();
-        });
-      });
-
-      tbody.querySelectorAll('[data-save]').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          const id = btn.getAttribute('data-save');
-          await saveRow(id);
-        });
-      });
-    }
-
-    async function saveRow(id){
-      const b = cache.get(id) || {};
-      const e = edits.get(id) || {};
-      const regra = (e.dre_regra ?? b.dre_regra) || null;
-
-      const payload = {
-        dre_regra: regra,
-        dre_percentual_base: regra === 'competencia_driver'
-          ? (e.dre_percentual_base ?? b.dre_percentual_base ?? null)
-          : null,
-        dre_media_janela: regra === 'competencia_media'
-          ? (e.dre_media_janela ?? b.dre_media_janela ?? null)
-          : null,
-        dre_valor: (e.dre_valor ?? b.dre_valor ?? null)
-      };
-
-      await update(ref(db, `financeiro/categorias/${id}`), payload);
-      edits.delete(id);
-      refreshBadge();
-      // recarrega fallback com os novos parâmetros
-      recomputarDREFallback();
-      render();
-    }
-
-    function discardAll(){ edits.clear(); refreshBadge(); recomputarDREFallback(); render(); }
-    async function saveAll(){
-      const ids = Array.from(edits.keys()).filter(rowDirty);
-      for (const id of ids) await saveRow(id);
-    }
-
-    elBusca.addEventListener('input', render);
-    elLimparFiltros.addEventListener('click', ()=>{ elBusca.value=''; render(); });
-    btnSalvarAlteracoes.addEventListener('click', saveAll);
-    btnDescartarAlteracoes.addEventListener('click', discardAll);
-  </script>
+    await carregar(Number(anoSelect.value));
+    anoSelect.addEventListener('change', ()=> carregar(Number(anoSelect.value)));
+  })();
+})();
+</script>
 </body>
 </html>
