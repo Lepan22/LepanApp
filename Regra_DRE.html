@@ -10,7 +10,7 @@
 
   <style>
     :root{
-      --fs:12px;              /* fonte base levemente menor */
+      --fs:12px;
       --fs-small:11.5px;
     }
     body, input, select, button, table { font-size: var(--fs); }
@@ -45,19 +45,18 @@
     .reset{background:#fff;}
     tr.changed{background:#f8fffb;}
     .vright{text-align:right;}
-    code{background:#f3f4f6;border-radius:6px;padding:0 4px;}
 
-    /* larguras ajustadas conforme pedido */
+    /* larguras ajustadas */
     th.col-cat{width:26%;}
-    th.col-regra{width:15%;}       /* ↑ aumentada */
-    th.col-param{width:22%;}       /* ↑ aumentada */
+    th.col-regra{width:15%;}
+    th.col-param{width:22%;}
     th.col-valor{width:12%;}
-    th.col-calc{width:8%;}         /* ↓ reduzida */
+    th.col-calc{width:8%;}
     th.col-dre{width:9.5%;}
     th.col-fluxo{width:9.5%;}
   </style>
 
-  <!-- Firebase v8 (mesmo stack das outras telas) -->
+  <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script defer src="assets/menu.js"></script>
@@ -209,7 +208,7 @@
     return soma;
   }
 
-  // ---------- DRE (calc.) preview do mês base
+  // ---------- DRE (calc.) preview do mês base (com descrição)
   function calcDREValue(id){
     const base = cache.get(id) || {};
     const e = edits.get(id) || {};
@@ -219,12 +218,12 @@
 
     if (regra === 'caixa'){
       const v = (fluxoMensal.get(id)||[])[MES_BASE] || 0;
-      return { valor: v, desc: '' };
+      return { valor: v, desc: 'mês anterior (caixa)' };
     }
 
     if (regra === 'competencia_media'){
       const n = Number((e.dre_media_janela ?? base.dre_media_janela) || 0);
-      if (!n) return { valor: 0, desc: '' };
+      if (!n) return { valor: 0, desc: 'média 0m' };
       const serie = fluxoMensal.get(id) || Array(12).fill(0);
       const idxBase = MES_BASE;
       let soma = 0, count = 0;
@@ -232,23 +231,23 @@
         if (i>=0){ soma += Number(serie[i]||0); count++; }
       }
       const media = count ? (soma/count) : 0;
-      return { valor: media, desc: '' };
+      return { valor: media, desc: `média ${n}m até mês anterior` };
     }
 
     if (regra === 'competencia_driver'){
       const p = Number((e.dre_percentual_base ?? base.dre_percentual_base) || 0);
       const v = p * Number(receitaMes(MES_BASE) || 0);
-      return { valor: v, desc: '' };
+      return { valor: v, desc: `${(p*100).toLocaleString('pt-BR',{maximumFractionDigits:2})}% das entradas (mês anterior)` };
     }
 
     if (regra === 'especial'){
       const nome = String(base?.nome||'').trim().toLowerCase();
       if (nome==='compras'){
         const v = (fluxoMensal.get(id)||[])[MES_BASE] || 0;
-        return { valor: v, desc: '' };
+        return { valor: v, desc: 'mês anterior (compras/caixa)' };
       }
       const v = Number((e.dre_valor ?? base.dre_valor) || 0);
-      return { valor: v, desc: '' };
+      return { valor: v, desc: 'valor fixo (especial)' };
     }
 
     return { valor: 0, desc: '' };
@@ -374,7 +373,8 @@
       const mediaDRE = MESES_YTD_BASE ? (somaDRE / MESES_YTD_BASE) : 0;
       const somaFluxo = arrFluxo.reduce((a,b)=>a+b,0);
       const mediaFluxo = MESES_YTD_BASE ? (somaFluxo / MESES_YTD_BASE) : 0;
-      const { valor: dreCalc } = calcDREValue(id);
+
+      const { valor: dreCalc, desc: dreDesc } = calcDREValue(id);
 
       const tr = document.createElement('tr');
       if (rowDirty(id)) tr.classList.add('changed');
@@ -393,12 +393,12 @@
         <td>
           <div class="param-wrap" data-id="${id}" data-mode="${regra||''}">
             <div class="param-driver">
-              <label class="muted">% Receita (driver)</label>
+              <label class="muted nowrap">% Receita (driver)</label>
               <input class="dre-input" data-k="dre_percentual_base" data-id="${id}" placeholder="Ex.: 5% ou 0,05"
                 value="${esc(formatDecimalToPercent(driver) || '')}">
             </div>
             <div class="param-media">
-              <label class="muted">N meses (média)</label>
+              <label class="muted nowrap">N meses (média)</label>
               <input class="dre-input" data-k="dre_media_janela" data-id="${id}" type="number" step="1" min="1"
                 value="${mediaN!=null?esc(mediaN):''}">
             </div>
@@ -407,18 +407,20 @@
         <td>
           <input class="dre-input vright" data-k="dre_valor" data-id="${id}" placeholder="0,00"
             value="${valorDRE!=null ? esc(String(valorDRE).replace('.',',')) : ''}">
-          <div class="muted">Manual: <code>categorias/${esc(id)}/dre_valor</code></div>
         </td>
-        <td class="vright"><strong>${fmtMoeda(dreCalc)}</strong></td>
+        <td class="vright">
+          <div><strong>${fmtMoeda(dreCalc)}</strong></div>
+          <div class="muted nowrap">${esc(dreDesc)}</div>
+        </td>
         <td class="vright">
           <div><strong>${fmtMoeda(somaDRE)}</strong></div>
           <div class="muted">/ ${fmtMoeda(mediaDRE)}</div>
-          <div class="muted">DRE YTD (até mês ant.)</div>
+          <div class="muted nowrap">DRE YTD (até mês ant.)</div>
         </td>
         <td class="vright">
           <div><strong>${fmtMoeda(somaFluxo)}</strong></div>
           <div class="muted">/ ${fmtMoeda(mediaFluxo)}</div>
-          <div class="muted">Fluxo YTD (até mês ant.)</div>
+          <div class="muted nowrap">Fluxo YTD (até mês ant.)</div>
         </td>
         <td class="row-actions nowrap"><button data-save="${id}">Salvar</button></td>
       `;
