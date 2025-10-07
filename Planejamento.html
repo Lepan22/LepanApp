@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Pplanejamento</title>
+<title>Planejamento</title>
 
 <link rel="stylesheet" href="assets/base.css"/>
 <link rel="stylesheet" href="assets/menu-styles.css"/>
@@ -17,8 +17,6 @@
   .controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
   .btn{height:34px;padding:0 12px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer}
   .btn.primary{background:#ff7f2a;color:#fff;border-color:#f97316}
-  .btn.ghost{background:#fff}
-  .ck{display:inline-flex;align-items:center;gap:6px}
   .tablewrap{overflow:auto;border:1px solid #eee;border-radius:10px}
   table{border-collapse:collapse;background:#fff;min-width:1100px;width:100%}
   th,td{border:1px solid #e6e6e6;padding:8px}
@@ -26,12 +24,9 @@
   th.ind,td.ind{position:sticky;left:0;background:#fafafa;min-width:var(--indw);max-width:var(--indw);width:var(--indw)}
   th.m,td.m{min-width:var(--colw);width:var(--colw);text-align:right;vertical-align:top}
   .row-hdr{font-weight:700;background:#f8fafc}
-  .ctr{display:flex;align-items:center;gap:8px}
   .in-num{width:100%;box-sizing:border-box;padding:6px;text-align:right}
   .in-pct{width:100%;box-sizing:border-box;padding:4px;text-align:right;font-size:var(--fs-sm)}
   .twolines{display:flex;flex-direction:column;gap:2px}
-  .nowrap{white-space:nowrap}
-  .badgebar{margin-top:8px}
   .small{font-size:var(--fs-sm)}
 </style>
 
@@ -45,11 +40,10 @@
 
 <div class="main-content page">
   <h1>Planejamento</h1>
-  <div class="muted">Planeje os <b>próximos 3 meses</b> e o <b>próximo ano</b>. Valores iniciam do mês base (mês anterior). Edite um mês e, se desejar, <i>propague</i> para os seguintes.</div>
+  <div class="muted">Planeje os <b>próximos 3 meses</b> e o <b>próximo ano</b>. Editou um mês? Eu já replico para os seguintes automaticamente.</div>
 
   <div class="controls">
     <span class="pill" id="ctx">—</span>
-    <label class="ck"><input type="checkbox" id="ckPropagar" checked/> Propagar alterações a partir deste mês</label>
     <button class="btn" id="btnImportarEventos">Importar dos Eventos</button>
     <button class="btn primary" id="btnSalvar">Salvar planejamento</button>
   </div>
@@ -61,15 +55,15 @@
     </table>
   </div>
 
-  <div class="badgebar">
-    <span class="pill small" id="badgeCats">Categorias: —</span>
-    <span class="pill small" id="badgeMeses">Meses no plano: —</span>
+  <div style="margin-top:8px">
+    <span class="pill" id="badgeCats">Categorias: —</span>
+    <span class="pill" id="badgeMeses">Meses no plano: —</span>
   </div>
 </div>
 
 <script>
 (function(){
-  // ---- Datas de referência
+  // ---- Datas
   const hoje = new Date();
   const ANO = hoje.getFullYear();
   const ANO_ANT = ANO - 1;
@@ -99,20 +93,18 @@
 
   // ---- Estado
   const cacheCats = new Map(); // id -> {nome, dre_regra, dre_percentual_base, dre_valor, ...}
-  let baseReceita = 0;         // receita do mês base (para % driver e %CMV)
-  let baseCompras = 0;         // compras mês base
-  let cmvPctBase = 0;          // compras/receita do mês base
+  let baseReceita = 0;         // receita do mês base
+  let baseCompras = 0;
+  let cmvPctBase = 0;
 
-  // Plano por mês: { yyyymm: { faturamento, eventos, categorias: { [id]: {valor, pct?} } } }
+  // Plano: { yyyymm: { faturamento, eventos, categorias: { [id]: {valor, pct?} } } }
   const plano = {};
-  let colunas = []; // [{y,m,ym,label}...]
+  let colunas = [];
 
-  // ---- Utilidades
-  const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  // ---- Utils
   const toNum = v => isNaN(Number(v)) ? 0 : Number(v);
   const ym = (y,m)=> `${y}${String(m).padStart(2,'0')}`;
 
-  // Gera lista de meses: próximos 3 meses (rolling) + ano seguinte inteiro
   function gerarColunas(){
     colunas = [];
     // próximos 3 meses a partir do mês atual
@@ -130,11 +122,12 @@
     document.getElementById('badgeMeses').textContent = `Meses no plano: ${colunas.length}`;
   }
 
-  // Inicializa plano com defaults copiando mês base
+  const snapBase = {}; // catId -> valorMes
+  function obterValorBaseCategoria(catId){ return toNum(snapBase[catId] || 0); }
+
   function seedPlano(){
     colunas.forEach(c=>{
       if (!plano[c.ym]) plano[c.ym] = { faturamento: baseReceita, eventos: 0, categorias:{} };
-      // por categoria
       cacheCats.forEach((cat,id)=>{
         const node = plano[c.ym].categorias[id] || {};
         const regra = cat.dre_regra || 'caixa';
@@ -151,7 +144,6 @@
             plano[c.ym].categorias[id] = { valor: v };
           }
         } else {
-          // caixa/competencia_media → copiar valor do mês base
           const v = (node.valor!=null) ? node.valor : obterValorBaseCategoria(id);
           plano[c.ym].categorias[id] = { valor: v };
         }
@@ -159,15 +151,12 @@
     });
   }
 
-  // Valor do mês base por categoria (via snapshots; fallback 0)
-  const snapBase = {}; // catId -> valorMes
-  function obterValorBaseCategoria(catId){ return toNum(snapBase[catId] || 0); }
-
-  // ---- Render da grade
+  // ---- Render
   const thead = document.getElementById('thead');
   const tbody = document.getElementById('tbody');
+
   function render(){
-    // Cabeçalho
+    // header
     thead.innerHTML = '';
     const trh = document.createElement('tr');
     trh.innerHTML = `<th class="ind">Item</th>` + colunas.map(c=>`<th class="m">${c.label}</th>`).join('');
@@ -175,7 +164,7 @@
 
     tbody.innerHTML = '';
 
-    // Linha: Faturamento (previsão)
+    // Faturamento
     const trFat = document.createElement('tr'); trFat.className='row-hdr';
     trFat.innerHTML = `<td class="ind"><b>Faturamento (previsão)</b></td>`;
     colunas.forEach(c=>{
@@ -184,7 +173,7 @@
     });
     tbody.appendChild(trFat);
 
-    // Linha: Qtd. Eventos
+    // Qtd. eventos
     const trEv = document.createElement('tr'); trEv.className='row-hdr';
     trEv.innerHTML = `<td class="ind"><b>Qtd. de eventos</b></td>`;
     colunas.forEach(c=>{
@@ -193,7 +182,7 @@
     });
     tbody.appendChild(trEv);
 
-    // Demais linhas: Categorias
+    // Categorias
     cacheCats.forEach((cat,id)=>{
       const regra = cat.dre_regra || 'caixa';
       const nome = cat.nome || id;
@@ -223,20 +212,25 @@
     bindInputs();
   }
 
-  // ---- Propagação e cálculos
-  const ckPropagar = document.getElementById('ckPropagar');
-
+  // ---- Lógica de propagação (sempre ativa)
   function recalcLinhaDriver(ymKey, catId){
     const pct = toNum(plano[ymKey].categorias[catId].pct || 0);
     const fat = toNum(plano[ymKey].faturamento || 0);
     plano[ymKey].categorias[catId].valor = pct * fat;
   }
 
+  function propagateForward(applyFn, fromYm){
+    let start = false;
+    for (const c of colunas){
+      if (!start && c.ym === fromYm) { start = true; continue; }
+      if (start) applyFn(c.ym);
+    }
+  }
+
   function onChangeFat(ymKey, val){
     if (!plano[ymKey]) plano[ymKey] = {faturamento:0,eventos:0,categorias:{}};
     plano[ymKey].faturamento = toNum(val);
-
-    // Recalcula driver/CMV deste mês
+    // Recalcula drivers/CMV do próprio mês
     cacheCats.forEach((cat,id)=>{
       const regra = cat.dre_regra || 'caixa';
       if (!plano[ymKey].categorias[id]) plano[ymKey].categorias[id] = {};
@@ -244,34 +238,23 @@
         recalcLinhaDriver(ymKey, id);
       }
     });
-
-    // Propagar obrigatoriamente se checkbox marcado (padrão: marcado)
-    if (ckPropagar.checked){
-      let propagate=false;
-      for (const c of colunas){
-        if (propagate || c.ym===ymKey){
-          propagate = true;
-          if (c.ym!==ymKey){
-            // Copia faturamento
-            if (!plano[c.ym]) plano[c.ym] = {faturamento:0,eventos:0,categorias:{}};
-            plano[c.ym].faturamento = plano[ymKey].faturamento;
-
-            // Recalcula todos driver/CMV deste mês usando o pct já definido para cada mês
-            cacheCats.forEach((cat,id)=>{
-              const regra = cat.dre_regra || 'caixa';
-              if (regra==='competencia_driver' || (regra==='especial' && String(cat.nome||'').trim().toLowerCase()==='compras')){
-                if (!plano[c.ym].categorias[id]) plano[c.ym].categorias[id] = {};
-                // mantém o pct do próprio mês (se não existir, herda do mês origem)
-                if (plano[c.ym].categorias[id].pct==null){
-                  plano[c.ym].categorias[id].pct = (plano[ymKey].categorias[id]?.pct ?? (cat.dre_percentual_base || 0));
-                }
-                recalcLinhaDriver(c.ym, id);
-              }
-            });
+    // Propaga para frente automaticamente
+    propagateForward((ymFut)=>{
+      if (!plano[ymFut]) plano[ymFut] = {faturamento:0,eventos:0,categorias:{}};
+      plano[ymFut].faturamento = plano[ymKey].faturamento;
+      cacheCats.forEach((cat,id)=>{
+        const regra = cat.dre_regra || 'caixa';
+        if (regra==='competencia_driver' || (regra==='especial' && String(cat.nome||'').trim().toLowerCase()==='compras')){
+          if (!plano[ymFut].categorias[id]) plano[ymFut].categorias[id]={};
+          // mantém pct já definido no mês futuro; se não tinha, herda do mês origem
+          if (plano[ymFut].categorias[id].pct==null){
+            plano[ymFut].categorias[id].pct = (plano[ymKey].categorias[id]?.pct ?? (cat.dre_percentual_base || 0));
           }
+          recalcLinhaDriver(ymFut, id);
         }
-      }
-    }
+      });
+    }, ymKey);
+    render();
   }
 
   function onChangePct(ymKey, catId, pctVal){
@@ -279,106 +262,68 @@
     if (!plano[ymKey].categorias[catId]) plano[ymKey].categorias[catId] = {};
     plano[ymKey].categorias[catId].pct = toNum(pctVal);
     recalcLinhaDriver(ymKey, catId);
-
-    if (ckPropagar.checked){
-      let propagate=false;
-      for (const c of colunas){
-        if (propagate || c.ym===ymKey){
-          propagate=true;
-          if (c.ym!==ymKey){
-            if (!plano[c.ym].categorias[catId]) plano[c.ym].categorias[catId]={};
-            plano[c.ym].categorias[catId].pct = plano[ymKey].categorias[catId].pct;
-            recalcLinhaDriver(c.ym, catId);
-          }
-        }
-      }
-    }
+    propagateForward((ymFut)=>{
+      if (!plano[ymFut].categorias) plano[ymFut].categorias = {};
+      if (!plano[ymFut].categorias[catId]) plano[ymFut].categorias[catId] = {};
+      plano[ymFut].categorias[catId].pct = plano[ymKey].categororias?.[catId]?.pct ?? toNum(pctVal);
+      recalcLinhaDriver(ymFut, catId);
+    }, ymKey);
+    render();
   }
 
   function onChangeVal(ymKey, catId, val){
     if (!plano[ymKey]) plano[ymKey]={faturamento:0,eventos:0,categorias:{}};
     if (!plano[ymKey].categorias[catId]) plano[ymKey].categorias[catId] = {};
     plano[ymKey].categorias[catId].valor = toNum(val);
-
-    if (ckPropagar.checked){
-      let propagate=false;
-      for (const c of colunas){
-        if (propagate || c.ym===ymKey){
-          propagate=true;
-          if (c.ym!==ymKey){
-            if (!plano[c.ym].categorias[catId]) plano[c.ym].categorias[catId]={};
-            plano[c.ym].categorias[catId].valor = plano[ymKey].categorias[catId].valor;
-          }
-        }
-      }
-    }
+    propagateForward((ymFut)=>{
+      if (!plano[ymFut].categorias) plano[ymFut].categorias = {};
+      if (!plano[ymFut].categorias[catId]) plano[ymFut].categorias[catId] = {};
+      plano[ymFut].categorias[catId].valor = plano[ymKey].categorias[catId].valor;
+    }, ymKey);
+    render();
   }
 
   function bindInputs(){
     document.querySelectorAll('input[data-kind="fat"]').forEach(inp=>{
-      inp.oninput = ()=>{ onChangeFat(inp.dataset.ym, inp.value); };
+      inp.oninput = ()=> onChangeFat(inp.dataset.ym, inp.value);
     });
     document.querySelectorAll('input[data-kind="evt"]').forEach(inp=>{
-      inp.oninput = ()=>{ const k=inp.dataset.ym; if(!plano[k]) plano[k]={faturamento:0,eventos:0,categorias:{}}; plano[k].eventos = Math.max(0,Math.floor(toNum(inp.value)||0));
-        if (ckPropagar.checked){
-          let prop=false; for(const c of colunas){ if(prop||c.ym===k){ prop=true; if(c.ym!==k){ plano[c.ym].eventos = plano[k].eventos; } } }
-        }
+      inp.oninput = ()=>{
+        const k=inp.dataset.ym;
+        if(!plano[k]) plano[k]={faturamento:0,eventos:0,categorias:{}};
+        plano[k].eventos = Math.max(0,Math.floor(toNum(inp.value)||0));
+        propagateForward((ymFut)=>{ if(!plano[ymFut]) plano[ymFut]={faturamento:0,eventos:0,categorias:{}}; plano[ymFut].eventos = plano[k].eventos; }, k);
       };
     });
     document.querySelectorAll('input[data-kind="pct"]').forEach(inp=>{
-      inp.oninput = ()=>{ onChangePct(inp.dataset.ym, inp.dataset.id, inp.value); };
+      inp.oninput = ()=> onChangePct(inp.dataset.ym, inp.dataset.id, inp.value);
     });
     document.querySelectorAll('input[data-kind="val"]').forEach(inp=>{
-      inp.oninput = ()=>{ onChangeVal(inp.dataset.ym, inp.dataset.id, inp.value); };
+      inp.oninput = ()=> onChangeVal(inp.dataset.ym, inp.dataset.id, inp.value);
     });
   }
 
-  // ---- Importar dos Eventos (mais robusto)
-  function pickNumber(...vals){
-    for (const v of vals){
-      const n = Number(v);
-      if (!Number.isNaN(n) && Number.isFinite(n) && Math.abs(n)>0) return n;
-    }
-    return 0;
-  }
-  function extractEventRevenue(ev){
-    // tenta campos diretos
-    const direct = pickNumber(
-      ev.faturamentoPrevisto, ev.vendaPrevista, ev.vendasPrevistas, ev.faturamento, ev.receitaPrevista,
-      ev.valorPrevisto, ev.valorEstimado, ev.valorOrcado, ev.orcado, ev.previsao, ev.previsto, ev.total, ev.valor, ev.receita
-    );
-    if (direct) return direct;
-    // tenta somar itens
-    const itens = ev.itens || ev.items || ev.produtos || ev.servicos || ev.serviços;
-    if (Array.isArray(itens)){
-      let soma = 0;
-      itens.forEach(it=>{
-        const n = pickNumber(it.total, it.valor, it.preco, it.preço);
-        const q = pickNumber(it.qtd, it.quantidade, it.qtde, 1) || 1;
-        if (n && (it.total!=null)) soma += Number(n);
-        else if (n) soma += Number(n) * Number(q);
-      });
-      if (soma) return soma;
-    }
-    // nenhuma pista
-    return 0;
-  }
+  // ---- Importar dos Eventos (soma TODOS)
+  function extractEventRevenue(ev){ return Number(ev?.estimativaVenda) || 0; }
+  function extractEventDate(ev){ return ev?.data || ev?.dataEvento || ev?.inicio || ev?.start || ev?.when || null; }
+
   async function importarEventos(){
     const s = await db.ref('eventos').once('value');
-    if (!s.exists()) { alert('Não encontrei nó "eventos". Você pode preencher manualmente.'); return; }
+    if (!s.exists()) { alert('Não encontrei nó "eventos".'); return; }
     const v = s.val()||{};
     const byYM = {};
+    const ymKey = (y,m)=> `${y}${String(m).padStart(2,'0')}`;
+
     Object.values(v).forEach(ev=>{
-      const d = ev.data || ev.dataEvento || ev.inicio || ev.start || ev.when || ev.dataHora || ev.date;
-      const dt = d ? new Date(d) : null;
+      const dStr = extractEventDate(ev);
+      const dt = dStr ? new Date(dStr) : null;
       if (!dt || isNaN(dt)) return;
       const y = dt.getFullYear(), m = dt.getMonth()+1;
-      const key = ym(y,m);
-      const qtd = 1;
-      const val = extractEventRevenue(ev); // <<<<<<<<<<<< novo
+      const key = ymKey(y,m);
+      const fat = extractEventRevenue(ev);
       if (!byYM[key]) byYM[key] = { eventos:0, fat:0 };
-      byYM[key].eventos += qtd;
-      byYM[key].fat += toNum(val);
+      byYM[key].eventos += 1;
+      byYM[key].fat += toNum(fat);
     });
 
     let applied = 0;
@@ -386,21 +331,19 @@
       const key = c.ym;
       if (byYM[key]){
         if (!plano[key]) plano[key]={faturamento:0,eventos:0,categorias:{}};
-        plano[key].eventos = byYM[key].eventos;
-        // Atualiza faturamento e recalcula drivers/CMV
-        plano[key].faturamento = byYM[key].fat || plano[key].faturamento;
+        plano[key].eventos     = byYM[key].eventos;
+        plano[key].faturamento = byYM[key].fat;
+        // Recalcula drivers/CMV do mês
         cacheCats.forEach((cat,id)=>{
           const regra = cat.dre_regra || 'caixa';
-          if (regra==='competencia_driver' || (regra==='especial' && String(cat.nome||'').trim().toLowerCase()==='compras')){
+          const nome  = String(cat.nome||'').trim().toLowerCase();
+          if (regra==='competencia_driver' || (regra==='especial' && nome==='compras')){
             if (!plano[key].categorias[id]) plano[key].categorias[id]={};
             recalcLinhaDriver(key, id);
           }
         });
-        // Se propagar estiver ligado e for a primeira coluna escolhida, aplica para frente
-        if (document.getElementById('ckPropagar').checked){
-          // usa o valor do próprio mês como “novo padrão” para frente
-          onChangeFat(key, plano[key].faturamento);
-        }
+        // Propaga automaticamente com base nesse faturamento
+        onChangeFat(key, plano[key].faturamento);
         applied++;
       }
     });
@@ -408,7 +351,7 @@
     alert(`Importado de "eventos": aplicado em ${applied} mês(es).`);
   }
 
-  // ---- Salvar planejamento
+  // ---- Salvar
   async function salvar(){
     for (const c of colunas){
       const node = plano[c.ym] || {faturamento:0,eventos:0,categorias:{}};
@@ -423,11 +366,10 @@
     alert('Planejamento salvo!');
   }
 
-  // ---- Bootstrap: carrega categorias, snapshot do mês base e receita/compras
+  // ---- Bootstrap
   async function bootstrap(){
     gerarColunas();
 
-    // categorias
     const sc = await db.ref('financeiro/categorias').once('value');
     if (sc.exists()){
       const v = sc.val()||{};
@@ -435,11 +377,10 @@
     }
     document.getElementById('badgeCats').textContent = `Categorias: ${cacheCats.size}`;
 
-    // snapshots mês base (para receita/compras/valores iniciais)
     const snap = await db.ref(`financeiro/dre_fechado/${ANO_BASE}/${String(MES_BASE+1).padStart(2,'0')}`).once('value');
     const node = snap.val() || {};
     baseReceita = toNum(node?.grupos?.Receita?.mes || 0);
-    baseCompras = toNum(node?.grupos?.CMV?.mes || 0); // no DRE agrupado “CMV”
+    baseCompras = toNum(node?.grupos?.CMV?.mes || 0);
     if (!baseCompras){
       const catCompras = [...cacheCats].find(([id,c])=> String(c.nome||'').trim().toLowerCase()==='compras');
       if (catCompras){
@@ -448,7 +389,6 @@
     }
     cmvPctBase = baseReceita>0 ? (baseCompras/baseReceita) : 0;
 
-    // valores base por categoria
     Object.keys(node?.categorias||{}).forEach(id=>{
       snapBase[id] = toNum(node.categorias[id]?.valorMes||0);
     });
