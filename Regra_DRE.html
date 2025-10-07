@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>regras de DRE por Categoria</title>
+  <title>Regras de DRE por Categoria</title>
 
   <link rel="stylesheet" href="assets/base.css"/>
   <link rel="stylesheet" href="assets/menu-styles.css"/>
@@ -39,6 +39,7 @@
     tr.changed{background:#f8fffb;}
     .pill{display:inline-block;padding:2px 6px;border-radius:999px;font-size:11px;border:1px solid #e5e7eb;background:#fff;}
     .vright{text-align:right;}
+    code{font-size:11px;}
   </style>
 </head>
 <body>
@@ -50,7 +51,6 @@
       <span class="muted">Base de cálculo: mês anterior. YTD até o mês anterior.</span>
     </div>
 
-    <!-- Filtros -->
     <div class="filters">
       <label>
         Busca (nome)
@@ -59,7 +59,6 @@
       <button id="limparFiltros">Limpar filtros</button>
     </div>
 
-    <!-- Tabela -->
     <table id="tabela">
       <thead>
         <tr>
@@ -87,12 +86,7 @@
     import { db } from './assets/firebase-config.js';
     import { ref, onValue, update } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
 
-    // ===================== CONFIG =====================
-    // Se quiser forçar fallback do Fluxo usando consolidado (enquanto não existir movimentação por categoria),
-    // mude para true. Deixei false para não misturar origens.
-    const FLUXO_FALLBACK_USAR_CONSOLIDADO = false;
-
-    // ===================== ELEMENTOS =====================
+    // ---------- Elementos
     const elBusca = document.getElementById('busca');
     const elLimparFiltros = document.getElementById('limparFiltros');
     const tbody = document.getElementById('lista');
@@ -100,21 +94,15 @@
     const btnDescartarAlteracoes = document.getElementById('descartarAlteracoes');
     const badgeAlteracoes = document.getElementById('badgeAlteracoes');
 
-    // ===================== ESTADOS =====================
+    // ---------- Estados
     const cache = new Map();        // id -> categoria
     const edits = new Map();        // id -> { dre_regra, dre_percentual_base, dre_media_janela, dre_valor }
 
-    // DRE (competência) — consolidado
-    const dreYTD = new Map();          // id -> soma YTD até mês base (consolidado)
-    const mensaisDRE = new Map();      // id -> série mensal (consolidado)
-    const valorMesBaseDRE = new Map(); // id -> valor do mês base (consolidado)
-
-    // Fluxo (caixa)
-    const fluxoYTD = new Map();            // id -> soma YTD até mês base (movimentação por categoria OU fallback)
-    const mensaisFluxo = new Map();        // id -> série mensal (idem)
-    const valorMesBaseFluxo = new Map();   // id -> valor mês base (idem)
-    let fluxoTemDetalhePorCategoria = false;
-    let somaEntradasMesBase = 0;           // % driver (somatório das categorias tipo 'Entrada' no CONsOLIDADO do mês base)
+    // Séries do CONSOLIDADO (usadas tanto para DRE quanto para o "Fluxo" desta tela)
+    const serieMes = new Map();     // id -> Array(24) [ANO-1: 0..11, ANO: 12..23]
+    const ytd = new Map();          // id -> soma YTD (até mês base)
+    const valorMesBase = new Map(); // id -> valor do mês base (anterior)
+    let somaEntradasMesBase = 0;    // p/ competencia_driver
 
     const hoje = new Date();
     const ANO = hoje.getFullYear();
@@ -124,7 +112,7 @@
     const ANO_BASE = (MES_ATUAL === 0) ? ANO_ANT : ANO; // ano do mês base
     const MESES_YTD_BASE = (ANO_BASE === ANO_ANT) ? 12 : (MES_BASE + 1);
 
-    // ===================== UTILS =====================
+    // ---------- Utils
     const esc = (s='') => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
                                    .replaceAll('"','&quot;').replaceAll("'","&#39;");
     const fmtMoeda = (n=0) => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -160,7 +148,7 @@
       badgeAlteracoes.textContent = `${count} alteração(ões)`;
     }
 
-    // ===================== CÁLCULO DRE (calc.) =====================
+    // ---------- Cálculo DRE (calc.) — mês anterior (sempre via CONSOLIDADO por categoria)
     function calcDREValue(id){
       const base = cache.get(id) || {};
       const e = edits.get(id) || {};
@@ -169,14 +157,13 @@
       if (!regra) return { valor: 0, desc: '—' };
 
       if (regra === 'caixa'){
-        // Sem movimentação por categoria, usamos o mês base do consolidado (granular por categoria)
-        const v = Number(valorMesBaseDRE.get(id) || 0);
-        return { valor: v, desc: 'mês anterior (consolidado)' };
+        const v = Number(valorMesBase.get(id) || 0);
+        return { valor: v, desc: 'mês anterior' };
       }
 
       if (regra === 'competencia_media'){
         const n = Number((e.dre_media_janela ?? base.dre_media_janela) || 0);
-        const serie = mensaisDRE.get(id) || Array(24).fill(0);
+        const serie = serieMes.get(id) || Array(24).fill(0);
         const idxBase = (ANO_BASE === ANO ? 12 : 0) + MES_BASE; // índice absoluto do mês base
         let soma = 0, count = 0;
         if (n > 0){
@@ -197,7 +184,7 @@
       return { valor: 0, desc: 'especial' };
     }
 
-    // ===================== RENDER =====================
+    // ---------- Render
     function render(){
       const q = (elBusca.value || '').toLowerCase();
       const rows = [];
@@ -217,19 +204,14 @@
         const valorDRE = (e.dre_valor ?? cat.dre_valor);
 
         // YTDs e médias (até mês base)
-        const somaDRE = Number((dreYTD.get(id) || 0));
-        const mediaDRE = somaDRE / Math.max(1, MESES_YTD_BASE);
+        const somaCat = Number((ytd.get(id) || 0));
+        const mediaCat = somaCat / Math.max(1, MESES_YTD_BASE);
 
-        const somaFluxo = Number((fluxoYTD.get(id) || 0));
-        const mediaFluxo = somaFluxo / Math.max(1, MESES_YTD_BASE);
-
+        // DRE(calc.)
         const { valor: dreCalc, desc: dreDesc } = calcDREValue(id);
 
         const tr = document.createElement('tr');
         if (rowDirty(id)) tr.classList.add('changed');
-
-        const notaFluxo = fluxoTemDetalhePorCategoria ? 'Fluxo YTD (até mês ant.)'
-                          : (FLUXO_FALLBACK_USAR_CONSOLIDADO ? 'Fluxo (fallback consolidado)' : 'Fluxo YTD indisponível por categoria');
 
         tr.innerHTML = `
           <td><div><strong>${esc(cat.nome||'')}</strong></div><div class="muted">${esc(id)}</div></td>
@@ -266,14 +248,14 @@
             <div class="muted">${esc(dreDesc)}</div>
           </td>
           <td class="vright">
-            <div><strong>${fmtMoeda(somaDRE)}</strong></div>
-            <div class="muted">/ ${fmtMoeda(mediaDRE)}</div>
+            <div><strong>${fmtMoeda(somaCat)}</strong></div>
+            <div class="muted">/ ${fmtMoeda(mediaCat)}</div>
             <div class="muted">DRE YTD (até mês ant.)</div>
           </td>
           <td class="vright">
-            <div><strong>${fmtMoeda(somaFluxo)}</strong></div>
-            <div class="muted">/ ${fmtMoeda(mediaFluxo)}</div>
-            <div class="muted">${esc(notaFluxo)}</div>
+            <div><strong>${fmtMoeda(somaCat)}</strong></div>
+            <div class="muted">/ ${fmtMoeda(mediaCat)}</div>
+            <div class="muted">Fluxo (mesma base do Fluxo_financeiro)</div>
           </td>
           <td class="row-actions nowrap"><button data-save="${id}">Salvar</button></td>
         `;
@@ -371,43 +353,45 @@
     btnSalvarAlteracoes.addEventListener('click', saveAll);
     btnDescartarAlteracoes.addEventListener('click', discardAll);
 
-    // ===================== CATEGORIAS =====================
+    // ---------- Categorias
     onValue(ref(db,'financeiro/categorias'), snap=>{
       cache.clear();
       if (snap.exists()){
         snap.forEach(child=>{ cache.set(child.key, child.val() || {}); });
       }
-      render(); // até dados carregarem
+      render();
     });
 
-    // ===================== CONSOLIDADO (DRE) =====================
-    const consCache = new Map(); // ano -> nó
-    onValue(ref(db, `financeiro/consolidado/${ANO_ANT}`), s => recomputeDRE(ANO_ANT, s.exists()?s.val():null));
-    onValue(ref(db, `financeiro/consolidado/${ANO}`),     s => recomputeDRE(ANO,     s.exists()?s.val():null));
+    // ---------- CONSOLIDADO (ANO-1 e ANO) — mesma base do Fluxo_financeiro.html
+    const consCache = new Map(); // ano -> node
 
-    function recomputeDRE(ano, node){
+    onValue(ref(db, `financeiro/consolidado/${ANO_ANT}`), s => recomputeConsolidado(ANO_ANT, s.exists()?s.val():null));
+    onValue(ref(db, `financeiro/consolidado/${ANO}`),     s => recomputeConsolidado(ANO,     s.exists()?s.val():null));
+
+    function recomputeConsolidado(ano, node){
       consCache.set(ano, node);
 
-      // zera estruturas DRE
-      dreYTD.clear();
-      valorMesBaseDRE.clear();
-      mensaisDRE.clear();
+      // zera agregados
+      serieMes.clear();
+      ytd.clear();
+      valorMesBase.clear();
+      somaEntradasMesBase = 0;
 
-      // garante arrays por categoria
-      cache.forEach((_, id)=> mensaisDRE.set(id, Array(24).fill(0)) );
+      // arrays base para todas categorias conhecidas
+      cache.forEach((_, id)=> serieMes.set(id, Array(24).fill(0)) );
 
-      // processa anos em ordem
+      // processa anos na ordem (ANO-1 -> ANO)
       [ANO_ANT, ANO].forEach(a=>{
         const n = consCache.get(a);
         if (!n) return;
 
         const baseOffset = (a === ANO) ? 12 : 0;
 
-        // Forma 1: lista por mês com ids de categoria (ex.: '2025' = array)
+        // Formato array por mês (1..12) com ids de categoria (igual ao Fluxo_financeiro)
         if (Array.isArray(n)){
           n.forEach((mesNode, idx)=>{
             if (!mesNode || typeof mesNode !== 'object') return;
-            const mesIdx = idx - 1; // [0]=null, [1]=jan ...
+            const mesIdx = idx - 1; // [0]=null, [1]=jan
             if (mesIdx < 0 || mesIdx > 11) return;
 
             Object.entries(mesNode).forEach(([catId, val])=>{
@@ -415,101 +399,33 @@
               if (typeof val === 'number') numero = val;
               else if (val && typeof val === 'object'){
                 const cands = [val.valor, val.total, val.amount, val.Valor, val.valorReal, val.valor_liquido, val.valorBruto];
-                for (const v of cands){ const num = Number(v); if (!Number.isNaN(num) && num !== 0){ numero = num; break; } }
+                for (const v of cands){
+                  const num = Number(v);
+                  if (!Number.isNaN(num) && num !== 0){ numero = num; break; }
+                }
               }
-              const arr = mensaisDRE.get(catId) || Array(24).fill(0);
-              arr[baseOffset + mesIdx] = Number(numero) || 0;
-              mensaisDRE.set(catId, arr);
 
+              const arr = serieMes.get(catId) || Array(24).fill(0);
+              arr[baseOffset + mesIdx] = Number(numero) || 0;
+              serieMes.set(catId, arr);
+
+              // YTD até mês base do ANO corrente
               if (a === ANO && (mesIdx+1) <= (MES_BASE + 1)){
-                dreYTD.set(catId, Number(dreYTD.get(catId) || 0) + (Number(numero) || 0));
+                ytd.set(catId, Number(ytd.get(catId) || 0) + (Number(numero) || 0));
               }
-              const isMesBase = ( (a === ANO_BASE) && (mesIdx === MES_BASE) );
-              if (isMesBase){ valorMesBaseDRE.set(catId, Number(numero) || 0); }
+
+              // Valor do mês base
+              const isMesBase = ((a === ANO_BASE) && (mesIdx === MES_BASE));
+              if (isMesBase){ valorMesBase.set(catId, Number(numero) || 0); }
             });
           });
         }
-        // Forma 2: nós por mês nomeado 'YYYY_MM' (entradas/saidas com nomes legíveis)
-        // (não usamos aqui porque não traz IDs de categoria)
       });
 
-      // soma das Entradas no MÊS BASE (competencia_driver) a partir do consolidado
-      somaEntradasMesBase = 0;
+      // soma das Entradas no MÊS BASE (competencia_driver)
       cache.forEach((cat, id)=>{
         if ((cat?.tipo) === 'Entrada'){
-          somaEntradasMesBase += Number(valorMesBaseDRE.get(id) || 0);
-        }
-      });
-
-      render();
-    }
-
-    // ===================== FLUXO (MOVIMENTAÇÃO OU FALLLBACK) =====================
-    const movCache = new Map(); // ano -> nó
-    onValue(ref(db, `financeiro/movimentacao/${ANO_ANT}`), s => recomputeFluxo(ANO_ANT, s.exists()?s.val():null));
-    onValue(ref(db, `financeiro/movimentacao/${ANO}`),     s => recomputeFluxo(ANO,     s.exists()?s.val():null));
-
-    function recomputeFluxo(ano, node){
-      movCache.set(ano, node);
-
-      // zera estruturas Fluxo
-      fluxoYTD.clear();
-      valorMesBaseFluxo.clear();
-      mensaisFluxo.clear();
-      fluxoTemDetalhePorCategoria = false;
-
-      cache.forEach((_, id)=> mensaisFluxo.set(id, Array(24).fill(0)) );
-
-      [ANO_ANT, ANO].forEach(a=>{
-        let n = movCache.get(a);
-        const baseOffset = (a === ANO) ? 12 : 0;
-        if (!n) return;
-
-        // Se existir em MOVIMENTAÇÃO uma lista por mês com IDs de categoria (igual ao consolidado),
-        // usamos como origem do Fluxo. No backup enviado não há esse detalhamento.
-        if (Array.isArray(n)){
-          // detecta se algum mês possui chaves de categoria (IDs iniciados por "-")
-          const temIds = n.some(mesNode => mesNode && typeof mesNode==='object' &&
-                            Object.keys(mesNode).some(k => k.startsWith('-')));
-          if (temIds){
-            fluxoTemDetalhePorCategoria = true;
-            n.forEach((mesNode, idx)=>{
-              if (!mesNode || typeof mesNode !== 'object') return;
-              const mesIdx = idx - 1;
-              if (mesIdx < 0 || mesIdx > 11) return;
-
-              Object.entries(mesNode).forEach(([catId, val])=>{
-                if (!catId.startsWith('-')) return;
-                let numero = 0;
-                if (typeof val === 'number') numero = val;
-                else if (val && typeof val === 'object'){
-                  const cands = [val.valor, val.total, val.amount, val.Valor, val.valorReal, val.valor_liquido, val.valorBruto];
-                  for (const v of cands){ const num = Number(v); if (!Number.isNaN(num) && num !== 0){ numero = num; break; } }
-                }
-                const arr = mensaisFluxo.get(catId) || Array(24).fill(0);
-                arr[baseOffset + mesIdx] = Number(numero) || 0;
-                mensaisFluxo.set(catId, arr);
-
-                if (a === ANO && (mesIdx+1) <= (MES_BASE + 1)){
-                  fluxoYTD.set(catId, Number(fluxoYTD.get(catId) || 0) + (Number(numero) || 0));
-                }
-                const isMesBase = ( (a === ANO_BASE) && (mesIdx === MES_BASE) );
-                if (isMesBase){ valorMesBaseFluxo.set(catId, Number(numero) || 0); }
-              });
-            });
-          } else if (FLUXO_FALLBACK_USAR_CONSOLIDADO) {
-            // fallback: usa consolidado (mesma lógica do DRE) somente se explicitamente habilitado
-            // para não exibir um "Fluxo" de origem diferente
-            fluxoTemDetalhePorCategoria = false;
-            // copia dos arrays do DRE
-            mensaisDRE.forEach((arr, catId)=>{
-              const arrF = mensaisFluxo.get(catId) || Array(24).fill(0);
-              for (let i=0;i<arr.length;i++) arrF[i] = arr[i];
-              mensaisFluxo.set(catId, arrF);
-            });
-            dreYTD.forEach((v, catId)=> fluxoYTD.set(catId, v));
-            valorMesBaseDRE.forEach((v, catId)=> valorMesBaseFluxo.set(catId, v));
-          }
+          somaEntradasMesBase += Number(valorMesBase.get(id) || 0);
         }
       });
 
