@@ -7,13 +7,13 @@
 
   <link rel="stylesheet" href="assets/base.css"/>
   <link rel="stylesheet" href="assets/menu-styles.css"/>
-  <script type="module" src="assets/firebase-config.js"></script>
-  <script defer src="assets/menu.js"></script>
 
   <style>
     .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
     .page-header h1{margin:0;font-size:20px;color:#111827;}
     .muted{color:#6b7280;font-size:11.5px;}
+    .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:12px;color:#374151}
 
     .filters{display:grid;grid-template-columns:1fr 160px;gap:10px;margin-bottom:10px;align-items:end;}
     @media (max-width:900px){.filters{grid-template-columns:1fr;}}
@@ -22,7 +22,7 @@
     .filters button{height:32px;border:1px solid #ddd;border-radius:8px;background:#ff7f2a;color:#fff;cursor:pointer;}
 
     .table-wrap{overflow:auto;border:1px solid #eee;border-radius:10px;background:#fff;}
-    table{width:100%;border-collapse:collapse;background:#fff;min-width:1100px;}
+    table{width:100%;border-collapse:collapse;min-width:1100px;background:#fff;}
     thead th{background:#fff7ec;color:#111827;text-align:left;border:1px solid #e5e7eb;padding:8px;font-size:12.5px;}
     tbody td{border:1px solid #e5e7eb;padding:6px 8px;font-size:12.5px;vertical-align:top;}
     .nowrap{white-space:nowrap;}
@@ -38,26 +38,35 @@
     .save{background:#10b981;color:#fff;border-color:#0ea5e9;}
     .reset{background:#fff;}
     tr.changed{background:#f8fffb;}
-    .pill{display:inline-block;padding:2px 6px;border-radius:999px;font-size:11px;border:1px solid #e5e7eb;background:#fff;}
     .vright{text-align:right;}
     code{background:#f3f4f6;border-radius:6px;padding:0 4px;}
     .wider{min-width:160px;}
   </style>
+
+  <!-- Firebase v8 (mesmo stack das outras telas) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script defer src="assets/menu.js"></script>
 </head>
 <body>
   <div id="menuLateral" class="sidebar"></div>
 
   <div class="main-content">
     <div class="page-header">
-      <h1>Regras de DRE por Categoria</h1>
-      <span class="muted">
-        Base de cálculo: <strong>mês anterior</strong> (calc.). YTD até o mês anterior.
-        DRE (Anual/Média) usa snapshots em <code>financeiro/dre_fechado</code> (competência) com fallback por regra.
-        Fluxo vem do <code>consolidado</code> (caixa).
-      </span>
+      <div>
+        <h1>Regras de DRE por Categoria</h1>
+        <div class="muted">
+          Base de cálculo: <strong>mês anterior</strong> (calc.). YTD até o mês anterior.
+          <br/>DRE (Anual/Média) usa <code>financeiro/dre_fechado</code> (competência) com fallback por regra. Fluxo vem do <code>consolidado</code> (caixa).
+        </div>
+        <div class="badges">
+          <span class="pill" id="badgeContexto">—</span>
+          <span class="pill" id="badgeCats">—</span>
+          <span class="pill" id="badgeSnaps">—</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Filtros -->
     <div class="filters">
       <label>
         Busca (nome)
@@ -66,7 +75,6 @@
       <button id="limparFiltros">Limpar filtros</button>
     </div>
 
-    <!-- Tabela -->
     <div class="table-wrap">
       <table id="tabela">
         <thead>
@@ -89,441 +97,428 @@
       <button class="reset" id="descartarAlteracoes">Descartar alterações</button>
       <button class="save" id="salvarAlteracoes">Salvar alterações (em lote)</button>
       <span id="badgeAlteracoes" class="pill muted">0 alteração(ões)</span>
-      <span id="badgeContexto" class="pill muted">Ano base: — | Mês base: —</span>
-      <span id="badgeSnapshots" class="pill muted">Snapshots carregados: —</span>
     </div>
   </div>
 
-  <script type="module">
-    import { db } from './assets/firebase-config.js';
-    import { ref, onValue, update, get, child } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+<script>
+(function(){
+  // ---------- Datas base (sempre até mês anterior)
+  const hoje = new Date();
+  const ANO = hoje.getFullYear();
+  const ANO_ANT = ANO - 1;
+  const MES_ATUAL = hoje.getMonth();             // 0..11
+  const MES_BASE  = (MES_ATUAL - 1 + 12) % 12;   // mês anterior (0..11)
+  const ANO_BASE  = (MES_ATUAL === 0) ? ANO_ANT : ANO;
+  const MESES_YTD_BASE = (ANO_BASE === ANO_ANT) ? 12 : (MES_BASE + 1);
 
-    // ---------- Elementos
-    const elBusca = document.getElementById('busca');
-    const elLimparFiltros = document.getElementById('limparFiltros');
-    const tbody = document.getElementById('lista');
-    const btnSalvarAlteracoes = document.getElementById('salvarAlteracoes');
-    const btnDescartarAlteracoes = document.getElementById('descartarAlteracoes');
-    const badgeAlteracoes = document.getElementById('badgeAlteracoes');
-    const badgeContexto = document.getElementById('badgeContexto');
-    const badgeSnapshots = document.getElementById('badgeSnapshots');
+  const badgeCtx   = document.getElementById('badgeContexto');
+  const badgeCats  = document.getElementById('badgeCats');
+  const badgeSnaps = document.getElementById('badgeSnaps');
+  badgeCtx.textContent = `Ano base: ${ANO_BASE} • Mês base: ${String(MES_BASE+1).padStart(2,'0')} • YTD: ${MESES_YTD_BASE} mês(es)`;
 
-    // ---------- Estados (cache de cadastro e edições)
-    const cache = new Map();        // id -> categoria
-    const edits = new Map();        // id -> { dre_regra, dre_percentual_base, dre_media_janela, dre_valor }
+  // ---------- Firebase v8
+  try{
+    const cfg = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+  }catch(e){ console.error(e); }
 
-    // ---------- Séries mensais (0..11)
-    const dreMensal = new Map();    // id -> Array(12) (competência: snapshot ou fallback por regra)
-    const fluxoMensal = new Map();  // id -> Array(12) (caixa: consolidado)
+  const db = firebase.database();
 
-    // ---------- Contexto de datas
-    const hoje = new Date();
-    const ANO = hoje.getFullYear();
-    const ANO_ANT = ANO - 1;
-    const MES_ATUAL = hoje.getMonth(); // 0..11
-    const MES_BASE = (MES_ATUAL - 1 + 12) % 12;        // mês anterior (0..11)
-    const ANO_BASE = (MES_ATUAL === 0) ? ANO_ANT : ANO; // ano do mês base
-    const MESES_YTD_BASE = (ANO_BASE === ANO_ANT) ? 12 : (MES_BASE + 1);
+  // ---------- DOM
+  const elBusca = document.getElementById('busca');
+  const elLimpar = document.getElementById('limparFiltros');
+  const tbody = document.getElementById('lista');
+  const btnSalvarAlteracoes = document.getElementById('salvarAlteracoes');
+  const btnDescartarAlteracoes = document.getElementById('descartarAlteracoes');
+  const badgeAlteracoes = document.getElementById('badgeAlteracoes');
 
-    badgeContexto.textContent = `Ano base: ${ANO_BASE} | Mês base: ${String(MES_BASE+1).padStart(2,'0')}`;
+  // ---------- Estados
+  const cache = new Map();        // id -> categoria
+  const edits = new Map();        // id -> {dre_regra, dre_percentual_base, dre_media_janela, dre_valor}
+  const dreMensal = new Map();    // id -> Array(12) (competência: snapshot ou fallback)
+  const fluxoMensal = new Map();  // id -> Array(12) (caixa)
 
-    // ---------- Utils
-    const esc = (s='') => String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-                                   .replaceAll('"','&quot;').replaceAll("'","&#39;");
-    const fmtMoeda = (n=0) => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  // ---------- Utils
+  const esc = (s='') => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                                  .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const fmtMoeda = (n=0) => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 
-    function parsePercentToDecimal(txt){
-      if (txt == null) return null;
-      let s = String(txt).trim();
-      if (!s) return null;
-      s = s.replace('%','').replace(/\s+/g,'').replace(',','.');
-      let v = Number(s);
-      if (isNaN(v)) return null;
-      if (v > 1) v = v/100;
-      return v;
+  function parsePercentToDecimal(txt){
+    if (txt == null) return null;
+    let s = String(txt).trim();
+    if (!s) return null;
+    s = s.replace('%','').replace(/\s+/g,'').replace(',','.');
+    let v = Number(s);
+    if (isNaN(v)) return null;
+    if (v > 1) v = v/100;
+    return v;
+  }
+  function formatDecimalToPercent(dec){
+    if (dec == null || dec === '') return '';
+    const n = Number(dec); if (isNaN(n)) return '';
+    return (n*100).toLocaleString('pt-BR',{maximumFractionDigits:2}) + '%';
+  }
+  function rowDirty(id){
+    const b = cache.get(id) || {};
+    const e = edits.get(id);
+    if (!e) return false;
+    return (
+      (e.dre_regra ?? b.dre_regra) !== b.dre_regra ||
+      (e.dre_percentual_base ?? b.dre_percentual_base) !== b.dre_percentual_base ||
+      (e.dre_media_janela ?? b.dre_media_janela) !== b.dre_media_janela ||
+      (e.dre_valor ?? b.dre_valor) !== b.dre_valor
+    );
+  }
+  function refreshBadge(){
+    const count = Array.from(edits.keys()).filter(rowDirty).length;
+    badgeAlteracoes.textContent = `${count} alteração(ões)`;
+  }
+
+  // ---------- Receitas (para driver)
+  function receitaMes(m0){
+    let soma = 0;
+    cache.forEach((cat, id)=>{
+      const centro = String(cat.centro||cat.centroDeCusto||'').toLowerCase();
+      const tipo   = String(cat.tipo||'').toLowerCase();
+      if (centro==='receita' || tipo==='entrada'){
+        soma += (fluxoMensal.get(id)||[])[m0] || 0;
+      }
+    });
+    return soma;
+  }
+
+  // ---------- DRE (calc.) preview do mês base
+  function calcDREValue(id){
+    const base = cache.get(id) || {};
+    const e = edits.get(id) || {};
+    const regra = (e.dre_regra ?? base.dre_regra) || null;
+
+    if (!regra) return { valor: 0, desc: '—' };
+
+    if (regra === 'caixa'){
+      const v = (fluxoMensal.get(id)||[])[MES_BASE] || 0;
+      return { valor: v, desc: 'mês anterior (caixa)' };
     }
-    function formatDecimalToPercent(dec){
-      if (dec == null || dec === '') return '';
-      const n = Number(dec); if (isNaN(n)) return '';
-      return (n*100).toLocaleString('pt-BR',{maximumFractionDigits:2}) + '%';
-    }
-    function rowDirty(id){
-      const b = cache.get(id) || {};
-      const e = edits.get(id);
-      if (!e) return false;
-      return (
-        (e.dre_regra ?? b.dre_regra) !== b.dre_regra ||
-        (e.dre_percentual_base ?? b.dre_percentual_base) !== b.dre_percentual_base ||
-        (e.dre_media_janela ?? b.dre_media_janela) !== b.dre_media_janela ||
-        (e.dre_valor ?? b.dre_valor) !== b.dre_valor
-      );
-    }
-    function refreshBadge(){
-      const count = Array.from(edits.keys()).filter(rowDirty).length;
-      badgeAlteracoes.textContent = `${count} alteração(ões)`;
+
+    if (regra === 'competencia_media'){
+      const n = Number((e.dre_media_janela ?? base.dre_media_janela) || 0);
+      if (!n) return { valor: 0, desc: 'média 0m' };
+      const serie = fluxoMensal.get(id) || Array(12).fill(0);
+      const idxBase = MES_BASE;
+      let soma = 0, count = 0;
+      for (let i=idxBase-(n-1); i<=idxBase; i++){
+        if (i>=0){ soma += Number(serie[i]||0); count++; }
+      }
+      const media = count ? (soma/count) : 0;
+      return { valor: media, desc: `média ${n}m até mês anterior` };
     }
 
-    // ========== Cálculo do DRE (calc.) — mês base (preview da regra atual)
-    // Dependências para calc (driver): receita do mês base via fluxoMensal
-    function receitaMes(m0){
-      let soma = 0;
-      cache.forEach((cat, id)=>{
-        const centro = String(cat.centro||cat.centroDeCusto||'').toLowerCase();
-        const tipo   = String(cat.tipo||'').toLowerCase();
-        if (centro === 'receita' || tipo === 'entrada'){
-          soma += (fluxoMensal.get(id) || [])[m0] || 0;
+    if (regra === 'competencia_driver'){
+      const p = Number((e.dre_percentual_base ?? base.dre_percentual_base) || 0);
+      const v = p * Number(receitaMes(MES_BASE) || 0);
+      return { valor: v, desc: `${(p*100).toLocaleString('pt-BR',{maximumFractionDigits:2})}% das entradas (mês anterior)` };
+    }
+
+    if (regra === 'especial'){
+      const nome = String(base?.nome||'').trim().toLowerCase();
+      if (nome==='compras'){
+        const v = (fluxoMensal.get(id)||[])[MES_BASE] || 0;
+        return { valor: v, desc: 'mês anterior (compras/caixa)' };
+      }
+      const v = Number((e.dre_valor ?? base.dre_valor) || 0);
+      return { valor: v, desc: 'valor fixo (especial)' };
+    }
+
+    return { valor: 0, desc: '—' };
+  }
+
+  // ---------- Carregamento: Categorias
+  db.ref('financeiro/categorias').on('value', snap=>{
+    cache.clear();
+    if (snap.exists()){
+      const v = snap.val()||{};
+      Object.keys(v).forEach(id=> cache.set(id, v[id]||{}) );
+    }
+    badgeCats.textContent = `Categorias: ${cache.size}`;
+    // inicializa matrizes (evita “sumir” dados se alguma leitura chegar antes)
+    cache.forEach((_, id)=>{ if(!dreMensal.has(id)) dreMensal.set(id, Array(12).fill(0)); if(!fluxoMensal.has(id)) fluxoMensal.set(id, Array(12).fill(0)); });
+    render();
+  });
+
+  // ---------- Carregamento: Consolidado (Fluxo / caixa)
+  function aplicarConsolidado(ano, node){
+    if (!node) return;
+    Object.keys(node).forEach(m=>{
+      const mm = Number(m); if (!(mm>=1 && mm<=12)) return;
+      const mesNode = node[m]||{};
+      Object.keys(mesNode).forEach(catId=>{
+        let val = 0, raw = mesNode[catId];
+        if (typeof raw==='number') val = raw;
+        else if (raw && typeof raw==='object'){
+          const cands = [raw.valor, raw.total, raw.amount, raw.Valor, raw.valorReal, raw.valor_liquido, raw.valorBruto];
+          for (const c of cands){ const n = Number(c); if (!Number.isNaN(n)){ val = n; break; } }
         }
+        const arr = fluxoMensal.get(catId) || Array(12).fill(0);
+        arr[mm-1] = Number(val)||0;
+        fluxoMensal.set(catId, arr);
       });
-      return soma;
-    }
+    });
+    render();
+  }
+  db.ref(`financeiro/consolidado/${ANO_ANT}`).on('value', s=> aplicarConsolidado(ANO_ANT, s.val()||{}));
+  db.ref(`financeiro/consolidado/${ANO}`).on('value',     s=> aplicarConsolidado(ANO,     s.val()||{}));
 
-    function calcDREValue(id){
-      const base = cache.get(id) || {};
+  // ---------- Carregamento: Snapshots do ano base (DRE / competência)
+  db.ref(`financeiro/dre_fechado/${ANO_BASE}`).on('value', s=>{
+    // zera as séries
+    cache.forEach((_, id)=> dreMensal.set(id, Array(12).fill(0)) );
+    let mesesSnap = 0;
+    if (s.exists()){
+      const v = s.val()||{};
+      Object.keys(v).forEach(mm=>{
+        const m = Number(mm); if (!(m>=1 && m<=12)) return;
+        mesesSnap++;
+        const cats = v[mm]?.categorias || {};
+        Object.keys(cats).forEach(catId=>{
+          const arr = dreMensal.get(catId) || Array(12).fill(0);
+          arr[m-1] = Number(cats[catId]?.valorMes || 0);
+          dreMensal.set(catId, arr);
+        });
+      });
+    }
+    badgeSnaps.textContent = `Snapshots carregados: ${mesesSnap}`;
+    // completa meses SEM snapshot com fallback calculado pela regra
+    recomputarDREFallback();
+    render();
+  });
+
+  // ---------- Fallback da competência (para meses sem snapshot)
+  function valorDRERegraMes(catId, y, m0){
+    const cat = cache.get(catId) || {};
+    const e   = edits.get(catId) || {};
+    const r   = (e.dre_regra ?? cat.dre_regra) || 'caixa';
+
+    if (r==='especial'){
+      const nome = String(cat.nome||'').trim().toLowerCase();
+      if (nome==='compras') return (fluxoMensal.get(catId)||[])[m0] || 0;
+      return Number((e.dre_valor ?? cat.dre_valor) || 0);
+    }
+    if (r==='competencia_media'){
+      const N = Number((e.dre_media_janela ?? cat.dre_media_janela) || 0);
+      if (!N) return 0;
+      let soma=0, c=0;
+      for (let k=0;k<N;k++){
+        let idx=m0-k;
+        if (idx<0) break; // (preview/fallback simples sem voltar ano)
+        soma += (fluxoMensal.get(catId)||[])[idx]||0; c++;
+      }
+      return c? soma/c : 0;
+    }
+    if (r==='competencia_driver'){
+      const p = Number((e.dre_percentual_base ?? cat.dre_percentual_base) || 0);
+      let receita = receitaMes(m0);
+      return p * receita;
+    }
+    // 'caixa' (default)
+    return (fluxoMensal.get(catId)||[])[m0] || 0;
+  }
+  function recomputarDREFallback(){
+    cache.forEach((_, id)=>{
+      const arr = dreMensal.get(id) || Array(12).fill(0);
+      for (let m0=0; m0<=MES_BASE; m0++){
+        if (!arr[m0]) arr[m0] = valorDRERegraMes(id, ANO_BASE, m0);
+      }
+      dreMensal.set(id, arr);
+    });
+  }
+
+  // ---------- Render
+  function render(){
+    const q = (elBusca.value||'').trim().toLowerCase();
+    const rows = [];
+    cache.forEach((cat,id)=>{
+      const texto = `${cat.nome||''}`.toLowerCase();
+      if (q && !texto.includes(q)) return;
+      rows.push({id,cat});
+    });
+    // evita caso de sumir tudo: se tiver busca e zerou, não filtra
+    if (q && rows.length===0){ cache.forEach((cat,id)=> rows.push({id,cat})); }
+
+    rows.sort((a,b)=> (a.cat?.nome||'').localeCompare(b.cat?.nome||''));
+
+    tbody.innerHTML = '';
+    rows.forEach(({id,cat})=>{
       const e = edits.get(id) || {};
-      const regra = (e.dre_regra ?? base.dre_regra) || null;
+      const regra = (e.dre_regra ?? cat.dre_regra) || '';
+      const driver = (e.dre_percentual_base ?? cat.dre_percentual_base);
+      const mediaN = (e.dre_media_janela ?? cat.dre_media_janela);
+      const valorDRE = (e.dre_valor ?? cat.dre_valor);
 
-      if (!regra) return { valor: 0, desc: '—' };
+      const arrDRE   = (dreMensal.get(id)   || Array(12).fill(0)).slice(0, MESES_YTD_BASE);
+      const arrFluxo = (fluxoMensal.get(id) || Array(12).fill(0)).slice(0, MESES_YTD_BASE);
 
-      if (regra === 'caixa'){
-        const v = (fluxoMensal.get(id) || [])[MES_BASE] || 0;
-        return { valor: v, desc: 'mês anterior (caixa)' };
-      }
+      const somaDRE = arrDRE.reduce((a,b)=>a+b,0);
+      const mediaDRE = MESES_YTD_BASE ? (somaDRE / MESES_YTD_BASE) : 0;
 
-      if (regra === 'competencia_media'){
-        const n = Number((e.dre_media_janela ?? base.dre_media_janela) || 0);
-        if (!n) return { valor: 0, desc: 'média 0m' };
-        const serie = fluxoMensal.get(id) || Array(12).fill(0); // base: consolidado para média
-        const idxBase = MES_BASE;
-        let soma = 0, count = 0;
-        for (let i = idxBase - (n - 1); i <= idxBase; i++){
-          if (i >= 0){ soma += Number(serie[i] || 0); count++; } // (não volta ano anterior neste preview)
-        }
-        const media = count ? (soma / count) : 0;
-        return { valor: media, desc: `média ${n}m até mês anterior` };
-      }
+      const somaFluxo = arrFluxo.reduce((a,b)=>a+b,0);
+      const mediaFluxo = MESES_YTD_BASE ? (somaFluxo / MESES_YTD_BASE) : 0;
 
-      if (regra === 'competencia_driver'){
-        const p = Number((e.dre_percentual_base ?? base.dre_percentual_base) || 0);
-        const v = p * Number(receitaMes(MES_BASE) || 0);
-        return { valor: v, desc: `${(p*100).toLocaleString('pt-BR',{maximumFractionDigits:2})}% das entradas (mês anterior)` };
-      }
+      const { valor: dreCalc, desc: dreDesc } = calcDREValue(id);
 
-      // especial: exceto "Compras" usa dre_valor
-      if (regra === 'especial'){
-        const nome = (base?.nome||'').trim().toLowerCase();
-        if (nome === 'compras'){
-          const v = (fluxoMensal.get(id) || [])[MES_BASE] || 0;
-          return { valor: v, desc: 'mês anterior (compras/caixa)' };
-        }
-        const v = Number((e.dre_valor ?? base.dre_valor) || 0);
-        return { valor: v, desc: 'valor fixo (especial)' };
-      }
+      const tr = document.createElement('tr');
+      if (rowDirty(id)) tr.classList.add('changed');
 
-      return { valor: 0, desc: '—' };
-    }
-
-    // ========== Carregamento de dados ==========
-    // 1) Categorias
-    onValue(ref(db,'financeiro/categorias'), snap=>{
-      cache.clear();
-      if (snap.exists()){
-        snap.forEach(child=> cache.set(child.key, child.val() || {}) );
-      }
-      // inicializa séries
-      cache.forEach((_, id)=>{ dreMensal.set(id, Array(12).fill(0)); fluxoMensal.set(id, Array(12).fill(0)); });
-      render();
-    });
-
-    // 2) Consolidado ANO-1 e ANO → enche fluxoMensal (caixa)
-    onValue(ref(db, `financeiro/consolidado/${ANO_ANT}`), s=>{
-      carregarConsolidadoAno(ANO_ANT, s.exists()? s.val(): null);
-    });
-    onValue(ref(db, `financeiro/consolidado/${ANO}`), s=>{
-      carregarConsolidadoAno(ANO, s.exists()? s.val(): null);
-    });
-
-    function carregarConsolidadoAno(ano, node){
-      if (!node) return;
-      Object.keys(node).forEach(m=>{
-        const mm = Number(m); if (!mm||mm>12) return;
-        const mesNode = node[m] || {};
-        Object.keys(mesNode).forEach(catId=>{
-          const raw = mesNode[catId];
-          let v = 0;
-          if (typeof raw === 'number') v = raw;
-          else if (raw && typeof raw === 'object'){
-            const cands = [raw.valor, raw.total, raw.amount, raw.Valor, raw.valorReal, raw.valor_liquido, raw.valorBruto];
-            for (const x of cands){ const n = Number(x); if (!Number.isNaN(n)){ v = n; break; } }
-          }
-          const arr = fluxoMensal.get(catId) || Array(12).fill(0);
-          // Usamos somente o ano base (mês base está nesse ano ou no anterior no preview; os YTD consideram até MES_BASE)
-          if (ano === ANO_BASE || (ANO_BASE===ANO && ano===ANO)){ arr[mm-1] = Number(v)||0; }
-          fluxoMensal.set(catId, arr);
-        });
-      });
-      render();
-    }
-
-    // 3) Snapshots do ANO_BASE → enche dreMensal (competência)
-    onValue(ref(db, `financeiro/dre_fechado/${ANO_BASE}`), s=>{
-      // limpa séries
-      cache.forEach((_, id)=> dreMensal.set(id, Array(12).fill(0)) );
-      let qtd = 0;
-      if (s.exists()){
-        s.forEach(mSnap=>{
-          const mm = Number(mSnap.key); if (!mm||mm>12) return;
-          const nodo = mSnap.val() || {};
-          const cats = nodo.categorias || {};
-          Object.keys(cats).forEach(catId=>{
-            const arr = dreMensal.get(catId) || Array(12).fill(0);
-            arr[mm-1] = Number(cats[catId].valorMes||0);
-            dreMensal.set(catId, arr);
-          });
-          qtd++;
-        });
-      }
-      badgeSnapshots.textContent = `Snapshots carregados: ${qtd}`;
-      // complementa meses sem snapshot com fallback por regra
-      recomputarDREFallback();
-      render();
-    });
-
-    // ========== Fallback do DRE por regra (para meses SEM snapshot, 0..MES_BASE) ==========
-    function valorDRERegraMes(catId, y, m0){
-      const cat = cache.get(catId) || {};
-      const e   = edits.get(catId) || {};
-      const r   = (e.dre_regra ?? cat.dre_regra) || 'caixa';
-
-      // especial: se NÃO for "Compras", usa dre_valor; se for "Compras", usa consolidado/fluxo
-      if (r === 'especial'){
-        const nome = String(cat.nome||'').trim().toLowerCase();
-        if (nome === 'compras') return (fluxoMensal.get(catId)||[])[m0] || 0;
-        return Number((e.dre_valor ?? cat.dre_valor) || 0);
-      }
-
-      if (r === 'competencia_media'){
-        const N = Number((e.dre_media_janela ?? cat.dre_media_janela) || 0);
-        if (!N) return 0;
-        let soma=0, c=0;
-        for (let k=0;k<N;k++){
-          let idx = m0-k; let yy = y;
-          if (idx<0){ idx+=12; yy=y-1; }
-          if (yy!==ANO && yy!==ANO_ANT) continue;
-          soma += (fluxoMensal.get(catId)||[])[idx] || 0;
-          c++;
-        }
-        return c? soma/c : 0;
-      }
-
-      if (r === 'competencia_driver'){
-        const p = Number((e.dre_percentual_base ?? cat.dre_percentual_base) || 0);
-        // receita do mês vem de fluxoMensal das categorias de entrada/centro Receita
-        let receita = 0;
-        cache.forEach((c,id)=>{
-          const centro = String(c.centro||c.centroDeCusto||'').toLowerCase();
-          const tipo   = String(c.tipo||'').toLowerCase();
-          if (centro==='receita' || tipo==='entrada'){
-            receita += (fluxoMensal.get(id)||[])[m0] || 0;
-          }
-        });
-        return p * receita;
-      }
-
-      // 'caixa' (default) → consolidado do mês
-      return (fluxoMensal.get(catId)||[])[m0] || 0;
-    }
-
-    function recomputarDREFallback(){
-      const y = ANO_BASE;
-      cache.forEach((_, id)=>{
-        const arr = dreMensal.get(id) || Array(12).fill(0);
-        for (let m0=0; m0<=MES_BASE; m0++){
-          if (!arr[m0] || arr[m0]===0){
-            arr[m0] = valorDRERegraMes(id, y, m0);
-          }
-        }
-        dreMensal.set(id, arr);
-      });
-    }
-
-    // ========== Render ==========
-    function render(){
-      const q = (elBusca.value || '').toLowerCase();
-      const rows = [];
-      cache.forEach((cat,id)=>{
-        const texto = `${cat.nome||''}`.toLowerCase();
-        if (q && !texto.includes(q)) return;
-        rows.push({id,cat});
-      });
-      rows.sort((a,b)=> (a.cat?.nome||'').localeCompare(b.cat?.nome||''));
-
-      tbody.innerHTML = '';
-      rows.forEach(({id,cat})=>{
-        const e = edits.get(id) || {};
-        const regra = (e.dre_regra ?? cat.dre_regra) || '';
-        const driver = (e.dre_percentual_base ?? cat.dre_percentual_base);
-        const mediaN = (e.dre_media_janela ?? cat.dre_media_janela);
-        const valorDRE = (e.dre_valor ?? cat.dre_valor);
-
-        // YTDs até o mês base
-        const arrDRE   = (dreMensal.get(id)   || Array(12).fill(0)).slice(0, MESES_YTD_BASE);
-        const arrFluxo = (fluxoMensal.get(id) || Array(12).fill(0)).slice(0, MESES_YTD_BASE);
-
-        const somaDRE = arrDRE.reduce((a,b)=>a+b,0);
-        const mediaDRE = MESES_YTD_BASE ? (somaDRE / MESES_YTD_BASE) : 0;
-
-        const somaFluxo = arrFluxo.reduce((a,b)=>a+b,0);
-        const mediaFluxo = MESES_YTD_BASE ? (somaFluxo / MESES_YTD_BASE) : 0;
-
-        const { valor: dreCalc, desc: dreDesc } = calcDREValue(id);
-
-        const tr = document.createElement('tr');
-        if (rowDirty(id)) tr.classList.add('changed');
-
-        tr.innerHTML = `
-          <td><div><strong>${esc(cat.nome||'')}</strong></div><div class="muted">${esc(id)}</div></td>
-          <td>
-            <select class="dre-select" data-k="dre_regra" data-id="${id}">
-              <option value="" ${!regra?'selected':''}>—</option>
-              <option value="caixa" ${regra==='caixa'?'selected':''}>caixa</option>
-              <option value="competencia_driver" ${regra==='competencia_driver'?'selected':''}>competencia_driver</option>
-              <option value="competencia_media" ${regra==='competencia_media'?'selected':''}>competencia_media</option>
-              <option value="especial" ${regra==='especial'?'selected':''}>especial</option>
-            </select>
-          </td>
-          <td>
-            <div class="param-wrap" data-id="${id}" data-mode="${regra||''}">
-              <div class="param-driver">
-                <label class="muted">% Receita (driver)</label>
-                <input class="dre-input" data-k="dre_percentual_base" data-id="${id}" placeholder="Ex.: 5% ou 0,05"
-                  value="${esc(formatDecimalToPercent(driver) || '')}">
-              </div>
-              <div class="param-media">
-                <label class="muted">N meses (média)</label>
-                <input class="dre-input" data-k="dre_media_janela" data-id="${id}" type="number" step="1" min="1"
-                  value="${mediaN!=null?esc(mediaN):''}">
-              </div>
+      tr.innerHTML = `
+        <td><div><strong>${esc(cat.nome||'')}</strong></div><div class="muted">${esc(id)}</div></td>
+        <td>
+          <select class="dre-select" data-k="dre_regra" data-id="${id}">
+            <option value="" ${!regra?'selected':''}>—</option>
+            <option value="caixa" ${regra==='caixa'?'selected':''}>caixa</option>
+            <option value="competencia_driver" ${regra==='competencia_driver'?'selected':''}>competencia_driver</option>
+            <option value="competencia_media" ${regra==='competencia_media'?'selected':''}>competencia_media</option>
+            <option value="especial" ${regra==='especial'?'selected':''}>especial</option>
+          </select>
+        </td>
+        <td>
+          <div class="param-wrap" data-id="${id}" data-mode="${regra||''}">
+            <div class="param-driver">
+              <label class="muted">% Receita (driver)</label>
+              <input class="dre-input" data-k="dre_percentual_base" data-id="${id}" placeholder="Ex.: 5% ou 0,05"
+                value="${esc(formatDecimalToPercent(driver) || '')}">
             </div>
-          </td>
-          <td>
-            <input class="dre-input vright" data-k="dre_valor" data-id="${id}" placeholder="0,00"
-              value="${valorDRE!=null ? esc(String(valorDRE).replace('.',',')) : ''}">
-            <div class="muted">Manual: <code>categorias/${esc(id)}/dre_valor</code></div>
-          </td>
-          <td class="vright">
-            <div><strong>${fmtMoeda(dreCalc)}</strong></div>
-            <div class="muted">${esc(dreDesc)}</div>
-          </td>
-          <td class="vright">
-            <div><strong>${fmtMoeda(somaDRE)}</strong></div>
-            <div class="muted">/ ${fmtMoeda(mediaDRE)}</div>
-            <div class="muted">DRE YTD (até mês ant.)</div>
-          </td>
-          <td class="vright">
-            <div><strong>${fmtMoeda(somaFluxo)}</strong></div>
-            <div class="muted">/ ${fmtMoeda(mediaFluxo)}</div>
-            <div class="muted">Fluxo YTD (até mês ant.)</div>
-          </td>
-          <td class="row-actions nowrap"><button data-save="${id}">Salvar</button></td>
-        `;
-        tbody.appendChild(tr);
-      });
+            <div class="param-media">
+              <label class="muted">N meses (média)</label>
+              <input class="dre-input" data-k="dre_media_janela" data-id="${id}" type="number" step="1" min="1"
+                value="${mediaN!=null?esc(mediaN):''}">
+            </div>
+          </div>
+        </td>
+        <td>
+          <input class="dre-input vright" data-k="dre_valor" data-id="${id}" placeholder="0,00"
+            value="${valorDRE!=null ? esc(String(valorDRE).replace('.',',')) : ''}">
+          <div class="muted">Manual: <code>categorias/${esc(id)}/dre_valor</code></div>
+        </td>
+        <td class="vright">
+          <div><strong>${fmtMoeda(dreCalc)}</strong></div>
+          <div class="muted">${esc(dreDesc)}</div>
+        </td>
+        <td class="vright">
+          <div><strong>${fmtMoeda(somaDRE)}</strong></div>
+          <div class="muted">/ ${fmtMoeda(mediaDRE)}</div>
+          <div class="muted">DRE YTD (até mês ant.)</div>
+        </td>
+        <td class="vright">
+          <div><strong>${fmtMoeda(somaFluxo)}</strong></div>
+          <div class="muted">/ ${fmtMoeda(mediaFluxo)}</div>
+          <div class="muted">Fluxo YTD (até mês ant.)</div>
+        </td>
+        <td class="row-actions nowrap"><button data-save="${id}">Salvar</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
 
-      // visibilidade de parâmetros
-      tbody.querySelectorAll('.param-wrap').forEach(w=>{
-        const id = w.getAttribute('data-id');
-        const cat = cache.get(id) || {};
-        const e = edits.get(id) || {};
-        const regra = (e.dre_regra ?? cat.dre_regra) || '';
-        w.setAttribute('data-mode', regra || '');
-      });
-
-      bindRowEvents();
-      refreshBadge();
-    }
-
-    function bindRowEvents(){
-      tbody.querySelectorAll('.dre-select').forEach(sel=>{
-        sel.addEventListener('change', ()=>{
-          const id = sel.getAttribute('data-id');
-          const e = edits.get(id) || {};
-          const v = sel.value || '';
-          e.dre_regra = v || null;
-          if (v !== 'competencia_driver') e.dre_percentual_base = null;
-          if (v !== 'competencia_media')  e.dre_media_janela = null;
-          edits.set(id, e);
-          // ao mexer na regra, recomputa fallback da série DRE
-          recomputarDREFallback();
-          render();
-        });
-      });
-
-      tbody.querySelectorAll('.dre-input').forEach(inp=>{
-        inp.addEventListener('input', ()=>{
-          const id = inp.getAttribute('data-id');
-          const k  = inp.getAttribute('data-k');
-          const e  = edits.get(id) || {};
-          let v = inp.value;
-
-          if (k === 'dre_percentual_base'){
-            const dec = parsePercentToDecimal(v);
-            e[k] = (dec == null ? null : dec);
-          } else if (k === 'dre_media_janela'){
-            const n = Number(v);
-            e[k] = (!v ? null : (isNaN(n) || n <= 0 ? null : Math.floor(n)));
-          } else if (k === 'dre_valor'){
-            const s = String(v).trim().replace(/\./g,'').replace(',','.');
-            const n = Number(s);
-            e[k] = isNaN(n) ? null : n;
-          }
-          edits.set(id, e);
-          recomputarDREFallback();
-          render();
-        });
-      });
-
-      tbody.querySelectorAll('[data-save]').forEach(btn=>{
-        btn.addEventListener('click', async ()=>{
-          const id = btn.getAttribute('data-save');
-          await saveRow(id);
-        });
-      });
-    }
-
-    async function saveRow(id){
-      const b = cache.get(id) || {};
+    tbody.querySelectorAll('.param-wrap').forEach(w=>{
+      const id = w.getAttribute('data-id');
+      const cat = cache.get(id) || {};
       const e = edits.get(id) || {};
-      const regra = (e.dre_regra ?? b.dre_regra) || null;
+      const regra = (e.dre_regra ?? cat.dre_regra) || '';
+      w.setAttribute('data-mode', regra || '');
+    });
 
-      const payload = {
-        dre_regra: regra,
-        dre_percentual_base: regra === 'competencia_driver'
-          ? (e.dre_percentual_base ?? b.dre_percentual_base ?? null)
-          : null,
-        dre_media_janela: regra === 'competencia_media'
-          ? (e.dre_media_janela ?? b.dre_media_janela ?? null)
-          : null,
-        dre_valor: (e.dre_valor ?? b.dre_valor ?? null)
-      };
+    bindRowEvents();
+    refreshBadge();
+  }
 
-      await update(ref(db, `financeiro/categorias/${id}`), payload);
-      edits.delete(id);
-      refreshBadge();
-      // recarrega fallback com os novos parâmetros
-      recomputarDREFallback();
-      render();
-    }
+  function bindRowEvents(){
+    tbody.querySelectorAll('.dre-select').forEach(sel=>{
+      sel.addEventListener('change', ()=>{
+        const id = sel.getAttribute('data-id');
+        const e = edits.get(id) || {};
+        const v = sel.value || '';
+        e.dre_regra = v || null;
+        if (v !== 'competencia_driver') e.dre_percentual_base = null;
+        if (v !== 'competencia_media')  e.dre_media_janela = null;
+        edits.set(id, e);
+        recomputarDREFallback();
+        render();
+      });
+    });
 
-    function discardAll(){ edits.clear(); refreshBadge(); recomputarDREFallback(); render(); }
-    async function saveAll(){
-      const ids = Array.from(edits.keys()).filter(rowDirty);
-      for (const id of ids) await saveRow(id);
-    }
+    tbody.querySelectorAll('.dre-input').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const id = inp.getAttribute('data-id');
+        const k  = inp.getAttribute('data-k');
+        const e  = edits.get(id) || {};
+        let v = inp.value;
 
-    elBusca.addEventListener('input', render);
-    elLimparFiltros.addEventListener('click', ()=>{ elBusca.value=''; render(); });
-    btnSalvarAlteracoes.addEventListener('click', saveAll);
-    btnDescartarAlteracoes.addEventListener('click', discardAll);
-  </script>
+        if (k === 'dre_percentual_base'){
+          const dec = parsePercentToDecimal(v);
+          e[k] = (dec == null ? null : dec);
+        } else if (k === 'dre_media_janela'){
+          const n = Number(v);
+          e[k] = (!v ? null : (isNaN(n) || n <= 0 ? null : Math.floor(n)));
+        } else if (k === 'dre_valor'){
+          const s = String(v).trim().replace(/\./g,'').replace(',','.');
+          const n = Number(s);
+          e[k] = isNaN(n) ? null : n;
+        }
+        edits.set(id, e);
+        recomputarDREFallback();
+        render();
+      });
+    });
+
+    tbody.querySelectorAll('[data-save]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.getAttribute('data-save');
+        await saveRow(id);
+      });
+    });
+  }
+
+  async function saveRow(id){
+    const b = cache.get(id) || {};
+    const e = edits.get(id) || {};
+    const regra = (e.dre_regra ?? b.dre_regra) || null;
+
+    const payload = {
+      dre_regra: regra,
+      dre_percentual_base: regra === 'competencia_driver'
+        ? (e.dre_percentual_base ?? b.dre_percentual_base ?? null)
+        : null,
+      dre_media_janela: regra === 'competencia_media'
+        ? (e.dre_media_janela ?? b.dre_media_janela ?? null)
+        : null,
+      dre_valor: (e.dre_valor ?? b.dre_valor ?? null)
+    };
+
+    await db.ref(`financeiro/categorias/${id}`).update(payload);
+    edits.delete(id);
+    refreshBadge();
+    recomputarDREFallback();
+    render();
+  }
+
+  function discardAll(){ edits.clear(); refreshBadge(); recomputarDREFallback(); render(); }
+
+  document.getElementById('salvarAlteracoes').addEventListener('click', async ()=>{
+    const ids = Array.from(edits.keys()).filter(rowDirty);
+    for (const id of ids) await saveRow(id);
+  });
+  btnDescartarAlteracoes.addEventListener('click', discardAll);
+  elBusca.addEventListener('input', render);
+  elLimpar.addEventListener('click', ()=>{ elBusca.value=''; render(); });
+
+})();
+</script>
 </body>
 </html>
