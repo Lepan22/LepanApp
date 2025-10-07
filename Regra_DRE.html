@@ -9,38 +9,52 @@
   <link rel="stylesheet" href="assets/menu-styles.css"/>
 
   <style>
+    :root{
+      --fs:12px;              /* fonte base levemente menor */
+      --fs-small:11.5px;
+    }
+    body, input, select, button, table { font-size: var(--fs); }
+
     .page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
     .page-header h1{margin:0;font-size:20px;color:#111827;}
-    .muted{color:#6b7280;font-size:11.5px;}
+    .muted{color:#6b7280;font-size:var(--fs-small);}
     .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
-    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:12px;color:#374151}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;font-size:var(--fs);color:#374151}
 
     .filters{display:grid;grid-template-columns:1fr 160px;gap:10px;margin-bottom:10px;align-items:end;}
     @media (max-width:900px){.filters{grid-template-columns:1fr;}}
-    .filters label{font-size:12px;color:#374151;}
-    .filters input,.filters button{width:100%;box-sizing:border-box;padding:6px;font-size:12px;}
+    .filters label{font-size:var(--fs-small);color:#374151;}
+    .filters input,.filters button{width:100%;box-sizing:border-box;padding:6px;font-size:var(--fs);}
     .filters button{height:32px;border:1px solid #ddd;border-radius:8px;background:#ff7f2a;color:#fff;cursor:pointer;}
 
     .table-wrap{overflow:auto;border:1px solid #eee;border-radius:10px;background:#fff;}
     table{width:100%;border-collapse:collapse;min-width:1100px;background:#fff;}
-    thead th{background:#fff7ec;color:#111827;text-align:left;border:1px solid #e5e7eb;padding:8px;font-size:12.5px;}
-    tbody td{border:1px solid #e5e7eb;padding:6px 8px;font-size:12.5px;vertical-align:top;}
+    thead th{background:#fff7ec;color:#111827;text-align:left;border:1px solid #e5e7eb;padding:8px;font-size:var(--fs);}
+    tbody td{border:1px solid #e5e7eb;padding:6px 8px;font-size:var(--fs);vertical-align:top;}
     .nowrap{white-space:nowrap;}
-    .dre-select,.dre-input{width:100%;box-sizing:border-box;padding:5px;font-size:12px;}
+    .dre-select,.dre-input{width:100%;box-sizing:border-box;padding:5px;font-size:var(--fs);}
     .param-wrap{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
     .param-wrap>div{display:none;}
     .param-wrap[data-mode="competencia_driver"] .param-driver{display:block;grid-column:span 2;}
     .param-wrap[data-mode="competencia_media"]  .param-media{display:block;}
-    .row-actions button{font-size:11.5px;padding:6px 10px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer;}
+    .row-actions button{font-size:var(--fs-small);padding:6px 10px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer;}
     .row-actions button:hover{background:#f3f4f6;}
     .save-all{margin-top:10px;display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;}
-    .save-all button{height:34px;padding:0 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-size:12px;}
+    .save-all button{height:34px;padding:0 12px;border:1px solid #ddd;border-radius:8px;cursor:pointer;font-size:var(--fs);}
     .save{background:#10b981;color:#fff;border-color:#0ea5e9;}
     .reset{background:#fff;}
     tr.changed{background:#f8fffb;}
     .vright{text-align:right;}
     code{background:#f3f4f6;border-radius:6px;padding:0 4px;}
-    .wider{min-width:160px;}
+
+    /* larguras ajustadas conforme pedido */
+    th.col-cat{width:26%;}
+    th.col-regra{width:15%;}       /* ↑ aumentada */
+    th.col-param{width:22%;}       /* ↑ aumentada */
+    th.col-valor{width:12%;}
+    th.col-calc{width:8%;}         /* ↓ reduzida */
+    th.col-dre{width:9.5%;}
+    th.col-fluxo{width:9.5%;}
   </style>
 
   <!-- Firebase v8 (mesmo stack das outras telas) -->
@@ -79,13 +93,13 @@
       <table id="tabela">
         <thead>
           <tr>
-            <th style="width:26%;">Categoria</th>
-            <th style="width:12%;">Regra DRE</th>
-            <th style="width:18%;">Parâmetros</th>
-            <th style="width:12%;">Valor DRE</th>
-            <th style="width:12%;" class="nowrap">DRE (calc.)</th>
-            <th style="width:11%;" class="nowrap wider">DRE (Anual/Média)</th>
-            <th style="width:11%;" class="nowrap wider">Fluxo (Anual/Média)</th>
+            <th class="col-cat">Categoria</th>
+            <th class="col-regra">Regra DRE</th>
+            <th class="col-param">Parâmetros</th>
+            <th class="col-valor">Valor DRE</th>
+            <th class="col-calc nowrap">DRE (calc.)</th>
+            <th class="col-dre nowrap">DRE (Anual/Média)</th>
+            <th class="col-fluxo nowrap">Fluxo (Anual/Média)</th>
             <th class="nowrap">Ações</th>
           </tr>
         </thead>
@@ -102,7 +116,7 @@
 
 <script>
 (function(){
-  // ---------- Datas base (sempre até mês anterior)
+  // ---------- Datas base
   const hoje = new Date();
   const ANO = hoje.getFullYear();
   const ANO_ANT = ANO - 1;
@@ -116,7 +130,7 @@
   const badgeSnaps = document.getElementById('badgeSnaps');
   badgeCtx.textContent = `Ano base: ${ANO_BASE} • Mês base: ${String(MES_BASE+1).padStart(2,'0')} • YTD: ${MESES_YTD_BASE} mês(es)`;
 
-  // ---------- Firebase v8
+  // ---------- Firebase
   try{
     const cfg = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -130,7 +144,6 @@
     };
     if (!firebase.apps.length) firebase.initializeApp(cfg);
   }catch(e){ console.error(e); }
-
   const db = firebase.database();
 
   // ---------- DOM
@@ -202,16 +215,16 @@
     const e = edits.get(id) || {};
     const regra = (e.dre_regra ?? base.dre_regra) || null;
 
-    if (!regra) return { valor: 0, desc: '—' };
+    if (!regra) return { valor: 0, desc: '' };
 
     if (regra === 'caixa'){
       const v = (fluxoMensal.get(id)||[])[MES_BASE] || 0;
-      return { valor: v, desc: 'mês anterior (caixa)' };
+      return { valor: v, desc: '' };
     }
 
     if (regra === 'competencia_media'){
       const n = Number((e.dre_media_janela ?? base.dre_media_janela) || 0);
-      if (!n) return { valor: 0, desc: 'média 0m' };
+      if (!n) return { valor: 0, desc: '' };
       const serie = fluxoMensal.get(id) || Array(12).fill(0);
       const idxBase = MES_BASE;
       let soma = 0, count = 0;
@@ -219,26 +232,26 @@
         if (i>=0){ soma += Number(serie[i]||0); count++; }
       }
       const media = count ? (soma/count) : 0;
-      return { valor: media, desc: `média ${n}m até mês anterior` };
+      return { valor: media, desc: '' };
     }
 
     if (regra === 'competencia_driver'){
       const p = Number((e.dre_percentual_base ?? base.dre_percentual_base) || 0);
       const v = p * Number(receitaMes(MES_BASE) || 0);
-      return { valor: v, desc: `${(p*100).toLocaleString('pt-BR',{maximumFractionDigits:2})}% das entradas (mês anterior)` };
+      return { valor: v, desc: '' };
     }
 
     if (regra === 'especial'){
       const nome = String(base?.nome||'').trim().toLowerCase();
       if (nome==='compras'){
         const v = (fluxoMensal.get(id)||[])[MES_BASE] || 0;
-        return { valor: v, desc: 'mês anterior (compras/caixa)' };
+        return { valor: v, desc: '' };
       }
       const v = Number((e.dre_valor ?? base.dre_valor) || 0);
-      return { valor: v, desc: 'valor fixo (especial)' };
+      return { valor: v, desc: '' };
     }
 
-    return { valor: 0, desc: '—' };
+    return { valor: 0, desc: '' };
   }
 
   // ---------- Carregamento: Categorias
@@ -248,14 +261,13 @@
       const v = snap.val()||{};
       Object.keys(v).forEach(id=> cache.set(id, v[id]||{}) );
     }
-    badgeCats.textContent = `Categorias: ${cache.size}`;
-    // inicializa matrizes (evita “sumir” dados se alguma leitura chegar antes)
+    document.getElementById('badgeCats').textContent = `Categorias: ${cache.size}`;
     cache.forEach((_, id)=>{ if(!dreMensal.has(id)) dreMensal.set(id, Array(12).fill(0)); if(!fluxoMensal.has(id)) fluxoMensal.set(id, Array(12).fill(0)); });
     render();
   });
 
-  // ---------- Carregamento: Consolidado (Fluxo / caixa)
-  function aplicarConsolidado(ano, node){
+  // ---------- Consolidado (Fluxo)
+  function aplicarConsolidado(node){
     if (!node) return;
     Object.keys(node).forEach(m=>{
       const mm = Number(m); if (!(mm>=1 && mm<=12)) return;
@@ -274,12 +286,11 @@
     });
     render();
   }
-  db.ref(`financeiro/consolidado/${ANO_ANT}`).on('value', s=> aplicarConsolidado(ANO_ANT, s.val()||{}));
-  db.ref(`financeiro/consolidado/${ANO}`).on('value',     s=> aplicarConsolidado(ANO,     s.val()||{}));
+  db.ref(`financeiro/consolidado/${ANO_ANT}`).on('value', s=> aplicarConsolidado(s.val()||{}));
+  db.ref(`financeiro/consolidado/${ANO}`).on('value',     s=> aplicarConsolidado(s.val()||{}));
 
-  // ---------- Carregamento: Snapshots do ano base (DRE / competência)
+  // ---------- Snapshots (DRE)
   db.ref(`financeiro/dre_fechado/${ANO_BASE}`).on('value', s=>{
-    // zera as séries
     cache.forEach((_, id)=> dreMensal.set(id, Array(12).fill(0)) );
     let mesesSnap = 0;
     if (s.exists()){
@@ -295,14 +306,13 @@
         });
       });
     }
-    badgeSnaps.textContent = `Snapshots carregados: ${mesesSnap}`;
-    // completa meses SEM snapshot com fallback calculado pela regra
+    document.getElementById('badgeSnaps').textContent = `Snapshots carregados: ${mesesSnap}`;
     recomputarDREFallback();
     render();
   });
 
-  // ---------- Fallback da competência (para meses sem snapshot)
-  function valorDRERegraMes(catId, y, m0){
+  // ---------- Fallback para meses sem snapshot
+  function valorDRERegraMes(catId, m0){
     const cat = cache.get(catId) || {};
     const e   = edits.get(catId) || {};
     const r   = (e.dre_regra ?? cat.dre_regra) || 'caixa';
@@ -317,25 +327,22 @@
       if (!N) return 0;
       let soma=0, c=0;
       for (let k=0;k<N;k++){
-        let idx=m0-k;
-        if (idx<0) break; // (preview/fallback simples sem voltar ano)
+        let idx=m0-k; if (idx<0) break;
         soma += (fluxoMensal.get(catId)||[])[idx]||0; c++;
       }
       return c? soma/c : 0;
     }
     if (r==='competencia_driver'){
       const p = Number((e.dre_percentual_base ?? cat.dre_percentual_base) || 0);
-      let receita = receitaMes(m0);
-      return p * receita;
+      return p * receitaMes(m0);
     }
-    // 'caixa' (default)
     return (fluxoMensal.get(catId)||[])[m0] || 0;
   }
   function recomputarDREFallback(){
     cache.forEach((_, id)=>{
       const arr = dreMensal.get(id) || Array(12).fill(0);
       for (let m0=0; m0<=MES_BASE; m0++){
-        if (!arr[m0]) arr[m0] = valorDRERegraMes(id, ANO_BASE, m0);
+        if (!arr[m0]) arr[m0] = valorDRERegraMes(id, m0);
       }
       dreMensal.set(id, arr);
     });
@@ -350,9 +357,7 @@
       if (q && !texto.includes(q)) return;
       rows.push({id,cat});
     });
-    // evita caso de sumir tudo: se tiver busca e zerou, não filtra
     if (q && rows.length===0){ cache.forEach((cat,id)=> rows.push({id,cat})); }
-
     rows.sort((a,b)=> (a.cat?.nome||'').localeCompare(b.cat?.nome||''));
 
     tbody.innerHTML = '';
@@ -365,20 +370,17 @@
 
       const arrDRE   = (dreMensal.get(id)   || Array(12).fill(0)).slice(0, MESES_YTD_BASE);
       const arrFluxo = (fluxoMensal.get(id) || Array(12).fill(0)).slice(0, MESES_YTD_BASE);
-
       const somaDRE = arrDRE.reduce((a,b)=>a+b,0);
       const mediaDRE = MESES_YTD_BASE ? (somaDRE / MESES_YTD_BASE) : 0;
-
       const somaFluxo = arrFluxo.reduce((a,b)=>a+b,0);
       const mediaFluxo = MESES_YTD_BASE ? (somaFluxo / MESES_YTD_BASE) : 0;
-
-      const { valor: dreCalc, desc: dreDesc } = calcDREValue(id);
+      const { valor: dreCalc } = calcDREValue(id);
 
       const tr = document.createElement('tr');
       if (rowDirty(id)) tr.classList.add('changed');
 
       tr.innerHTML = `
-        <td><div><strong>${esc(cat.nome||'')}</strong></div><div class="muted">${esc(id)}</div></td>
+        <td><div><strong>${esc(cat.nome||'')}</strong></div></td>
         <td>
           <select class="dre-select" data-k="dre_regra" data-id="${id}">
             <option value="" ${!regra?'selected':''}>—</option>
@@ -407,10 +409,7 @@
             value="${valorDRE!=null ? esc(String(valorDRE).replace('.',',')) : ''}">
           <div class="muted">Manual: <code>categorias/${esc(id)}/dre_valor</code></div>
         </td>
-        <td class="vright">
-          <div><strong>${fmtMoeda(dreCalc)}</strong></div>
-          <div class="muted">${esc(dreDesc)}</div>
-        </td>
+        <td class="vright"><strong>${fmtMoeda(dreCalc)}</strong></td>
         <td class="vright">
           <div><strong>${fmtMoeda(somaDRE)}</strong></div>
           <div class="muted">/ ${fmtMoeda(mediaDRE)}</div>
