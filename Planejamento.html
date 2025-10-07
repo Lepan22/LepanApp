@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Planejamento</title>
+
+<link rel="stylesheet" href="assets/base.css"/>
+<link rel="stylesheet" href="assets/menu-styles.css"/>
+
+<style>
+  :root { --fs:12px; --fs-sm:11px; --colw:120px; --indw:260px; }
+  body, table, input, select, button { font-size: var(--fs); }
+  .page{padding:16px 18px;}
+  .muted{color:#6b7280;font-size:var(--fs-sm)}
+  .pill{display:inline-block;padding:2px 8px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;margin-right:6px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+  .btn{height:34px;padding:0 12px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer}
+  .btn.primary{background:#ff7f2a;color:#fff;border-color:#f97316}
+  .btn.ghost{background:#fff}
+  .ck{display:inline-flex;align-items:center;gap:6px}
+  .tablewrap{overflow:auto;border:1px solid #eee;border-radius:10px}
+  table{border-collapse:collapse;background:#fff;min-width:1100px;width:100%}
+  th,td{border:1px solid #e6e6e6;padding:8px}
+  thead th{background:#fff7ec;position:sticky;top:0;z-index:1}
+  th.ind,td.ind{position:sticky;left:0;background:#fafafa;min-width:var(--indw);max-width:var(--indw);width:var(--indw)}
+  th.m,td.m{min-width:var(--colw);width:var(--colw);text-align:right;vertical-align:top}
+  .row-hdr{font-weight:700;background:#f8fafc}
+  .ctr{display:flex;align-items:center;gap:8px}
+  .in-num{width:100%;box-sizing:border-box;padding:6px;text-align:right}
+  .in-pct{width:100%;box-sizing:border-box;padding:4px;text-align:right;font-size:var(--fs-sm)}
+  .twolines{display:flex;flex-direction:column;gap:2px}
+  .nowrap{white-space:nowrap}
+  .badgebar{margin-top:8px}
+  .small{font-size:var(--fs-sm)}
+</style>
+
+<!-- Firebase v8 -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script defer src="assets/menu.js"></script>
+</head>
+<body>
+<div id="menuLateral" class="sidebar"></div>
+
+<div class="main-content page">
+  <h1>Planejamento</h1>
+  <div class="muted">Planeje os <b>próximos 3 meses</b> e o <b>próximo ano</b>. Valores iniciam do mês base (mês anterior). Edite um mês e, se desejar, <i>propague</i> para os seguintes.</div>
+
+  <div class="controls">
+    <span class="pill" id="ctx">—</span>
+    <label class="ck"><input type="checkbox" id="ckPropagar" checked/> Propagar alterações a partir deste mês</label>
+    <button class="btn" id="btnImportarEventos">Importar dos Eventos</button>
+    <button class="btn primary" id="btnSalvar">Salvar planejamento</button>
+  </div>
+
+  <div class="tablewrap">
+    <table id="grid">
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="badgebar">
+    <span class="pill small" id="badgeCats">Categorias: —</span>
+    <span class="pill small" id="badgeMeses">Meses no plano: —</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ---- Datas de referência
+  const hoje = new Date();
+  const ANO = hoje.getFullYear();
+  const ANO_ANT = ANO - 1;
+  const MES_ATUAL = hoje.getMonth();           // 0..11
+  const MES_BASE  = (MES_ATUAL - 1 + 12) % 12;// mês anterior
+  const ANO_BASE  = (MES_ATUAL === 0) ? ANO_ANT : ANO;
+
+  const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+  const ctx = document.getElementById('ctx');
+  ctx.textContent = `Mês base: ${ANO_BASE}-${String(MES_BASE+1).padStart(2,'0')}`;
+
+  // ---- Firebase
+  try{
+    const cfg = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp",
+      storageBucket: "lepanapp.appspot.com",
+      messagingSenderId: "542989944344",
+      appId: "1:542989944344:web:576e28199960fd5440a56d",
+      measurementId: "G-VTNGJR7YRL"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+  }catch(e){ console.error(e); }
+  const db = firebase.database();
+
+  // ---- Estado
+  const cacheCats = new Map(); // id -> {nome, dre_regra, dre_percentual_base, dre_valor, ...}
+  let baseReceita = 0;         // receita do mês base (para % driver e %CMV)
+  let baseCompras = 0;         // compras mês base
+  let cmvPctBase = 0;          // compras/receita do mês base
+
+  // Plano por mês: { yyyymm: { faturamento, eventos, categorias: { [id]: {valor, pct?} } } }
+  const plano = {};
+  let colunas = []; // [{y,m,ym,label}...]
+
+  // ---- Utilidades
+  const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const toNum = v => isNaN(Number(v)) ? 0 : Number(v);
+  const ym = (y,m)=> `${y}${String(m).padStart(2,'0')}`;
+
+  // Gera lista de meses: próximos 3 meses (rolling) + ano seguinte inteiro
+  function gerarColunas(){
+    colunas = [];
+    // próximos 3 meses
+    let y = ANO, m = MES_ATUAL+1; // 1..12 mês corrente
+    for (let i=0;i<3;i++){
+      if (m>12){ m=1; y++; }
+      colunas.push({y, m, ym: ym(y,m), label:`${mesesPt[m-1]}/${String(y).slice(2)}`});
+      m++;
+    }
+    // ano seguinte inteiro
+    const nextY = (MES_ATUAL>=10) ? ANO+2 : ANO+1; // se já estou em nov/dez, 3 meses podem entrar no ano+1; o "próximo ano" é y do dia 1º de janeiro futuro
+    const anoCheio = ANO+1;
+    for (let mm=1; mm<=12; mm++){
+      colunas.push({y:anoCheio, m:mm, ym: ym(anoCheio,mm), label:`${mesesPt[mm-1]}/${String(anoCheio).slice(2)}`});
+    }
+    document.getElementById('badgeMeses').textContent = `Meses no plano: ${colunas.length}`;
+  }
+
+  // Inicializa plano com defaults copiando mês base
+  function seedPlano(){
+    colunas.forEach(c=>{
+      if (!plano[c.ym]) plano[c.ym] = { faturamento: baseReceita, eventos: 0, categorias:{} };
+      // por categoria
+      cacheCats.forEach((cat,id)=>{
+        const node = plano[c.ym].categorias[id] || {};
+        const regra = cat.dre_regra || 'caixa';
+        if (regra==='competencia_driver'){
+          const pct = (node.pct!=null) ? node.pct : (cat.dre_percentual_base!=null ? Number(cat.dre_percentual_base) : 0);
+          plano[c.ym].categorias[id] = { pct, valor: pct * plano[c.ym].faturamento };
+        } else if (regra==='especial'){
+          const nome = String(cat.nome||'').trim().toLowerCase();
+          if (nome==='compras'){
+            const pct = (node.pct!=null) ? node.pct : cmvPctBase;
+            plano[c.ym].categorias[id] = { pct, valor: pct * plano[c.ym].faturamento };
+          } else {
+            const v = (node.valor!=null) ? node.valor : (cat.dre_valor!=null ? Number(cat.dre_valor) : 0);
+            plano[c.ym].categorias[id] = { valor: v };
+          }
+        } else {
+          // caixa/competencia_media → copiar valor do mês base
+          const v = (node.valor!=null) ? node.valor : obterValorBaseCategoria(id);
+          plano[c.ym].categorias[id] = { valor: v };
+        }
+      });
+    });
+  }
+
+  // Valor do mês base por categoria (via snapshots; fallback 0)
+  const snapBase = {}; // catId -> valorMes
+  function obterValorBaseCategoria(catId){ return toNum(snapBase[catId] || 0); }
+
+  // ---- Render da grade
+  const thead = document.getElementById('thead');
+  const tbody = document.getElementById('tbody');
+  function render(){
+    // Cabeçalho
+    thead.innerHTML = '';
+    const trh = document.createElement('tr');
+    trh.innerHTML = `<th class="ind">Item</th>` + colunas.map(c=>`<th class="m">${c.label}</th>`).join('');
+    thead.appendChild(trh);
+
+    tbody.innerHTML = '';
+
+    // Linha: Faturamento (previsão)
+    const trFat = document.createElement('tr'); trFat.className='row-hdr';
+    trFat.innerHTML = `<td class="ind"><b>Faturamento (previsão)</b></td>`;
+    colunas.forEach(c=>{
+      const v = plano[c.ym]?.faturamento ?? 0;
+      trFat.innerHTML += `<td class="m"><input type="number" step="0.01" class="in-num" data-kind="fat" data-ym="${c.ym}" value="${v}"></td>`;
+    });
+    tbody.appendChild(trFat);
+
+    // Linha: Qtd. Eventos
+    const trEv = document.createElement('tr'); trEv.className='row-hdr';
+    trEv.innerHTML = `<td class="ind"><b>Qtd. de eventos</b></td>`;
+    colunas.forEach(c=>{
+      const v = plano[c.ym]?.eventos ?? 0;
+      trEv.innerHTML += `<td class="m"><input type="number" step="1" class="in-num" data-kind="evt" data-ym="${c.ym}" value="${v}"></td>`;
+    });
+    tbody.appendChild(trEv);
+
+    // Demais linhas: Categorias
+    cacheCats.forEach((cat,id)=>{
+      const regra = cat.dre_regra || 'caixa';
+      const nome = cat.nome || id;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="ind">${nome}<div class="muted small">${regra}</div></td>`;
+      colunas.forEach(c=>{
+        const cell = plano[c.ym]?.categorias?.[id] || {};
+        if (regra==='competencia_driver'){
+          const pct = (cell.pct!=null)?cell.pct:(cat.dre_percentual_base||0);
+          const val = Number(pct) * Number(plano[c.ym]?.faturamento||0);
+          tr.innerHTML += `
+            <td class="m">
+              <div class="twolines">
+                <input type="number" step="0.0001" class="in-pct" data-kind="pct" data-id="${id}" data-ym="${c.ym}" value="${pct}">
+                <input type="number" step="0.01" class="in-num" data-kind="val" data-id="${id}" data-ym="${c.ym}" value="${val.toFixed(2)}">
+              </div>
+            </td>`;
+        } else if (regra==='especial' && String(nome).trim().toLowerCase()==='compras'){
+          const pct = (cell.pct!=null)?cell.pct:cmvPctBase;
+          const val = Number(pct) * Number(plano[c.ym]?.faturamento||0);
+          tr.innerHTML += `
+            <td class="m">
+              <div class="twolines">
+                <input type="number" step="0.0001" class="in-pct" data-kind="pct" data-id="${id}" data-ym="${c.ym}" value="${pct}">
+                <input type="number" step="0.01" class="in-num" data-kind="val" data-id="${id}" data-ym="${c.ym}" value="${val.toFixed(2)}">
+              </div>
+            </td>`;
+        } else {
+          const val = (cell.valor!=null)?cell.valor:obterValorBaseCategoria(id);
+          tr.innerHTML += `<td class="m"><input type="number" step="0.01" class="in-num" data-kind="val" data-id="${id}" data-ym="${c.ym}" value="${val}"></td>`;
+        }
+      });
+      tbody.appendChild(tr);
+    });
+
+    bindInputs();
+  }
+
+  // ---- Propagação e cálculos
+  const ckPropagar = document.getElementById('ckPropagar');
+
+  function recalcLinhaDriver(ymKey, catId){
+    const pct = toNum(plano[ymKey].categorias[catId].pct || 0);
+    const fat = toNum(plano[ymKey].faturamento || 0);
+    plano[ymKey].categorias[catId].valor = pct * fat;
+  }
+
+  function onChangeFat(ymKey, val){
+    if (!plano[ymKey]) plano[ymKey] = {faturamento:0,eventos:0,categorias:{}};
+    plano[ymKey].faturamento = toNum(val);
+    // Recalcula todas categorias driver/CMV deste mês (e propaga se marcado)
+    cacheCats.forEach((cat,id)=>{
+      const regra = cat.dre_regra || 'caixa';
+      if (!plano[ymKey].categorias[id]) plano[ymKey].categorias[id] = {};
+      if (regra==='competencia_driver' || (regra==='especial' && String(cat.nome||'').trim().toLowerCase()==='compras')){
+        recalcLinhaDriver(ymKey, id);
+      }
+    });
+    if (ckPropagar.checked){
+      let propagate=false;
+      for (const c of colunas){
+        if (propagate || c.ym===ymKey){ propagate=true; if (c.ym!==ymKey) { plano[c.ym].faturamento = plano[ymKey].faturamento;
+            // Recalcular drivers/CMV
+            cacheCats.forEach((cat,id)=>{
+              const regra = cat.dre_regra || 'caixa';
+              if (regra==='competencia_driver' || (regra==='especial' && String(cat.nome||'').trim().toLowerCase()==='compras')){
+                if (!plano[c.ym].categorias[id]) plano[c.ym].categorias[id]={};
+                if (plano[c.ym].categorias[id].pct==null){
+                  // herda pct existente daquele mês; se quiser herdar do mês origem, mantenha a linha abaixo:
+                }
+                recalcLinhaDriver(c.ym, id);
+              }
+            });
+        }}
+      }
+    }
+  }
+
+  function onChangePct(ymKey, catId, pctVal){
+    if (!plano[ymKey]) plano[ymKey]={faturamento:0,eventos:0,categorias:{}};
+    if (!plano[ymKey].categorias[catId]) plano[ymKey].categorias[catId] = {};
+    plano[ymKey].categorias[catId].pct = toNum(pctVal);
+    recalcLinhaDriver(ymKey, catId);
+    if (ckPropagar.checked){
+      let propagate=false;
+      for (const c of colunas){
+        if (propagate || c.ym===ymKey){ propagate=true;
+          if (c.ym!==ymKey){
+            if (!plano[c.ym].categorias[catId]) plano[c.ym].categorias[catId]={};
+            plano[c.ym].categorias[catId].pct = plano[ymKey].categorias[catId].pct;
+            recalcLinhaDriver(c.ym, catId);
+          }
+        }
+      }
+    }
+  }
+
+  function onChangeVal(ymKey, catId, val){
+    if (!plano[ymKey]) plano[ymKey]={faturamento:0,eventos:0,categorias:{}};
+    if (!plano[ymKey].categorias[catId]) plano[ymKey].categorias[catId] = {};
+    plano[ymKey].categorias[catId].valor = toNum(val);
+    if (ckPropagar.checked){
+      let propagate=false;
+      for (const c of colunas){
+        if (propagate || c.ym===ymKey){ propagate=true;
+          if (c.ym!==ymKey){
+            if (!plano[c.ym].categorias[catId]) plano[c.ym].categorias[catId]={};
+            plano[c.ym].categorias[catId].valor = plano[ymKey].categorias[catId].valor;
+          }
+        }
+      }
+    }
+  }
+
+  function bindInputs(){
+    document.querySelectorAll('input[data-kind="fat"]').forEach(inp=>{
+      inp.oninput = ()=>{ onChangeFat(inp.dataset.ym, inp.value); };
+    });
+    document.querySelectorAll('input[data-kind="evt"]').forEach(inp=>{
+      inp.oninput = ()=>{ const k=inp.dataset.ym; if(!plano[k]) plano[k]={faturamento:0,eventos:0,categorias:{}}; plano[k].eventos = Math.max(0,Math.floor(toNum(inp.value)||0));
+        if (ckPropagar.checked){
+          let prop=false; for(const c of colunas){ if(prop||c.ym===k){ prop=true; if(c.ym!==k){ plano[c.ym].eventos = plano[k].eventos; } } }
+        }
+      };
+    });
+    document.querySelectorAll('input[data-kind="pct"]').forEach(inp=>{
+      inp.oninput = ()=>{ onChangePct(inp.dataset.ym, inp.dataset.id, inp.value); };
+    });
+    document.querySelectorAll('input[data-kind="val"]').forEach(inp=>{
+      inp.oninput = ()=>{ onChangeVal(inp.dataset.ym, inp.dataset.id, inp.value); };
+    });
+  }
+
+  // ---- Importar dos Eventos (best-effort)
+  async function importarEventos(){
+    const s = await db.ref('eventos').once('value');
+    if (!s.exists()) { alert('Não encontrei nó "eventos". Você pode preencher manualmente.'); return; }
+    const v = s.val()||{};
+    // tenta agrupar por ano-mês usando campos comuns
+    const byYM = {};
+    Object.values(v).forEach(ev=>{
+      const d = ev.data || ev.dataEvento || ev.inicio || ev.start || ev.when;
+      const dt = d ? new Date(d) : null;
+      if (!dt || isNaN(dt)) return;
+      const y = dt.getFullYear(), m = dt.getMonth()+1;
+      const key = ym(y,m);
+      const qtd = 1;
+      const val = toNum(ev.faturamentoPrevisto || ev.receitaPrevista || ev.valor || ev.total || 0);
+      if (!byYM[key]) byYM[key] = { eventos:0, fat:0 };
+      byYM[key].eventos += qtd;
+      byYM[key].fat += val;
+    });
+    let applied = 0;
+    colunas.forEach(c=>{
+      const key = c.ym;
+      if (byYM[key]){
+        if (!plano[key]) plano[key]={faturamento:0,eventos:0,categorias:{}};
+        plano[key].eventos = byYM[key].eventos;
+        if (byYM[key].fat>0) plano[key].faturamento = byYM[key].fat;
+        // Recalc drivers para esse mês
+        cacheCats.forEach((cat,id)=>{
+          const regra = cat.dre_regra || 'caixa';
+          if (regra==='competencia_driver' || (regra==='especial' && String(cat.nome||'').trim().toLowerCase()==='compras')){
+            if (!plano[key].categorias[id]) plano[key].categorias[id]={};
+            recalcLinhaDriver(key, id);
+          }
+        });
+        applied++;
+      }
+    });
+    render();
+    alert(`Importado de "eventos": aplicado em ${applied} mês(es).`);
+  }
+
+  // ---- Salvar planejamento
+  async function salvar(){
+    for (const c of colunas){
+      const node = plano[c.ym] || {faturamento:0,eventos:0,categorias:{}};
+      const payload = {
+        meta: { criadoEm: new Date().toISOString(), baseMes: `${ANO_BASE}-${String(MES_BASE+1).padStart(2,'0')}` },
+        faturamento: toNum(node.faturamento||0),
+        eventos: Math.max(0,Math.floor(toNum(node.eventos||0))),
+        categorias: node.categorias || {}
+      };
+      await db.ref(`financeiro/planejamento/${c.ym}`).set(payload);
+    }
+    alert('Planejamento salvo!');
+  }
+
+  // ---- Bootstrap: carrega categorias, snapshot do mês base e receita/compras
+  async function bootstrap(){
+    gerarColunas();
+
+    // categorias
+    const sc = await db.ref('financeiro/categorias').once('value');
+    if (sc.exists()){
+      const v = sc.val()||{};
+      Object.keys(v).forEach(id=> cacheCats.set(id, v[id]||{}) );
+    }
+    document.getElementById('badgeCats').textContent = `Categorias: ${cacheCats.size}`;
+
+    // snapshots mês base (para receita/compras/valores iniciais)
+    const snap = await db.ref(`financeiro/dre_fechado/${ANO_BASE}/${String(MES_BASE+1).padStart(2,'0')}`).once('value');
+    const node = snap.val() || {};
+    baseReceita = toNum(node?.grupos?.Receita?.mes || 0);
+    baseCompras = toNum(node?.grupos?.CMV?.mes || 0); // no DRE agrupado “CMV”
+    if (!baseCompras){
+      // fallback por categoria "Compras" caso exista
+      const catCompras = [...cacheCats].find(([id,c])=> String(c.nome||'').trim().toLowerCase()==='compras');
+      if (catCompras){
+        baseCompras = toNum(node?.categorias?.[catCompras[0]]?.valorMes || 0);
+      }
+    }
+    cmvPctBase = baseReceita>0 ? (baseCompras/baseReceita) : 0;
+
+    // valores base por categoria
+    Object.keys(node?.categorias||{}).forEach(id=>{
+      snapBase[id] = toNum(node.categorias[id]?.valorMes||0);
+    });
+
+    seedPlano();
+    render();
+  }
+
+  document.getElementById('btnImportarEventos').onclick = importarEventos;
+  document.getElementById('btnSalvar').onclick = salvar;
+
+  bootstrap();
+})();
+</script>
+</body>
+</html>
