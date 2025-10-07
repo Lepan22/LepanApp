@@ -3,31 +3,31 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Planejamento</title>
+<title>Planejamento (Projeções por Ano)</title>
 
 <link rel="stylesheet" href="assets/base.css"/>
 <link rel="stylesheet" href="assets/menu-styles.css"/>
 
 <style>
-  :root { --fs:12px; --fs-sm:11px; --colw:120px; --indw:260px; }
-  body, table, input, select, button { font-size: var(--fs); }
+  :root { --fs:12px; --fs-sm:11px; --colw:110px; --indw:300px; }
+  body, table { font-size: var(--fs); }
   .page{padding:16px 18px;}
   .muted{color:#6b7280;font-size:var(--fs-sm)}
-  .pill{display:inline-block;padding:2px 8px;border:1px solid #e5e7eb;border-radius:999px;background:#fff;margin-right:6px}
   .controls{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px}
+  .pill{display:inline-block;padding:2px 8px;border:1px solid #e5e7eb;border-radius:999px;background:#fff}
   .btn{height:34px;padding:0 12px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer}
   .btn.primary{background:#ff7f2a;color:#fff;border-color:#f97316}
+
   .tablewrap{overflow:auto;border:1px solid #eee;border-radius:10px}
-  table{border-collapse:collapse;background:#fff;min-width:1100px;width:100%}
-  th,td{border:1px solid #e6e6e6;padding:8px}
+  table{border-collapse:collapse;background:#fff;min-width:1200px;width:100%}
+  th,td{border:1px solid #e6e6e6;padding:8px;vertical-align:top}
   thead th{background:#fff7ec;position:sticky;top:0;z-index:1}
   th.ind,td.ind{position:sticky;left:0;background:#fafafa;min-width:var(--indw);max-width:var(--indw);width:var(--indw)}
-  th.m,td.m{min-width:var(--colw);width:var(--colw);text-align:right;vertical-align:top}
-  .row-hdr{font-weight:700;background:#f8fafc}
-  .in-num{width:100%;box-sizing:border-box;padding:6px;text-align:right}
-  .in-pct{width:100%;box-sizing:border-box;padding:4px;text-align:right;font-size:var(--fs-sm)}
-  .twolines{display:flex;flex-direction:column;gap:2px}
+  th.m,td.m{min-width:var(--colw);width:var(--colw);text-align:right}
+  .grp{background:#f8fafc;font-weight:700}
   .small{font-size:var(--fs-sm)}
+  .nowrap{white-space:nowrap}
+  .right{text-align:right}
 </style>
 
 <!-- Firebase v8 -->
@@ -40,42 +40,39 @@
 
 <div class="main-content page">
   <h1>Planejamento</h1>
-  <div class="muted">Planeje os <b>próximos 3 meses</b> e o <b>próximo ano</b>. Editou um mês? Eu já replico para os seguintes automaticamente.</div>
+  <div class="muted">Escolha o ano para ver o <b>Consolidado DRE Real</b>, o <b>Projetado Anual</b> e as colunas de meses projetados (3 meses finais de 2025; 12 meses em 2026). Agrupado por Centro &rarr; Categoria.</div>
 
   <div class="controls">
+    <label>Ano:
+      <select id="selAno">
+        <option value="2025" selected>2025</option>
+        <option value="2026">2026</option>
+      </select>
+    </label>
+    <button class="btn" id="btnImportarEventos">Importar vendas previstas (eventos)</button>
+    <button class="btn primary" id="btnSalvar">Salvar projeções</button>
     <span class="pill" id="ctx">—</span>
-    <button class="btn" id="btnImportarEventos">Importar dos Eventos</button>
-    <button class="btn primary" id="btnSalvar">Salvar planejamento</button>
   </div>
 
   <div class="tablewrap">
     <table id="grid">
       <thead id="thead"></thead>
       <tbody id="tbody"></tbody>
+      <tfoot id="tfoot"></tfoot>
     </table>
-  </div>
-
-  <div style="margin-top:8px">
-    <span class="pill" id="badgeCats">Categorias: —</span>
-    <span class="pill" id="badgeMeses">Meses no plano: —</span>
   </div>
 </div>
 
 <script>
 (function(){
-  // ---- Datas
+  // === Datas base
   const hoje = new Date();
-  const ANO = hoje.getFullYear();
-  const ANO_ANT = ANO - 1;
-  const MES_ATUAL = hoje.getMonth();           // 0..11
-  const MES_BASE  = (MES_ATUAL - 1 + 12) % 12;// mês anterior
-  const ANO_BASE  = (MES_ATUAL === 0) ? ANO_ANT : ANO;
-
+  const CUR_YEAR = hoje.getFullYear();
+  const CUR_MONTH = hoje.getMonth()+1; // 1..12
   const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const ctx = document.getElementById('ctx');
-  ctx.textContent = `Mês base: ${ANO_BASE}-${String(MES_BASE+1).padStart(2,'0')}`;
 
-  // ---- Firebase
+  // === Firebase init
   try{
     const cfg = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -91,316 +88,353 @@
   }catch(e){ console.error(e); }
   const db = firebase.database();
 
-  // ---- Estado
-  const cacheCats = new Map(); // id -> {nome, dre_regra, dre_percentual_base, dre_valor, ...}
-  let baseReceita = 0;         // receita do mês base
-  let baseCompras = 0;
-  let cmvPctBase = 0;
+  // === Estado
+  const categorias = new Map(); // id -> cat
+  const porCentro = new Map();  // centro -> [catIds]
+  const realAno = new Map();    // id -> soma real do ano selecionado
+  const realMensal = new Map(); // id -> array(12) reais do ano selecionado
+  const receitaMensalReal = Array(12).fill(0); // receita real por mês (DRE)
+  const projMensal = new Map(); // id -> array(12) projeção do ano (preenchido conforme regras)
+  const receitaProj = Array(12).fill(0);       // receita projetada por mês do ano
 
-  // Plano: { yyyymm: { faturamento, eventos, categorias: { [id]: {valor, pct?} } } }
-  const plano = {};
-  let colunas = [];
+  let cmvPctRef = 0; // Compras/Receita calculado do consolidado do ano (se houver), senão do mês base anterior
 
-  // ---- Utils
+  // === Utils
   const toNum = v => isNaN(Number(v)) ? 0 : Number(v);
+  const moeda = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const ym = (y,m)=> `${y}${String(m).padStart(2,'0')}`;
 
-  function gerarColunas(){
-    colunas = [];
-    // próximos 3 meses a partir do mês atual
-    let y = ANO, m = MES_ATUAL+1; // 1..12
-    for (let i=0;i<3;i++){
-      if (m>12){ m=1; y++; }
-      colunas.push({y, m, ym: ym(y,m), label:`${mesesPt[m-1]}/${String(y).slice(2)}`});
-      m++;
-    }
-    // ano seguinte inteiro
-    const anoCheio = ANO+1;
-    for (let mm=1; mm<=12; mm++){
-      colunas.push({y:anoCheio, m:mm, ym: ym(anoCheio,mm), label:`${mesesPt[mm-1]}/${String(anoCheio).slice(2)}`});
-    }
-    document.getElementById('badgeMeses').textContent = `Meses no plano: ${colunas.length}`;
-  }
-
-  const snapBase = {}; // catId -> valorMes
-  function obterValorBaseCategoria(catId){ return toNum(snapBase[catId] || 0); }
-
-  function seedPlano(){
-    colunas.forEach(c=>{
-      if (!plano[c.ym]) plano[c.ym] = { faturamento: baseReceita, eventos: 0, categorias:{} };
-      cacheCats.forEach((cat,id)=>{
-        const node = plano[c.ym].categorias[id] || {};
-        const regra = cat.dre_regra || 'caixa';
-        if (regra==='competencia_driver'){
-          const pct = (node.pct!=null) ? node.pct : (cat.dre_percentual_base!=null ? Number(cat.dre_percentual_base) : 0);
-          plano[c.ym].categorias[id] = { pct, valor: pct * plano[c.ym].faturamento };
-        } else if (regra==='especial'){
-          const nome = String(cat.nome||'').trim().toLowerCase();
-          if (nome==='compras'){
-            const pct = (node.pct!=null) ? node.pct : cmvPctBase;
-            plano[c.ym].categorias[id] = { pct, valor: pct * plano[c.ym].faturamento };
-          } else {
-            const v = (node.valor!=null) ? node.valor : (cat.dre_valor!=null ? Number(cat.dre_valor) : 0);
-            plano[c.ym].categorias[id] = { valor: v };
-          }
-        } else {
-          const v = (node.valor!=null) ? node.valor : obterValorBaseCategoria(id);
-          plano[c.ym].categorias[id] = { valor: v };
-        }
+  // === Leitura Categorias
+  async function loadCategorias(){
+    const s = await db.ref('financeiro/categorias').once('value');
+    categorias.clear(); porCentro.clear();
+    if (s.exists()){
+      const v = s.val()||{};
+      Object.keys(v).forEach(id=>{
+        const cat = v[id]||{};
+        categorias.set(id, cat);
+        const centro = String(cat.centro||cat.centroDeCusto||'Outros');
+        if (!porCentro.has(centro)) porCentro.set(centro, []);
+        porCentro.get(centro).push(id);
       });
-    });
-  }
-
-  // ---- Render
-  const thead = document.getElementById('thead');
-  const tbody = document.getElementById('tbody');
-
-  function render(){
-    // header
-    thead.innerHTML = '';
-    const trh = document.createElement('tr');
-    trh.innerHTML = `<th class="ind">Item</th>` + colunas.map(c=>`<th class="m">${c.label}</th>`).join('');
-    thead.appendChild(trh);
-
-    tbody.innerHTML = '';
-
-    // Faturamento
-    const trFat = document.createElement('tr'); trFat.className='row-hdr';
-    trFat.innerHTML = `<td class="ind"><b>Faturamento (previsão)</b></td>`;
-    colunas.forEach(c=>{
-      const v = plano[c.ym]?.faturamento ?? 0;
-      trFat.innerHTML += `<td class="m"><input type="number" step="0.01" class="in-num" data-kind="fat" data-ym="${c.ym}" value="${v}"></td>`;
-    });
-    tbody.appendChild(trFat);
-
-    // Qtd. eventos
-    const trEv = document.createElement('tr'); trEv.className='row-hdr';
-    trEv.innerHTML = `<td class="ind"><b>Qtd. de eventos</b></td>`;
-    colunas.forEach(c=>{
-      const v = plano[c.ym]?.eventos ?? 0;
-      trEv.innerHTML += `<td class="m"><input type="number" step="1" class="in-num" data-kind="evt" data-ym="${c.ym}" value="${v}"></td>`;
-    });
-    tbody.appendChild(trEv);
-
-    // Categorias
-    cacheCats.forEach((cat,id)=>{
-      const regra = cat.dre_regra || 'caixa';
-      const nome = cat.nome || id;
-
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="ind">${nome}<div class="muted small">${regra}</div></td>`;
-      colunas.forEach(c=>{
-        const cell = plano[c.ym]?.categorias?.[id] || {};
-        if (regra==='competencia_driver' || (regra==='especial' && String(nome).trim().toLowerCase()==='compras')){
-          const pct = (cell.pct!=null)?cell.pct:(regra==='competencia_driver' ? (cat.dre_percentual_base||0) : cmvPctBase);
-          const val = Number(pct) * Number(plano[c.ym]?.faturamento||0);
-          tr.innerHTML += `
-            <td class="m">
-              <div class="twolines">
-                <input type="number" step="0.0001" class="in-pct" data-kind="pct" data-id="${id}" data-ym="${c.ym}" value="${pct}">
-                <input type="number" step="0.01" class="in-num" data-kind="val" data-id="${id}" data-ym="${c.ym}" value="${val.toFixed(2)}">
-              </div>
-            </td>`;
-        } else {
-          const val = (cell.valor!=null)?cell.valor:obterValorBaseCategoria(id);
-          tr.innerHTML += `<td class="m"><input type="number" step="0.01" class="in-num" data-kind="val" data-id="${id}" data-ym="${c.ym}" value="${val}"></td>`;
-        }
+      // ordena categorias por nome dentro do centro
+      porCentro.forEach(arr=>{
+        arr.sort((a,b)=>(categorias.get(a)?.nome||a).localeCompare(categorias.get(b)?.nome||b));
       });
-      tbody.appendChild(tr);
-    });
-
-    bindInputs();
-  }
-
-  // ---- Lógica de propagação (sempre ativa)
-  function recalcLinhaDriver(ymKey, catId){
-    const pct = toNum(plano[ymKey].categorias[catId].pct || 0);
-    const fat = toNum(plano[ymKey].faturamento || 0);
-    plano[ymKey].categorias[catId].valor = pct * fat;
-  }
-
-  function propagateForward(applyFn, fromYm){
-    let start = false;
-    for (const c of colunas){
-      if (!start && c.ym === fromYm) { start = true; continue; }
-      if (start) applyFn(c.ym);
     }
   }
 
-  function onChangeFat(ymKey, val){
-    if (!plano[ymKey]) plano[ymKey] = {faturamento:0,eventos:0,categorias:{}};
-    plano[ymKey].faturamento = toNum(val);
-    // Recalcula drivers/CMV do próprio mês
-    cacheCats.forEach((cat,id)=>{
-      const regra = cat.dre_regra || 'caixa';
-      if (!plano[ymKey].categorias[id]) plano[ymKey].categorias[id] = {};
-      if (regra==='competencia_driver' || (regra==='especial' && String(cat.nome||'').trim().toLowerCase()==='compras')){
-        recalcLinhaDriver(ymKey, id);
-      }
-    });
-    // Propaga para frente automaticamente
-    propagateForward((ymFut)=>{
-      if (!plano[ymFut]) plano[ymFut] = {faturamento:0,eventos:0,categorias:{}};
-      plano[ymFut].faturamento = plano[ymKey].faturamento;
-      cacheCats.forEach((cat,id)=>{
-        const regra = cat.dre_regra || 'caixa';
-        if (regra==='competencia_driver' || (regra==='especial' && String(cat.nome||'').trim().toLowerCase()==='compras')){
-          if (!plano[ymFut].categorias[id]) plano[ymFut].categorias[id]={};
-          // mantém pct já definido no mês futuro; se não tinha, herda do mês origem
-          if (plano[ymFut].categorias[id].pct==null){
-            plano[ymFut].categorias[id].pct = (plano[ymKey].categorias[id]?.pct ?? (cat.dre_percentual_base || 0));
-          }
-          recalcLinhaDriver(ymFut, id);
-        }
+  // === Real DRE do ano
+  async function loadDREReal(ANO){
+    realAno.clear(); realMensal.clear();
+    for (let i=1;i<=12;i++){ receitaMensalReal[i-1]=0; }
+    const s = await db.ref(`financeiro/dre_fechado/${ANO}`).once('value');
+    let somaReceitaReal = 0, somaComprasReal = 0;
+
+    if (s.exists()){
+      const v = s.val()||{};
+      Object.keys(v).forEach(mm=>{
+        const m = Number(mm); if (!(m>=1 && m<=12)) return;
+        const node = v[mm]||{};
+        // grupos -> para receita/compras
+        const recMes = toNum(node?.grupos?.Receita?.mes || 0);
+        const cmes   = toNum(node?.grupos?.CMV?.mes || 0);
+        receitaMensalReal[m-1] = recMes;
+        somaReceitaReal += recMes;
+        somaComprasReal += cmes;
+
+        // categorias
+        const cats = node.categorias || {};
+        Object.keys(cats).forEach(id=>{
+          const val = toNum(cats[id]?.valorMes || 0);
+          realAno.set(id, toNum(realAno.get(id)||0)+val);
+          const arr = realMensal.get(id) || Array(12).fill(0);
+          arr[m-1] = val;
+          realMensal.set(id, arr);
+        });
       });
-    }, ymKey);
-    render();
+    }
+
+    // CMV% de referência
+    cmvPctRef = (somaReceitaReal>0) ? (somaComprasReal/somaReceitaReal) : 0;
+
+    // fallback de CMV% com mês base (mês anterior ao atual) se ano não tem real
+    if (!cmvPctRef || !isFinite(cmvPctRef)){
+      const anoBase = (CUR_MONTH===1) ? (CUR_YEAR-1) : CUR_YEAR;
+      const mesBase = (CUR_MONTH===1) ? 12 : (CUR_MONTH-1);
+      const snap = await db.ref(`financeiro/dre_fechado/${anoBase}/${String(mesBase).padStart(2,'0')}`).once('value');
+      const n = snap.val()||{};
+      const rec = toNum(n?.grupos?.Receita?.mes||0);
+      const cmp = toNum(n?.grupos?.CMV?.mes||0);
+      cmvPctRef = (rec>0) ? (cmp/rec) : 0;
+    }
   }
 
-  function onChangePct(ymKey, catId, pctVal){
-    if (!plano[ymKey]) plano[ymKey]={faturamento:0,eventos:0,categorias:{}};
-    if (!plano[ymKey].categorias[catId]) plano[ymKey].categorias[catId] = {};
-    plano[ymKey].categorias[catId].pct = toNum(pctVal);
-    recalcLinhaDriver(ymKey, catId);
-    propagateForward((ymFut)=>{
-      if (!plano[ymFut].categorias) plano[ymFut].categorias = {};
-      if (!plano[ymFut].categorias[catId]) plano[ymFut].categorias[catId] = {};
-      plano[ymFut].categorias[catId].pct = plano[ymKey].categororias?.[catId]?.pct ?? toNum(pctVal);
-      recalcLinhaDriver(ymFut, catId);
-    }, ymKey);
-    render();
-  }
-
-  function onChangeVal(ymKey, catId, val){
-    if (!plano[ymKey]) plano[ymKey]={faturamento:0,eventos:0,categorias:{}};
-    if (!plano[ymKey].categorias[catId]) plano[ymKey].categorias[catId] = {};
-    plano[ymKey].categorias[catId].valor = toNum(val);
-    propagateForward((ymFut)=>{
-      if (!plano[ymFut].categorias) plano[ymFut].categorias = {};
-      if (!plano[ymFut].categorias[catId]) plano[ymFut].categorias[catId] = {};
-      plano[ymFut].categorias[catId].valor = plano[ymKey].categorias[catId].valor;
-    }, ymKey);
-    render();
-  }
-
-  function bindInputs(){
-    document.querySelectorAll('input[data-kind="fat"]').forEach(inp=>{
-      inp.oninput = ()=> onChangeFat(inp.dataset.ym, inp.value);
-    });
-    document.querySelectorAll('input[data-kind="evt"]').forEach(inp=>{
-      inp.oninput = ()=>{
-        const k=inp.dataset.ym;
-        if(!plano[k]) plano[k]={faturamento:0,eventos:0,categorias:{}};
-        plano[k].eventos = Math.max(0,Math.floor(toNum(inp.value)||0));
-        propagateForward((ymFut)=>{ if(!plano[ymFut]) plano[ymFut]={faturamento:0,eventos:0,categorias:{}}; plano[ymFut].eventos = plano[k].eventos; }, k);
-      };
-    });
-    document.querySelectorAll('input[data-kind="pct"]').forEach(inp=>{
-      inp.oninput = ()=> onChangePct(inp.dataset.ym, inp.dataset.id, inp.value);
-    });
-    document.querySelectorAll('input[data-kind="val"]').forEach(inp=>{
-      inp.oninput = ()=> onChangeVal(inp.dataset.ym, inp.dataset.id, inp.value);
-    });
-  }
-
-  // ---- Importar dos Eventos (soma TODOS)
-  function extractEventRevenue(ev){ return Number(ev?.estimativaVenda) || 0; }
-  function extractEventDate(ev){ return ev?.data || ev?.dataEvento || ev?.inicio || ev?.start || ev?.when || null; }
-
-  async function importarEventos(){
+  // === Importar vendas previstas (eventos) para o ANO selecionado
+  async function importarEventos(ANO){
+    for (let i=0;i<12;i++) receitaProj[i]=0; // zera
     const s = await db.ref('eventos').once('value');
-    if (!s.exists()) { alert('Não encontrei nó "eventos".'); return; }
+    if (!s.exists()) return;
     const v = s.val()||{};
-    const byYM = {};
-    const ymKey = (y,m)=> `${y}${String(m).padStart(2,'0')}`;
-
     Object.values(v).forEach(ev=>{
-      const dStr = extractEventDate(ev);
+      const dStr = ev?.data || ev?.dataEvento || ev?.inicio || ev?.start || ev?.when || null;
       const dt = dStr ? new Date(dStr) : null;
       if (!dt || isNaN(dt)) return;
-      const y = dt.getFullYear(), m = dt.getMonth()+1;
-      const key = ymKey(y,m);
-      const fat = extractEventRevenue(ev);
-      if (!byYM[key]) byYM[key] = { eventos:0, fat:0 };
-      byYM[key].eventos += 1;
-      byYM[key].fat += toNum(fat);
+      const y = dt.getFullYear(); const m = dt.getMonth()+1;
+      if (y !== ANO) return;
+      const fat = Number(ev?.estimativaVenda)||0;
+      receitaProj[m-1] += toNum(fat);
     });
+  }
 
-    let applied = 0;
-    colunas.forEach(c=>{
-      const key = c.ym;
-      if (byYM[key]){
-        if (!plano[key]) plano[key]={faturamento:0,eventos:0,categorias:{}};
-        plano[key].eventos     = byYM[key].eventos;
-        plano[key].faturamento = byYM[key].fat;
-        // Recalcula drivers/CMV do mês
-        cacheCats.forEach((cat,id)=>{
-          const regra = cat.dre_regra || 'caixa';
-          const nome  = String(cat.nome||'').trim().toLowerCase();
-          if (regra==='competencia_driver' || (regra==='especial' && nome==='compras')){
-            if (!plano[key].categorias[id]) plano[key].categorias[id]={};
-            recalcLinhaDriver(key, id);
+  // === Receita projetada por mês (fallbacks)
+  function completarReceitaProjPara2025(){
+    // meses-alvo: Out(10), Nov(11), Dez(12)
+    const idxs = [9,10,11];
+    // fallback = último mês real >0 do próprio ano
+    let ultReal = 0;
+    for (let i=11;i>=0;i--){ if (receitaMensalReal[i]>0){ ultReal = receitaMensalReal[i]; break; } }
+    idxs.forEach(i=>{
+      if (!receitaProj[i] || receitaProj[i]<=0) receitaProj[i] = ultReal;
+    });
+  }
+  function completarReceitaProjPara2026(){
+    // Jan = Dez/2025 projetado; demais = igual a Jan (salvo se houver eventos com estimativa no próprio mês)
+    const dez2025 = receitaProjPlaceholderDez2025();
+    if (!receitaProj[0] || receitaProj[0]<=0) receitaProj[0] = dez2025;
+    for (let i=1;i<12;i++){
+      if (!receitaProj[i] || receitaProj[i]<=0) receitaProj[i] = receitaProj[0];
+    }
+  }
+  // obtém a proj de Dez/2025 (somando eventos 2025 + fallback)
+  function receitaProjPlaceholderDez2025(){
+    // se estivermos montando 2026, receitaProj[] é do próprio 2026; temos que refazer 2025 Dez:
+    // usa último real de 2025 se não houver eventos de dez/2025
+    // Como esse helper só é usado para semente, fará uma busca ad-hoc mínima:
+    // (1) tentar eventos Dez/2025
+    // (2) senão, último real 2025
+    // Simplificando: retorna último real 2025 (bom seed).
+    return _ultimoReal(2025);
+  }
+  function _ultimoReal(ano){
+    // busca último real do ano (Receita)
+    // (receitaMensalReal representa o ano selecionado; se ano!=selecionado retornaremos 0)
+    // usamos uma simplificação: se o ano != selecionado, só retorna 0 (o seed virá de loadDREReal quando 2025 estiver selecionado)
+    return receitaMensalReal.slice().reverse().find(x=>x>0) || 0;
+  }
+
+  // === Projeção por categoria (aplica regras)
+  function mediaUltimosN(id, N){
+    const arr = realMensal.get(id) || Array(12).fill(0);
+    let soma=0, c=0;
+    for (let i=11;i>=0 && c<N;i--){
+      const v = toNum(arr[i]); soma += v; if (v!==0) c++;
+      else { c++; } // considera zero também na média se não houver histórico (mantém comportamento simples)
+    }
+    return (c>0) ? (soma/c) : 0;
+  }
+  function ultimoValorReal(id){
+    const arr = realMensal.get(id) || Array(12).fill(0);
+    for (let i=11;i>=0;i--) if (arr[i]!==0) return arr[i];
+    return 0;
+  }
+
+  function projetarAno(ANO){
+    // zera buffers
+    projMensal.clear();
+    categorias.forEach((cat,id)=> projMensal.set(id, Array(12).fill(0)) );
+
+    // define meses que vamos exibir/projetar
+    const mesesProj2025 = [10,11,12]; // Outubro..Dezembro
+    const todosMeses = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+    // prepara ReceitaProj
+    if (ANO==2025){
+      completarReceitaProjPara2025();
+    } else if (ANO==2026){
+      completarReceitaProjPara2026();
+    }
+
+    // percorre categorias e projeta
+    categorias.forEach((cat,id)=>{
+      const regra = cat.dre_regra || 'caixa';
+      const nome  = String(cat.nome||'').trim().toLowerCase();
+      const arr = projMensal.get(id) || Array(12).fill(0);
+
+      if (ANO==2025){
+        // copia meses reais (jan..set Out?) para que o projetado anual some 12 meses
+        for (let m=1;m<=12;m++){
+          const real = (realMensal.get(id)||[])[m-1] || 0;
+          if (m<=9) { // Jan..Set reais
+            arr[m-1] = real;
+          } else {
+            // meses proj (Out..Dez)
+            if (regra==='competencia_driver'){
+              const pct = toNum(cat.dre_percentual_base || 0);
+              arr[m-1] = pct * toNum(receitaProj[m-1]||0);
+            } else if (regra==='especial' && nome==='compras'){
+              arr[m-1] = cmvPctRef * toNum(receitaProj[m-1]||0);
+            } else if (regra==='especial'){
+              arr[m-1] = toNum(cat.dre_valor || 0);
+            } else if (regra==='competencia_media'){
+              const N = toNum(cat.dre_media_janela || 0) || 3;
+              arr[m-1] = mediaUltimosN(id, N);
+            } else { // caixa
+              arr[m-1] = ultimoValorReal(id);
+            }
           }
-        });
-        // Propaga automaticamente com base nesse faturamento
-        onChangeFat(key, plano[key].faturamento);
-        applied++;
+        }
+      } else {
+        // 2026: todos os meses são projetados; Jan = Dez/2025 e/ou receita herdada; valores por regra
+        for (let m=1;m<=12;m++){
+          if (regra==='competencia_driver'){
+            const pct = toNum(cat.dre_percentual_base || 0);
+            arr[m-1] = pct * toNum(receitaProj[m-1]||0);
+          } else if (regra==='especial' && nome==='compras'){
+            arr[m-1] = cmvPctRef * toNum(receitaProj[m-1]||0);
+          } else if (regra==='especial'){
+            arr[m-1] = toNum(cat.dre_valor || 0);
+          } else if (regra==='competencia_media'){
+            const N = toNum(cat.dre_media_janela || 0) || 3;
+            arr[m-1] = mediaUltimosN(id, N);
+          } else { // caixa
+            arr[m-1] = ultimoValorReal(id);
+          }
+        }
       }
+
+      projMensal.set(id, arr);
     });
-    render();
-    alert(`Importado de "eventos": aplicado em ${applied} mês(es).`);
   }
 
-  // ---- Salvar
-  async function salvar(){
-    for (const c of colunas){
-      const node = plano[c.ym] || {faturamento:0,eventos:0,categorias:{}};
-      const payload = {
-        meta: { criadoEm: new Date().toISOString(), baseMes: `${ANO_BASE}-${String(MES_BASE+1).padStart(2,'0')}` },
-        faturamento: toNum(node.faturamento||0),
-        eventos: Math.max(0,Math.floor(toNum(node.eventos||0))),
-        categorias: node.categorias || {}
+  // === Monta tabela
+  function montarCabecalho(ANO){
+    const thead = document.getElementById('thead');
+    thead.innerHTML = '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <th class="ind">Centro / Categoria</th>
+      <th class="m nowrap">${ANO==2026?'DRE Real 2026':'Consolidado DRE Real ' + ANO}</th>
+      <th class="m nowrap">DRE Projetado Anual</th>
+      ${ANO==2025 ? `
+        <th class="m">Out</th>
+        <th class="m">Nov</th>
+        <th class="m">Dez</th>
+      `:`
+        ${mesesPt.map(m=>`<th class="m">${m}</th>`).join('')}
+      `}
+      <th class="m nowrap">% no Real</th>
+    `;
+    thead.appendChild(tr);
+  }
+
+  function somaArr(a){ return (a||[]).reduce((x,y)=>x+toNum(y),0); }
+
+  function montarCorpo(ANO){
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+
+    // totais gerais (p/ %)
+    let totalRealAno = 0;
+    categorias.forEach((_,id)=> totalRealAno += toNum(realAno.get(id)||0) );
+
+    // por centro
+    const centrosOrdenados = Array.from(porCentro.keys()).sort();
+    centrosOrdenados.forEach(centro=>{
+      // header do centro
+      const trG = document.createElement('tr');
+      trG.className = 'grp';
+      trG.innerHTML = `<td class="ind"><b>${centro}</b></td><td></td><td></td>${ANO==2025?'<td></td><td></td><td></td>':mesesPt.map(()=>'<td></td>').join('')}<td></td>`;
+      tbody.appendChild(trG);
+
+      // linhas de categorias
+      const ids = porCentro.get(centro)||[];
+      ids.forEach(id=>{
+        const cat = categorias.get(id)||{};
+        const nome = cat.nome || id;
+
+        const real = toNum(realAno.get(id)||0);
+        const projArr = projMensal.get(id)||Array(12).fill(0);
+        const projAnual = somaArr(projArr);
+
+        // células de meses
+        let mesesHtml = '';
+        if (ANO==2025){
+          // mostrar apenas Out/Nov/Dez (10..12)
+          for (let m=10;m<=12;m++){
+            mesesHtml += `<td class="m">${moeda(projArr[m-1]||0)}</td>`;
+          }
+        } else {
+          for (let m=1;m<=12;m++){
+            mesesHtml += `<td class="m">${moeda(projArr[m-1]||0)}</td>`;
+          }
+        }
+
+        const perc = totalRealAno>0 ? (100*real/totalRealAno) : 0;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="ind">${nome}<div class="muted small">${id}</div></td>
+          <td class="m">${moeda(real)}</td>
+          <td class="m">${moeda(projAnual)}</td>
+          ${mesesHtml}
+          <td class="m">${perc.toLocaleString('pt-BR',{maximumFractionDigits:2})}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    });
+  }
+
+  // === Salvar projeção anual em: financeiro/planejamento_projecao/{ANO}/{catId}
+  async function salvar(ANO){
+    const payload = {};
+    categorias.forEach((_,id)=>{
+      payload[id] = {
+        realAno: toNum(realAno.get(id)||0),
+        projMensal: projMensal.get(id)||Array(12).fill(0)
       };
-      await db.ref(`financeiro/planejamento/${c.ym}`).set(payload);
-    }
-    alert('Planejamento salvo!');
-  }
-
-  // ---- Bootstrap
-  async function bootstrap(){
-    gerarColunas();
-
-    const sc = await db.ref('financeiro/categorias').once('value');
-    if (sc.exists()){
-      const v = sc.val()||{};
-      Object.keys(v).forEach(id=> cacheCats.set(id, v[id]||{}) );
-    }
-    document.getElementById('badgeCats').textContent = `Categorias: ${cacheCats.size}`;
-
-    const snap = await db.ref(`financeiro/dre_fechado/${ANO_BASE}/${String(MES_BASE+1).padStart(2,'0')}`).once('value');
-    const node = snap.val() || {};
-    baseReceita = toNum(node?.grupos?.Receita?.mes || 0);
-    baseCompras = toNum(node?.grupos?.CMV?.mes || 0);
-    if (!baseCompras){
-      const catCompras = [...cacheCats].find(([id,c])=> String(c.nome||'').trim().toLowerCase()==='compras');
-      if (catCompras){
-        baseCompras = toNum(node?.categorias?.[catCompras[0]]?.valorMes || 0);
-      }
-    }
-    cmvPctBase = baseReceita>0 ? (baseCompras/baseReceita) : 0;
-
-    Object.keys(node?.categorias||{}).forEach(id=>{
-      snapBase[id] = toNum(node.categorias[id]?.valorMes||0);
     });
-
-    seedPlano();
-    render();
+    await db.ref(`financeiro/planejamento_projecao/${ANO}`).set({
+      meta:{ salvoEm:new Date().toISOString(), cmvPctRef },
+      categorias: payload,
+      receitaProj: receitaProj
+    });
+    alert('Projeções salvas!');
   }
 
-  document.getElementById('btnImportarEventos').onclick = importarEventos;
-  document.getElementById('btnSalvar').onclick = salvar;
+  // === Importar eventos (e refazer tudo)
+  async function handleImportEventos(ANO){
+    await importarEventos(ANO);
+    // Completa a receita (fallbacks) e recompõe projeções
+    if (ANO==2025) completarReceitaProjPara2025();
+    if (ANO==2026) completarReceitaProjPara2026();
+    projetarAno(ANO);
+    montarCabecalho(ANO);
+    montarCorpo(ANO);
+  }
 
-  bootstrap();
+  // === Bootstrap por ano
+  async function rebuild(ANO){
+    ctx.textContent = `Ano selecionado: ${ANO}`;
+    await loadCategorias();
+    await loadDREReal(ANO);
+    // carrega receita projetada vinda de eventos (se houver)
+    await importarEventos(ANO);
+    if (ANO==2025) completarReceitaProjPara2025();
+    if (ANO==2026) completarReceitaProjPara2026();
+
+    projetarAno(ANO);
+    montarCabecalho(ANO);
+    montarCorpo(ANO);
+  }
+
+  // === Listeners
+  const selAno = document.getElementById('selAno');
+  selAno.onchange = ()=> rebuild(Number(selAno.value));
+  document.getElementById('btnImportarEventos').onclick = ()=> handleImportEventos(Number(selAno.value));
+  document.getElementById('btnSalvar').onclick = ()=> salvar(Number(selAno.value));
+
+  // start
+  rebuild(2025);
 })();
 </script>
 </body>
