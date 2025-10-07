@@ -54,6 +54,8 @@ document.addEventListener('DOMContentLoaded', function () {
               <a href="/LepanApp/Fluxo_financeiro.html">Fluxo</a>
               <a href="/LepanApp/DRE.html">DRE</a>
               <a href="/LepanApp/analise_estoque.html">Estoque</a>
+              <a href="/LepanApp/Planejamento.html">Planejamento</a>
+              <a href="/LepanApp/Plan_x_Real.html">Planejado x Real</a>
               <a href="/LepanApp/import_financeiro.html">Importação Consolidada</a>
             </div>
           </div>
