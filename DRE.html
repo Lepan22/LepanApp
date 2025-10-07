@@ -1,238 +1,484 @@
-<script type="module">
-  import { db } from './assets/firebase-config.js';
-  import { ref, onValue, get, child, update } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DRE (Competência) — Le Pan</title>
 
-  // ===== Datas base (sempre fecha o MÊS ANTERIOR) =====
-  const hoje = new Date();
-  const ANO  = hoje.getFullYear();
-  const ANO_ANT = ANO - 1;
-  const MES_ATUAL = hoje.getMonth();          // 0..11
-  const MES_BASE  = (MES_ATUAL - 1 + 12) % 12;// mês anterior (0..11)
-  const ANO_BASE  = (MES_ATUAL === 0) ? ANO_ANT : ANO;
+  <link rel="stylesheet" href="assets/base.css"/>
+  <link rel="stylesheet" href="assets/menu-styles.css"/>
+  <script type="module" src="assets/firebase-config.js"></script>
+  <script defer src="assets/menu.js"></script>
 
-  // ===== Caches mínimos =====
-  const categorias = new Map();     // id -> { nome, centro, tipo, dre_* , dre_valor }
-  const regrasHist = new Map();     // "YYYYMM" -> Map(catId -> regra/vigência)
-  const cons = { [ANO_ANT]: null, [ANO]: null };
-
-  // ===== Utils =====
-  const yyyymm = (y, m0)=> `${y}-${String(m0+1).padStart(2,'0')}`;
-  const parseNumber = (v)=>{
-    if (typeof v === 'number') return v;
-    if (v && typeof v === 'object'){
-      const cands = [v.valor, v.total, v.amount, v.Valor, v.valorReal, v.valor_liquido, v.valorBruto];
-      for (const c of cands){ const n = Number(c); if (!Number.isNaN(n)) return n; }
+  <style>
+    :root{
+      --muted:#6b7280; --ink:#111827; --line:#e5e7eb; --brand:#ff7f2a; --soft:#fff7ec;
+      --bg:#ffffff;
     }
-    const n = Number(v); return Number.isNaN(n) ? 0 : n;
-  };
-  const isCompras = (cat)=> String(cat?.nome||'').trim().toLowerCase()==='compras';
+    body{background:#f8fafc;}
+    .page{max-width:1200px;margin:0 auto;padding:16px;}
+    .header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    h1{margin:0;font-size:20px;color:var(--ink);}
+    .muted{color:var(--muted);font-size:12px;}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+    .controls .btn{height:34px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;}
+    .controls .btn.brand{background:var(--brand);color:#fff;border-color:#f97316;}
+    .controls .btn:hover{background:#f3f4f6;}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border:1px solid var(--line);border-radius:999px;background:#fff;font-size:12px;color:var(--muted);}
+    .legend{display:flex;gap:8px;flex-wrap:wrap;}
+    .grid{overflow:auto;border:1px solid var(--line);border-radius:10px;background:#fff;}
+    table{width:100%;border-collapse:collapse;background:#fff;}
+    thead th{position:sticky;top:0;background:var(--soft);border-bottom:1px solid var(--line);padding:8px;font-size:12px;color:var(--ink);text-align:left;z-index:1;}
+    tbody td, tbody th{border-top:1px solid var(--line);padding:6px 8px;font-size:12.5px;vertical-align:top;}
+    tbody th{background:#fbfbfb;font-weight:600;color:#111827;}
+    .num{text-align:right;white-space:nowrap;}
+    .pct{color:#065f46;font-size:11.5px;}
+    .group{background:#fcfcff;}
+    .result{background:#f8faff;font-weight:700;}
+    .center-title{font-size:12.5px;color:#111827;}
+    .sub-muted{color:#9ca3af;font-size:11px;}
+    .tag{display:inline-block;padding:2px 6px;border-radius:999px;border:1px solid var(--line);font-size:11px;}
+    .warn{color:#b45309;}
+    .ok{color:#065f46;}
+    .sep{height:8px;}
+    code{font-size:11px;background:#f3f4f6;padding:2px 6px;border-radius:6px;}
+    .sticky-left{position:sticky;left:0;background:inherit;z-index:2;box-shadow:1px 0 0 0 var(--line);}
+    .ytd-cell{background:#fffdfa;}
+  </style>
+</head>
+<body>
+  <div id="menuLateral" class="sidebar"></div>
 
-  // Regra efetiva (histórico > cadastro atual)
-  function getRegraEfetiva(catId, y, m0){
-    const ym   = `${y}${String(m0+1).padStart(2,'0')}`;
-    const hist = regrasHist.get(ym)?.get(catId);
-    const cad  = categorias.get(catId)||{};
-    return {
-      dre_regra:           hist?.dre_regra ?? cad.dre_regra ?? '',
-      dre_media_janela:    hist?.dre_media_janela ?? cad.dre_media_janela ?? null,
-      dre_percentual_base: hist?.dre_percentual_base ?? cad.dre_percentual_base ?? null,
-      dre_valor:           hist?.dre_valor ?? cad.dre_valor ?? null
-    };
-  }
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1>DRE (Competência)</h1>
+        <div class="muted">Mostrando o ano corrente até o <strong>mês anterior</strong>. Regras “congeladas” por mês via histórico e/ou snapshot.</div>
+      </div>
+      <div class="controls">
+        <button id="btnFecharMes" class="btn brand">Fechar DRE do mês (salvar snapshot)</button>
+        <label class="muted" style="display:inline-flex;gap:6px;align-items:center;">
+          <input type="checkbox" id="ckForcar"/> sobrescrever mês fechado
+        </label>
+        <span id="badgeSnapshot" class="pill">Snapshot: <strong id="snapStatus">—</strong></span>
+      </div>
+    </div>
 
-  // Valor do CONSOLIDADO por categoria no mês
-  function valConsolidado(catId, y, m0){
-    const node = cons[y]; if (!node) return 0;
-    const mes  = node[m0+1];
-    return parseNumber(mes?.[catId] ?? 0);
-  }
+    <div class="legend">
+      <span class="pill">Base: <strong id="txtBase"></strong></span>
+      <span class="pill">Receita do mês: <strong id="txtReceitaMes"></strong></span>
+      <span class="pill">Receita YTD: <strong id="txtReceitaYTD"></strong></span>
+    </div>
 
-  // Receita do mês (centro=Receita OU tipo=Entrada)
-  function receitaMes(y,m0){
-    let soma = 0;
-    categorias.forEach((cat,id)=>{
-      const centro = (cat.centro||'').toLowerCase();
-      const tipo   = (cat.tipo||'').toLowerCase();
-      if (centro === 'receita' || tipo === 'entrada'){
-        soma += valConsolidado(id,y,m0);
+    <div class="sep"></div>
+
+    <div class="grid">
+      <table id="tblDRE">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+        <tfoot id="tfoot"></tfoot>
+      </table>
+    </div>
+
+    <div class="sep"></div>
+    <div class="muted">
+      Notas:
+      <ul>
+        <li>Regra <code>especial</code> usa <code>dre_valor</code> quando a categoria <strong>não</strong> é “Compras”.</li>
+        <li>Mudanças de regra não afetam meses fechados: usamos <code>regras_dre_historico</code> por mês e snapshots em <code>dre_fechado</code>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from './assets/firebase-config.js';
+    import { ref, onValue, get, child, update } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+
+    // ===================== Datas base =====================
+    const hoje = new Date();
+    const ANO = hoje.getFullYear();
+    const ANO_ANT = ANO - 1;
+    const MES_ATUAL = hoje.getMonth();           // 0..11
+    const MES_BASE  = (MES_ATUAL - 1 + 12) % 12; // mês anterior (0..11)
+    const ANO_BASE  = (MES_ATUAL === 0) ? ANO_ANT : ANO;
+
+    // ===================== Dom =====================
+    const thead = document.getElementById('thead');
+    const tbody = document.getElementById('tbody');
+    const tfoot = document.getElementById('tfoot');
+    const txtBase = document.getElementById('txtBase');
+    const txtReceitaMes = document.getElementById('txtReceitaMes');
+    const txtReceitaYTD = document.getElementById('txtReceitaYTD');
+    const badgeSnapshot = document.getElementById('snapStatus');
+    const btnFecharMes = document.getElementById('btnFecharMes');
+    const ckForcar = document.getElementById('ckForcar');
+
+    // ===================== Caches =====================
+    const categorias = new Map();     // id -> { nome, centro, tipo, dre_*, dre_valor }
+    const regrasHist = new Map();     // "YYYYMM" -> Map(catId -> regra/vigência)
+    const cons = { [ANO_ANT]: null, [ANO]: null };       // consolidado por categoria
+    const dreFechado = { base: null };                   // snapshot do mês base (se houver)
+
+    // ===================== Consts =====================
+    const ORDEM_CENTROS = ['Receita','CMV','Despesa Operacional','Despesa Variável','Despesa Fixa','Investimento','Retirada'];
+
+    // ===================== Utils =====================
+    const fmt = (n=0)=> Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const pct = (n=0)=> (Number(n||0)*100).toLocaleString('pt-BR',{maximumFractionDigits:2})+'%';
+    const yyyymmKey = (y,m0)=> `${y}${String(m0+1).padStart(2,'0')}`;
+    const snapPath = (y,m0)=> `financeiro/dre_fechado/${y}/${String(m0+1).padStart(2,'0')}`;
+    const isCompras = (cat)=> String(cat?.nome||'').trim().toLowerCase()==='compras';
+
+    function parseNumber(v){
+      if (typeof v==='number') return v;
+      if (v && typeof v === 'object'){
+        const cands = [v.valor, v.total, v.amount, v.Valor, v.valorReal, v.valor_liquido, v.valorBruto];
+        for (const c of cands){ const n = Number(c); if (!Number.isNaN(n)) return n; }
       }
-    });
-    return soma;
-  }
-
-  // Média N meses da própria categoria até (y,m0)
-  function mediaCat(catId, y, m0, n){
-    if (!n || n<=0) return 0;
-    let soma=0, count=0;
-    for (let k=0;k<n;k++){
-      let yy=y, mm=m0-k;
-      if (mm<0){ yy--; mm+=12; }
-      if (yy!==ANO && yy!==ANO_ANT) continue;
-      soma += valConsolidado(catId, yy, mm); count++;
+      const n = Number(v); return Number.isNaN(n) ? 0 : n;
     }
-    return count? (soma/count):0;
-  }
 
-  // Valor de DRE no mês por categoria (com regra efetiva)
-  function valorDREMes(catId, y, m0){
-    const cat   = categorias.get(catId)||{};
-    const regra = getRegraEfetiva(catId, y, m0);
+    function receitaDoMes(y,m0){
+      let soma = 0;
+      categorias.forEach((cat, id)=>{
+        const centro = (cat.centro||'').toLowerCase();
+        const tipo   = (cat.tipo||'').toLowerCase();
+        if (centro === 'receita' || tipo === 'entrada'){
+          soma += valCons(id,y,m0);
+        }
+      });
+      return soma;
+    }
 
-    if (regra.dre_regra === 'especial'){
-      if (isCompras(cat)){
-        // Compras mantém sua lógica atual (competência do consolidado, ou o que você já utiliza no arquivo)
-        return valConsolidado(catId, y, m0);
+    function valCons(catId, y, m0){
+      const node = cons[y];
+      if (!node) return 0;
+      const mesNode = node[m0+1];
+      return parseNumber(mesNode?.[catId] ?? 0);
+    }
+
+    function mediaCat(catId, y, m0, n){
+      if (!n || n<=0) return 0;
+      let soma=0, count=0;
+      for (let k=0;k<n;k++){
+        let yy=y, mm=m0-k;
+        if (mm<0){ yy--; mm+=12; }
+        if (yy!==ANO && yy!==ANO_ANT) continue;
+        soma += valCons(catId, yy, mm);
+        count++;
       }
-      // Demais categorias especiais usam dre_valor
-      const n = Number(regra.dre_valor||0);
-      return Number.isFinite(n) ? n : 0;
-    }
-    if (regra.dre_regra === 'competencia_media'){
-      const n = Number(regra.dre_media_janela||0);
-      return mediaCat(catId, y, m0, n);
-    }
-    if (regra.dre_regra === 'competencia_driver'){
-      const p = Number(regra.dre_percentual_base||0);
-      return p * receitaMes(y,m0);
-    }
-    // 'caixa' (na sua tela é consolidado do mês) e default:
-    return valConsolidado(catId, y, m0);
-  }
-
-  // ===== Grava snapshot do mês (não sobrescreve por padrão) =====
-  async function fecharDREMes({ano=ANO_BASE, mes0=MES_BASE, forcar=false}={}){
-    const ymLabel = yyyymm(ano,mes0); // ex: "2025-09"
-    const snapPath = `financeiro/dre_fechado/${ano}/${String(mes0+1).padStart(2,'0')}`;
-
-    // idempotência: não sobrescreve sem forçar
-    const existe = await get(child(ref(db), snapPath));
-    if (existe.exists() && !forcar){
-      alert(`Já existe snapshot de DRE para ${ymLabel}. Nada foi gravado.`);
-      return;
+      return count? (soma/count):0;
     }
 
-    // monta estruturas
-    const porCategoria = {};   // { catId: {nome, centro, tipo, regra_usada:{...}, valorMes, valorYTD} }
-    const grupos = {          // somatórios por centro
-      Receita:      {mes:0, ytd:0},
-      CMV:          {mes:0, ytd:0},
-      'Despesa Operacional': {mes:0, ytd:0},
-      'Despesa Variável':    {mes:0, ytd:0},
-      'Despesa Fixa':        {mes:0, ytd:0},
-      Investimento: {mes:0, ytd:0},
-      Retirada:     {mes:0, ytd:0}
-    };
+    function regraEfetiva(catId, y, m0){
+      const hist = regrasHist.get(yyyymmKey(y,m0))?.get(catId);
+      const cur  = categorias.get(catId) || {};
+      return {
+        dre_regra:           hist?.dre_regra ?? cur.dre_regra ?? '',
+        dre_media_janela:    hist?.dre_media_janela ?? cur.dre_media_janela ?? null,
+        dre_percentual_base: hist?.dre_percentual_base ?? cur.dre_percentual_base ?? null,
+        dre_valor:           hist?.dre_valor ?? cur.dre_valor ?? null
+      };
+    }
 
-    // YTD (até o mês base)
-    const ytdPorCat = (catId)=>{
+    function valorDREMes(catId, y, m0){
+      const cat = categorias.get(catId) || {};
+      const r = regraEfetiva(catId, y, m0);
+
+      if (r.dre_regra === 'especial'){
+        if (isCompras(cat)){
+          return valCons(catId, y, m0);
+        }
+        const n = Number(r.dre_valor||0);
+        return Number.isFinite(n) ? n : 0;
+      }
+
+      if (r.dre_regra === 'competencia_media'){
+        const n = Number(r.dre_media_janela||0);
+        return mediaCat(catId, y, m0, n);
+      }
+
+      if (r.dre_regra === 'competencia_driver'){
+        const p = Number(r.dre_percentual_base||0);
+        return p * receitaDoMes(y,m0);
+      }
+
+      // 'caixa' (na sua implementação atual) e default: valor do consolidado do mês
+      return valCons(catId, y, m0);
+    }
+
+    function ytdCat(catId, y, m0){
       let s=0;
-      for (let m=0;m<=mes0;m++) s += valorDREMes(catId, ano, m);
+      for (let i=0;i<=m0;i++) s+=valorDREMes(catId,y,i);
       return s;
-    };
+    }
 
-    // percorre categorias
-    categorias.forEach((cat, id)=>{
-      const valorMes = valorDREMes(id, ano, mes0);
-      const valorYTD = ytdPorCat(id);
-      const regra    = getRegraEfetiva(id, ano, mes0);
+    // ===================== Snapshot (fechamento) =====================
+    async function carregarSnapshot(){
+      const snapRef = child(ref(db), snapPath(ANO_BASE, MES_BASE));
+      const s = await get(snapRef);
+      dreFechado.base = s.exists()? s.val(): null;
+      badgeSnapshot.textContent = dreFechado.base ? 'EXISTE' : 'ausente';
+      badgeSnapshot.className = dreFechado.base ? 'ok' : 'warn';
+    }
 
-      porCategoria[id] = {
-        nome:   cat.nome || '',
-        centro: cat.centro || '',
-        tipo:   cat.tipo || '',
-        regra_usada: {
-          dre_regra: regra.dre_regra || '',
-          dre_media_janela: regra.dre_media_janela ?? null,
-          dre_percentual_base: regra.dre_percentual_base ?? null,
-          dre_valor: regra.dre_valor ?? null
+    async function fecharMes(forcar=false){
+      await carregarSnapshot();
+      if (dreFechado.base && !forcar){
+        alert('Já existe snapshot do mês. Marque "sobrescrever" para refazer.');
+        return;
+      }
+
+      // monta porCategoria e grupos
+      const porCategoria = {};
+      const grupos = Object.fromEntries(ORDEM_CENTROS.map(c=>[c,{mes:0,ytd:0}]));
+
+      categorias.forEach((cat,id)=>{
+        const vMes  = valorDREMes(id, ANO_BASE, MES_BASE);
+        const vYTD  = ytdCat(id, ANO_BASE, MES_BASE);
+        const regra = regraEfetiva(id, ANO_BASE, MES_BASE);
+
+        porCategoria[id] = {
+          nome:cat.nome||'', centro:cat.centro||'', tipo:cat.tipo||'',
+          regra_usada:{
+            dre_regra:regra.dre_regra||'',
+            dre_media_janela:regra.dre_media_janela??null,
+            dre_percentual_base:regra.dre_percentual_base??null,
+            dre_valor:regra.dre_valor??null
+          },
+          valorMes:vMes, valorYTD:vYTD
+        };
+
+        const centro = (cat.centro||'').trim();
+        if (grupos[centro]){
+          grupos[centro].mes += vMes;
+          grupos[centro].ytd += vYTD;
+        }
+      });
+
+      const soma = k=> (grupos[k]?.mes||0);
+      const somaY= k=> (grupos[k]?.ytd||0);
+
+      const receitaMes = soma('Receita');
+      const receitaYTD = somaY('Receita');
+
+      const resultadoMes =
+        receitaMes
+        - soma('CMV')
+        - soma('Despesa Operacional')
+        - soma('Despesa Variável')
+        - soma('Despesa Fixa')
+        - soma('Investimento')
+        - soma('Retirada');
+
+      const resultadoYTD =
+        receitaYTD
+        - somaY('CMV')
+        - somaY('Despesa Operacional')
+        - somaY('Despesa Variável')
+        - somaY('Despesa Fixa')
+        - somaY('Investimento')
+        - somaY('Retirada');
+
+      const payload = {
+        meta:{
+          ano: ANO_BASE, mes: MES_BASE+1,
+          fechadoEm: new Date().toISOString(),
+          competenciaBase: true,
+          baseCalculo: 'até o mês anterior'
         },
-        valorMes,
-        valorYTD
+        categorias: porCategoria,
+        grupos,
+        resultado:{
+          mes: resultadoMes, ytd: resultadoYTD,
+          margemMes: receitaMes ? (resultadoMes/receitaMes) : 0,
+          margemYTD: receitaYTD ? (resultadoYTD/receitaYTD) : 0
+        }
       };
 
-      // acumula em grupos (usa o centro cadastrado)
-      const centro = (cat.centro || '').trim();
-      if (grupos[centro]){
-        grupos[centro].mes  += valorMes;
-        grupos[centro].ytd  += valorYTD;
+      await update(ref(db, snapPath(ANO_BASE, MES_BASE)), payload);
+      await carregarSnapshot();
+      alert('DRE do mês fechado e salvo.');
+      render(); // recarrega a visão já priorizando o snapshot
+    }
+
+    // ===================== Render =====================
+    function montarHead(){
+      const meses = [];
+      const fmtMes = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      for (let m=0;m<=MES_BASE;m++) meses.push(fmtMes[m]);
+
+      thead.innerHTML = '';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <th class="sticky-left">Centro / Categoria</th>
+        ${meses.map(m=>`<th>${m}</th>`).join('')}
+        <th class="ytd-cell">Consolidado (Ano)</th>
+      `;
+      thead.appendChild(tr);
+
+      txtBase.textContent = `${ANO_BASE}-${String(MES_BASE+1).padStart(2,'0')}`;
+    }
+
+    function linhaGrupo(cabeca){
+      const tr = document.createElement('tr');
+      tr.className = 'group';
+      tr.innerHTML = `<th class="sticky-left center-title">${cabeca}</th>`;
+      for (let m=0;m<=MES_BASE;m++){
+        tr.innerHTML += `<td class="num" data-g="${cabeca}" data-m="${m}">R$ 0,00<br><span class="pct sub-muted">0%</span></td>`;
       }
+      tr.innerHTML += `<td class="num ytd-cell" data-g="${cabeca}" data-m="ytd">R$ 0,00</td>`;
+      return tr;
+    }
+
+    function linhaCat(catId, cat){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="sticky-left">${cat.nome||''}<div class="sub-muted">${cat.centro||''}</div></td>`;
+
+      for (let m=0;m<=MES_BASE;m++){
+        let v;
+        if (dreFechado.base?.categorias?.[catId]){
+          // snapshot tem só mês base e YTD. Para meses anteriores, calcula on the fly (mantemos simples).
+          v = (m===MES_BASE)
+              ? Number(dreFechado.base.categorias[catId].valorMes||0)
+              : valorDREMes(catId, ANO_BASE, m);
+        }else{
+          v = valorDREMes(catId, ANO_BASE, m);
+        }
+        tr.innerHTML += `<td class="num">${fmt(v)}</td>`;
+      }
+
+      // YTD
+      let ytdV;
+      if (dreFechado.base?.categorias?.[catId]){
+        ytdV = Number(dreFechado.base.categorias[catId].valorYTD||0);
+      }else{
+        ytdV = ytdCat(catId, ANO_BASE, MES_BASE);
+      }
+      tr.innerHTML += `<td class="num ytd-cell">${fmt(ytdV)}</td>`;
+
+      return tr;
+    }
+
+    function render(){
+      if (!cons[ANO] || categorias.size===0) return;
+      montarHead();
+      tbody.innerHTML = '';
+      tfoot.innerHTML = '';
+
+      // receita do mês / YTD para % das células de grupo
+      const receitaMes = receitaDoMes(ANO_BASE, MES_BASE);
+      let receitaYTD = 0;
+      for (let m=0;m<=MES_BASE;m++) receitaYTD += receitaDoMes(ANO_BASE, m);
+      txtReceitaMes.textContent = fmt(receitaMes);
+      txtReceitaYTD.textContent = fmt(receitaYTD);
+
+      // agrupa categorias por centro
+      const porCentro = new Map(ORDEM_CENTROS.map(c=>[c,[]]));
+      categorias.forEach((cat,id)=>{
+        const c = (cat.centro||'').trim();
+        if (porCentro.has(c)) porCentro.get(c).push({id,cat});
+      });
+
+      // desenha grupos
+      const groupTotalsMes = {};  // g|m -> total
+      const groupTotalsYTD = {};  // g -> total
+
+      for (const centro of ORDEM_CENTROS){
+        const itens = porCentro.get(centro)||[];
+        if (itens.length===0) continue;
+
+        tbody.appendChild(linhaGrupo(centro));
+        itens.sort((a,b)=> (a.cat?.nome||'').localeCompare(b.cat?.nome||''));
+        itens.forEach(({id,cat})=>{
+          tbody.appendChild(linhaCat(id, cat));
+
+          // acumula totais do grupo
+          for (let m=0;m<=MES_BASE;m++){
+            const v = valorDREMes(id, ANO_BASE, m);
+            groupTotalsMes[`${centro}|${m}`] = (groupTotalsMes[`${centro}|${m}`]||0) + v;
+          }
+          groupTotalsYTD[centro] = (groupTotalsYTD[centro]||0) + ytdCat(id, ANO_BASE, MES_BASE);
+        });
+      }
+
+      // preenche células dos grupos com valor e %
+ sobre receita
+      tbody.querySelectorAll('td[data-g]').forEach(td=>{
+        const g = td.getAttribute('data-g');
+        const m = td.getAttribute('data-m');
+        if (m === 'ytd'){
+          const v = groupTotalsYTD[g]||0;
+          td.innerHTML = fmt(v);
+        }else{
+          const idx = Number(m);
+          const v = groupTotalsMes[`${g}|${idx}`]||0;
+          const rec = receitaDoMes(ANO_BASE, idx);
+          const prc = rec ? (v/rec) : 0;
+          td.innerHTML = `${fmt(v)}<br><span class="pct">${pct(prc)}</span>`;
+        }
+      });
+
+      // ===== Resultado =====
+      const trR = document.createElement('tr');
+      trR.className = 'result';
+      trR.innerHTML = `<th class="sticky-left">Resultado</th>`;
+      let resYTD = 0, recYTD = 0;
+      for (let m=0;m<=MES_BASE;m++){
+        const receita = groupTotalsMes[`Receita|${m}`]||0;
+        const v =
+          receita
+          - (groupTotalsMes[`CMV|${m}`]||0)
+          - (groupTotalsMes[`Despesa Operacional|${m}`]||0)
+          - (groupTotalsMes[`Despesa Variável|${m}`]||0)
+          - (groupTotalsMes[`Despesa Fixa|${m}`]||0)
+          - (groupTotalsMes[`Investimento|${m}`]||0)
+          - (groupTotalsMes[`Retirada|${m}`]||0);
+        trR.innerHTML += `<td class="num">${fmt(v)}<br><span class="pct">${receita?pct(v/receita):'0%'}</span></td>`;
+        resYTD += v; recYTD += receita;
+      }
+      trR.innerHTML += `<td class="num ytd-cell">${fmt(resYTD)}<br><span class="pct">${recYTD?pct(resYTD/recYTD):'0%'}</span></td>`;
+      tfoot.appendChild(trR);
+    }
+
+    // ===================== Listeners de dados =====================
+    onValue(ref(db,'financeiro/categorias'), s=>{
+      categorias.clear();
+      if (s.exists()) s.forEach(ch=> categorias.set(ch.key, ch.val()||{}) );
+      render();
     });
 
-    // Resultado
-    const soma = (g)=> (grupos[g]?.mes||0);
-    const somaY = (g)=> (grupos[g]?.ytd||0);
-    const receitaMesV = soma('Receita');
-    const receitaYTDV = somaY('Receita');
-
-    const resultadoMes =
-      receitaMesV
-      - soma('CMV')
-      - soma('Despesa Operacional')
-      - soma('Despesa Variável')
-      - soma('Despesa Fixa')
-      - soma('Investimento')
-      - soma('Retirada');
-
-    const resultadoYTD =
-      receitaYTDV
-      - somaY('CMV')
-      - somaY('Despesa Operacional')
-      - somaY('Despesa Variável')
-      - somaY('Despesa Fixa')
-      - somaY('Investimento')
-      - somaY('Retirada');
-
-    const margemMes  = receitaMesV ? (resultadoMes / receitaMesV) : 0;
-    const margemYTD  = receitaYTDV ? (resultadoYTD / receitaYTDV) : 0;
-
-    // payload final
-    const payload = {
-      meta: {
-        ano, mes: mes0+1,
-        competenciaBase: true,            // indica que usa competência
-        fechadoEm: new Date().toISOString(),
-        baseCalculo: 'até o mês anterior',
-        origem: 'DRE.html',
-      },
-      categorias: porCategoria,
-      grupos,
-      resultado: {
-        mes: resultadoMes,
-        ytd: resultadoYTD,
-        margemMes,
-        margemYTD
-      }
-    };
-
-    await update(ref(db, snapPath), payload);
-    alert(`DRE de ${ymLabel} salvo em ${snapPath}.`);
-  }
-
-  // ===== Listeners mínimos para termos dados =====
-  onValue(ref(db,'financeiro/categorias'), s=>{
-    categorias.clear();
-    if (s.exists()) s.forEach(ch=> categorias.set(ch.key, ch.val()||{}) );
-  });
-  onValue(ref(db,'financeiro/regras_dre_historico'), s=>{
-    regrasHist.clear();
-    if (s.exists()){
-      s.forEach(anoSnap=>{
-        const y = anoSnap.key;
-        anoSnap.forEach(mesSnap=>{
-          const m = String(mesSnap.key).padStart(2,'0');
-          const map = new Map();
-          mesSnap.forEach(catSnap=> map.set(catSnap.key, catSnap.val()||{}) );
-          regrasHist.set(`${y}${m}`, map);
+    onValue(ref(db,'financeiro/regras_dre_historico'), s=>{
+      regrasHist.clear();
+      if (s.exists()){
+        s.forEach(anoSnap=>{
+          const y = anoSnap.key;
+          anoSnap.forEach(mesSnap=>{
+            const m = String(mesSnap.key).padStart(2,'0');
+            const map = new Map();
+            mesSnap.forEach(catSnap=> map.set(catSnap.key, catSnap.val()||{}) );
+            regrasHist.set(`${y}${m}`, map);
+          });
         });
-      });
-    }
-  });
-  onValue(ref(db,`financeiro/consolidado/${ANO_ANT}`), s=>{ cons[ANO_ANT] = s.exists()? s.val(): null; });
-  onValue(ref(db,`financeiro/consolidado/${ANO}`),     s=>{ cons[ANO]     = s.exists()? s.val(): null; });
+      }
+      render();
+    });
 
-  // ===== Botão Fechar =====
-  const btn = document.getElementById('btnFecharMes');
-  if (btn){
-    btn.addEventListener('click', ()=> fecharDREMes({forcar:false}));
-  }
-</script>
+    onValue(ref(db,`financeiro/consolidado/${ANO_ANT}`), s=>{
+      cons[ANO_ANT] = s.exists()? s.val() : null;
+      render();
+    });
+    onValue(ref(db,`financeiro/consolidado/${ANO}`), s=>{
+      cons[ANO] = s.exists()? s.val() : null;
+      render();
+    });
+
+    // Carrega snapshot do mês base no início
+    await carregarSnapshot();
+
+    // ===================== Ações =====================
+    btnFecharMes.addEventListener('click', ()=> fecharMes(ckForcar.checked));
+
+  </script>
+</body>
+</html>
