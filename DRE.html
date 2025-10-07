@@ -10,8 +10,10 @@
 
 <style>
   :root{
-    --ind-w: 170px;  /* Centro/Categoria (igual ao Fluxo) */
-    --year-w: 160px; /* Consolidado (Ano) fixo */
+    /* Larguras maiores para melhorar leitura */
+    --ind-w: 240px;   /* Centro/Categoria */
+    --year-w: 190px;  /* Consolidado (Ano) */
+    --col-w: 120px;   /* Cada mês */
   }
   .main-content { padding:16px 20px; }
 
@@ -21,18 +23,21 @@
   .diag { margin:6px 0 10px; padding:8px 10px; border-radius:8px; font-size:13px; display:none; }
   .diag.warn { background:#fff7ed; border:1px solid #fed7aa; color:#9a3412; }
   .diag.err  { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
-  .btn{height:32px;padding:0 12px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;}
+  .btn{height:34px;padding:0 12px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;}
   .btn.primary{background:#ff7f2a;color:#fff;border-color:#f97316;}
+  .btn.secondary{background:#fff;border-color:#e5e5e5;}
   .btn.danger{color:#b91c1c;background:#fff;border-color:#fecaca;}
   .badge   { background:#f6f6f6; border:1px solid #e5e5e5; padding:2px 6px; border-radius:6px; font-size:12px; }
 
   .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
 
-  table.fx { width:100%; border-collapse:collapse; table-layout:fixed; background:#fff; }
-  .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; font-size:12.5px; }
-  .fx thead th { background:#fff7ec; color:#000; font-weight:600; }
+  table.fx { width:100%; border-collapse:collapse; background:#fff; }
+  .fx th, .fx td { border:1px solid #e6e6e6; padding:8px 10px; font-size:13px; }
+  .fx thead th { background:#fff7ec; color:#000; font-weight:600; position:sticky; top:0; z-index:1; }
 
+  /* Colunas fixas mais largas */
   .fx th.ind, .fx td.ind {
     position:sticky; left:0; z-index:3;
     background:#fafafa;
@@ -46,24 +51,27 @@
     text-align:right;
   }
 
+  /* Colunas mensais com largura mínima */
+  .fx thead th.month, .fx tbody td.month, .fx tfoot td.month {
+    min-width:var(--col-w);
+    width:var(--col-w);
+  }
+
   .num { text-align:right; }
   .pct { color:#475569; font-size:11.2px; margin-left:6px; }
-
-  .today { background:#fffbe6 !important; }
 
   .fx tbody tr.row-odd  td { background:#ffffff; }
   .fx tbody tr.row-even td { background:#f7f7fb; }
 
   .toggle { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-weight:700; }
   .caret  { font-size:12px; color:#555; width:14px; text-align:center; }
-
   tr.cat-row.hidden { display:none; }
   .totais-row > td.ind { font-weight:800; }
 </style>
 
 <script defer src="assets/menu.js"></script>
 
-<!-- Firebase v8 (mesmo da sua página original) -->
+<!-- Firebase v8 (compatível com seu projeto atual) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 </head>
@@ -73,7 +81,7 @@
   <div class="main-content">
     <div class="page-header">
       <h1>DRE (Competência)</h1>
-      <p>Centros e categorias <strong>como no Fluxo</strong>. O <strong>Consolidado (Ano)</strong> soma <em>até o mês anterior</em> e as % são sempre sobre a Receita (mês/ano).</p>
+      <p>Centros e categorias como no Fluxo. O <strong>Consolidado (Ano)</strong> soma <em>até o mês anterior</em> e as % são sempre sobre a Receita (mês/ano). Em <code>especial</code> (exceto “Compras”), usamos <code>dre_valor</code>. Meses com snapshot <strong>não mudam</strong>.</p>
       <div id="diag" class="diag warn"></div>
     </div>
 
@@ -82,12 +90,12 @@
         <select id="anoSelect"></select>
       </label>
       <button id="btnFechar" class="btn primary">Fechar mês (salvar snapshot)</button>
+      <button id="btnFecharAnteriores" class="btn secondary">Fechar meses anteriores</button>
       <button id="btnReabrir" class="btn danger">Reabrir mês (apagar snapshot)</button>
       <label style="display:inline-flex;align-items:center;gap:6px">
         <input type="checkbox" id="ckOverwrite"/> sobrescrever se já existir
       </label>
-      <span class="badge">Snapshot: <span id="snapInfo">—</span></span>
-      <span class="badge">% = valor ÷ Receita (mês/ano) × 100</span>
+      <span class="badge">Snapshots no ano: <span id="snapInfo">—</span></span>
     </section>
 
     <div class="table-wrap">
@@ -110,8 +118,8 @@
   const clearDiag = () => { diag.style.display='none'; diag.textContent=''; };
 
   // Firebase
-  try {
-    const firebaseConfig = {
+  try{
+    const cfg = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
       authDomain: "lepanapp.firebaseapp.com",
       databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
@@ -121,29 +129,49 @@
       appId: "1:542989944344:web:576e28199960fd5440a56d",
       measurementId: "G-VTNGJR7YRL"
     };
-    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-  } catch(e){ console.error(e); showDiag('Falha ao inicializar Firebase.', 'err'); }
-  const db = firebase.apps.length ? firebase.database() : null;
+    if (!firebase.apps.length) firebase.initializeApp(cfg);
+  }catch(e){ console.error(e); showDiag('Falha ao inicializar Firebase.', 'err'); }
+  const db = firebase.database();
 
   const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const hoje = new Date(); const mesAtual = hoje.getMonth()+1; const anoAtual = hoje.getFullYear();
 
-  const anoSelect = document.getElementById('anoSelect');
-  const hdrMeses  = document.getElementById('hdrMeses');
-  const tbody     = document.getElementById('tbody');
-  const btnFechar = document.getElementById('btnFechar');
-  const btnReabrir= document.getElementById('btnReabrir');
-  const ckOverwrite = document.getElementById('ckOverwrite');
-  const snapInfo = document.getElementById('snapInfo');
+  const anoSelect       = document.getElementById('anoSelect');
+  const hdrMeses        = document.getElementById('hdrMeses');
+  const tbody           = document.getElementById('tbody');
+  const btnFechar       = document.getElementById('btnFechar');
+  const btnFecharAnt    = document.getElementById('btnFecharAnteriores');
+  const btnReabrir      = document.getElementById('btnReabrir');
+  const ckOverwrite     = document.getElementById('ckOverwrite');
+  const snapInfo        = document.getElementById('snapInfo');
 
   const fmt = n => Number(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
   const num = v => isNaN(Number(v)) ? 0 : Number(v);
-
-  /* Ordem de centros com "Despesas Operacionais" após CMV */
-  const ORDEM = ["Receita","CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
   const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
 
-  // ---------- Leitura de dados ----------
+  const ORDEM = ["Receita","CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
+
+  // --- DB helpers ---
+  const refSnap = (ano, mes) => db.ref(`financeiro/dre_fechado/${ano}/${String(mes).padStart(2,'0')}`);
+  async function getSnapshot(ano, mes){ const s = await refSnap(ano,mes).once('value'); return s.exists()? s.val(): null; }
+  function setSnapshot(ano, mes, payload){ return refSnap(ano,mes).set(payload); }
+  function delSnapshot(ano, mes){ return refSnap(ano,mes).remove(); }
+
+  // Lê todos os snapshots do ano (1..12) => { [mesNumber]: snapshotObj }
+  async function getSnapshotsAno(ano){
+    const s = await db.ref(`financeiro/dre_fechado/${ano}`).once('value');
+    const out = {};
+    if (s.exists()){
+      const v = s.val() || {};
+      Object.keys(v).forEach(k=>{
+        const m = Number(k);
+        if (m>=1 && m<=12) out[m] = v[k];
+      });
+    }
+    return out;
+  }
+
+  // --- Queries ---
   async function getCategorias(){
     const snap = await db.ref('financeiro/categorias').once('value');
     const v = snap.val() || {};
@@ -156,19 +184,19 @@
       dre_media_janela: v[id]?.dre_media_janela ? Number(v[id].dre_media_janela) : null,
       dre_valor: (v[id]?.dre_valor!=null) ? Number(v[id].dre_valor) : null
     }));
-    const prioridadeCentro = c => {
-      const cc = (c.centro||'').toLowerCase();
+    const ordemCentro = c => {
+      const cc = norm(c.centro);
       if (cc==='receita') return 0;
-      if (cc==='cmv')     return 1;
+      if (cc==='cmv') return 1;
       if (cc==='despesas operacionais') return 2;
-      if (cc==='despesa variável' || cc==='despesa variavel') return 3;
-      if (cc==='despesa fixa')     return 4;
-      if (cc==='investimento')     return 5;
-      if (cc==='retirada')         return 6;
+      if (cc==='despesa variavel') return 3;
+      if (cc==='despesa fixa') return 4;
+      if (cc==='investimento') return 5;
+      if (cc==='retirada') return 6;
       return 7;
     };
     arr.sort((a,b)=>{
-      const pa = prioridadeCentro(a), pb = prioridadeCentro(b);
+      const pa = ordemCentro(a), pb = ordemCentro(b);
       if (pa!==pb) return pa-pb;
       if (a.centro!==b.centro) return a.centro.localeCompare(b.centro,'pt-BR');
       return a.nome.localeCompare(b.nome,'pt-BR');
@@ -179,11 +207,11 @@
   async function getConsolidadoPrev(ano){ const s = await db.ref(`financeiro/consolidado/${ano-1}`).once('value'); return s.val()||{}; }
   async function getMov(ano){ const s = await db.ref(`financeiro/movimentacao/${ano}`).once('value'); return s.val()||{}; }
 
-  // ---------- Helpers UI ----------
+  // --- Helpers UI ---
   function buildHeader(mesLimite){
     hdrMeses.innerHTML = '<th class="ind">Centro/Categoria</th><th class="year">Consolidado (Ano)</th>';
     for (let m=1;m<=mesLimite;m++){
-      const th = document.createElement('th'); th.textContent = mesesPt[m-1]; hdrMeses.appendChild(th);
+      const th = document.createElement('th'); th.textContent = mesesPt[m-1]; th.className='month'; hdrMeses.appendChild(th);
     }
   }
   function buildRow(label, cols, cls){
@@ -192,21 +220,21 @@
     const tdYear = document.createElement('td'); tdYear.className = 'year num'; tdYear.innerHTML = '—';
     tr.appendChild(tdInd); tr.appendChild(tdYear);
     for (let m=1;m<=cols;m++){
-      const td = document.createElement('td'); td.className='num'; td.innerHTML='—'; tr.appendChild(td);
+      const td = document.createElement('td'); td.className='num month'; td.innerHTML='—'; tr.appendChild(td);
     }
     return tr;
   }
-  function buildGroupHeader(label, cols, startOpen=true){
+  function buildGroupHeader(label, cols){
     const key = label.toLowerCase().replace(/\s+/g,'-');
     const tr = document.createElement('tr');
     const tdInd = document.createElement('td'); tdInd.className='ind';
-    tdInd.innerHTML = `<span class="toggle" data-grp="${key}" data-open="${startOpen? '1':'0'}">
-      <span class="caret">${startOpen ? '▼' : '►'}</span> ${label}
+    tdInd.innerHTML = `<span class="toggle" data-grp="${key}" data-open="1">
+      <span class="caret">▼</span> ${label}
     </span>`;
     const tdYear = document.createElement('td'); tdYear.className='year num'; tdYear.innerHTML='—';
     tr.appendChild(tdInd); tr.appendChild(tdYear);
     for (let m=1;m<=cols;m++){
-      const td=document.createElement('td'); td.className='num'; tr.appendChild(td);
+      const td=document.createElement('td'); td.className='num month'; tr.appendChild(td);
       td.innerHTML='—';
     }
     tr.dataset.grpkey = key;
@@ -232,12 +260,7 @@
   }
   const sumTo = (arr, mLim) => (mLim<=0 ? 0 : arr.slice(0, mLim).reduce((a,b)=>a+b,0));
 
-  // ---------- Snapshot helpers ----------
-  async function getSnapshot(ano, mes){ const s = await db.ref(`financeiro/dre_fechado/${ano}/${String(mes).padStart(2,'0')}`).once('value'); return s.exists()? s.val(): null; }
-  async function setSnapshot(ano, mes, payload){ await db.ref(`financeiro/dre_fechado/${ano}/${String(mes).padStart(2,'0')}`).set(payload); }
-  async function delSnapshot(ano, mes){ await db.ref(`financeiro/dre_fechado/${ano}/${String(mes).padStart(2,'0')}`).remove(); }
-
-  // ---------- Cálculos ----------
+  // --- Cálculos auxiliares ---
   function mediaUltimosN(catId, m, N, dadosAno, dadosPrev){
     if (!N || N<=0) return 0;
     const vals = [];
@@ -254,16 +277,72 @@
     return soma / vals.length;
   }
 
-  // ---------- Carregamento principal ----------
+  // --- Snapshot payload (reuso nos botões) ---
+  function buildSnapshotPayload(anoSel, mes, centros, linhasCat, catSums, grpSums){
+    // categorias
+    const porCategoria = {};
+    Object.keys(linhasCat).forEach(id=>{
+      porCategoria[id] = {
+        nome: linhasCat[id].cat.nome || '',
+        centro: linhasCat[id].centroEf || '',
+        valorMes: catSums[id]?.[mes-1] || 0,
+        valorYTD: sumTo(catSums[id]||[], mes)
+      };
+    });
+    // grupos
+    const grupos = {};
+    centros.forEach(c=>{
+      grupos[c] = {
+        mes: grpSums[c]?.[mes-1] || 0,
+        ytd: sumTo(grpSums[c]||[], mes)
+      };
+    });
+    const receitaMesV = grupos['Receita']?.mes || 0;
+    const receitaYTDV = grupos['Receita']?.ytd || 0;
+    const rMes =
+      (grpSums['Receita']?.[mes-1]||0)
+      - (grpSums['CMV']?.[mes-1]||0)
+      - (grpSums['Despesas Operacionais']?.[mes-1]||0)
+      - (grpSums['Despesa Variável']?.[mes-1]||0)
+      - (grpSums['Despesa Fixa']?.[mes-1]||0)
+      - (grpSums['Investimento']?.[mes-1]||0)
+      - (grpSums['Retirada']?.[mes-1]||0);
+    const rYTD =
+      sumTo(grpSums['Receita']||[], mes)
+      - sumTo(grpSums['CMV']||[], mes)
+      - sumTo(grpSums['Despesas Operacionais']||[], mes)
+      - sumTo(grpSums['Despesa Variável']||[], mes)
+      - sumTo(grpSums['Despesa Fixa']||[], mes)
+      - sumTo(grpSums['Investimento']||[], mes)
+      - sumTo(grpSums['Retirada']||[], mes);
+
+    return {
+      meta:{
+        ano: anoSel, mes,
+        fechadoEm: new Date().toISOString(),
+        competenciaBase: true,
+        baseCalculo: 'até o mês exibido'
+      },
+      categorias: porCategoria,
+      grupos,
+      resultado:{
+        mes: rMes,
+        ytd: rYTD,
+        margemMes: receitaMesV ? (rMes/receitaMesV) : 0,
+        margemYTD: receitaYTDV ? (rYTD/receitaYTDV) : 0
+      }
+    };
+  }
+
+  // --- Render principal ---
   async function carregar(anoSel){
     clearDiag();
     tbody.innerHTML = '<tr><td class="badge" style="margin:8px">Calculando…</td></tr>';
 
-    const [cats, consAno, consPrev, movAno] = await Promise.all([
-      getCategorias(), getConsolidado(anoSel), getConsolidadoPrev(anoSel), getMov(anoSel)
+    const [cats, consAno, consPrev, movAno, snapsAno] = await Promise.all([
+      getCategorias(), getConsolidado(anoSel), getConsolidadoPrev(anoSel), getMov(anoSel), getSnapshotsAno(anoSel)
     ]);
 
-    // limite de colunas (sem mês atual/futuro)
     let mesLimite;
     if (anoSel < anoAtual)      mesLimite = 12;
     else if (anoSel > anoAtual) mesLimite = 0;
@@ -272,18 +351,25 @@
     buildHeader(mesLimite);
     tbody.innerHTML = '';
 
-    // Receita base p/ % (mês e consolidado)
-    const receitaMes = Array.from({length:mesLimite}, ()=>0);
-    cats.forEach(cat=>{
-      if ((cat.centro||'').toLowerCase()==='receita'){
-        for(let m=1;m<=mesLimite;m++){
-          receitaMes[m-1] += num(consAno?.[m]?.[cat.id]?.valor || 0);
-        }
+    // receita base para % (aplica snapshot quando existir)
+    const receitaMes = Array.from({length:mesLimite}, (_,i)=>{
+      const m = i+1;
+      const snapM = snapsAno[m];
+      if (snapM?.grupos?.Receita?.mes != null){
+        return Number(snapM.grupos.Receita.mes) || 0;
       }
+      // fallback: consolidado
+      let soma = 0;
+      cats.forEach(c=>{
+        if (norm(c.centro)==='receita'){
+          soma += num(consAno?.[m]?.[c.id]?.valor || 0);
+        }
+      });
+      return soma;
     });
     const receitaAnoCorte = sumTo(receitaMes, mesLimite);
 
-    // centros na ordem do Fluxo (com "Despesas Operacionais")
+    // centros
     const centros = [];
     const seen = new Set();
     ORDEM.forEach(c=>{ seen.add(c); centros.push(c); });
@@ -291,7 +377,7 @@
 
     const headers = {};
     centros.forEach(c=>{
-      const tr = buildGroupHeader(c, mesLimite, true);
+      const tr = buildGroupHeader(c, mesLimite);
       headers[c] = tr; tbody.appendChild(tr);
     });
 
@@ -313,11 +399,11 @@
     const grpSums = {}; centros.forEach(c=> grpSums[c]=initArr() );
     const catSums = {};
 
-    // snapshot do mês limite (para “congelar” o último mês mostrado)
-    const snap = (mesLimite>0) ? await getSnapshot(anoSel, mesLimite) : null;
-    snapInfo.textContent = snap ? `existe (${anoSel}-${String(mesLimite).padStart(2,'0')})` : '—';
+    // badge de snapshots existentes no ano
+    const fechados = Object.keys(snapsAno).map(n=>Number(n)).filter(n=>n>=1 && n<=mesLimite).sort((a,b)=>a-b);
+    snapInfo.textContent = fechados.length ? `${fechados[0]}–${fechados[fechados.length-1]}` : '—';
 
-    // calcula por regra
+    // cálculos por categoria/mês (respeitando snapshot de cada mês)
     for (const id in linhasCat){
       const { cat, centroEf } = linhasCat[id];
       const regra = cat.dre_regra || 'caixa';
@@ -326,9 +412,10 @@
       for (let m=1;m<=mesLimite;m++){
         let val = 0;
 
-        if (snap && m===mesLimite && snap.categorias?.[id]) {
-          // usa valor congelado para o último mês exibido
-          val = Number(snap.categorias[id].valorMes||0);
+        const snapM = snapsAno[m];
+        if (snapM && snapM.categorias?.[id] != null){
+          // mês congelado: usar valor salvo no snapshot
+          val = Number(snapM.categorias[id].valorMes || 0);
         } else if (regra === 'caixa'){
           val = num( consAno?.[m]?.[id]?.valor || 0 );
         } else if (regra === 'competencia_driver'){
@@ -336,16 +423,12 @@
           val = p * num(receitaMes[m-1] || 0);
         } else if (regra === 'competencia_media'){
           const N = cat.dre_media_janela ? Number(cat.dre_media_janela) : 0;
-          // média dos últimos N meses (busca no ano e no anterior)
           val = mediaUltimosN(id, m, N, consAno, consPrev);
         } else if (regra === 'especial' && norm(cat.nome)==='compras'){
-          // custo de produto informado em movimentacao
           val = num( movAno?.[m]?.custoProdutoMes || 0 );
         } else if (regra === 'especial'){
-          // >>> pedido: especial (exceto Compras) usa dre_valor
           val = Number(cat.dre_valor||0);
         } else {
-          // default: consolidado
           val = num( consAno?.[m]?.[id]?.valor || 0 );
         }
 
@@ -359,7 +442,8 @@
 
     function fillGroupRow(trHeader, arr){
       const anoVal = sumTo(arr, mesLimite);
-      trHeader.children[1].innerHTML = `${fmt(anoVal)}<span class="pct">${receitaAnoCorte?((anoVal/receitaAnoCorte*100).toFixed(1)+'%'):'—'}</span>`;
+      const anoPct = receitaAnoCorte ? (anoVal/receitaAnoCorte*100).toFixed(1)+'%' : '—';
+      trHeader.children[1].innerHTML = `${fmt(anoVal)}<span class="pct">${anoPct}</span>`;
       for(let m=1;m<=mesLimite;m++){
         const td = trHeader.children[m+1];
         setCell(td, arr[m-1], receitaMes[m-1]);
@@ -371,25 +455,21 @@
       const { tr } = linhasCat[id];
       const arr = catSums[id] || initArr();
       const anoVal = sumTo(arr, mesLimite);
-      tr.children[1].innerHTML = `${fmt(anoVal)}<span class="pct">${(receitaAnoCorte?((anoVal/receitaAnoCorte*100).toFixed(1)+'%'):'—')}</span>`;
+      const anoPct = receitaAnoCorte ? (anoVal/receitaAnoCorte*100).toFixed(1)+'%' : '—';
+      tr.children[1].innerHTML = `${fmt(anoVal)}<span class="pct">${anoPct}</span>`;
       for(let m=1;m<=mesLimite;m++){
         const td = tr.children[m+1];
         setCell(td, arr[m-1], receitaMes[m-1]);
       }
     });
 
-    // ========= Resultado =========
+    // Resultado (abaixo dos grupos)
     const trRes = buildRow('Resultado', mesLimite, 'totais-row');
     tbody.appendChild(trRes);
     const get = n => grpSums[n] || initArr();
-
-    const rec   = get('Receita');
-    const cmv   = get('CMV');                      // inclui "Custo de Produto"
-    const dop   = get('Despesas Operacionais');    // novo centro
-    const dv    = get('Despesa Variável');
-    const df    = get('Despesa Fixa');
-    const inv   = get('Investimento');
-    const ret   = get('Retirada');
+    const rec = get('Receita'), cmv = get('CMV'), dop = get('Despesas Operacionais'),
+          dv  = get('Despesa Variável'), df  = get('Despesa Fixa'),
+          inv = get('Investimento'), ret = get('Retirada');
 
     const rArr = initArr();
     for (let m=1;m<=mesLimite;m++){
@@ -398,87 +478,45 @@
       setCell(td, rArr[m-1], receitaMes[m-1]);
     }
     const rAno = sumTo(rArr, mesLimite);
-    trRes.children[1].innerHTML = `${fmt(rAno)}<span class="pct">${(sumTo(receitaMes,mesLimite)?((rAno/sumTo(receitaMes,mesLimite)*100).toFixed(1)+'%'):'—')}</span>`;
+    const recAno = sumTo(receitaMes, mesLimite);
+    trRes.children[1].innerHTML = `${fmt(rAno)}<span class="pct">${recAno?(rAno/recAno*100).toFixed(1)+'%':'—'}</span>`;
 
-    // Zebra
+    // zebra
     let idx=0; tbody.querySelectorAll('tr').forEach(tr=>{
       tr.classList.add( (idx%2===0) ? 'row-odd' : 'row-even' ); idx++;
     });
 
     attachToggle();
 
-    // ---------- Handlers de fechar/reabrir ----------
+    // ---- Botões ----
     btnFechar.onclick = async ()=>{
       if (mesLimite<=0){ alert('Não há mês para fechar neste ano.'); return; }
-      const snapExistente = await getSnapshot(anoSel, mesLimite);
-      if (snapExistente && !ckOverwrite.checked){ alert('Snapshot já existe. Marque “sobrescrever” para refazer.'); return; }
-
-      // monta snapshot no mesmo conceito que alinhamos
-      const porCategoria = {};
-      Object.keys(linhasCat).forEach(id=>{
-        porCategoria[id] = {
-          nome: linhasCat[id].cat.nome || '',
-          centro: linhasCat[id].centroEf || '',
-          valorMes: catSums[id]?.[mesLimite-1] || 0,
-          valorYTD: sumTo(catSums[id]||[], mesLimite)
-        };
-      });
-
-      const grupos = {};
-      centros.forEach(c=>{
-        grupos[c] = {
-          mes: grpSums[c]?.[mesLimite-1] || 0,
-          ytd: sumTo(grpSums[c]||[], mesLimite)
-        };
-      });
-
-      const receitaMesV = grpSums['Receita']?.[mesLimite-1] || 0;
-      const receitaYTDV = sumTo(grpSums['Receita']||[], mesLimite);
-
-      const resultadoMes =
-        (grpSums['Receita']?.[mesLimite-1]||0)
-        - (grpSums['CMV']?.[mesLimite-1]||0)
-        - (grpSums['Despesas Operacionais']?.[mesLimite-1]||0)
-        - (grpSums['Despesa Variável']?.[mesLimite-1]||0)
-        - (grpSums['Despesa Fixa']?.[mesLimite-1]||0)
-        - (grpSums['Investimento']?.[mesLimite-1]||0)
-        - (grpSums['Retirada']?.[mesLimite-1]||0);
-
-      const resultadoYTD =
-        sumTo(grpSums['Receita']||[], mesLimite)
-        - sumTo(grpSums['CMV']||[], mesLimite)
-        - sumTo(grpSums['Despesas Operacionais']||[], mesLimite)
-        - sumTo(grpSums['Despesa Variável']||[], mesLimite)
-        - sumTo(grpSums['Despesa Fixa']||[], mesLimite)
-        - sumTo(grpSums['Investimento']||[], mesLimite)
-        - sumTo(grpSums['Retirada']||[], mesLimite);
-
-      const payload = {
-        meta:{
-          ano: anoSel, mes: mesLimite,
-          fechadoEm: new Date().toISOString(),
-          competenciaBase: true,
-          baseCalculo: 'até o mês anterior'
-        },
-        categorias: porCategoria,
-        grupos,
-        resultado:{
-          mes: resultadoMes,
-          ytd: resultadoYTD,
-          margemMes: receitaMesV ? (resultadoMes/receitaMesV) : 0,
-          margemYTD: receitaYTDV ? (resultadoYTD/receitaYTDV) : 0
-        }
-      };
-
+      const exists = await getSnapshot(anoSel, mesLimite);
+      if (exists && !ckOverwrite.checked){ alert('Snapshot já existe. Marque “sobrescrever” para refazer.'); return; }
+      const payload = buildSnapshotPayload(anoSel, mesLimite, centros, linhasCat, catSums, grpSums);
       await setSnapshot(anoSel, mesLimite, payload);
-      alert('Mês fechado com sucesso.');
+      alert('Mês de corte fechado com sucesso.');
+      carregar(anoSel);
+    };
+
+    btnFecharAnt.onclick = async ()=>{
+      if (mesLimite<=1){ alert('Não há meses anteriores para fechar.'); return; }
+      let count = 0, overwritten = 0;
+      for (let m=1;m<=mesLimite-1;m++){
+        const exists = await getSnapshot(anoSel, m);
+        if (exists && !ckOverwrite.checked){ continue; }
+        const payload = buildSnapshotPayload(anoSel, m, centros, linhasCat, catSums, grpSums);
+        await setSnapshot(anoSel, m, payload);
+        count++; if (exists) overwritten++;
+      }
+      alert(`Meses anteriores fechados: ${count}${overwritten?` (sobrescritos: ${overwritten})`:''}.`);
       carregar(anoSel);
     };
 
     btnReabrir.onclick = async ()=>{
-      if (mesLimite<=0){ alert('Nada para reabrir neste ano.'); return; }
-      const snapExistente = await getSnapshot(anoSel, mesLimite);
-      if (!snapExistente){ alert('Não há snapshot para este mês.'); return; }
+      if (mesLimite<=0){ alert('Nada para reabrir.'); return; }
+      const exists = await getSnapshot(anoSel, mesLimite);
+      if (!exists){ alert('Não há snapshot para o mês de corte.'); return; }
       const ok = confirm(`Reabrir ${anoSel}-${String(mesLimite).padStart(2,'0')}? O snapshot será apagado.`);
       if (!ok) return;
       await delSnapshot(anoSel, mesLimite);
