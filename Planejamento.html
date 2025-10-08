@@ -10,33 +10,33 @@
 
 <style>
   :root{
-    --ind-w: 260px;   /* Centro/Categoria (reduzido) */
-    --year-w: 180px;  /* Projetado/Real Anual (reduzido) */
-    --col-w: 112px;   /* Mês */
-    --fs: 13px;
-    --fs-sm: 11.6px;
+    --ind-w: 120px;   /* Centro/Categoria */
+    --year-w: 140px;  /* Projetado/Real Anual */
+    --col-w: 120px;   /* Mês */
+    --fs: 12px;
+    --fs-sm: 10.8px;
   }
-  .main-content { padding:16px 20px; }
+  .main-content { padding:14px 18px; }
   body, table, input, button, select { font-size: var(--fs); }
 
-  .page-header h1 { margin:6px 0 4px; }
-  .page-header p  { margin:0 0 10px; color:#666; font-size:12.5px; }
+  .page-header h1 { margin:4px 0 2px; }
+  .page-header p  { margin:0 0 8px; color:#666; font-size:var(--fs-sm); }
 
-  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px}
-  .btn{height:34px;padding:0 12px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer;font-size:12px;}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}
+  .btn{height:30px;padding:0 10px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer;font-size:11.5px;}
   .btn.primary{background:#ff7f2a;color:#fff;border-color:#f97316;}
-  .badge{background:#f6f6f6;border:1px solid #e5e5e5;padding:2px 6px;border-radius:6px;font-size:12px;}
+  .badge{background:#f6f6f6;border:1px solid #e5e5e5;padding:2px 6px;border-radius:6px;font-size:11.5px;}
 
   .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
   table.fx { width:100%; border-collapse:collapse; background:#fff; }
-  .fx th, .fx td { border:1px solid #e6e6e6; padding:8px 10px; }
+  .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; }
   .fx thead th { background:#fff7ec; color:#000; font-weight:600; position:sticky; top:0; z-index:1 }
 
   .fx th.ind, .fx td.ind {
     position:sticky; left:0; z-index:3;
     background:#fafafa;
     width:var(--ind-w); min-width:var(--ind-w); max-width:var(--ind-w);
-    text-align:left;
+    text-align:left; white-space:nowrap;
   }
   .fx th.annual1, .fx td.annual1 {
     position:sticky; left:var(--ind-w); z-index:2;
@@ -53,17 +53,17 @@
   .row-odd  td { background:#ffffff; }
   .row-even td { background:#f7f7fb; }
 
-  .toggle { display:inline-flex; align-items:center; gap:8px; cursor:pointer; user-select:none; font-weight:700; }
-  .caret  { font-size:12px; color:#555; width:14px; text-align:center; }
+  .toggle { display:inline-flex; align-items:center; gap:6px; cursor:pointer; user-select:none; font-weight:700; }
+  .caret  { font-size:11px; color:#555; width:12px; text-align:center; }
   tr.cat-row.hidden { display:none; }
 
   .num { text-align:right; white-space:nowrap; }
-  .pct { color:#475569; font-size:var(--fs-sm); margin-left:6px; }
+  .pct { color:#475569; font-size:var(--fs-sm); margin-left:4px; }
   .muted{ color:#6b7280; font-size: var(--fs-sm); }
 
-  .money{ width:100%; box-sizing:border-box; padding:6px; text-align:right; font-size:12.5px; }
-  .in-pct{ width:70px; box-sizing:border-box; padding:4px; text-align:right; font-size:11.5px; }
-  .inline { display:flex; align-items:center; gap:6px; justify-content:flex-end; } /* % ao lado do valor */
+  .money{ width:100%; box-sizing:border-box; padding:5px; text-align:right; font-size:11.8px; }
+  .in-pct{ width:64px; box-sizing:border-box; padding:4px; text-align:right; font-size:11px; }
+  .inline { display:flex; align-items:center; gap:6px; justify-content:flex-end; }
   .grp-total { font-weight:700; }
   .resultado { font-weight:800; background:#fff7f0; }
 </style>
@@ -80,7 +80,7 @@
   <div class="main-content">
     <div class="page-header">
       <h1>Planejamento</h1>
-      <p>Layout do DRE com colunas invertidas: <b>DRE Projetado (Anual)</b> antes de <b>Consolidado DRE Real (Ano)</b>. “Compras” e categorias <code>competencia_driver</code> têm <b>%</b> editável ao lado do valor; o valor é calculado como <b>% × Receita do mês</b>. Meses editáveis em R$ com máscara.</p>
+      <p>Compras e categorias <code>competencia_driver</code> têm <b>%</b> editável ao lado do valor; o valor é <b>% × Receita do mês</b>. Meses em R$ com máscara e propagação a partir do mês alterado.</p>
     </div>
 
     <section class="controls">
@@ -149,8 +149,8 @@
 
   let cmvPctRef = 0;
   let mesesExibidos = [];
-  let totalProjAnual = 0;
-  let receitaRealAno = 0; // <- base para % do Real (sempre sobre Receita)
+  let receitaRealAno = 0;       // base % Real (sempre sobre Receita)
+  let projReceitaAnual = 0;     // base % Projetado (sempre sobre Receita projetada)
 
   // ---- Leitura Categorias
   async function loadCategorias(){
@@ -175,8 +175,7 @@
 
   // ---- Real do ano
   async function loadDREReal(ANO){
-    realMensal.clear(); realAnual.clear(); for (let i=0;i<12;i++) receitaReal[i]=0;
-    receitaRealAno = 0;
+    realMensal.clear(); realAnual.clear(); for (let i=0;i<12;i++) receitaReal[i]=0; receitaRealAno=0;
     const s = await db.ref(`financeiro/dre_fechado/${ANO}`).once('value');
     let somaRec=0, somaCmp=0;
     if (s.exists()){
@@ -195,8 +194,8 @@
         });
       });
     }
+    receitaRealAno = somaRec; // % do Real sempre sobre Receita
     cmvPctRef = somaRec>0 ? (somaCmp/somaRec) : 0;
-    receitaRealAno = somaRec; // <- % do Real sempre sobre Receita
     if (!cmvPctRef || !isFinite(cmvPctRef)){
       const anoBase = (MES_ATUAL===1) ? (ANO_ATUAL-1) : ANO_ATUAL;
       const mesBase = (MES_ATUAL===1) ? 12 : (MES_ATUAL-1);
@@ -221,7 +220,7 @@
   // ---- meses exibidos
   function defineMeses(ANO){ mesesExibidos = (ANO==2025)? [10,11,12] : [1,2,3,4,5,6,7,8,9,10,11,12]; }
 
-  // ---- Receita projetada (semente): usa salvo; se não houver, usa Dez do ano anterior
+  // ---- Receita projetada seed: tenta ano anterior salvo para Jan
   async function seedReceita(ANO){
     for (let i=0;i<12;i++) receitaProj[i]=0;
     const savedPrev = await loadSavedProjection(ANO-1);
@@ -322,8 +321,9 @@
   function montarTabela(ANO){
     const tbody = document.getElementById('tbody'); tbody.innerHTML = '';
 
-    // totais do projetado (base para %)
-    totalProjAnual = 0; categorias.forEach((_,id)=>{ totalProjAnual += (projMensal.get(id)||[]).reduce((a,b)=>a+num(b),0); });
+    // bases para %
+    projReceitaAnual = somaProjGrupo("Receita");           // << % do Projetado (Anual) sempre sobre Receita projetada
+    const receitaProjMes = mesesExibidos.map(m=> somaProjMesGrupo("Receita", m));
 
     // ordem dos centros tipo DRE
     const ORDEM = ["Receita","CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
@@ -351,15 +351,18 @@
         const arr = projMensal.get(id)||Array(12).fill(0);
         const projAnual = arr.reduce((a,b)=>a+num(b),0);
         const real = num(realAnual.get(id)||0);
-        const percReal = receitaRealAno>0 ? (100*real/receitaRealAno) : 0;   // % sobre Receita real anual
-        const percProj = totalProjAnual>0 ? (100*projAnual/totalProjAnual) : 0;
+
+        // % Real: sempre sobre Receita real anual
+        const percReal = receitaRealAno>0 ? (100*real/receitaRealAno) : 0;
+        // % Projetado: sempre sobre Receita projetada anual
+        const percProj = projReceitaAnual>0 ? (100*projAnual/projReceitaAnual) : 0;
 
         const trc = document.createElement('tr'); trc.className='cat-row'; trc.dataset.grp = key;
 
         const c0 = document.createElement('td'); c0.className='ind';
         c0.innerHTML = `${cat.nome}<div class="muted">${regra}</div>`;
         const c1 = document.createElement('td'); c1.className='annual1 num';
-        c1.innerHTML = `${cur(projAnual)}<span class="pct">${totalProjAnual?percProj.toFixed(1)+'%':'—'}</span>`;
+        c1.innerHTML = `${cur(projAnual)}<span class="pct">${projReceitaAnual?percProj.toFixed(1)+'%':'—'}</span>`;
         const c2 = document.createElement('td'); c2.className='annual2 num';
         c2.innerHTML = `${cur(real)}<span class="pct">${receitaRealAno?percReal.toFixed(1)+'%':'—'}</span>`;
         trc.appendChild(c0); trc.appendChild(c1); trc.appendChild(c2);
@@ -384,15 +387,13 @@
       });
     });
 
-    // Totais por grupo (anual e meses, com % sobre Receita projetada no mês)
-    const receitaProjMes = mesesExibidos.map(m=> somaProjMesGrupo("Receita", m));
-
+    // Totais por grupo (anual e meses, % sobre Receita projetada do mês)
     ordenados.forEach(g=>{
       if(!grupos.has(g)) return;
       const head = headers[g];
       const projAnualGrp = somaProjGrupo(g);
       const realAnualGrp = somaRealGrupo(g);
-      const percProjGrp = totalProjAnual>0 ? (100*projAnualGrp/totalProjAnual).toFixed(1)+'%' : '—';
+      const percProjGrp = projReceitaAnual>0 ? (100*projAnualGrp/projReceitaAnual).toFixed(1)+'%' : '—';
       const percRealGrp = receitaRealAno>0 ? (100*realAnualGrp/receitaRealAno).toFixed(1)+'%' : '—';
       head.children[1].innerHTML = `${cur(projAnualGrp)}<span class="pct">${percProjGrp}</span>`;
       head.children[2].innerHTML = `${cur(realAnualGrp)}<span class="pct">${percRealGrp}</span>`;
@@ -407,12 +408,13 @@
     // Linha final: Resultado
     const trRes = document.createElement('tr'); trRes.className='resultado';
     const projReceita = somaProjGrupo("Receita");
-    const projOutros  = totalProjAnual - projReceita;
+    const projOutros  = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
+                          .map(g=>somaProjGrupo(g)).reduce((a,b)=>a+b,0));
     const projResAnual= projReceita - projOutros;
 
-    let realReceita = somaRealGrupo("Receita");
-    let realOutros  = 0; ["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
-      .forEach(g=> realOutros += somaRealGrupo(g));
+    const realReceita = somaRealGrupo("Receita");
+    const realOutros  = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
+                          .map(g=>somaRealGrupo(g)).reduce((a,b)=>a+b,0));
     const realResAnual = realReceita - realOutros;
 
     trRes.innerHTML = `
@@ -421,8 +423,8 @@
       <td class="annual2 num">${cur(realResAnual)}</td>
       ${mesesExibidos.map(m=>{
         const pr = somaProjMesGrupo("Receita",m);
-        let po=0; ["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
-          .forEach(g=> po += somaProjMesGrupo(g,m));
+        const po = (["CMV","Despesas Operacionais","Despesa Variável","Despeza Fixa","Investimento","Retirada"]
+                    .map(g=>somaProjMesGrupo(g,m)).reduce((a,b)=>a+b,0));
         return `<td class="month num">${cur(pr - po)}</td>`;
       }).join('')}
     `;
