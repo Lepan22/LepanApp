@@ -18,7 +18,7 @@
   }
   .main-content { padding:14px 18px; }
   body, table, input, button, select { font-size: var(--fs); }
-  .page-header h1 { margin:4px 0 2px; color:#111; }
+  .page-header h1 { margin:4px 0 2px; color:#111 !important; } /* TÍTULO PRETO */
   .page-header p  { margin:0 0 8px; color:#666; font-size:var(--fs-sm); }
 
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}
@@ -50,11 +50,6 @@
     width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
     text-align:right; white-space:nowrap;
   }
-  .fx th.annual3, .fx td.annual3 {
-    position: sticky; left:calc(var(--ind-w) + 2*var(--year-w)); z-index:4; background:#fafafa;
-    width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
-    text-align:right; white-space:nowrap;
-  }
   .fx thead th.month, .fx tbody td.month { min-width:var(--col-w); width:var(--col-w); text-align:right; }
 
   .row-odd  td { background:#ffffff; }
@@ -66,12 +61,12 @@
 
   .num { text-align:right; white-space:nowrap; }
   .muted{ color:#6b7280; font-size: var(--fs-sm); }
-  .pct { color:#475569; font-size:var(--fs-sm); margin-left:4px; }
+  .pct  { color:#475569; font-size:var(--fs-sm); margin-left:4px; }
 
   .delta-pos{ color:#059669; } /* verde */
   .delta-neg{ color:#dc2626; } /* vermelho */
 
-  /* célula mensal e YTD em 2 linhas: Real (negrito) e Planejado (muted) + delta% ao lado */
+  /* célula em 2 linhas: Linha de cima (negrito) + delta% ao lado; Linha de baixo (muted) */
   .cell2{ display:flex; flex-direction:column; gap:2px; align-items:flex-end; }
   .line-top{ font-weight:600; }
   .line-bottom{ color:#6b7280; font-size:var(--fs-sm); }
@@ -86,7 +81,6 @@
   tr.resultado td.ind     { left: 0; }
   tr.resultado td.annual1 { left: var(--ind-w); }
   tr.resultado td.annual2 { left: calc(var(--ind-w) + var(--year-w)); }
-  tr.resultado td.annual3 { left: calc(var(--ind-w) + 2*var(--year-w)); }
 </style>
 
 <script defer src="assets/menu.js"></script>
@@ -101,7 +95,11 @@
   <div class="main-content">
     <div class="page-header">
       <h1>Planejado x Real</h1>
-      <p>Anuais: <b>Planejado</b> vs <b>Híbrido</b> (Real até mês base + Planejado futuro). “Acumulado (YTD)” compara <b>Real acumulado</b> com <b>Planejado acumulado</b>. Nos meses: linha de cima é o <b>Real</b>, linha de baixo é o <span class="muted">Planejado</span>, com Δ% ao lado.</p>
+      <p>
+        <b>Planejado (Anual)</b>: compara com o <b>Híbrido</b> (Real até mês base + Planejado restante) na própria célula.<br/>
+        <b>Acumulado (até mês base)</b>: linha de cima é o <b>Real acumulado</b> e a de baixo o <b>Planejado acumulado</b>, com Δ% ao lado.<br/>
+        Meses: linha de cima = <b>Real</b>, linha de baixo = <span class="muted">Planejado</span>, com Δ%.
+      </p>
     </div>
 
     <section class="controls">
@@ -121,8 +119,7 @@
           <tr id="hdr">
             <th class="ind">Centro/Categoria</th>
             <th class="annual1">Planejado (Anual)</th>
-            <th class="annual2">Híbrido (Real YTD + Plan)</th>
-            <th class="annual3">Acumulado (YTD)</th>
+            <th class="annual2">Acumulado (até mês base)</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -138,10 +135,10 @@
   const ANO_ATUAL = hoje.getFullYear();
   const MES_ATUAL = hoje.getMonth()+1;
   const MES_BASE_ATUAL = ((MES_ATUAL-2+12)%12)+1; // mês anterior (1..12)
+
   const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const num  = v => isNaN(Number(v)) ? 0 : Number(v);
   const cur  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  const pct  = (n,den)=> den? ((n/den)*100):0;
 
   // Firebase
   try{
@@ -248,8 +245,7 @@
     hdr.innerHTML = `
       <th class="ind">Centro/Categoria</th>
       <th class="annual1">Planejado (Anual)</th>
-      <th class="annual2">Híbrido (Real YTD + Plan)</th>
-      <th class="annual3">Acumulado (YTD)</th>
+      <th class="annual2">Acumulado (até mês base)</th>
     `;
     mesesExibidos.forEach(m=>{
       const th = document.createElement('th'); th.className='month'; th.textContent = mesesPt[m-1]; hdr.appendChild(th);
@@ -296,10 +292,6 @@
     }
     return s;
   }
-  function hibridoGrupo(nome){
-    let t=0; (grupos.get(nome)||[]).forEach(id=> t += hibridoAnualCategoria(id));
-    return t;
-  }
 
   // ---- Tabela
   function montarTabela(ANO){
@@ -322,7 +314,6 @@
         <td class="ind"><span class="toggle" data-grp="${key}" data-open="1"><span class="caret">▼</span> ${g}</span></td>
         <td class="annual1 num grp-total">—</td>
         <td class="annual2 num grp-total">—</td>
-        <td class="annual3 num grp-total">—</td>
         ${mesesExibidos.map(()=>`<td class="month num grp-total">—</td>`).join('')}
       `;
       tr.dataset.grpkey = key;
@@ -337,38 +328,44 @@
 
         const pAnual   = arrP.reduce((a,b)=>a+num(b),0);
         const hAnual   = hibridoAnualCategoria(id);
-        const pAcumYTD = somaAcum(arrP, MES_BASE);
-        const rAcumYTD = somaAcum(arrR, MES_BASE);
+        const pAcumYTD = somaAcum(arrP, Math.max(MES_BASE,0));
+        const rAcumYTD = somaAcum(arrR, Math.max(MES_BASE,0));
 
-        const pctPlan  = pct(pAnual, receitaProjAnual);
-        const pctHib   = pct(hAnual, receitaHibridaAnual);
+        // Coluna Planejado (Anual) COMPARANDO HÍBRIDO
+        const dAnnual = pAnual ? ((hAnual - pAnual)/pAnual*100) : 0;
+        const kAnnual = (hAnual - pAnual)>=0 ? 'delta-pos' : 'delta-neg';
 
         const trc = document.createElement('tr'); trc.className='cat-row'; trc.dataset.grp=key;
 
         const c0 = document.createElement('td'); c0.className='ind'; c0.textContent = cat.nome;
-        const c1 = document.createElement('td'); c1.className='annual1 num';
-        c1.innerHTML = `${cur(pAnual)}<span class="pct">${receitaProjAnual?pctPlan.toFixed(1)+'%':'—'}</span>`;
-        const c2 = document.createElement('td'); c2.className='annual2 num';
-        c2.innerHTML = `${cur(hAnual)}<span class="pct">${receitaHibridaAnual?pctHib.toFixed(1)+'%':'—'}</span>`;
-        const c3 = document.createElement('td'); c3.className='annual3';
+
+        const c1 = document.createElement('td'); c1.className='annual1';
+        c1.innerHTML = `<div class="cell2">
+            <div class="line-top">${cur(hAnual)} <span class="${kAnnual}">(${dAnnual.toFixed(1)}%)</span></div>
+            <div class="line-bottom">${cur(pAnual)}</div>
+          </div>`;
+
+        // Coluna ACUMULADO (YTD): Real (topo) x Planejado (baixo)
         const dY = pAcumYTD ? ((rAcumYTD - pAcumYTD)/pAcumYTD*100) : 0;
         const kY = (rAcumYTD - pAcumYTD)>=0 ? 'delta-pos' : 'delta-neg';
-        c3.innerHTML = `<div class="cell2">
+        const c2 = document.createElement('td'); c2.className='annual2';
+        c2.innerHTML = `<div class="cell2">
             <div class="line-top">${cur(rAcumYTD)} <span class="${kY}">(${dY.toFixed(1)}%)</span></div>
             <div class="line-bottom">${cur(pAcumYTD)}</div>
           </div>`;
-        trc.appendChild(c0); trc.appendChild(c1); trc.appendChild(c2); trc.appendChild(c3);
 
+        trc.appendChild(c0); trc.appendChild(c1); trc.appendChild(c2);
+
+        // Meses: Real (topo) x Planejado (baixo)
         mesesExibidos.forEach(m=>{
           const rp = num(arrR[m-1]||0);
           const pp = num(arrP[m-1]||0);
-          const d  = rp - pp;
-          const dPct = pp ? (d/pp*100) : 0;
-          const klass = d>=0 ? 'delta-pos' : 'delta-neg';
+          const d  = pp ? (rp - pp)/pp*100 : 0;
+          const klass = (rp - pp)>=0 ? 'delta-pos' : 'delta-neg';
           const td = document.createElement('td'); td.className='month';
           td.innerHTML = `
             <div class="cell2">
-              <div class="line-top">${cur(rp)} <span class="${klass}">(${dPct.toFixed(1)}%)</span></div>
+              <div class="line-top">${cur(rp)} <span class="${klass}">(${d.toFixed(1)}%)</span></div>
               <div class="line-bottom">${cur(pp)}</div>
             </div>`;
           trc.appendChild(td);
@@ -383,35 +380,39 @@
       if(!grupos.has(g)) return;
       const head = headers[g];
 
-      const pAnual = somaProjGrupo(g);
-      const hAnual = hibridoGrupo(g);
-      const pAcum  = somaProjMesGrupo(g,1); // dummy init
-      // Planejado acumulado YTD por grupo
-      let pAcumY=0; for(let i=1;i<=MES_BASE;i++) pAcumY += somaProjMesGrupo(g,i);
-      // Real acumulado YTD por grupo
-      let rAcumY=0; for(let i=1;i<=MES_BASE;i++) rAcumY += somaRealMesGrupo(g,i);
+      const // Planejado anual do grupo
+            pAnualG = somaProjGrupo(g),
+            // Híbrido anual do grupo
+            hAnualG = (function(){ let t=0; (grupos.get(g)||[]).forEach(id=> t+=hibridoAnualCategoria(id)); return t; })(),
+            // Acumulados YTD do grupo
+            pAcumG = (function(){ let s=0; for(let i=1;i<=MES_BASE;i++) s+=somaProjMesGrupo(g,i); return s; })(),
+            rAcumG = (function(){ let s=0; for(let i=1;i<=MES_BASE;i++) s+=somaRealMesGrupo(g,i); return s; })();
 
-      const dPctY = pAcumY ? ((rAcumY - pAcumY)/pAcumY*100) : 0;
-      const kY = (rAcumY - pAcumY)>=0 ? 'delta-pos' : 'delta-neg';
-
-      const pctP = pct(pAnual, receitaProjAnual);
-      const pctH = pct(hAnual, hibridoAnualReceita());
-
-      head.children[1].innerHTML = `${cur(pAnual)}<span class="pct">${receitaProjAnual?pctP.toFixed(1)+'%':'—'}</span>`;
-      head.children[2].innerHTML = `${cur(hAnual)}<span class="pct">${pctH.toFixed(1)}%</span>`;
-      head.children[3].innerHTML = `<div class="cell2">
-        <div class="line-top">${cur(rAcumY)} <span class="${kY}">(${dPctY.toFixed(1)}%)</span></div>
-        <div class="line-bottom">${cur(pAcumY)}</div>
+      // Planejado (Anual) comparando Híbrido
+      const dAnn = pAnualG ? ((hAnualG - pAnualG)/pAnualG*100) : 0;
+      const kAnn = (hAnualG - pAnualG)>=0 ? 'delta-pos' : 'delta-neg';
+      head.children[1].innerHTML = `<div class="cell2">
+        <div class="line-top">${cur(hAnualG)} <span class="${kAnn}">(${dAnn.toFixed(1)}%)</span></div>
+        <div class="line-bottom">${cur(pAnualG)}</div>
       </div>`;
 
+      // Acumulado (YTD)
+      const dYG = pAcumG ? ((rAcumG - pAcumG)/pAcumG*100) : 0;
+      const kYG = (rAcumG - pAcumG)>=0 ? 'delta-pos' : 'delta-neg';
+      head.children[2].innerHTML = `<div class="cell2">
+        <div class="line-top">${cur(rAcumG)} <span class="${kYG}">(${dYG.toFixed(1)}%)</span></div>
+        <div class="line-bottom">${cur(pAcumG)}</div>
+      </div>`;
+
+      // Meses
       mesesExibidos.forEach((m,idx)=>{
         const r = somaRealMesGrupo(g,m);
         const p = somaProjMesGrupo(g,m);
-        const dPct = p? ((r-p)/p*100) : 0;
+        const d = p? ((r-p)/p*100) : 0;
         const klass = (r-p)>=0 ? 'delta-pos' : 'delta-neg';
-        head.children[4+idx].innerHTML = `
+        head.children[3+idx].innerHTML = `
           <div class="cell2">
-            <div class="line-top">${cur(r)} <span class="${klass}">(${dPct.toFixed(1)}%)</span></div>
+            <div class="line-top">${cur(r)} <span class="${klass}">(${d.toFixed(1)}%)</span></div>
             <div class="line-bottom">${cur(p)}</div>
           </div>`;
       });
@@ -419,19 +420,20 @@
 
     // ===== Resultado (sticky)
     const trRes = document.createElement('tr'); trRes.className='resultado';
-    // Planejado
+    // Planejado (resultado anual)
     const pRecAnual = somaProjGrupo("Receita");
     const pOutAnual = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
       .map(g=>somaProjGrupo(g)).reduce((a,b)=>a+b,0));
     const pResAnual = pRecAnual - pOutAnual;
 
-    // Híbrido
-    const hRecAnual = hibridoGrupo("Receita");
+    // Híbrido (resultado anual)
+    const hRecAnual = (function(){ let t=0; (grupos.get("Receita")||[]).forEach(id=> t+=hibridoAnualCategoria(id)); return t; })();
     const hOutAnual = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
-      .map(g=>hibridoGrupo(g)).reduce((a,b)=>a+b,0));
+      .map(gr=>{ let t=0; (grupos.get(gr)||[]).forEach(id=> t+=hibridoAnualCategoria(id)); return t; })
+      .reduce((a,b)=>a+b,0));
     const hResAnual = hRecAnual - hOutAnual;
 
-    // Acumulado YTD
+    // Acumulado YTD (resultado)
     let pResY=0, rResY=0;
     for(let i=1;i<=MES_BASE;i++){
       const pr = somaProjMesGrupo("Receita",i);
@@ -455,11 +457,11 @@
         .map(g=>somaRealMesGrupo(g,m)).reduce((a,b)=>a+b,0));
       const p = pr - po;
       const r = rr - ro;
-      const dPct = p? ((r-p)/p*100):0;
+      const d = p? ((r-p)/p*100):0;
       const klass = (r-p)>=0 ? 'delta-pos' : 'delta-neg';
       return `<td class="month">
         <div class="cell2">
-          <div class="line-top">${cur(r)} <span class="${klass}">(${dPct.toFixed(1)}%)</span></div>
+          <div class="line-top">${cur(r)} <span class="${klass}">(${d.toFixed(1)}%)</span></div>
           <div class="line-bottom">${cur(p)}</div>
         </div>
       </td>`;
@@ -467,9 +469,11 @@
 
     trRes.innerHTML = `
       <td class="ind">Resultado</td>
-      <td class="annual1 num">${cur(pResAnual)}</td>
-      <td class="annual2 num">${cur(hResAnual)}</td>
-      <td class="annual3 num"><div class="cell2">
+      <td class="annual1"><div class="cell2">
+        <div class="line-top">${cur(hResAnual)} <span class="${(hResAnual-pResAnual)>=0?'delta-pos':'delta-neg'}">(${pResAnual?(((hResAnual-pResAnual)/pResAnual*100).toFixed(1)): '0.0'}%)</span></div>
+        <div class="line-bottom">${cur(pResAnual)}</div>
+      </div></td>
+      <td class="annual2"><div class="cell2">
         <div class="line-top">${cur(rResY)} <span class="${kY}">(${dY.toFixed(1)}%)</span></div>
         <div class="line-bottom">${cur(pResY)}</div>
       </div></td>
@@ -491,9 +495,17 @@
 
   // ---- Rebuild
   async function rebuild(ANO){
-    defineMeses(ANO);
+    // meses
+    if (ANO==2025) mesesExibidos = [10,11,12];
+    else mesesExibidos = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+    if (ANO < ANO_ATUAL) MES_BASE = 12;
+    else if (ANO > ANO_ATUAL) MES_BASE = 0;
+    else MES_BASE = MES_BASE_ATUAL;
+
     document.getElementById('ctx').textContent =
       `Ano ${ANO} • Mês base: ${MES_BASE? ('0'+MES_BASE).slice(-2) : '—'} • Meses: ${ANO==2025?'Out/Nov/Dez':'Jan–Dez'}`;
+
     await loadCategorias();
     await loadReal(ANO);
     await loadProj(ANO);
