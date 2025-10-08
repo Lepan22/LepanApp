@@ -18,7 +18,7 @@
   }
   .main-content { padding:14px 18px; }
   body, table, input, button, select { font-size: var(--fs); }
-  .page-header h1 { margin:4px 0 2px; color:#111 !important; } /* TÍTULO PRETO */
+  .page-header h1 { margin:4px 0 2px; color:#111 !important; } /* título preto */
   .page-header p  { margin:0 0 8px; color:#666; font-size:var(--fs-sm); }
 
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}
@@ -32,7 +32,17 @@
   }
   table.fx { width:100%; border-collapse:collapse; }
   .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; }
-  .fx thead th { position: sticky; top: 0; z-index: 5; background:#fff7ec; font-weight:600; }
+
+  /* cabeçalho sticky */
+  .fx thead th {
+    position: sticky; top: 0; z-index: 5;
+    background:#fff7ec; font-weight:600;
+    color:#111 !important; text-shadow:none !important; /* títulos em preto */
+  }
+  /* reforço: qualquer th específico também preto */
+  .fx th.ind, .fx th.annual1, .fx th.annual2, .fx th.month {
+    color:#111 !important; text-shadow:none !important;
+  }
 
   /* três primeiras colunas fixas */
   .fx th.ind, .fx td.ind {
@@ -96,7 +106,7 @@
     <div class="page-header">
       <h1>Planejado x Real</h1>
       <p>
-        <b>Planejado (Anual)</b>: compara com o <b>Híbrido</b> (Real até mês base + Planejado restante) na própria célula.<br/>
+        <b>Planejado (Anual)</b>: linha de cima mostra o <b>Híbrido</b> (Real até mês base + Planejado restante) com Δ% vs Planejado Anual; linha de baixo mostra o <b>Planejado Anual</b>.<br/>
         <b>Acumulado (até mês base)</b>: linha de cima é o <b>Real acumulado</b> e a de baixo o <b>Planejado acumulado</b>, com Δ% ao lado.<br/>
         Meses: linha de cima = <b>Real</b>, linha de baixo = <span class="muted">Planejado</span>, com Δ%.
       </p>
@@ -297,8 +307,6 @@
   function montarTabela(ANO){
     const tbody = document.getElementById('tbody'); tbody.innerHTML='';
 
-    const receitaHibridaAnual = hibridoAnualReceita();
-
     // ordem de centros
     const centros = Array.from(grupos.keys());
     const ordenados = [...ORDEM, ...centros.filter(c=>!ORDEM.includes(c))];
@@ -380,15 +388,14 @@
       if(!grupos.has(g)) return;
       const head = headers[g];
 
-      const // Planejado anual do grupo
-            pAnualG = somaProjGrupo(g),
-            // Híbrido anual do grupo
-            hAnualG = (function(){ let t=0; (grupos.get(g)||[]).forEach(id=> t+=hibridoAnualCategoria(id)); return t; })(),
-            // Acumulados YTD do grupo
-            pAcumG = (function(){ let s=0; for(let i=1;i<=MES_BASE;i++) s+=somaProjMesGrupo(g,i); return s; })(),
-            rAcumG = (function(){ let s=0; for(let i=1;i<=MES_BASE;i++) s+=somaRealMesGrupo(g,i); return s; })();
+      const pAnualG = somaProjGrupo(g);
+      // híbrido do grupo
+      const hAnualG = (function(){ let t=0; (grupos.get(g)||[]).forEach(id=> t+=hibridoAnualCategoria(id)); return t; })();
+      // acumulados do grupo
+      const pAcumG = (function(){ let s=0; for(let i=1;i<=MES_BASE;i++) s+=somaProjMesGrupo(g,i); return s; })();
+      const rAcumG = (function(){ let s=0; for(let i=1;i<=MES_BASE;i++) s+=somaRealMesGrupo(g,i); return s; })();
 
-      // Planejado (Anual) comparando Híbrido
+      // Planejado anual comparando Híbrido
       const dAnn = pAnualG ? ((hAnualG - pAnualG)/pAnualG*100) : 0;
       const kAnn = (hAnualG - pAnualG)>=0 ? 'delta-pos' : 'delta-neg';
       head.children[1].innerHTML = `<div class="cell2">
@@ -488,24 +495,16 @@
         const grp = tg.dataset.grp; const open = tg.dataset.open==='1';
         tg.dataset.open = open ? '0':'1';
         tg.querySelector('.caret').textContent = open ? '►' : '▼';
-        tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
+        document.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
       });
     });
   }
 
   // ---- Rebuild
   async function rebuild(ANO){
-    // meses
-    if (ANO==2025) mesesExibidos = [10,11,12];
-    else mesesExibidos = [1,2,3,4,5,6,7,8,9,10,11,12];
-
-    if (ANO < ANO_ATUAL) MES_BASE = 12;
-    else if (ANO > ANO_ATUAL) MES_BASE = 0;
-    else MES_BASE = MES_BASE_ATUAL;
-
+    defineMeses(ANO);
     document.getElementById('ctx').textContent =
       `Ano ${ANO} • Mês base: ${MES_BASE? ('0'+MES_BASE).slice(-2) : '—'} • Meses: ${ANO==2025?'Out/Nov/Dez':'Jan–Dez'}`;
-
     await loadCategorias();
     await loadReal(ANO);
     await loadProj(ANO);
