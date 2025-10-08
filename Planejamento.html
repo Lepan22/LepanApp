@@ -10,9 +10,9 @@
 
 <style>
   :root{
-    --ind-w: 320px;   /* Centro/Categoria */
-    --year-w: 220px;  /* Coluna anual (Projetado/Real) */
-    --col-w: 128px;   /* Mês */
+    --ind-w: 260px;   /* Centro/Categoria (reduzido) */
+    --year-w: 180px;  /* Projetado/Real Anual (reduzido) */
+    --col-w: 112px;   /* Mês */
     --fs: 13px;
     --fs-sm: 11.6px;
   }
@@ -28,10 +28,10 @@
   .badge{background:#f6f6f6;border:1px solid #e5e5e5;padding:2px 6px;border-radius:6px;font-size:12px;}
 
   .table-wrap { overflow-x:auto; border:1px solid #eee; border-radius:8px; }
-
   table.fx { width:100%; border-collapse:collapse; background:#fff; }
   .fx th, .fx td { border:1px solid #e6e6e6; padding:8px 10px; }
   .fx thead th { background:#fff7ec; color:#000; font-weight:600; position:sticky; top:0; z-index:1 }
+
   .fx th.ind, .fx td.ind {
     position:sticky; left:0; z-index:3;
     background:#fafafa;
@@ -62,9 +62,10 @@
   .muted{ color:#6b7280; font-size: var(--fs-sm); }
 
   .money{ width:100%; box-sizing:border-box; padding:6px; text-align:right; font-size:12.5px; }
-  .in-pct{ width:100%; box-sizing:border-box; padding:4px; text-align:right; font-size:11.5px; }
-
-  .twolines{ display:flex; flex-direction:column; gap:4px; }
+  .in-pct{ width:70px; box-sizing:border-box; padding:4px; text-align:right; font-size:11.5px; }
+  .inline { display:flex; align-items:center; gap:6px; justify-content:flex-end; } /* % ao lado do valor */
+  .grp-total { font-weight:700; }
+  .resultado { font-weight:800; background:#fff7f0; }
 </style>
 
 <script defer src="assets/menu.js"></script>
@@ -79,7 +80,7 @@
   <div class="main-content">
     <div class="page-header">
       <h1>Planejamento</h1>
-      <p>Layout do DRE com colunas invertidas: <b>DRE Projetado (Anual)</b> antes de <b>Consolidado DRE Real (Ano)</b>. Projeção usa as mesmas regras do DRE e a <i>Receita (Venda Prevista)</i> em <code>eventos/*/estimativaVenda</code>. Meses editáveis em R$; para <code>competencia_driver</code>, o <b>%</b> também é editável.</p>
+      <p>Layout do DRE com colunas invertidas: <b>DRE Projetado (Anual)</b> antes de <b>Consolidado DRE Real (Ano)</b>. “Compras” e categorias <code>competencia_driver</code> têm <b>%</b> editável ao lado do valor; o valor é calculado como <b>% × Receita do mês</b>. Meses editáveis em R$ com máscara.</p>
     </div>
 
     <section class="controls">
@@ -90,7 +91,6 @@
           <option value="2027">2027</option>
         </select>
       </label>
-      <button class="btn" id="btnImportarEventos">Importar Venda Prevista (eventos)</button>
       <button class="btn primary" id="btnSalvar">Salvar projeção do ano</button>
       <span class="badge" id="ctx">—</span>
     </section>
@@ -111,16 +111,16 @@
 
 <script>
 (function(){
-  // ---------- Datas/util
+  // ---- Utils & dates
   const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const hoje = new Date(); const ANO_ATUAL = hoje.getFullYear(); const MES_ATUAL = hoje.getMonth()+1;
   const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const num  = v => isNaN(Number(v)) ? 0 : Number(v);
   const cur  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  const parseMoney = s => num(String(s||'').replace(/\./g,'').replace(',','.') );
-  const fmtMoneyStr = n => cur(n); // para exibir na caixa (com R$)
+  const parseMoney = s => num(String(s||'').replace(/\./g,'').replace(',','.'));
+  const fmtMoneyStr = n => cur(n);
 
-  // ---------- Firebase
+  // ---- Firebase
   try{
     const cfg = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -136,22 +136,23 @@
   }catch(e){ console.error(e); }
   const db = firebase.database();
 
-  // ---------- Estado
+  // ---- Estado
   const categorias = new Map(); // id -> {nome, centro, dre_*}
   const grupos = new Map();     // centro -> [ids]
 
   const realMensal = new Map(); // id -> arr(12) reais (ano)
   const realAnual  = new Map(); // id -> soma real (ano)
   const projMensal = new Map(); // id -> arr(12) projetado (ano)
-  const pctDriver  = new Map(); // id -> pct driver base (editável)
-  const receitaProj = Array(12).fill(0); // Receita (venda prevista) do ano
-  const receitaReal = Array(12).fill(0); // Receita real do ano (p/ %)
+  const pctDriver  = new Map(); // id -> pct driver/CMV (editável)
+  const receitaProj = Array(12).fill(0); // Receita projetada do ano
+  const receitaReal = Array(12).fill(0); // Receita real do ano
 
   let cmvPctRef = 0;
   let mesesExibidos = [];
-  let totalProjAnual = 0; // p/ % no projetado
+  let totalProjAnual = 0;
+  let receitaRealAno = 0; // <- base para % do Real (sempre sobre Receita)
 
-  // ---------- Leitura Categorias
+  // ---- Leitura Categorias
   async function loadCategorias(){
     categorias.clear(); grupos.clear();
     const s = await db.ref('financeiro/categorias').once('value');
@@ -172,9 +173,10 @@
     grupos.forEach(list=> list.sort((a,b)=>(categorias.get(a).nome).localeCompare(categorias.get(b).nome,'pt-BR')));
   }
 
-  // ---------- Real do ano
+  // ---- Real do ano
   async function loadDREReal(ANO){
     realMensal.clear(); realAnual.clear(); for (let i=0;i<12;i++) receitaReal[i]=0;
+    receitaRealAno = 0;
     const s = await db.ref(`financeiro/dre_fechado/${ANO}`).once('value');
     let somaRec=0, somaCmp=0;
     if (s.exists()){
@@ -194,8 +196,8 @@
       });
     }
     cmvPctRef = somaRec>0 ? (somaCmp/somaRec) : 0;
+    receitaRealAno = somaRec; // <- % do Real sempre sobre Receita
     if (!cmvPctRef || !isFinite(cmvPctRef)){
-      // fallback mês base (mês anterior ao atual)
       const anoBase = (MES_ATUAL===1) ? (ANO_ATUAL-1) : ANO_ATUAL;
       const mesBase = (MES_ATUAL===1) ? 12 : (MES_ATUAL-1);
       const snap = await db.ref(`financeiro/dre_fechado/${anoBase}/${String(mesBase).padStart(2,'0')}`).once('value');
@@ -206,65 +208,50 @@
     }
   }
 
-  // ---------- Receita de eventos
-  async function loadReceitaEventos(ANO){
-    for (let i=0;i<12;i++) receitaProj[i]=0;
-    const s = await db.ref('eventos').once('value');
-    if (!s.exists()) return;
-    const v = s.val()||{};
-    Object.values(v).forEach(ev=>{
-      const dStr = ev?.data || ev?.dataEvento || ev?.inicio || ev?.start || ev?.when || null;
-      const dt = dStr ? new Date(dStr) : null;
-      if (!dt || isNaN(dt)) return;
-      const y = dt.getFullYear(); const m = dt.getMonth()+1;
-      if (y !== ANO) return;
-      const estim = num(ev?.estimativaVenda||0);
-      receitaProj[m-1] += estim;
-    });
-  }
-
-  // ---------- Saved projeção
+  // ---- Saved projeção
   async function loadSavedProjection(ANO){
     const s = await db.ref(`financeiro/planejamento_projecao/${ANO}`).once('value');
-    if (!s.exists()) return null;
-    return s.val();
+    if (!s.exists()) return null; return s.val();
   }
 
-  // ---------- helpers de regra
+  // ---- helpers de regra
   function ultimoReal(id){ const arr = realMensal.get(id)||Array(12).fill(0); for (let i=11;i>=0;i--) if (arr[i]!==0) return arr[i]; return 0; }
   function mediaUltimosN(id,N){ if(!N||N<=0) return 0; const arr = realMensal.get(id)||Array(12).fill(0); let soma=0,c=0; for(let i=11;i>=0 && c<N;i--){ soma+=arr[i]; c++; } return c? (soma/c):0; }
 
-  // ---------- meses exibidos
+  // ---- meses exibidos
   function defineMeses(ANO){ mesesExibidos = (ANO==2025)? [10,11,12] : [1,2,3,4,5,6,7,8,9,10,11,12]; }
 
-  // ---------- semear projeção (com apoio do ano anterior p/ 2026/2027)
+  // ---- Receita projetada (semente): usa salvo; se não houver, usa Dez do ano anterior
+  async function seedReceita(ANO){
+    for (let i=0;i<12;i++) receitaProj[i]=0;
+    const savedPrev = await loadSavedProjection(ANO-1);
+    const prevDez = num(savedPrev?.receitaProj?.[11] || 0);
+    if (ANO!==2025 && !receitaProj[0]) receitaProj[0] = prevDez || 0;
+  }
+
+  // ---- semear projeção
   async function seedProjection(ANO){
     projMensal.clear(); pctDriver.clear();
 
-    // tenta herdar Dez do ano anterior
-    let prevDezReceita = 0;
+    await seedReceita(ANO);
     const prevSaved = await loadSavedProjection(ANO-1);
-    if (prevSaved?.receitaProj?.length===12) prevDezReceita = num(prevSaved.receitaProj[11]);
-    if (!prevDezReceita && ANO-1>=2000){
-      // fallback: usa receita real de Dez do ano anterior
-      const s = await db.ref(`financeiro/dre_fechado/${ANO-1}/12`).once('value');
-      prevDezReceita = num(s.val()?.grupos?.Receita?.mes || 0);
-    }
+    const prevDezReceita = num(prevSaved?.receitaProj?.[11] || 0);
 
     categorias.forEach((cat,id)=>{
       const regra = cat.dre_regra || 'caixa';
       const nome  = norm(cat.nome);
       const arr = Array(12).fill(0);
-      pctDriver.set(id, (cat.dre_percentual_base!=null)?Number(cat.dre_percentual_base):0);
+
+      // pct default:
+      if (nome==='compras') pctDriver.set(id, cmvPctRef); // CMV começa do % real
+      else pctDriver.set(id, (cat.dre_percentual_base!=null)?Number(cat.dre_percentual_base):0);
 
       if (ANO==2025){
         for (let m=1;m<=12;m++){
           if (m<=9) arr[m-1] = (realMensal.get(id)||[])[m-1]||0;
           else{
-            if (regra==='competencia_driver'){
+            if (regra==='competencia_driver' || nome==='compras'){
               arr[m-1] = (pctDriver.get(id)||0) * num(receitaProj[m-1]||0);
-            } else if (regra==='especial' && nome==='compras'){
-              arr[m-1] = cmvPctRef * num(receitaProj[m-1]||0);
             } else if (regra==='especial'){
               arr[m-1] = num(cat.dre_valor||0);
             } else if (regra==='competencia_media'){
@@ -274,13 +261,10 @@
           }
         }
       } else {
-        // 2026/2027: Jan herda Dez do ano anterior se eventos não tiverem previsão
-        if (!receitaProj[0]) receitaProj[0] = prevDezReceita || receitaProj[0] || 0;
+        if (!receitaProj[0]) receitaProj[0] = prevDezReceita || receitaProj[0] || 0; // Jan seed
         for (let m=1;m<=12;m++){
-          if (regra==='competencia_driver'){
+          if (regra==='competencia_driver' || nome==='compras'){
             arr[m-1] = (pctDriver.get(id)||0) * num(receitaProj[m-1]||0);
-          } else if (regra==='especial' && nome==='compras'){
-            arr[m-1] = cmvPctRef * num(receitaProj[m-1]||0);
           } else if (regra==='especial'){
             arr[m-1] = num(cat.dre_valor||0);
           } else if (regra==='competencia_media'){
@@ -293,27 +277,21 @@
     });
   }
 
-  // ---------- aplicar projeção salva (sobre a semente)
+  // ---- aplicar projeção salva (sobre a semente)
   function applySaved(saved){
     if (!saved) return;
-    // receita
     if (Array.isArray(saved.receitaProj) && saved.receitaProj.length===12){
       for (let i=0;i<12;i++) receitaProj[i] = num(saved.receitaProj[i]);
     }
-    // categorias
     const cats = saved.categorias||{};
     Object.keys(cats).forEach(id=>{
       const node = cats[id]||{};
-      if (Array.isArray(node.projMensal)){
-        projMensal.set(id, node.projMensal.map(num));
-      }
-      if (node.pctDriver!=null){
-        pctDriver.set(id, num(node.pctDriver));
-      }
+      if (Array.isArray(node.projMensal)) projMensal.set(id, node.projMensal.map(num));
+      if (node.pctDriver!=null) pctDriver.set(id, num(node.pctDriver));
     });
   }
 
-  // ---------- Header
+  // ---- Header
   function buildHeader(ANO){
     const hdr = document.getElementById('hdr');
     hdr.innerHTML = `
@@ -326,12 +304,25 @@
     });
   }
 
-  // ---------- Tabela
+  // ---- Resultado helpers
+  function somaProjGrupo(nomeGrp){
+    let total=0; (grupos.get(nomeGrp)||[]).forEach(id=>{ total += (projMensal.get(id)||[]).reduce((a,b)=>a+num(b),0); });
+    return total;
+  }
+  function somaRealGrupo(nomeGrp){
+    let total=0; (grupos.get(nomeGrp)||[]).forEach(id=>{ total += num(realAnual.get(id)||0); });
+    return total;
+  }
+  function somaProjMesGrupo(nomeGrp, m){
+    let total=0; (grupos.get(nomeGrp)||[]).forEach(id=>{ total += num((projMensal.get(id)||[])[m-1]||0); });
+    return total;
+  }
+
+  // ---- Tabela
   function montarTabela(ANO){
     const tbody = document.getElementById('tbody'); tbody.innerHTML = '';
 
-    // totais para % (real e projetado)
-    let totalRealAno=0; realAnual.forEach(v=> totalRealAno += num(v));
+    // totais do projetado (base para %)
     totalProjAnual = 0; categorias.forEach((_,id)=>{ totalProjAnual += (projMensal.get(id)||[]).reduce((a,b)=>a+num(b),0); });
 
     // ordem dos centros tipo DRE
@@ -339,82 +330,103 @@
     const centros = Array.from(grupos.keys());
     const ordenados = [...ORDEM, ...centros.filter(c=>!ORDEM.includes(c))];
 
-    const addGroup = (nome)=>{
-      const key = norm(nome).replace(/\s+/g,'-');
+    // headers de grupo + linhas
+    const headers = {};
+    ordenados.forEach(g=>{
+      if(!grupos.has(g)) return;
+      const key = norm(g).replace(/\s+/g,'-');
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td class="ind"><span class="toggle" data-grp="${key}" data-open="1"><span class="caret">▼</span> ${nome}</span></td>
-        <td class="annual1 num">—</td>
-        <td class="annual2 num">—</td>
-        ${mesesExibidos.map(()=>`<td class="month num">—</td>`).join('')}
+        <td class="ind"><span class="toggle" data-grp="${key}" data-open="1"><span class="caret">▼</span> ${g}</span></td>
+        <td class="annual1 num grp-total">—</td>
+        <td class="annual2 num grp-total">—</td>
+        ${mesesExibidos.map(()=>`<td class="month num grp-total">—</td>`).join('')}
       `;
       tr.dataset.grpkey = key;
       tbody.appendChild(tr);
-      return tr;
-    };
+      headers[g]=tr;
 
-    const addCat = (centro,id)=>{
-      const cat = categorias.get(id); const regra = cat.dre_regra||'caixa'; const nome = cat.nome;
-      const arr = projMensal.get(id)||Array(12).fill(0);
-      const projAnual = arr.reduce((a,b)=>a+num(b),0);
-      const real = num(realAnual.get(id)||0);
-      const percReal = totalRealAno>0 ? (100*real/totalRealAno) : 0;
-      const percProj = totalProjAnual>0 ? (100*projAnual/totalProjAnual) : 0;
+      (grupos.get(g)||[]).forEach(id=>{
+        const cat = categorias.get(id); const regra = cat.dre_regra||'caixa'; const nome = norm(cat.nome);
+        const arr = projMensal.get(id)||Array(12).fill(0);
+        const projAnual = arr.reduce((a,b)=>a+num(b),0);
+        const real = num(realAnual.get(id)||0);
+        const percReal = receitaRealAno>0 ? (100*real/receitaRealAno) : 0;   // % sobre Receita real anual
+        const percProj = totalProjAnual>0 ? (100*projAnual/totalProjAnual) : 0;
 
-      const tr = document.createElement('tr'); tr.className='cat-row'; tr.dataset.grp = norm(centro).replace(/\s+/g,'-');
+        const trc = document.createElement('tr'); trc.className='cat-row'; trc.dataset.grp = key;
 
-      const c0 = document.createElement('td'); c0.className='ind'; c0.innerHTML = `${nome}<div class="muted">${regra}</div>`;
-      const c1 = document.createElement('td'); c1.className='annual1 num'; c1.innerHTML = `${cur(projAnual)}<span class="pct">${totalProjAnual?percProj.toFixed(1)+'%':'—'}</span>`;
-      const c2 = document.createElement('td'); c2.className='annual2 num'; c2.innerHTML = `${cur(real)}<span class="pct">${totalRealAno?percReal.toFixed(1)+'%':'—'}</span>`;
-      tr.appendChild(c0); tr.appendChild(c1); tr.appendChild(c2);
+        const c0 = document.createElement('td'); c0.className='ind';
+        c0.innerHTML = `${cat.nome}<div class="muted">${regra}</div>`;
+        const c1 = document.createElement('td'); c1.className='annual1 num';
+        c1.innerHTML = `${cur(projAnual)}<span class="pct">${totalProjAnual?percProj.toFixed(1)+'%':'—'}</span>`;
+        const c2 = document.createElement('td'); c2.className='annual2 num';
+        c2.innerHTML = `${cur(real)}<span class="pct">${receitaRealAno?percReal.toFixed(1)+'%':'—'}</span>`;
+        trc.appendChild(c0); trc.appendChild(c1); trc.appendChild(c2);
 
-      mesesExibidos.forEach(m=>{
-        const td = document.createElement('td'); td.className='month';
-        const v = num(arr[m-1]||0);
-        if (regra==='competencia_driver'){
-          const p = pctDriver.get(id)||0;
-          td.innerHTML = `
-            <div class="twolines">
-              <input type="number" step="0.0001" class="in-pct" data-kind="pct" data-id="${id}" data-m="${m}" value="${p}">
-              <input type="text" class="money" data-kind="val" data-id="${id}" data-m="${m}" value="${fmtMoneyStr(v)}">
-            </div>`;
-        } else {
-          td.innerHTML = `<input type="text" class="money" data-kind="val" data-id="${id}" data-m="${m}" value="${fmtMoneyStr(v)}">`;
-        }
-        tr.appendChild(td);
+        mesesExibidos.forEach(m=>{
+          const td = document.createElement('td'); td.className='month';
+          const v = num(arr[m-1]||0);
+          if (regra==='competencia_driver' || nome==='compras'){ // % ao lado
+            const p = pctDriver.get(id)||0;
+            td.innerHTML = `
+              <div class="inline">
+                <input type="number" step="0.0001" class="in-pct" data-kind="pct" data-id="${id}" data-m="${m}" value="${p}">
+                <input type="text" class="money" data-kind="val" data-id="${id}" data-m="${m}" value="${fmtMoneyStr(v)}">
+              </div>`;
+          } else {
+            td.innerHTML = `<input type="text" class="money" data-kind="val" data-id="${id}" data-m="${m}" value="${fmtMoneyStr(v)}">`;
+          }
+          trc.appendChild(td);
+        });
+
+        tbody.appendChild(trc);
       });
-
-      tbody.appendChild(tr);
-    };
-
-    const headers = {};
-    ordenados.forEach(g=>{ if(!grupos.has(g)) return; headers[g]=addGroup(g); grupos.get(g).forEach(id=> addCat(g,id)); });
-
-    // totais por grupo (Projetado/Real e % sobre receita projetada mensal)
-    const receitaProjMes = mesesExibidos.map(m=>{
-      let soma=0; (grupos.get('Receita')||[]).forEach(id=>{ soma += num((projMensal.get(id)||[])[m-1]||0); });
-      return soma;
     });
+
+    // Totais por grupo (anual e meses, com % sobre Receita projetada no mês)
+    const receitaProjMes = mesesExibidos.map(m=> somaProjMesGrupo("Receita", m));
 
     ordenados.forEach(g=>{
       if(!grupos.has(g)) return;
-      let projAnualGrp=0, realAnualGrp=0;
-      (grupos.get(g)||[]).forEach(id=>{
-        projAnualGrp += (projMensal.get(id)||[]).reduce((a,b)=>a+num(b),0);
-        realAnualGrp += num(realAnual.get(id)||0);
-      });
       const head = headers[g];
+      const projAnualGrp = somaProjGrupo(g);
+      const realAnualGrp = somaRealGrupo(g);
       const percProjGrp = totalProjAnual>0 ? (100*projAnualGrp/totalProjAnual).toFixed(1)+'%' : '—';
-      const percRealGrp = totalRealAno>0 ? (100*realAnualGrp/totalRealAno).toFixed(1)+'%' : '—';
+      const percRealGrp = receitaRealAno>0 ? (100*realAnualGrp/receitaRealAno).toFixed(1)+'%' : '—';
       head.children[1].innerHTML = `${cur(projAnualGrp)}<span class="pct">${percProjGrp}</span>`;
       head.children[2].innerHTML = `${cur(realAnualGrp)}<span class="pct">${percRealGrp}</span>`;
 
       mesesExibidos.forEach((m,idx)=>{
-        let soma=0; (grupos.get(g)||[]).forEach(id=> soma+= num((projMensal.get(id)||[])[m-1]||0) );
+        const soma = somaProjMesGrupo(g, m);
         const base = receitaProjMes[idx]||0;
         head.children[3+idx].innerHTML = `${cur(soma)}<span class="pct">${base? (soma/base*100).toFixed(1)+'%' : '—'}</span>`;
       });
     });
+
+    // Linha final: Resultado
+    const trRes = document.createElement('tr'); trRes.className='resultado';
+    const projReceita = somaProjGrupo("Receita");
+    const projOutros  = totalProjAnual - projReceita;
+    const projResAnual= projReceita - projOutros;
+
+    let realReceita = somaRealGrupo("Receita");
+    let realOutros  = 0; ["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
+      .forEach(g=> realOutros += somaRealGrupo(g));
+    const realResAnual = realReceita - realOutros;
+
+    trRes.innerHTML = `
+      <td class="ind">Resultado</td>
+      <td class="annual1 num">${cur(projResAnual)}</td>
+      <td class="annual2 num">${cur(realResAnual)}</td>
+      ${mesesExibidos.map(m=>{
+        const pr = somaProjMesGrupo("Receita",m);
+        let po=0; ["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
+          .forEach(g=> po += somaProjMesGrupo(g,m));
+        return `<td class="month num">${cur(pr - po)}</td>`;
+      }).join('')}
+    `;
+    tbody.appendChild(trRes);
 
     // zebra & toggles
     let i=0; tbody.querySelectorAll('tr').forEach(tr=>{ tr.classList.add( (i%2===0)?'row-odd':'row-even' ); i++; });
@@ -430,19 +442,18 @@
     bindInputs(ANO);
   }
 
-  // ---------- recálculo / propagação
+  // ---- recálculo / propagação
   function recalcDriverCell(id, m){ const p = pctDriver.get(id)||0; const arr = projMensal.get(id)||Array(12).fill(0); arr[m-1] = p * num(receitaProj[m-1]||0); projMensal.set(id, arr); }
   function propagateForward(ANO, id, fromM, kind){
     if (ANO==2025 && fromM<10) return;
     for (let m of mesesExibidos){ if (m<=fromM) continue;
       if (kind==='pct'){ recalcDriverCell(id, m); }
       if (kind==='val'){ const arr = projMensal.get(id)||Array(12).fill(0); arr[m-1] = (projMensal.get(id)||[])[fromM-1]; projMensal.set(id,arr); }
-      if (kind==='fat'){ categorias.forEach((cat,cid)=>{ const r=cat.dre_regra||'caixa'; if(r==='competencia_driver'||norm(cat.nome)==='compras'){ recalcDriverCell(cid,m); } }); }
     }
   }
 
   function moneyOnFocus(e){ const v = parseMoney(e.target.value); e.target.value = (v||0).toString().replace('.',','); e.target.select(); }
-  function moneyOnBlur(e, ANO){ 
+  function moneyOnBlur(e, ANO){
     const id = e.target.dataset.id; const m = Number(e.target.dataset.m);
     const v = parseMoney(e.target.value);
     const arr = projMensal.get(id)||Array(12).fill(0); arr[m-1]=v; projMensal.set(id,arr);
@@ -452,7 +463,6 @@
   }
 
   function bindInputs(ANO){
-    // % driver -> recalc e propaga no blur (evita "quebrar" enquanto digita)
     document.querySelectorAll('input.in-pct[data-kind="pct"]').forEach(inp=>{
       inp.addEventListener('blur', ()=>{
         const id = inp.dataset.id; const m = Number(inp.dataset.m);
@@ -462,31 +472,13 @@
         montarTabela(ANO);
       });
     });
-
-    // money inputs (valor)
     document.querySelectorAll('input.money[data-kind="val"]').forEach(inp=>{
       inp.addEventListener('focus', moneyOnFocus);
       inp.addEventListener('blur',  (ev)=> moneyOnBlur(ev, ANO));
     });
   }
 
-  // ---------- importar eventos
-  async function importarEventos(ANO){
-    await loadReceitaEventos(ANO);
-    // recalc drivers/CMV
-    categorias.forEach((cat,id)=>{
-      const r=cat.dre_regra||'caixa';
-      if (r==='competencia_driver' || norm(cat.nome)==='compras'){
-        mesesExibidos.forEach(m=> recalcDriverCell(id,m));
-      }
-    });
-    // propaga efeito da receita
-    mesesExibidos.forEach(m=> propagateForward(ANO, null, m, 'fat'));
-    montarTabela(ANO);
-    alert('Venda Prevista importada.');
-  }
-
-  // ---------- salvar/ler projeção
+  // ---- salvar/ler projeção
   async function salvar(ANO){
     const payload = {};
     categorias.forEach((_,id)=>{ payload[id] = { projMensal: projMensal.get(id)||Array(12).fill(0), pctDriver: pctDriver.get(id) ?? null }; });
@@ -494,24 +486,22 @@
     alert('Projeção salva!');
   }
 
-  // ---------- rebuild
+  // ---- rebuild
   async function rebuild(ANO){
     document.getElementById('ctx').textContent = `Ano: ${ANO} • Meses: ${ANO==2025?'Out/Nov/Dez':'Jan–Dez'}`;
     defineMeses(ANO);
     await loadCategorias();
     await loadDREReal(ANO);
-    await loadReceitaEventos(ANO);
-    await seedProjection(ANO);                 // cria a semente (regras + receita)
+    await seedProjection(ANO);                 // semente (regras + receita)
     const saved = await loadSavedProjection(ANO);
-    applySaved(saved);                         // sobrepõe com o salvo (se houver)
+    applySaved(saved);                         // aplica o salvo
     buildHeader(ANO);
     montarTabela(ANO);
   }
 
-  // ---------- listeners
+  // ---- listeners
   const selAno = document.getElementById('anoSelect');
   selAno.onchange = ()=> rebuild(Number(selAno.value));
-  document.getElementById('btnImportarEventos').onclick = ()=> importarEventos(Number(selAno.value));
   document.getElementById('btnSalvar').onclick = ()=> salvar(Number(selAno.value));
 
   // go
