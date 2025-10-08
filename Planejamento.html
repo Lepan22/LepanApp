@@ -36,7 +36,7 @@
   table.fx { width:100%; border-collapse:collapse; }
   .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; }
 
-  /* cabeçalho sticky */
+  /* cabeçalho sticky (títulos pretos) */
   .fx thead th {
     position: sticky; top: 0; z-index: 5;
     background:#fff7ec; font-weight:600;
@@ -73,9 +73,6 @@
   .muted{ color:#6b7280; font-size: var(--fs-sm); }
   .pct  { color:#475569; font-size:var(--fs-sm); margin-left:4px; }
 
-  .delta-pos{ color:#059669; }
-  .delta-neg{ color:#dc2626; }
-
   /* célula mensal com dois inputs (valor e %) empilhados */
   .cell-edit{ display:flex; flex-direction:column; gap:4px; align-items:flex-end; }
   .cell-edit input{
@@ -94,6 +91,11 @@
   tr.resultado td.ind     { left: 0; }
   tr.resultado td.annual1 { left: var(--ind-w); }
   tr.resultado td.annual2 { left: calc(var(--ind-w) + var(--year-w)); }
+
+  /* célula 2 linhas (valor + % sobre receita) nas colunas anuais */
+  .cell2{ display:flex; flex-direction:column; gap:2px; align-items:flex-end; }
+  .line-top{ font-weight:600; }
+  .line-bottom{ color:#6b7280; font-size:var(--fs-sm); }
 </style>
 
 <script defer src="assets/menu.js"></script>
@@ -109,10 +111,10 @@
     <div class="page-header">
       <h1>Planejamento</h1>
       <p>
-        Cada categoria tem **Valor** e **% sobre Receita** por mês.<br/>
-        • Se **% = 0** (ou vazio), o **Valor** é **fixo**.<br/>
-        • Se **% &gt; 0**, o valor = **% × Receita** do mês.<br/>
-        Qualquer alteração propaga para os meses seguintes.
+        Cada categoria tem <b>Valor</b> e <b>% sobre Receita (grupo)</b> por mês.<br/>
+        • Se <b>% = 0</b> (ou vazio), o <b>Valor</b> é <b>fixo</b>.<br/>
+        • Se <b>% &gt; 0</b>, o valor = <b>% × Receita (grupo)</b> do mês.<br/>
+        Edição <b>não re-renderiza</b> enquanto digita; formatamos e propagamos no <b>blur/Enter</b>.
       </p>
     </div>
 
@@ -186,16 +188,16 @@
   const categorias = new Map(); // id -> {nome, centro}
   const grupos = new Map();     // centro -> [ids]
 
-  // Real (consolidado do ano para comparação)
+  // Real (consolidado)
   const realAnual  = new Map(); // id -> soma
   let receitaRealAnual = 0;
 
   // Planejado (editável)
-  let receitaProjMensal = Array(12).fill(0);
+  let receitaPrevMensal = Array(12).fill(0); // linha “Receita (previsão)” – referência visual
   const pctMensal = new Map();   // id -> [12] (0 = fixo)
   const valorMensal = new Map(); // id -> [12] (manual quando fixo; calculado quando % > 0)
 
-  // Snapshots para detectar alterações
+  // Snapshots p/ descartar
   let snap_receita = Array(12).fill(0);
   const snap_pct = new Map();
   const snap_val = new Map();
@@ -224,7 +226,6 @@
     const s = await db.ref(`financeiro/dre_fechado/${ANO}`).once('value');
     const v = s.val() || {};
     Object.keys(v).forEach(mm=>{
-      const m = Number(mm); if (!m) return;
       const node = v[mm]||{};
       receitaRealAnual += num(node?.grupos?.Receita?.mes || 0);
       const cats = node.categorias || {};
@@ -236,16 +237,14 @@
   }
 
   async function loadPlanejamento(ANO){
-    // zera buffers
-    receitaProjMensal = Array(12).fill(0);
+    receitaPrevMensal = Array(12).fill(0);
     pctMensal.clear(); valorMensal.clear();
 
     const s = await db.ref(`financeiro/planejamento_projecao/${ANO}`).once('value');
     const v = s.val() || {};
-    if (Array.isArray(v.receitaProj)) receitaProjMensal = v.receitaProj.map(num);
+    if (Array.isArray(v.receitaProj)) receitaPrevMensal = v.receitaProj.map(num);
 
     const cats = v.categorias || {};
-    // popular tudo (inclusive categorias sem registro → arrays zerados)
     categorias.forEach((_, id)=>{
       const c = cats[id] || {};
       const pv = Array.isArray(c.projMensal) ? c.projMensal.map(num) : Array(12).fill(0);
@@ -255,18 +254,28 @@
     });
 
     // snapshots
-    snap_receita = receitaProjMensal.slice(0);
+    snap_receita = receitaPrevMensal.slice(0);
     categorias.forEach((_, id)=>{
       snap_val.set(id, (valorMensal.get(id)||[]).slice(0));
       snap_pct.set(id, (pctMensal.get(id)||[]).slice(0));
     });
   }
 
+  // ===== Receita (grupo) – base do driver
+  function receitaGrupoMes(i){
+    // soma das categorias do grupo “Receita”
+    let t=0; (grupos.get("Receita")||[]).forEach(id=> t += efetivoMes(id,i));
+    return t;
+  }
+  function receitaGrupoAnual(){
+    let s=0; for(let i=0;i<12;i++) s+=receitaGrupoMes(i); return s;
+  }
+
   // ===== Helpers de cálculo
   function efetivoMes(id, mIndex){
     const p = (pctMensal.get(id)||[])[mIndex] || 0;
     if (p>0){
-      return p * num(receitaProjMensal[mIndex]||0);
+      return p * num(receitaGrupoMes(mIndex)); // <-- base = RECEITA (grupo)
     }
     return (valorMensal.get(id)||[])[mIndex] || 0;
   }
@@ -305,17 +314,17 @@
   function montarTabela(ANO){
     const tbody = document.getElementById('tbody'); tbody.innerHTML='';
 
-    // Linha de receita (prevista)
+    // Linha “Receita (previsão)” – informativa
     const trRec = document.createElement('tr');
     trRec.innerHTML = `
       <td class="ind"><b>Receita (previsão)</b></td>
-      <td class="annual1 num">${toBR(receitaProjMensal.reduce((a,b)=>a+num(b),0))}</td>
+      <td class="annual1 num">${toBR(receitaPrevMensal.reduce((a,b)=>a+num(b),0))}</td>
       <td class="annual2 num">${toBR(receitaRealAnual)}</td>
       ${mesesExibidos.map(m=>{
         const i=m-1;
         return `<td class="month">
           <div class="cell-edit">
-            <input data-k="receita" data-i="${i}" value="${toBR(receitaProjMensal[i])}">
+            <input data-k="receita" data-i="${i}" value="${toBR(receitaPrevMensal[i])}">
           </div>
         </td>`;
       }).join('')}
@@ -348,24 +357,41 @@
         const cat = categorias.get(id);
         const arrV = (valorMensal.get(id)||[]);
         const arrP = (pctMensal.get(id)||[]);
+
         const anualEf = somaAnualEfetivo(id);
         const realAno = num(realAnual.get(id)||0);
+
+        // % anuais (projetado vs receita grupo, real vs receita real)
+        const recAnualProj = receitaGrupoAnual();
+        const pctProjAno  = recAnualProj ? (anualEf/recAnualProj*100) : 0;
+        const pctRealAno  = receitaRealAnual ? (realAno/receitaRealAnual*100) : 0;
 
         const trc = document.createElement('tr'); trc.className='cat-row'; trc.dataset.grp=key;
 
         const c0 = document.createElement('td'); c0.className='ind'; c0.textContent = cat.nome;
-        const c1 = document.createElement('td'); c1.className='annual1 num'; c1.innerHTML = toBR(anualEf);
-        const c2 = document.createElement('td'); c2.className='annual2 num'; c2.innerHTML = toBR(realAno);
+
+        const c1 = document.createElement('td'); c1.className='annual1';
+        c1.innerHTML = `<div class="cell2">
+            <div class="line-top">${toBR(anualEf)}</div>
+            <div class="line-bottom">${pctProjAno.toFixed(1)}%</div>
+          </div>`;
+
+        const c2 = document.createElement('td'); c2.className='annual2';
+        c2.innerHTML = `<div class="cell2">
+            <div class="line-top">${toBR(realAno)}</div>
+            <div class="line-bottom">${pctRealAno.toFixed(1)}%</div>
+          </div>`;
+
         trc.appendChild(c0); trc.appendChild(c1); trc.appendChild(c2);
 
         mesesExibidos.forEach(m=>{
           const i=m-1;
-          const val = num(arrV[i]||0);
+          const valEfetivo = efetivoMes(cat.id,i);
           const pct = num(arrP[i]||0);
           const td = document.createElement('td'); td.className='month';
           td.innerHTML = `
             <div class="cell-edit">
-              <input data-k="val" data-id="${cat.id}" data-i="${i}" value="${toBR(pct>0 ? efetivoMes(cat.id,i) : val)}" ${pct>0?'':'style="font-weight:600"'} >
+              <input data-k="val" data-id="${cat.id}" data-i="${i}" value="${toBR(valEfetivo)}">
               <input class="pct" data-k="pct" data-id="${cat.id}" data-i="${i}" placeholder="0%" value="${pct>0? (toPctStr(pct)) : ''}">
             </div>`;
           trc.appendChild(td);
@@ -380,9 +406,20 @@
       if(!grupos.has(g)) return;
       const head = headers[g];
       const anualProj = somaAnoGrupoEfetivo(g);
+      const recAnualProj = receitaGrupoAnual();
+      const pctProjG = recAnualProj ? (anualProj/recAnualProj*100) : 0;
+
       const anualReal = (grupos.get(g)||[]).reduce((s,id)=> s + num(realAnual.get(id)||0), 0);
-      head.children[1].textContent = toBR(anualProj);
-      head.children[2].textContent = toBR(anualReal);
+      const pctRealG  = receitaRealAnual ? (anualReal/receitaRealAnual*100) : 0;
+
+      head.children[1].innerHTML = `<div class="cell2">
+        <div class="line-top">${toBR(anualProj)}</div>
+        <div class="line-bottom">${pctProjG.toFixed(1)}%</div>
+      </div>`;
+      head.children[2].innerHTML = `<div class="cell2">
+        <div class="line-top">${toBR(anualReal)}</div>
+        <div class="line-bottom">${pctRealG.toFixed(1)}%</div>
+      </div>`;
 
       mesesExibidos.forEach((m,idx)=>{
         const tot = somaMesGrupoEfetivo(g, m-1);
@@ -392,10 +429,10 @@
 
     // Resultado
     const trRes = document.createElement('tr'); trRes.className='resultado';
-    const pRecAnual = receitaProjMensal.reduce((a,b)=>a+num(b),0);
+    const recProjAnual = receitaGrupoAnual();
     const pOutAnual = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
       .map(g=>somaAnoGrupoEfetivo(g)).reduce((a,b)=>a+b,0));
-    const pResAnual = pRecAnual - pOutAnual;
+    const pResAnual = recProjAnual - pOutAnual;
 
     const rRecAnual = receitaRealAnual;
     const rOutAnual = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
@@ -405,11 +442,10 @@
 
     const mesesTDs = mesesExibidos.map(m=>{
       const i=m-1;
-      const pr = receitaProjMensal[i];
+      const pr = receitaGrupoMes(i);
       const po = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
         .map(g=>somaMesGrupoEfetivo(g,i)).reduce((a,b)=>a+b,0));
-      const p = pr - po;
-      return `<td class="month">${toBR(p)}</td>`;
+      return `<td class="month">${toBR(pr - po)}</td>`;
     }).join('');
 
     trRes.innerHTML = `
@@ -420,7 +456,7 @@
     `;
     tbody.appendChild(trRes);
 
-    bindInputs();
+    bindInputs(); // importantíssimo
     paintZebra();
     document.getElementById('ctx').textContent =
       `Ano ${ANO} • Mês base: ${MES_BASE?('0'+MES_BASE).slice(-2):'—'} • Meses: ${ANO==2025?'Out/Nov/Dez':'Jan–Dez'}`;
@@ -439,70 +475,82 @@
     });
   }
 
-  // ===== Edição / Propagação
+  // ===== Edição / Propagação (sem re-render durante digitação)
+  function reformatCurrencyInput(el){ el.value = toBR(fromBR(el.value)); }
+  function showRawCurrency(el){ el.value = String(fromBR(el.value)).replace('.',','); }
+
   function bindInputs(){
     const tbody = document.getElementById('tbody');
 
-    // Receita
+    // Receita (previsão): só referência; ainda assim propago valor digitado (opcional)
     tbody.querySelectorAll('input[data-k="receita"]').forEach(inp=>{
-      inp.addEventListener('input', ()=>{
+      inp.addEventListener('focus', ()=> showRawCurrency(inp));
+      inp.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ inp.blur(); }});
+      inp.addEventListener('blur', ()=>{
         const i = Number(inp.dataset.i);
         const val = fromBR(inp.value);
-        // propaga receita para os meses seguintes
-        for (let m=i;m<12;m++) receitaProjMensal[m] = val;
-        // recalc categorias com % > 0 a partir desse mês
-        categorias.forEach((_, id)=>{
-          const arrP = pctMensal.get(id)||Array(12).fill(0);
-          for (let m=i;m<12;m++){
-            if (num(arrP[m]||0) > 0){
-              const arrV = valorMensal.get(id)||Array(12).fill(0);
-              arrV[m] = num(arrP[m]) * val;
-              valorMensal.set(id, arrV);
-            }
-          }
-        });
-        montarTabela(Number(document.getElementById('anoSelect').value));
+        // propaga receitaprev para meses seguintes (apenas informativo)
+        for (let m=i;m<12;m++) receitaPrevMensal[m] = val;
+        reformatCurrencyInput(inp);
+        // como driver não usa essa linha, não recalculo aqui
+        setStatus('Receita (previsão) atualizada.');
       });
     });
 
     // Valor e %
     tbody.querySelectorAll('input[data-k]').forEach(inp=>{
       if (inp.dataset.k === 'val' || inp.dataset.k === 'pct'){
-        inp.addEventListener('input', ()=>{
-          const id = inp.dataset.id, i = Number(inp.dataset.i);
-          const arrV = (valorMensal.get(id)||Array(12).fill(0));
-          const arrP = (pctMensal.get(id)||Array(12).fill(0));
+        const id = inp.dataset.id, i = Number(inp.dataset.i);
 
-          if (inp.dataset.k === 'pct'){
-            const p = fromPctStr(inp.value); // 0..1
-            for (let m=i;m<12;m++) arrP[m] = p;  // propaga %
-            // se % > 0, recalc valor como p * receita do mês
-            if (p>0){
-              for (let m=i;m<12;m++){
-                arrV[m] = p * num(receitaProjMensal[m]||0);
-              }
-            }
-            pctMensal.set(id, arrP);
-            valorMensal.set(id, arrV);
-          } else {
-            // valor manual: só propaga se % = 0 (fixo)
-            const pMes = num((pctMensal.get(id)||[])[i]||0);
+        if (inp.dataset.k === 'val'){
+          // valor: edita sem re-render; reformat e propaga no blur (se % = 0)
+          inp.addEventListener('focus', ()=> showRawCurrency(inp));
+          inp.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ inp.blur(); }});
+          inp.addEventListener('blur', ()=>{
+            const arrP = pctMensal.get(id)||Array(12).fill(0);
+            const arrV = valorMensal.get(id)||Array(12).fill(0);
+            const pMes  = num(arrP[i]||0);
             const val = fromBR(inp.value);
             if (pMes===0){
-              for (let m=i;m<12;m++) arrV[m] = val;
+              for (let m=i;m<12;m++) arrV[m] = val; // valor fixo propaga
+              valorMensal.set(id, arrV);
+            }else{
+              // se estiver com %, ignora valor manual e recalcula pelo driver
+              for (let m=i;m<12;m++) arrV[m] = num(arrP[m]) * receitaGrupoMes(m);
               valorMensal.set(id, arrV);
             }
-          }
+            reformatCurrencyInput(inp);
+            // atualiza apenas as células afetadas renderizando tudo (mais simples/seguro)
+            montarTabela(Number(document.getElementById('anoSelect').value));
+          });
+        }
 
-          montarTabela(Number(document.getElementById('anoSelect').value));
-        });
+        if (inp.dataset.k === 'pct'){
+          // %: aceita “10” (=> 10%), “0,5” (=> 0,5%), etc. Aplica no blur e recalcula por driver
+          inp.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ inp.blur(); }});
+          inp.addEventListener('blur', ()=>{
+            const p = fromPctStr(inp.value); // 0..1
+            const arrP = pctMensal.get(id)||Array(12).fill(0);
+            const arrV = valorMensal.get(id)||Array(12).fill(0);
+            for (let m=i;m<12;m++){
+              arrP[m] = p;
+              if (p>0){
+                arrV[m] = p * receitaGrupoMes(m);
+              }
+            }
+            pctMensal.set(id, arrP); valorMensal.set(id, arrV);
+            // normaliza visual do campo
+            inp.value = p>0 ? toPctStr(p) : '';
+            montarTabela(Number(document.getElementById('anoSelect').value));
+          });
+        }
       }
     });
   }
 
   // ===== Persistência
   function houveAlteracao(){
-    if (JSON.stringify(snap_receita)!==JSON.stringify(receitaProjMensal)) return true;
+    if (JSON.stringify(snap_receita)!==JSON.stringify(receitaPrevMensal)) return true;
     let changed=false;
     categorias.forEach((_, id)=>{
       if (JSON.stringify(snap_val.get(id)||[])!==JSON.stringify(valorMensal.get(id)||[])) changed=true;
@@ -513,7 +561,7 @@
 
   async function salvar(ANO){
     const payload = {
-      receitaProj: receitaProjMensal.map(num),
+      receitaProj: receitaPrevMensal.map(num), // guardo a referência, embora o driver use o grupo Receita
       categorias: {}
     };
     categorias.forEach((_, id)=>{
@@ -524,7 +572,7 @@
     });
     await db.ref(`financeiro/planejamento_projecao/${ANO}`).set(payload);
     // refresh snapshots
-    snap_receita = receitaProjMensal.slice(0);
+    snap_receita = receitaPrevMensal.slice(0);
     categorias.forEach((_, id)=>{
       snap_val.set(id, (valorMensal.get(id)||[]).slice(0));
       snap_pct.set(id, (pctMensal.get(id)||[]).slice(0));
@@ -533,7 +581,7 @@
   }
 
   function descartar(){
-    receitaProjMensal = snap_receita.slice(0);
+    receitaPrevMensal = snap_receita.slice(0);
     categorias.forEach((_, id)=>{
       valorMensal.set(id, (snap_val.get(id)||[]).slice(0));
       pctMensal.set(id, (snap_pct.get(id)||[]).slice(0));
