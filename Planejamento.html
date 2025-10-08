@@ -3,60 +3,61 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Planejamento (Projeções)</title>
+<title>Planejamento</title>
 
 <link rel="stylesheet" href="assets/base.css"/>
 <link rel="stylesheet" href="assets/menu-styles.css"/>
 
 <style>
   :root{
-    --ind-w: 110px;   /* Centro/Categoria */
-    --year-w: 110px;  /* Projetado/Real Anual */
-    --col-w: 120px;   /* Mês (podemos reduzir se quiser) */
+    --ind-w: 110px;   /* Centro/Categoria (fixo à esquerda) */
+    --year-w: 110px;  /* DRE Projetado (Anual) */
+    --year2-w: 110px; /* Consolidado DRE Real (Ano) */
+    --col-w: 120px;   /* Largura de cada mês */
     --fs: 12px;
     --fs-sm: 10.6px;
   }
   .main-content { padding:14px 18px; }
   body, table, input, button, select { font-size: var(--fs); }
-
-  .page-header h1 { margin:4px 0 2px; }
+  .page-header h1 { margin:4px 0 2px; color:#111 !important; }
   .page-header p  { margin:0 0 8px; color:#666; font-size:var(--fs-sm); }
 
   .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0 10px}
-  .btn{height:30px;padding:0 10px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;cursor:pointer;font-size:11.5px;}
-  .btn.primary{background:#ff7f2a;color:#fff;border-color:#f97316;}
   .badge{background:#f6f6f6;border:1px solid #e5e5e5;padding:2px 6px;border-radius:6px;font-size:11.5px;}
+  select{height:30px}
+  .btn{height:32px;border:1px solid #ddd;border-radius:8px;background:#10b981;color:#fff;padding:0 12px;cursor:pointer;}
+  .btn.secondary{background:#fff;color:#111;border-color:#ddd}
 
-  /* Área rolável com barras vert/horz e cabeçalho/rodapé stickies */
+  /* viewport rolável com sticky header e sticky resultado */
   .table-viewport {
     border:1px solid #eee; border-radius:8px; background:#fff;
-    height:72vh;             /* altura visível; ajuste se quiser */
-    overflow:auto;           /* barras vertical e horizontal */
-    position:relative;
+    height:72vh; overflow:auto; position:relative;
   }
   table.fx { width:100%; border-collapse:collapse; }
   .fx th, .fx td { border:1px solid #e6e6e6; padding:6px 8px; }
 
-  /* Cabeçalho sticky no topo do viewport rolável */
+  /* cabeçalho sticky */
   .fx thead th {
     position: sticky; top: 0; z-index: 5;
-    background:#fff7ec; color:#000; font-weight:600;
+    background:#fff7ec; font-weight:600;
+    color:#111 !important; text-shadow:none !important;
   }
+  .fx th.ind, .fx th.annual1, .fx th.annual2, .fx th.month { color:#111 !important; }
 
-  /* Colunas fixas (primeiras três) */
+  /* três primeiras colunas fixas */
   .fx th.ind, .fx td.ind {
-    position: sticky; left: 0; z-index: 6;      /* acima do header de meses */
-    background:#fafafa; width:var(--ind-w); min-width:var(--ind-w); max-width:var(--ind-w);
+    position: sticky; left:0; z-index:6; background:#fafafa;
+    width:var(--ind-w); min-width:var(--ind-w); max-width:var(--ind-w);
     text-align:left; white-space:nowrap;
   }
   .fx th.annual1, .fx td.annual1 {
-    position: sticky; left: var(--ind-w); z-index: 4;
-    background:#fafafa; width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
+    position: sticky; left:var(--ind-w); z-index:4; background:#fafafa;
+    width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
     text-align:right; white-space:nowrap;
   }
   .fx th.annual2, .fx td.annual2 {
-    position: sticky; left: calc(var(--ind-w) + var(--year-w)); z-index: 4;
-    background:#fafafa; width:var(--year-w); min-width:var(--year-w); max-width:var(--year-w);
+    position: sticky; left:calc(var(--ind-w) + var(--year-w)); z-index:4; background:#fafafa;
+    width:var(--year2-w); min-width:var(--year2-w); max-width:var(--year2-w);
     text-align:right; white-space:nowrap;
   }
   .fx thead th.month, .fx tbody td.month { min-width:var(--col-w); width:var(--col-w); text-align:right; }
@@ -69,15 +70,23 @@
   tr.cat-row.hidden { display:none; }
 
   .num { text-align:right; white-space:nowrap; }
-  .pct { color:#475569; font-size:var(--fs-sm); margin-left:4px; }
   .muted{ color:#6b7280; font-size: var(--fs-sm); }
+  .pct  { color:#475569; font-size:var(--fs-sm); margin-left:4px; }
 
-  .money{ width:100%; box-sizing:border-box; padding:5px; text-align:right; font-size:11.6px; }
-  .in-pct{ width:64px; box-sizing:border-box; padding:4px; text-align:right; font-size:11px; }
-  .inline { display:flex; align-items:center; gap:6px; justify-content:flex-end; }
+  .delta-pos{ color:#059669; }
+  .delta-neg{ color:#dc2626; }
+
+  /* célula mensal com dois inputs (valor e %) empilhados */
+  .cell-edit{ display:flex; flex-direction:column; gap:4px; align-items:flex-end; }
+  .cell-edit input{
+    width:100%; box-sizing:border-box; text-align:right;
+    padding:4px 6px; border:1px solid #dadada; border-radius:6px; background:#fff;
+  }
+  .cell-edit input.pct{ font-size:var(--fs-sm); }
+
   .grp-total { font-weight:700; }
 
-  /* Resultado sticky no rodapé do viewport */
+  /* Resultado sticky no rodapé */
   tr.resultado td{
     position: sticky; bottom: 0; z-index: 7;
     background:#fff7f0; font-weight:800; border-top:2px solid #f97316;
@@ -99,7 +108,12 @@
   <div class="main-content">
     <div class="page-header">
       <h1>Planejamento</h1>
-      <p>Compras e categorias <code>competencia_driver</code> têm <b>%</b> editável ao lado do valor; o valor é <b>% × Receita do mês</b>. Meses em R$ com máscara e propagação a partir do mês alterado. Cabeçalho fixo e “Resultado” fixo.</p>
+      <p>
+        Cada categoria tem **Valor** e **% sobre Receita** por mês.<br/>
+        • Se **% = 0** (ou vazio), o **Valor** é **fixo**.<br/>
+        • Se **% &gt; 0**, o valor = **% × Receita** do mês.<br/>
+        Qualquer alteração propaga para os meses seguintes.
+      </p>
     </div>
 
     <section class="controls">
@@ -110,8 +124,10 @@
           <option value="2027">2027</option>
         </select>
       </label>
-      <button class="btn primary" id="btnSalvar">Salvar projeção do ano</button>
+      <button id="salvar" class="btn">Salvar projeção do ano</button>
+      <button id="descartar" class="btn secondary">Descartar alterações (não salvas)</button>
       <span class="badge" id="ctx">—</span>
+      <span class="badge" id="status">—</span>
     </section>
 
     <div class="table-viewport">
@@ -130,15 +146,27 @@
 
 <script>
 (function(){
+  // ===== Utils
   const mesesPt = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
-  const hoje = new Date(); const ANO_ATUAL = hoje.getFullYear(); const MES_ATUAL = hoje.getMonth()+1;
+  const hoje = new Date();
+  const ANO_ATUAL = hoje.getFullYear();
+  const MES_ATUAL = hoje.getMonth()+1;
+  const MES_BASE_ATUAL = ((MES_ATUAL-2+12)%12)+1; // mês anterior (1..12)
+
   const norm = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
   const num  = v => isNaN(Number(v)) ? 0 : Number(v);
-  const cur  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  const parseMoney = s => num(String(s||'').replace(/\./g,'').replace(',','.'));
-  const fmtMoneyStr = n => cur(n);
+  const toBR = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const fromBR = s => {
+    const t = String(s||'').replace(/\./g,'').replace(',','.');
+    const v = Number(t); return isNaN(v) ? 0 : v;
+  };
+  const toPctStr = d => (Number(d||0)*100).toLocaleString('pt-BR',{maximumFractionDigits:2});
+  const fromPctStr = s => {
+    const t = String(s||'').replace('%','').replace(/\s+/g,'').replace(',','.');
+    let v = Number(t); if (isNaN(v)) return 0; if (v>1) v = v/100; return v;
+  };
 
-  // Firebase
+  // ===== Firebase
   try{
     const cfg = {
       apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
@@ -154,131 +182,112 @@
   }catch(e){ console.error(e); }
   const db = firebase.database();
 
-  // Estado
-  const categorias = new Map(); const grupos = new Map();
-  const realMensal = new Map(); const realAnual = new Map();
-  const projMensal = new Map(); const pctDriver = new Map();
-  const receitaProj = Array(12).fill(0); const receitaReal = Array(12).fill(0);
+  // ===== Estado
+  const categorias = new Map(); // id -> {nome, centro}
+  const grupos = new Map();     // centro -> [ids]
 
-  let cmvPctRef = 0, mesesExibidos = [], receitaRealAno = 0, projReceitaAnual = 0;
+  // Real (consolidado do ano para comparação)
+  const realAnual  = new Map(); // id -> soma
+  let receitaRealAnual = 0;
 
+  // Planejado (editável)
+  let receitaProjMensal = Array(12).fill(0);
+  const pctMensal = new Map();   // id -> [12] (0 = fixo)
+  const valorMensal = new Map(); // id -> [12] (manual quando fixo; calculado quando % > 0)
+
+  // Snapshots para detectar alterações
+  let snap_receita = Array(12).fill(0);
+  const snap_pct = new Map();
+  const snap_val = new Map();
+
+  // Meses exibidos
+  let mesesExibidos = [];
+  let MES_BASE = MES_BASE_ATUAL;
+
+  // ===== Carregamento
   async function loadCategorias(){
     categorias.clear(); grupos.clear();
     const s = await db.ref('financeiro/categorias').once('value');
-    const v = s.val()||{};
+    const v = s.val() || {};
     Object.keys(v).forEach(id=>{
       const c = v[id]||{};
       const centro = c.centroDeCusto || c.centro || 'Outros';
-      categorias.set(id, {
-        id, nome: c.nome || id, centro,
-        dre_regra: c.dre_regra || 'caixa',
-        dre_percentual_base: (c.dre_percentual_base!=null) ? Number(c.dre_percentual_base) : null,
-        dre_media_janela: c.dre_media_janela ? Number(c.dre_media_janela) : null,
-        dre_valor: (c.dre_valor!=null) ? Number(c.dre_valor) : null
-      });
+      categorias.set(id, { id, nome: c.nome || id, centro });
       if (!grupos.has(centro)) grupos.set(centro, []);
       grupos.get(centro).push(id);
     });
-    grupos.forEach(list=> list.sort((a,b)=>(categorias.get(a).nome).localeCompare(categorias.get(b).nome,'pt-BR')));
+    grupos.forEach(arr=> arr.sort((a,b)=> (categorias.get(a).nome).localeCompare(categorias.get(b).nome,'pt-BR')));
   }
 
-  async function loadDREReal(ANO){
-    realMensal.clear(); realAnual.clear(); for (let i=0;i<12;i++) receitaReal[i]=0; receitaRealAno=0;
+  async function loadRealAno(ANO){
+    realAnual.clear(); receitaRealAnual = 0;
     const s = await db.ref(`financeiro/dre_fechado/${ANO}`).once('value');
-    let somaRec=0, somaCmp=0;
-    if (s.exists()){
-      const v = s.val()||{};
-      Object.keys(v).forEach(mm=>{
-        const m = Number(mm); if (!(m>=1 && m<=12)) return;
-        const n = v[mm]||{};
-        const recMes = num(n?.grupos?.Receita?.mes || 0);
-        const cmpMes = num(n?.grupos?.CMV?.mes || 0);
-        receitaReal[m-1] = recMes; somaRec+=recMes; somaCmp+=cmpMes;
-        const cats = n.categorias||{};
-        Object.keys(cats).forEach(id=>{
-          const val = num(cats[id]?.valorMes||0);
-          const arr = realMensal.get(id)||Array(12).fill(0); arr[m-1]=val; realMensal.set(id,arr);
-          realAnual.set(id, num(realAnual.get(id)||0) + val);
-        });
+    const v = s.val() || {};
+    Object.keys(v).forEach(mm=>{
+      const m = Number(mm); if (!m) return;
+      const node = v[mm]||{};
+      receitaRealAnual += num(node?.grupos?.Receita?.mes || 0);
+      const cats = node.categorias || {};
+      Object.keys(cats).forEach(id=>{
+        const val = num(cats[id]?.valorMes || 0);
+        realAnual.set(id, num(realAnual.get(id)||0) + val);
       });
-    }
-    receitaRealAno = somaRec;
-    cmvPctRef = somaRec>0 ? (somaCmp/somaRec) : 0;
+    });
   }
 
-  async function loadSavedProjection(ANO){
+  async function loadPlanejamento(ANO){
+    // zera buffers
+    receitaProjMensal = Array(12).fill(0);
+    pctMensal.clear(); valorMensal.clear();
+
     const s = await db.ref(`financeiro/planejamento_projecao/${ANO}`).once('value');
-    if (!s.exists()) return null; return s.val();
-  }
+    const v = s.val() || {};
+    if (Array.isArray(v.receitaProj)) receitaProjMensal = v.receitaProj.map(num);
 
-  function ultimoReal(id){ const arr = realMensal.get(id)||Array(12).fill(0); for (let i=11;i>=0;i--) if (arr[i]!==0) return arr[i]; return 0; }
-  function mediaUltimosN(id,N){ if(!N||N<=0) return 0; const a = realMensal.get(id)||Array(12).fill(0); let soma=0,c=0; for(let i=11;i>=0&&c<N;i--){ soma+=a[i]; c++; } return c? (soma/c):0; }
+    const cats = v.categorias || {};
+    // popular tudo (inclusive categorias sem registro → arrays zerados)
+    categorias.forEach((_, id)=>{
+      const c = cats[id] || {};
+      const pv = Array.isArray(c.projMensal) ? c.projMensal.map(num) : Array(12).fill(0);
+      const pp = Array.isArray(c.pctMensal)  ? c.pctMensal.map(num)  : Array(12).fill(0);
+      valorMensal.set(id, pv);
+      pctMensal.set(id, pp);
+    });
 
-  function defineMeses(ANO){ mesesExibidos = (ANO==2025)? [10,11,12] : [1,2,3,4,5,6,7,8,9,10,11,12]; }
-
-  async function seedReceita(ANO){
-    for (let i=0;i<12;i++) receitaProj[i]=0;
-    const prev = await loadSavedProjection(ANO-1);
-    const prevDez = num(prev?.receitaProj?.[11] || 0);
-    if (ANO!==2025 && !receitaProj[0]) receitaProj[0] = prevDez || 0;
-  }
-
-  async function seedProjection(ANO){
-    projMensal.clear(); pctDriver.clear();
-    await seedReceita(ANO);
-    const prev = await loadSavedProjection(ANO-1);
-    const prevDezReceita = num(prev?.receitaProj?.[11] || 0);
-
-    categorias.forEach((cat,id)=>{
-      const regra = cat.dre_regra || 'caixa';
-      const nome  = norm(cat.nome);
-      const arr = Array(12).fill(0);
-
-      if (nome==='compras') pctDriver.set(id, cmvPctRef);
-      else pctDriver.set(id, (cat.dre_percentual_base!=null)?Number(cat.dre_percentual_base):0);
-
-      if (ANO==2025){
-        for (let m=1;m<=12;m++){
-          if (m<=9) arr[m-1] = (realMensal.get(id)||[])[m-1]||0;
-          else{
-            if (regra==='competencia_driver' || nome==='compras'){
-              arr[m-1] = (pctDriver.get(id)||0) * num(receitaProj[m-1]||0);
-            } else if (regra==='especial'){
-              arr[m-1] = num(cat.dre_valor||0);
-            } else if (regra==='competencia_media'){
-              const N = cat.dre_media_janela ? Number(cat.dre_media_janela) : 3;
-              arr[m-1] = mediaUltimosN(id, N);
-            } else { arr[m-1] = ultimoReal(id); }
-          }
-        }
-      } else {
-        if (!receitaProj[0]) receitaProj[0] = prevDezReceita || receitaProj[0] || 0;
-        for (let m=1;m<=12;m++){
-          if (regra==='competencia_driver' || nome==='compras'){
-            arr[m-1] = (pctDriver.get(id)||0) * num(receitaProj[m-1]||0);
-          } else if (regra==='especial'){
-            arr[m-1] = num(cat.dre_valor||0);
-          } else if (regra==='competencia_media'){
-            const N = cat.dre_media_janela ? Number(cat.dre_media_janela) : 3;
-            arr[m-1] = mediaUltimosN(id, N);
-          } else { arr[m-1] = ultimoReal(id); }
-        }
-      }
-      projMensal.set(id, arr);
+    // snapshots
+    snap_receita = receitaProjMensal.slice(0);
+    categorias.forEach((_, id)=>{
+      snap_val.set(id, (valorMensal.get(id)||[]).slice(0));
+      snap_pct.set(id, (pctMensal.get(id)||[]).slice(0));
     });
   }
 
-  function applySaved(saved){
-    if (!saved) return;
-    if (Array.isArray(saved.receitaProj) && saved.receitaProj.length===12){
-      for (let i=0;i<12;i++) receitaProj[i] = num(saved.receitaProj[i]);
+  // ===== Helpers de cálculo
+  function efetivoMes(id, mIndex){
+    const p = (pctMensal.get(id)||[])[mIndex] || 0;
+    if (p>0){
+      return p * num(receitaProjMensal[mIndex]||0);
     }
-    const cats = saved.categorias||{};
-    Object.keys(cats).forEach(id=>{
-      const node = cats[id]||{};
-      if (Array.isArray(node.projMensal)) projMensal.set(id, node.projMensal.map(num));
-      if (node.pctDriver!=null) pctDriver.set(id, num(node.pctDriver));
-    });
+    return (valorMensal.get(id)||[])[mIndex] || 0;
+  }
+  function somaAnualEfetivo(id){
+    let s=0; for (let i=0;i<12;i++) s += efetivoMes(id,i); return s;
+  }
+  function somaAnoGrupoEfetivo(g){
+    let t=0; (grupos.get(g)||[]).forEach(id=> t += somaAnualEfetivo(id)); return t;
+  }
+  function somaMesGrupoEfetivo(g, mIndex){
+    let t=0; (grupos.get(g)||[]).forEach(id=> t += efetivoMes(id,mIndex)); return t;
+  }
+
+  // ===== Render
+  function defineMeses(ANO){
+    if (ANO==2025) mesesExibidos = [10,11,12];
+    else mesesExibidos = [1,2,3,4,5,6,7,8,9,10,11,12];
+
+    if (ANO < ANO_ATUAL) MES_BASE = 12;
+    else if (ANO > ANO_ATUAL) MES_BASE = 0;
+    else MES_BASE = MES_BASE_ATUAL;
   }
 
   function buildHeader(ANO){
@@ -286,28 +295,40 @@
     hdr.innerHTML = `
       <th class="ind">Centro/Categoria</th>
       <th class="annual1">DRE Projetado (Anual)</th>
-      <th class="annual2">Consolidado DRE Real ${ANO}</th>
+      <th class="annual2">Consolidado DRE Real (Ano)</th>
     `;
     mesesExibidos.forEach(m=>{
       const th = document.createElement('th'); th.className='month'; th.textContent = mesesPt[m-1]; hdr.appendChild(th);
     });
   }
 
-  function somaProjGrupo(g){ let t=0; (grupos.get(g)||[]).forEach(id=>{ t += (projMensal.get(id)||[]).reduce((a,b)=>a+num(b),0); }); return t; }
-  function somaRealGrupo(g){ let t=0; (grupos.get(g)||[]).forEach(id=>{ t += num(realAnual.get(id)||0); }); return t; }
-  function somaProjMesGrupo(g,m){ let t=0; (grupos.get(g)||[]).forEach(id=> t += num((projMensal.get(id)||[])[m-1]||0) ); return t; }
-
   function montarTabela(ANO){
-    const tbody = document.getElementById('tbody'); tbody.innerHTML = '';
+    const tbody = document.getElementById('tbody'); tbody.innerHTML='';
 
-    projReceitaAnual = somaProjGrupo("Receita");
-    const receitaProjMes = mesesExibidos.map(m=> somaProjMesGrupo("Receita", m));
+    // Linha de receita (prevista)
+    const trRec = document.createElement('tr');
+    trRec.innerHTML = `
+      <td class="ind"><b>Receita (previsão)</b></td>
+      <td class="annual1 num">${toBR(receitaProjMensal.reduce((a,b)=>a+num(b),0))}</td>
+      <td class="annual2 num">${toBR(receitaRealAnual)}</td>
+      ${mesesExibidos.map(m=>{
+        const i=m-1;
+        return `<td class="month">
+          <div class="cell-edit">
+            <input data-k="receita" data-i="${i}" value="${toBR(receitaProjMensal[i])}">
+          </div>
+        </td>`;
+      }).join('')}
+    `;
+    tbody.appendChild(trRec);
 
+    // Centros na ordem
     const ORDEM = ["Receita","CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"];
     const centros = Array.from(grupos.keys());
     const ordenados = [...ORDEM, ...centros.filter(c=>!ORDEM.includes(c))];
 
     const headers = {};
+    // Cabeçalhos por grupo
     ordenados.forEach(g=>{
       if(!grupos.has(g)) return;
       const key = norm(g).replace(/\s+/g,'-');
@@ -322,38 +343,31 @@
       tbody.appendChild(tr);
       headers[g]=tr;
 
+      // categorias do grupo
       (grupos.get(g)||[]).forEach(id=>{
-        const cat = categorias.get(id); const regra = cat.dre_regra||'caixa'; const nome = norm(cat.nome);
-        const arr = projMensal.get(id)||Array(12).fill(0);
-        const projAnual = arr.reduce((a,b)=>a+num(b),0);
-        const real = num(realAnual.get(id)||0);
+        const cat = categorias.get(id);
+        const arrV = (valorMensal.get(id)||[]);
+        const arrP = (pctMensal.get(id)||[]);
+        const anualEf = somaAnualEfetivo(id);
+        const realAno = num(realAnual.get(id)||0);
 
-        const percReal = receitaRealAno>0 ? (100*real/receitaRealAno) : 0;      // % Real sobre Receita real
-        const percProj = projReceitaAnual>0 ? (100*projAnual/projReceitaAnual) : 0; // % Projetado sobre Receita projetada
+        const trc = document.createElement('tr'); trc.className='cat-row'; trc.dataset.grp=key;
 
-        const trc = document.createElement('tr'); trc.className='cat-row'; trc.dataset.grp = key;
-
-        const c0 = document.createElement('td'); c0.className='ind';
-        c0.innerHTML = `${cat.nome}<div class="muted">${regra}</div>`;
-        const c1 = document.createElement('td'); c1.className='annual1 num';
-        c1.innerHTML = `${cur(projAnual)}<span class="pct">${projReceitaAnual?percProj.toFixed(1)+'%':'—'}</span>`;
-        const c2 = document.createElement('td'); c2.className='annual2 num';
-        c2.innerHTML = `${cur(real)}<span class="pct">${receitaRealAno?percReal.toFixed(1)+'%':'—'}</span>`;
+        const c0 = document.createElement('td'); c0.className='ind'; c0.textContent = cat.nome;
+        const c1 = document.createElement('td'); c1.className='annual1 num'; c1.innerHTML = toBR(anualEf);
+        const c2 = document.createElement('td'); c2.className='annual2 num'; c2.innerHTML = toBR(realAno);
         trc.appendChild(c0); trc.appendChild(c1); trc.appendChild(c2);
 
         mesesExibidos.forEach(m=>{
+          const i=m-1;
+          const val = num(arrV[i]||0);
+          const pct = num(arrP[i]||0);
           const td = document.createElement('td'); td.className='month';
-          const v = num(arr[m-1]||0);
-          if (regra==='competencia_driver' || nome==='compras'){
-            const p = pctDriver.get(id)||0;
-            td.innerHTML = `
-              <div class="inline">
-                <input type="number" step="0.0001" class="in-pct" data-kind="pct" data-id="${id}" data-m="${m}" value="${p}">
-                <input type="text" class="money" data-kind="val" data-id="${id}" data-m="${m}" value="${fmtMoneyStr(v)}">
-              </div>`;
-          } else {
-            td.innerHTML = `<input type="text" class="money" data-kind="val" data-id="${id}" data-m="${m}" value="${fmtMoneyStr(v)}">`;
-          }
+          td.innerHTML = `
+            <div class="cell-edit">
+              <input data-k="val" data-id="${cat.id}" data-i="${i}" value="${toBR(pct>0 ? efetivoMes(cat.id,i) : val)}" ${pct>0?'':'style="font-weight:600"'} >
+              <input class="pct" data-k="pct" data-id="${cat.id}" data-i="${i}" placeholder="0%" value="${pct>0? (toPctStr(pct)) : ''}">
+            </div>`;
           trc.appendChild(td);
         });
 
@@ -361,119 +375,190 @@
       });
     });
 
-    // Totais por grupo (anual e meses, % sobre Receita projetada do mês)
+    // Totais de grupo + resultado
     ordenados.forEach(g=>{
       if(!grupos.has(g)) return;
       const head = headers[g];
-      const projAnualGrp = somaProjGrupo(g);
-      const realAnualGrp = somaRealGrupo(g);
-      const percProjGrp = projReceitaAnual>0 ? (100*projAnualGrp/projReceitaAnual).toFixed(1)+'%' : '—';
-      const percRealGrp = receitaRealAno>0 ? (100*realAnualGrp/receitaRealAno).toFixed(1)+'%' : '—';
-      head.children[1].innerHTML = `${cur(projAnualGrp)}<span class="pct">${percProjGrp}</span>`;
-      head.children[2].innerHTML = `${cur(realAnualGrp)}<span class="pct">${percRealGrp}</span>`;
+      const anualProj = somaAnoGrupoEfetivo(g);
+      const anualReal = (grupos.get(g)||[]).reduce((s,id)=> s + num(realAnual.get(id)||0), 0);
+      head.children[1].textContent = toBR(anualProj);
+      head.children[2].textContent = toBR(anualReal);
+
       mesesExibidos.forEach((m,idx)=>{
-        const soma = somaProjMesGrupo(g, m);
-        const base = receitaProjMes[idx]||0;
-        head.children[3+idx].innerHTML = `${cur(soma)}<span class="pct">${base? (soma/base*100).toFixed(1)+'%' : '—'}</span>`;
+        const tot = somaMesGrupoEfetivo(g, m-1);
+        head.children[3+idx].textContent = toBR(tot);
       });
     });
 
-    // ===== Linha Resultado (sticky bottom)
+    // Resultado
     const trRes = document.createElement('tr'); trRes.className='resultado';
-    const projReceita = somaProjGrupo("Receita");
-    const projOutros  = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
-                          .map(g=>somaProjGrupo(g)).reduce((a,b)=>a+b,0));
-    const projResAnual= projReceita - projOutros;
+    const pRecAnual = receitaProjMensal.reduce((a,b)=>a+num(b),0);
+    const pOutAnual = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
+      .map(g=>somaAnoGrupoEfetivo(g)).reduce((a,b)=>a+b,0));
+    const pResAnual = pRecAnual - pOutAnual;
 
-    const realReceita = somaRealGrupo("Receita");
-    const realOutros  = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
-                          .map(g=>somaRealGrupo(g)).reduce((a,b)=>a+b,0));
-    const realResAnual = realReceita - realOutros;
+    const rRecAnual = receitaRealAnual;
+    const rOutAnual = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
+      .map(g=> (grupos.get(g)||[]).reduce((s,id)=> s + num(realAnual.get(id)||0), 0))
+      .reduce((a,b)=>a+b,0));
+    const rResAnual = rRecAnual - rOutAnual;
+
+    const mesesTDs = mesesExibidos.map(m=>{
+      const i=m-1;
+      const pr = receitaProjMensal[i];
+      const po = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
+        .map(g=>somaMesGrupoEfetivo(g,i)).reduce((a,b)=>a+b,0));
+      const p = pr - po;
+      return `<td class="month">${toBR(p)}</td>`;
+    }).join('');
 
     trRes.innerHTML = `
       <td class="ind">Resultado</td>
-      <td class="annual1 num">${cur(projResAnual)}</td>
-      <td class="annual2 num">${cur(realResAnual)}</td>
-      ${mesesExibidos.map(m=>{
-        const pr = somaProjMesGrupo("Receita",m);
-        const po = (["CMV","Despesas Operacionais","Despesa Variável","Despesa Fixa","Investimento","Retirada"]
-                    .map(g=>somaProjMesGrupo(g,m)).reduce((a,b)=>a+b,0));
-        return `<td class="month num">${cur(pr - po)}</td>`;
-      }).join('')}
+      <td class="annual1 num">${toBR(pResAnual)}</td>
+      <td class="annual2 num">${toBR(rResAnual)}</td>
+      ${mesesTDs}
     `;
     tbody.appendChild(trRes);
 
-    // zebra & toggles
-    let i=0; tbody.querySelectorAll('tr').forEach(tr=>{ tr.classList.add( (i%2===0)?'row-odd':'row-even' ); i++; });
+    bindInputs();
+    paintZebra();
+    document.getElementById('ctx').textContent =
+      `Ano ${ANO} • Mês base: ${MES_BASE?('0'+MES_BASE).slice(-2):'—'} • Meses: ${ANO==2025?'Out/Nov/Dez':'Jan–Dez'}`;
+  }
+
+  function paintZebra(){
+    const tbody = document.getElementById('tbody');
+    let i=0; tbody.querySelectorAll('tr').forEach(tr=>{ tr.classList.remove('row-odd','row-even'); tr.classList.add( (i%2===0)?'row-odd':'row-even' ); i++; });
     tbody.querySelectorAll('.toggle').forEach(tg=>{
-      tg.addEventListener('click', ()=>{
+      tg.onclick = ()=>{
         const grp = tg.dataset.grp; const open = tg.dataset.open==='1';
         tg.dataset.open = open ? '0':'1';
         tg.querySelector('.caret').textContent = open ? '►' : '▼';
         tbody.querySelectorAll(`tr.cat-row[data-grp="${grp}"]`).forEach(r=> r.classList.toggle('hidden', open));
+      };
+    });
+  }
+
+  // ===== Edição / Propagação
+  function bindInputs(){
+    const tbody = document.getElementById('tbody');
+
+    // Receita
+    tbody.querySelectorAll('input[data-k="receita"]').forEach(inp=>{
+      inp.addEventListener('input', ()=>{
+        const i = Number(inp.dataset.i);
+        const val = fromBR(inp.value);
+        // propaga receita para os meses seguintes
+        for (let m=i;m<12;m++) receitaProjMensal[m] = val;
+        // recalc categorias com % > 0 a partir desse mês
+        categorias.forEach((_, id)=>{
+          const arrP = pctMensal.get(id)||Array(12).fill(0);
+          for (let m=i;m<12;m++){
+            if (num(arrP[m]||0) > 0){
+              const arrV = valorMensal.get(id)||Array(12).fill(0);
+              arrV[m] = num(arrP[m]) * val;
+              valorMensal.set(id, arrV);
+            }
+          }
+        });
+        montarTabela(Number(document.getElementById('anoSelect').value));
       });
     });
 
-    bindInputs(ANO);
+    // Valor e %
+    tbody.querySelectorAll('input[data-k]').forEach(inp=>{
+      if (inp.dataset.k === 'val' || inp.dataset.k === 'pct'){
+        inp.addEventListener('input', ()=>{
+          const id = inp.dataset.id, i = Number(inp.dataset.i);
+          const arrV = (valorMensal.get(id)||Array(12).fill(0));
+          const arrP = (pctMensal.get(id)||Array(12).fill(0));
+
+          if (inp.dataset.k === 'pct'){
+            const p = fromPctStr(inp.value); // 0..1
+            for (let m=i;m<12;m++) arrP[m] = p;  // propaga %
+            // se % > 0, recalc valor como p * receita do mês
+            if (p>0){
+              for (let m=i;m<12;m++){
+                arrV[m] = p * num(receitaProjMensal[m]||0);
+              }
+            }
+            pctMensal.set(id, arrP);
+            valorMensal.set(id, arrV);
+          } else {
+            // valor manual: só propaga se % = 0 (fixo)
+            const pMes = num((pctMensal.get(id)||[])[i]||0);
+            const val = fromBR(inp.value);
+            if (pMes===0){
+              for (let m=i;m<12;m++) arrV[m] = val;
+              valorMensal.set(id, arrV);
+            }
+          }
+
+          montarTabela(Number(document.getElementById('anoSelect').value));
+        });
+      }
+    });
   }
 
-  function recalcDriverCell(id, m){ const p = pctDriver.get(id)||0; const arr = projMensal.get(id)||Array(12).fill(0); arr[m-1] = p * num(receitaProj[m-1]||0); projMensal.set(id, arr); }
-  function propagateForward(ANO, id, fromM, kind){
-    if (ANO==2025 && fromM<10) return;
-    for (let m of mesesExibidos){ if (m<=fromM) continue;
-      if (kind==='pct'){ recalcDriverCell(id, m); }
-      if (kind==='val'){ const arr = projMensal.get(id)||Array(12).fill(0); arr[m-1] = (projMensal.get(id)||[])[fromM-1]; projMensal.set(id,arr); }
-    }
-  }
-  function moneyOnFocus(e){ const v = parseMoney(e.target.value); e.target.value = (v||0).toString().replace('.',','); e.target.select(); }
-  function moneyOnBlur(e, ANO){
-    const id = e.target.dataset.id; const m = Number(e.target.dataset.m);
-    const v = parseMoney(e.target.value);
-    const arr = projMensal.get(id)||Array(12).fill(0); arr[m-1]=v; projMensal.set(id,arr);
-    e.target.value = fmtMoneyStr(v);
-    propagateForward(ANO, id, m, 'val');
-    montarTabela(ANO);
-  }
-
-  function bindInputs(ANO){
-    document.querySelectorAll('input.in-pct[data-kind="pct"]').forEach(inp=>{
-      inp.addEventListener('blur', ()=>{
-        const id = inp.dataset.id; const m = Number(inp.dataset.m);
-        pctDriver.set(id, num(inp.value));
-        recalcDriverCell(id, m);
-        propagateForward(ANO, id, m, 'pct');
-        montarTabela(ANO);
-      });
+  // ===== Persistência
+  function houveAlteracao(){
+    if (JSON.stringify(snap_receita)!==JSON.stringify(receitaProjMensal)) return true;
+    let changed=false;
+    categorias.forEach((_, id)=>{
+      if (JSON.stringify(snap_val.get(id)||[])!==JSON.stringify(valorMensal.get(id)||[])) changed=true;
+      if (JSON.stringify(snap_pct.get(id)||[])!==JSON.stringify(pctMensal.get(id)||[])) changed=true;
     });
-    document.querySelectorAll('input.money[data-kind="val"]').forEach(inp=>{
-      inp.addEventListener('focus', moneyOnFocus);
-      inp.addEventListener('blur',  (ev)=> moneyOnBlur(ev, ANO));
-    });
+    return changed;
   }
 
   async function salvar(ANO){
-    const payload = {};
-    categorias.forEach((_,id)=>{ payload[id] = { projMensal: projMensal.get(id)||Array(12).fill(0), pctDriver: pctDriver.get(id) ?? null }; });
-    await db.ref(`financeiro/planejamento_projecao/${ANO}`).set({ meta:{ salvoEm:new Date().toISOString(), cmvPctRef }, receitaProj, categorias: payload });
-    alert('Projeção salva!');
+    const payload = {
+      receitaProj: receitaProjMensal.map(num),
+      categorias: {}
+    };
+    categorias.forEach((_, id)=>{
+      payload.categorias[id] = {
+        projMensal: (valorMensal.get(id)||Array(12).fill(0)).map(num),
+        pctMensal:  (pctMensal.get(id)||Array(12).fill(0)).map(num)
+      };
+    });
+    await db.ref(`financeiro/planejamento_projecao/${ANO}`).set(payload);
+    // refresh snapshots
+    snap_receita = receitaProjMensal.slice(0);
+    categorias.forEach((_, id)=>{
+      snap_val.set(id, (valorMensal.get(id)||[]).slice(0));
+      snap_pct.set(id, (pctMensal.get(id)||[]).slice(0));
+    });
+    setStatus('Projeção salva ✅');
   }
 
+  function descartar(){
+    receitaProjMensal = snap_receita.slice(0);
+    categorias.forEach((_, id)=>{
+      valorMensal.set(id, (snap_val.get(id)||[]).slice(0));
+      pctMensal.set(id, (snap_pct.get(id)||[]).slice(0));
+    });
+    montarTabela(Number(document.getElementById('anoSelect').value));
+    setStatus('Alterações descartadas.');
+  }
+
+  function setStatus(s){ document.getElementById('status').textContent = s; setTimeout(()=>{document.getElementById('status').textContent='—';}, 2500); }
+
+  // ===== Rebuild
   async function rebuild(ANO){
-    document.getElementById('ctx').textContent = `Ano: ${ANO} • Meses: ${ANO==2025?'Out/Nov/Dez':'Jan–Dez'}`;
     defineMeses(ANO);
     await loadCategorias();
-    await loadDREReal(ANO);
-    await seedProjection(ANO);
-    const saved = await loadSavedProjection(ANO);
-    applySaved(saved);
+    await loadRealAno(ANO);
+    await loadPlanejamento(ANO);
     buildHeader(ANO);
     montarTabela(ANO);
   }
 
+  // start
   const selAno = document.getElementById('anoSelect');
+  document.getElementById('salvar').onclick   = ()=> salvar(Number(selAno.value));
+  document.getElementById('descartar').onclick= ()=> descartar();
   selAno.onchange = ()=> rebuild(Number(selAno.value));
-  document.getElementById('btnSalvar').onclick = ()=> salvar(Number(selAno.value));
-
   rebuild(2025);
 })();
 </script>
