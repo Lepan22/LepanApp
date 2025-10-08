@@ -1,178 +1,490 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gestão de Agenda</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Agenda</title>
+  <link rel="stylesheet" href="assets/base.css">
+  <link rel="stylesheet" href="assets/menu-styles.css">
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    h1 { font-size: 18px; }
-    label { display: block; margin-top: 10px; }
-    input, select, button { margin-top: 5px; padding: 5px; width: 100%; max-width: 300px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; font-size: 12px; }
-    th { background-color: #f2f2f2; }
-    .btn-excluir { background: red; color: white; border: none; padding: 4px 8px; cursor: pointer; }
+    :root{
+      --brand:#ff7f00;
+      --line:#e7e7ea;
+      --muted:#6b7280;
+
+      --gap:6px;
+      --fontDay:11px;
+      --fontEvt:9px;
+      --padDay:4px;
+
+      --rowH: 120px;
+    }
+
+    body{background:#f6f7f9;margin:0;color:#222}
+    .wrap{padding:10px}
+
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap);margin-bottom:var(--gap)}
+    .kpi{background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;min-height:52px}
+    .kpi small{color:var(--muted);font-size:11px;font-weight:600}
+    .kpi strong{font-size:16px;margin-top:2px}
+
+    .topbar{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:var(--gap)}
+    .btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+    .btn:hover{filter:brightness(.95)}
+    #mesAtual{font-weight:700;text-transform:capitalize}
+
+    .dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px}
+    .dow div{background:#fff;border:1px solid var(--line);border-radius:8px;text-align:center;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;min-height:24px}
+
+    .grid{
+      display:grid;grid-template-columns:repeat(7,1fr);gap:4px;
+      grid-auto-rows: var(--rowH);
+      min-height: calc(var(--rowH) * 6 + 5 * 4px);
+    }
+
+    .day{
+      background:#fff;border:1px solid var(--line);border-radius:10px;
+      padding:var(--padDay);display:flex;flex-direction:column;overflow:hidden;font-size:var(--fontDay);
+      position: relative;
+    }
+
+    .other-month{ background:#f3f5f8; color:#6b7280; }
+
+    .is-week{ background:#fff5e6 !important; box-shadow: inset 0 0 0 1px #ffd199; }
+    .other-month.is-week{ background:#fff1d6 !important; }
+
+    .head-dia{display:flex;align-items:center;justify-content:space-between}
+    .n{font-weight:700}
+    .count{ min-width:18px;height:18px;line-height:18px; border-radius:9px;border:1px solid var(--line);
+      background:#fff;color:#555;font-size:10px;text-align:center;margin-left:6px; }
+
+    .lista{ margin-top:3px; flex:1 1 auto; overflow:auto; padding-right:2px; }
+    .lista::-webkit-scrollbar{width:6px}
+    .lista::-webkit-scrollbar-thumb{background:#ddd;border-radius:8px}
+    .lista{scrollbar-width:thin; scrollbar-color:#ddd transparent;}
+
+    .is-blocked{ background:#fafafa; border-style:dashed }
+    .blocked{ font-size:9px;color:#d9534f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:3px 0 0 }
+
+    .evt{ margin-top:3px;background:var(--brand);color:#fff;border-radius:6px;padding:1px 5px;
+      display:flex;align-items:center;justify-content:space-between;font-size:var(--fontEvt);min-height:18px }
+    .evt .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .acts{display:flex;align-items:center;gap:4px;margin-left:6px}
+    .iconbtn{
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.35);
+      color:#fff; border-radius:6px; font-size:9px;
+      padding:0 6px; height:16px; line-height:14px; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center;
+      text-decoration:none;
+    }
+    .iconbtn:hover{filter:brightness(1.05)}
+
+    .foot{display:flex;align-items:center;justify-content:center;margin-top:6px}
+
+    /* badges de datas (feriados/importantes/indisponíveis) */
+    .badges{ display:flex;flex-wrap:wrap;gap:4px;margin-top:3px }
+    .badge{ font-size:9px; border-radius:999px; padding:1px 6px; border:1px solid transparent; white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+    .badge.feriado{ background:#e7f0ff; border-color:#cddfff; color:#1849b4; }
+    .badge.importante{ background:#fff4e5; border-color:#ffe2be; color:#b45309; }
+    .badge.indisponivel{ background:#fde7e7; border-color:#f2caca; color:#b42318; }
+    .badge.more{ background:#eee; border-color:#ddd; color:#555; }
+    @media (max-width: 680px){ .badges{ gap:3px } }
   </style>
 </head>
 <body>
+  <div class="layout">
+    <aside class="sidebar" id="menuLateral"></aside>
 
-<h1>Gestão de Agenda - Dias Indisponíveis</h1>
+    <main class="main-content">
+      <div class="wrap card-dashboard" style="border:1px solid #eee;border-radius:10px;background:#fff">
+        <!-- KPIs -->
+        <section id="kpis" class="kpis">
+          <div class="kpi"><small>Vendas Real Mês Anterior</small><strong id="kpiRealAnterior">—</strong></div>
+          <div class="kpi"><small>Vendas Real Mês</small><strong id="kpiRealMes">—</strong></div>
+          <div class="kpi"><small>Venda Prevista Mês</small><strong id="kpiPrevMes">—</strong></div>
+          <div class="kpi"><small>Venda Prevista Próx. Mês</small><strong id="kpiPrevProx">—</strong></div>
+        </section>
 
-<form id="formIndisponivel">
-  <label>Tipo:
-    <select id="tipo">
-      <option value="único">Data Única</option>
-      <option value="período">Período</option>
-    </select>
-  </label>
+        <!-- Navegação -->
+        <div id="nav" class="topbar">
+          <button class="btn" onclick="mudarMes(-1)">&#8592; Mês Anterior</button>
+          <span id="mesAtual">Mês Atual</span>
+          <button class="btn" onclick="mudarMes(1)">Mês Seguinte &#8594;</button>
+        </div>
 
-  <label id="labelData">Data:
-    <input type="date" id="data">
-  </label>
+        <!-- Cabeçalho dos dias -->
+        <div id="dow" class="dow">
+          <div>DOM</div><div>S</div><div>T</div><div>Q</div><div>Q</div><div>S</div><div>SAB</div>
+        </div>
 
-  <label id="labelInicio" style="display:none;">Início:
-    <input type="date" id="inicio">
-  </label>
+        <!-- Calendário -->
+        <div id="grid" class="grid"></div>
 
-  <label id="labelFim" style="display:none;">Fim:
-    <input type="date" id="fim">
-  </label>
+        <!-- Rodapé -->
+        <div id="foot" class="foot">
+          <button class="btn" onclick="duplicarMes()">📅 Duplicar Mês</button>
+        </div>
+      </div>
+    </main>
+  </div>
 
-  <label>Motivo:
-    <input type="text" id="motivo" placeholder="Ex.: Feriado, Férias...">
-  </label>
-
-  <button type="submit">Salvar</button>
-</form>
-
-<table>
-  <thead>
-    <tr>
-      <th>Tipo</th>
-      <th>Data / Período</th>
-      <th>Motivo</th>
-      <th>Ação</th>
-    </tr>
-  </thead>
-  <tbody id="tabelaIndisponiveis"></tbody>
-</table>
-
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
-    authDomain: "lepanapp.firebaseapp.com",
-    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
-    projectId: "lepanapp",
-    storageBucket: "lepanapp.appspot.com",
-    messagingSenderId: "542989944344",
-    appId: "1:542989944344:web:576e28199960fd5440a56d"
-  };
-
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
-
-  const tipo = document.getElementById('tipo');
-  const labelData = document.getElementById('labelData');
-  const labelInicio = document.getElementById('labelInicio');
-  const labelFim = document.getElementById('labelFim');
-
-  tipo.addEventListener('change', () => {
-    if (tipo.value === 'único') {
-      labelData.style.display = 'block';
-      labelInicio.style.display = 'none';
-      labelFim.style.display = 'none';
-    } else {
-      labelData.style.display = 'none';
-      labelInicio.style.display = 'block';
-      labelFim.style.display = 'block';
-    }
-  });
-
-  document.getElementById('formIndisponivel').addEventListener('submit', e => {
-    e.preventDefault();
-    const motivo = document.getElementById('motivo').value.trim();
-    if (!motivo) {
-      alert('Motivo é obrigatório!');
-      return;
-    }
-
-    const novoRef = db.ref('configuracao/diasIndisponiveis').push();
-    const obj = {
-      tipo: tipo.value,
-      motivo: motivo
+  <script src="assets/menu.js" defer></script>
+  <script>
+    // ===== Firebase =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+      authDomain: "lepanapp.firebaseapp.com",
+      databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+      projectId: "lepanapp"
     };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    if (tipo.value === 'único') {
-      const data = document.getElementById('data').value;
-      if (!data) {
-        alert('Data é obrigatória!');
-        return;
-      }
-      obj.data = data;
-    } else {
-      const inicio = document.getElementById('inicio').value;
-      const fim = document.getElementById('fim').value;
-      if (!inicio || !fim) {
-        alert('Início e Fim são obrigatórios!');
-        return;
-      }
-      obj.inicio = inicio;
-      obj.fim = fim;
+    // ===== Estado =====
+    let mesRef = new Date();
+    let eventos = [];
+    // marcadores por data: { 'YYYY-MM-DD': [ {categoria, motivo}, ... ] }
+    let marks = {};
+
+    // ===== Utils =====
+    const pad2 = n => String(n).padStart(2,'0');
+    const ym   = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+    const toISO = d => new Date(d).toISOString().split('T')[0];
+    const brl  = n => Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+    const num = v => { if (v==null) return 0; if (typeof v==='number') return v; const s=String(v).replace(/\./g,'').replace(',','.'); const n=parseFloat(s); return isNaN(n)?0:n; };
+
+    const VIEW_BASE = 'https://lepan22.github.io/LepanApp/GestaoEvento.html?id=';
+
+    function ajustarAlturaLinhas(){
+      const grid = document.getElementById('grid');
+      const vb = document.documentElement.clientHeight;
+      const rectWrap = grid.parentElement.getBoundingClientRect();
+
+      const kpisH = document.getElementById('kpis').getBoundingClientRect().height;
+      const navH  = document.getElementById('nav').getBoundingClientRect().height;
+      const dowH  = document.getElementById('dow').getBoundingClientRect().height;
+      const footH = document.getElementById('foot').getBoundingClientRect().height;
+
+      const extras = 26;
+      const disponivel = vb - (rectWrap.top + kpisH + navH + dowH + footH + extras);
+      const rowH = Math.max(84, Math.floor((disponivel - (5*4)) / 6));
+      grid.style.setProperty('--rowH', rowH + 'px');
+    }
+    window.addEventListener('resize', ajustarAlturaLinhas);
+
+    function mudarMes(delta){
+      mesRef.setMonth(mesRef.getMonth()+delta);
+      carregar();
     }
 
-    novoRef.set(obj).then(() => {
-      alert('Indisponibilidade salva!');
-      document.getElementById('formIndisponivel').reset();
-      tipo.value = 'único';
-      tipo.dispatchEvent(new Event('change'));
-      listarIndisponiveis();
-    });
-  });
+    // ===== Carga =====
+    async function carregar(){
+      // eventos
+      const snap = await db.ref('eventos').once('value');
+      eventos = [];
+      snap.forEach(ch=>{ const v=ch.val(); v.id=ch.key; eventos.push(v); });
 
-  function listarIndisponiveis() {
-    const tbody = document.getElementById('tabelaIndisponiveis');
-    tbody.innerHTML = '';
+      // marcas (indisponíveis/feriados/importantes)
+      marks = {};
+      const iSnap = await db.ref('configuracao/diasIndisponiveis').once('value');
+      iSnap.forEach(ch=>{
+        const it = ch.val() || {};
+        const tipo = it.tipo || 'único';
+        const categoria = it.categoria || 'indisponivel'; // compat
+        const motivo = it.motivo || (categoria==='indisponivel'?'Indisponível':'');
+        const pushMark = (dateISO)=>{
+          if(!dateISO) return;
+          if(!marks[dateISO]) marks[dateISO] = [];
+          marks[dateISO].push({categoria, motivo});
+        };
 
-    db.ref('configuracao/diasIndisponiveis').once('value').then(snapshot => {
-      snapshot.forEach(child => {
-        const id = child.key;
-        const item = child.val();
+        if (tipo === 'único'){
+          pushMark(it.data);
+        } else if (tipo === 'período'){
+          if (it.inicio && it.fim){
+            const i=new Date(it.inicio), f=new Date(it.fim);
+            for(let d=new Date(i); d<=f; d.setDate(d.getDate()+1)){
+              pushMark(toISO(d));
+            }
+          }
+        }
+      });
 
-        const tr = document.createElement('tr');
+      desenhar();
+      atualizarKPIs();
+      ajustarAlturaLinhas();
+    }
 
-        let dataTexto = '';
-        if (item.tipo === 'único') {
-          dataTexto = item.data;
-        } else {
-          dataTexto = `${item.inicio} a ${item.fim}`;
+    function desenhar(){
+      document.getElementById('mesAtual').textContent =
+        mesRef.toLocaleString('pt-BR',{month:'long',year:'numeric'});
+
+      const grid = document.getElementById('grid');
+      grid.innerHTML='';
+
+      const ano = mesRef.getFullYear();
+      const mes = mesRef.getMonth();
+
+      const first = new Date(ano, mes, 1);
+      const inicioGrid = new Date(first);
+      inicioGrid.setDate(first.getDate() - first.getDay()); // começa em DOM
+
+      const semanaAtual = semanaSegADom();
+
+      for (let i=0; i<42; i++){
+        const data = new Date(inicioGrid);
+        data.setDate(inicioGrid.getDate()+i);
+        const iso = toISO(data);
+
+        const el = document.createElement('div');
+        el.className='day';
+        el.dataset.data=iso;
+
+        const isOther = data.getMonth() !== mes;
+        if (isOther) el.classList.add('other-month');
+        if (semanaAtual.includes(iso)) el.classList.add('is-week');
+
+        // badges do dia
+        const badges = marks[iso] || [];
+        const hasBlocked = badges.some(b => b.categoria==='indisponivel');
+        if (hasBlocked) el.classList.add('is-blocked');
+
+        el.addEventListener('dragover', e=>e.preventDefault());
+        el.addEventListener('drop', onDropMove);
+
+        // Cabeçalho do dia
+        const head = document.createElement('div');
+        head.className = 'head-dia';
+        const nEl = document.createElement('div');
+        nEl.className='n'; nEl.textContent=data.getDate();
+
+        const cnt = document.createElement('span');
+        cnt.className='count'; cnt.textContent='';
+        head.appendChild(nEl); head.appendChild(cnt);
+        el.appendChild(head);
+
+        // badges (até 2 + "+n")
+        if (badges.length){
+          const cont = document.createElement('div');
+          cont.className = 'badges';
+          const maxShow = 2;
+          badges.slice(0, maxShow).forEach(b=>{
+            const tag = document.createElement('span');
+            tag.className = `badge ${b.categoria}`;
+            tag.title = b.motivo || b.categoria;
+            tag.textContent = b.motivo || b.categoria;
+            cont.appendChild(tag);
+          });
+          if (badges.length > maxShow){
+            const more = document.createElement('span');
+            more.className = 'badge more';
+            more.textContent = `+${badges.length - maxShow}`;
+            cont.appendChild(more);
+          }
+          el.appendChild(cont);
         }
 
-        tr.innerHTML = `
-          <td>${item.tipo}</td>
-          <td>${dataTexto}</td>
-          <td>${item.motivo}</td>
-          <td><button class="btn-excluir" onclick="excluirIndisponivel('${id}')">Excluir</button></td>
-        `;
-        tbody.appendChild(tr);
-      });
-    });
-  }
+        // Mensagem de indisponível (compat com visual antigo)
+        if (hasBlocked){
+          const firstBlock = (badges.find(b=>b.categoria==='indisponivel') || {});
+          const b = document.createElement('div');
+          b.className='blocked';
+          b.textContent = firstBlock.motivo || 'Indisponível';
+          el.appendChild(b);
+        }
 
-  function excluirIndisponivel(id) {
-    if (confirm('Tem certeza que deseja excluir?')) {
-      db.ref('configuracao/diasIndisponiveis/' + id).remove().then(() => {
-        alert('Excluído com sucesso!');
-        listarIndisponiveis();
-      });
+        // Lista de eventos
+        const lista = document.createElement('div');
+        lista.className = 'lista';
+
+        const doDia = eventos.filter(ev=>ev.data===iso);
+        doDia.forEach(ev=>{
+          const evt = document.createElement('div');
+          evt.className='evt';
+          evt.draggable=true;
+          evt.dataset.eventoId=ev.id;
+
+          const t = document.createElement('span');
+          t.className='t'; t.textContent=ev.nomeEvento || 'Sem nome';
+
+          const acts = document.createElement('div');
+          acts.className='acts';
+
+          const ver = document.createElement('a');
+          ver.className = 'iconbtn';
+          ver.href = VIEW_BASE + encodeURIComponent(ev.id);
+          ver.target = '_blank';
+          ver.title = 'Visualizar evento';
+          ver.textContent = '🔍';
+
+          const dup = document.createElement('button');
+          dup.className='iconbtn'; dup.title='Duplicar';
+          dup.textContent='＋';
+          dup.onclick = ()=>duplicarEvento(ev);
+
+          const del = document.createElement('button');
+          del.className='iconbtn'; del.title='Excluir';
+          del.textContent='🗑';
+          del.onclick = ()=>excluirEvento(ev.id);
+
+          acts.appendChild(ver);
+          acts.appendChild(dup);
+          acts.appendChild(del);
+
+          evt.appendChild(t);
+          evt.appendChild(acts);
+
+          evt.addEventListener('dragstart', e=> e.dataTransfer.setData('eventoId', ev.id));
+          lista.appendChild(evt);
+        });
+
+        if (doDia.length > 0) cnt.textContent = doDia.length;
+
+        el.appendChild(lista);
+        grid.appendChild(el);
+      }
     }
-  }
 
-  listarIndisponiveis();
-</script>
+    function onDropMove(e){
+      const id = e.dataTransfer.getData('eventoId');
+      const data = this.dataset.data;
+      if (!id || !data) return;
+      db.ref(`eventos/${id}`).update({data})
+        .then(()=>carregar())
+        .catch(err=>alert('Erro ao mover: '+err.message));
+    }
 
+    function semanaSegADom(){
+      const hoje = new Date();
+      const dw = hoje.getDay();
+      const inicio = new Date(hoje);
+      const delta = (dw===0 ? -6 : 1-dw);
+      inicio.setDate(hoje.getDate()+delta);
+      const out=[];
+      for(let i=0;i<7;i++){const d=new Date(inicio);d.setDate(inicio.getDate()+i);out.push(toISO(d));}
+      return out;
+    }
+
+    // ===== Duplicar Evento (mantém nome + data + campos solicitados) =====
+    async function duplicarEvento(ev){
+      if(!confirm('Duplicar este evento?')) return;
+
+      const cloneDeep = (val)=>{
+        if (Array.isArray(val)) return val.map(v => (v && typeof v === 'object') ? {...v} : v);
+        if (val && typeof val === 'object') return JSON.parse(JSON.stringify(val));
+        return val ?? null;
+      };
+
+      const novo = {
+        nomeEvento: (ev.nomeEvento ?? '').toString(),
+        responsavel: ev.responsavel ?? '',
+        status: 'Aberto',
+        estimativaVenda: num(ev.estimativaVenda),
+        equipe: cloneDeep(ev.equipe) || [],
+        logistica: cloneDeep(ev.logistica) || [],
+        data: ev.data || toISO(new Date())
+      };
+
+      try{
+        await db.ref('eventos').push(novo);
+        carregar();
+      }catch(err){
+        alert('Erro ao duplicar: ' + err.message);
+      }
+    }
+
+    async function excluirEvento(id){
+      if(!confirm('Tem certeza que deseja excluir este evento?')) return;
+      try{
+        await db.ref('eventos/'+id).remove();
+        carregar();
+      }catch(err){
+        alert('Erro ao excluir: ' + err.message);
+      }
+    }
+
+    // ===== Duplicar Mês (campos solicitados + nova data) =====
+    async function duplicarMes(){
+      if(!confirm('Duplicar todos os eventos do mês para o próximo (mantendo somente Nome, Responsável, Status=Aberto, Estimativa, Equipe e Logística)?')) return;
+
+      const ano=mesRef.getFullYear(), mes=mesRef.getMonth();
+      const doMes = eventos.filter(ev=>{
+        const d=new Date(ev.data);
+        return d.getMonth()===mes && d.getFullYear()===ano;
+      });
+
+      const cloneDeep = (val)=>{
+        if (Array.isArray(val)) return val.map(v => (v && typeof v === 'object') ? {...v} : v);
+        if (val && typeof val === 'object') return JSON.parse(JSON.stringify(val));
+        return val ?? null;
+      };
+
+      try{
+        await Promise.all(doMes.map(ev=>{
+          const nova = new Date(ev.data);
+          nova.setMonth(nova.getMonth()+1);
+          const ultimoNovo = new Date(nova.getFullYear(), nova.getMonth()+1, 0).getDate();
+          if (nova.getDate()>ultimoNovo) nova.setDate(ultimoNovo);
+
+          const n = {
+            nomeEvento: (ev.nomeEvento ?? '').toString(),
+            responsavel: ev.responsavel ?? '',
+            status: 'Aberto',
+            estimativaVenda: num(ev.estimativaVenda),
+            equipe: cloneDeep(ev.equipe) || [],
+            logistica: cloneDeep(ev.logistica) || [],
+            data: toISO(nova)
+          };
+          return db.ref('eventos').push(n);
+        }));
+
+        carregar();
+      }catch(err){
+        alert('Erro ao duplicar mês: ' + err.message);
+      }
+    }
+
+    // ===== KPIs =====
+    function atualizarKPIs(){
+      const atualYM = ym(mesRef);
+      const dAnt = new Date(mesRef); dAnt.setMonth(dAnt.getMonth()-1);
+      const dProx= new Date(mesRef); dProx.setMonth(dProx.getMonth()+1);
+      const antYM  = ym(dAnt);
+      const proxYM = ym(dProx);
+
+      const dentroYM = (e, ymKey)=>{
+        if(!e?.data) return false;
+        const d = new Date(e.data);
+        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        return key === ymKey;
+      };
+
+      const isFechado = (e)=>{
+        const s = String(e.status||'').toLowerCase();
+        return s==='fechado' || s==='finalizado';
+      };
+
+      const realAtual    = eventos.filter(e=>dentroYM(e, atualYM) && isFechado(e))
+                                  .reduce((s,e)=> s + num(e.vendaPDV), 0);
+      const realAnterior = eventos.filter(e=>dentroYM(e, antYM) && isFechado(e))
+                                  .reduce((s,e)=> s + num(e.vendaPDV), 0);
+
+      const prevMes  = eventos.filter(e=>dentroYM(e, atualYM))
+                              .reduce((s,e)=> s + num(e.estimativaVenda), 0);
+      const prevProx = eventos.filter(e=>dentroYM(e, proxYM))
+                              .reduce((s,e)=> s + num(e.estimativaVenda), 0);
+
+      document.getElementById('kpiRealAnterior').textContent = brl(realAnterior);
+      document.getElementById('kpiRealMes').textContent      = brl(realAtual);
+      document.getElementById('kpiPrevMes').textContent      = brl(prevMes);
+      document.getElementById('kpiPrevProx').textContent     = brl(prevProx);
+    }
+
+    document.addEventListener('DOMContentLoaded', carregar);
+  </script>
 </body>
 </html>
