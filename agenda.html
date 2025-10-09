@@ -97,7 +97,12 @@
       margin-top:3px;background:var(--brand);color:#fff;border-radius:6px;padding:1px 5px;
       display:flex;align-items:center;justify-content:space-between;font-size:var(--fontEvt);min-height:18px
     }
-    .evt .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .evt .t{
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      /* >>> garante pelo menos 3 caracteres visíveis do nome do evento */
+      min-width: 3ch;
+      flex: 0 1 auto;
+    }
 
     /* VARIAÇÃO DE STATUS — NOVO */
     .evt.confirmado{
