@@ -67,7 +67,8 @@ document.addEventListener('DOMContentLoaded', function () {
           </h2>
           <div id="relatorios" class="accordion-collapse collapse" data-bs-parent="#menuAccordion">
             <div class="accordion-body">
-               <a href="/LepanApp/relatorio/relatorio_Semanal.html">Relatório Semanal Eventos</a>
+              <a href="/LepanApp/relatorio/relatorio_Semanal.html">Relatório Semanal Eventos</a>
+              <a href="/LepanApp/relatorio/relatorio_projecao_receita.html">Relatório Projeção Receita</a>
               <a href="/LepanApp/relatorio/custos_eventos_relatorio.html">Relatório Custo Evento</a>
               <a href="/LepanApp/relatorio/equipe_relatorio.html">Análise por Equipe</a>
               <a href="/LepanApp/relatorio/eventos_relatorio.html">Análise por Cliente</a>
