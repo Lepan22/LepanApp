@@ -65,6 +65,16 @@
       content: ''; position: absolute; inset: 4px;
       border: 2px dashed #198754; border-radius: 10px; pointer-events: none;
     }
+
+    /* Barra de navegação de semanas */
+    .week-toolbar{
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 12px;
+    }
+    .week-toolbar .range{
+      font-weight: 700; color: #111; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+    }
+    .week-toolbar input[type="date"]{ height: 34px; }
+    .week-toolbar .spacer{ flex: 1; }
   </style>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -77,6 +87,20 @@
 
     <main class="main-content">
       <h2>Planejamento de Eventos</h2>
+
+      <!-- Navegação de semanas -->
+      <div class="week-toolbar">
+        <button id="btnPrev">← Semana anterior</button>
+        <button id="btnToday" style="background:#0d6efd">Esta semana</button>
+        <button id="btnNext">Próxima semana →</button>
+
+        <div class="spacer"></div>
+
+        <label for="datePicker" style="font-weight:600;">Ir para a data:</label>
+        <input type="date" id="datePicker" />
+        <span class="range" id="rangeLabel">Semana: --/-- a --/--</span>
+      </div>
+
       <div id="eventos-container"><p>Carregando eventos...</p></div>
     </main>
   </div>
@@ -101,14 +125,30 @@
     let allEquipamentos = {};
     let allEventos = [];
 
+    // Controle da semana visível
+    let currentMonday = null; // Date (00:00:00)
+
     // ===== Util =====
-    function getWeekRange() {
-      const today = new Date();
-      const dow = today.getDay();
-      const diffToMonday = dow === 0 ? -6 : 1 - dow;
-      const monday = new Date(today);
-      monday.setDate(today.getDate() + diffToMonday);
+    function toBR(date){
+      return new Intl.DateTimeFormat('pt-BR', { day:'2-digit', month:'2-digit'}).format(date);
+    }
+    function computeMonday(d){
+      const base = new Date(d); base.setHours(0,0,0,0);
+      const dow = base.getDay(); // 0=Dom
+      const diffToMonday = (dow === 0) ? -6 : (1 - dow);
+      const monday = new Date(base);
+      monday.setDate(base.getDate() + diffToMonday);
       monday.setHours(0,0,0,0);
+      return monday;
+    }
+    function setWeekFromDate(d){
+      currentMonday = computeMonday(d);
+      renderWeekLabel();
+      fetchEventos();
+    }
+    function getWeekRange() {
+      if(!currentMonday) currentMonday = computeMonday(new Date());
+      const monday = new Date(currentMonday);
       const sunday = new Date(monday);
       sunday.setDate(monday.getDate() + 6);
       sunday.setHours(23,59,59,999);
@@ -119,17 +159,25 @@
       const options = { weekday: 'short', day: '2-digit', month: '2-digit' };
       return new Intl.DateTimeFormat('pt-BR', options).format(date);
     }
+    function renderWeekLabel(){
+      const { start, end } = getWeekRange();
+      const label = document.getElementById('rangeLabel');
+      label.textContent = `Semana: ${toBR(start)} a ${toBR(end)}`;
+      // manter o datePicker dentro da semana (qualquer dia, uso a segunda)
+      const dp = document.getElementById('datePicker');
+      const y = currentMonday.getFullYear();
+      const m = String(currentMonday.getMonth()+1).padStart(2,'0');
+      const d = String(currentMonday.getDate()).padStart(2,'0');
+      dp.value = `${y}-${m}-${d}`;
+    }
+
     function getEquipeDoEvento(e) {
       if (e && Array.isArray(e.equipe)) return e.equipe;
       if (e && Array.isArray(e.equipeAlocada)) return e.equipeAlocada;
       return [];
     }
-    function getLogisticaDoEvento(e) {
-      return Array.isArray(e.logistica) ? e.logistica : [];
-    }
-    function getEquipamentosDoEvento(e) {
-      return Array.isArray(e.equipamentos) ? e.equipamentos : [];
-    }
+    function getLogisticaDoEvento(e) { return Array.isArray(e.logistica) ? e.logistica : []; }
+    function getEquipamentosDoEvento(e) { return Array.isArray(e.equipamentos) ? e.equipamentos : []; }
 
     async function fetchEquipe() { const s = await db.ref('equipe').once('value'); allEquipe = s.val() || {}; }
     async function fetchLogistica() { const s = await db.ref('logistica').once('value'); allLogistica = s.val() || {}; }
@@ -137,6 +185,7 @@
 
     async function fetchEventos() {
       try {
+        // carrega pools (cache simples por chamada)
         await Promise.all([fetchEquipe(), fetchLogistica(), fetchEquipamentos()]);
         const snapshot = await db.ref('eventos').once('value');
         const eventosData = snapshot.val() || {};
@@ -257,7 +306,7 @@
       container.innerHTML = '';
 
       if (allEventos.length === 0) {
-        container.innerHTML = '<p>Nenhum evento encontrado para a semana atual.</p>';
+        container.innerHTML = '<p>Nenhum evento encontrado para a semana selecionada.</p>';
         return;
       }
 
@@ -571,7 +620,37 @@
       }
     }
 
-    document.addEventListener('DOMContentLoaded', fetchEventos);
+    // ===== Controles da barra de semanas =====
+    function goPrevWeek(){
+      const d = new Date(currentMonday);
+      d.setDate(d.getDate() - 7);
+      setWeekFromDate(d);
+    }
+    function goNextWeek(){
+      const d = new Date(currentMonday);
+      d.setDate(d.getDate() + 7);
+      setWeekFromDate(d);
+    }
+    function goThisWeek(){
+      setWeekFromDate(new Date());
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Inicializa pela semana atual
+      setWeekFromDate(new Date());
+
+      // Liga os botões
+      document.getElementById('btnPrev').addEventListener('click', goPrevWeek);
+      document.getElementById('btnNext').addEventListener('click', goNextWeek);
+      document.getElementById('btnToday').addEventListener('click', goThisWeek);
+
+      // Date picker -> vai para a semana da data escolhida
+      document.getElementById('datePicker').addEventListener('change', (e) => {
+        const val = e.target.value; // yyyy-mm-dd
+        if(!val) return;
+        setWeekFromDate(new Date(val + 'T00:00:00'));
+      });
+    });
   </script>
 </body>
 </html>
