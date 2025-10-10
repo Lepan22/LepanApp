@@ -305,7 +305,7 @@
         custoLog += sumValores(e.logistica) + sumValores(e.logisticaAlocada) + sumValores(e.frete);
       }
 
-      const totalCusto = (custoEquipe || 0) + (custoLog || 0);
+      const resultado = (estimativa || 0) - ((custoEquipe || 0) + (custoLog || 0));
       const nomeEvento = e.nomeEvento || e.nome || e.evento || '-';
 
       return {
@@ -315,8 +315,8 @@
         estimativa,
         custoEquipe,
         custoLog,
-        totalCusto,
-        margemPct: estimativa ? ((estimativa - totalCusto)/estimativa*100) : 0
+        resultado,
+        margemPct: estimativa ? (resultado/estimativa*100) : 0
       };
     });
 
@@ -333,7 +333,7 @@
       return;
     }
 
-    let tot = { est:0, eq:0, lg:0, tc:0 };
+    let tot = { est:0, eq:0, lg:0, res:0 };
     let html = `<table>
       <thead>
         <tr>
@@ -342,7 +342,7 @@
           <th>Estimativa Venda</th>
           <th>Custo Equipe</th>
           <th>Custo Logística</th>
-          <th>Total Custo</th>
+          <th>Resultado</th>
           <th>Margem Estimada</th>
         </tr>
       </thead>
@@ -350,9 +350,9 @@
 
     for(const l of linhas){
       tot.est += l.estimativa;
-      tot.eq += l.custoEquipe;
-      tot.lg += l.custoLog;
-      tot.tc += l.totalCusto;
+      tot.eq  += l.custoEquipe;
+      tot.lg  += l.custoLog;
+      tot.res += l.resultado;
 
       html += `<tr>
         <td>${l.data ? brLabel(l.data) : '-'}</td>
@@ -360,12 +360,12 @@
         <td class="right">${BRL(l.estimativa)}</td>
         <td class="right">${BRL(l.custoEquipe)}</td>
         <td class="right">${BRL(l.custoLog)}</td>
-        <td class="right">${BRL(l.totalCusto)}</td>
+        <td class="right">${BRL(l.resultado)}</td>
         <td>${isFinite(l.margemPct) ? l.margemPct.toFixed(1)+'%' : '0,0%'}</td>
       </tr>`;
     }
 
-    const margemTot = pctTxt(tot.est - tot.tc, tot.est);
+    const margemTot = pctTxt(tot.res, tot.est);
     html += `</tbody>
       <tfoot>
         <tr>
@@ -373,7 +373,7 @@
           <td class="right"><strong>${BRL(tot.est)}</strong></td>
           <td class="right"><strong>${BRL(tot.eq)}</strong></td>
           <td class="right"><strong>${BRL(tot.lg)}</strong></td>
-          <td class="right"><strong>${BRL(tot.tc)}</strong></td>
+          <td class="right"><strong>${BRL(tot.res)}</strong></td>
           <td><strong>${margemTot}</strong></td>
         </tr>
       </tfoot>
@@ -393,16 +393,16 @@
       const k = l.data ? startOfWeekMonday(l.data) : 'sem-data';
       if(!map[k]){
         const fim = l.data ? endOfWeekSunday(l.data) : null;
-        map[k] = { label: l.data ? `${brLabel(k)} a ${brLabel(fim)}` : 'Sem data', est:0, eq:0, lg:0, tc:0 };
+        map[k] = { label: l.data ? `${brLabel(k)} a ${brLabel(fim)}` : 'Sem data', est:0, eq:0, lg:0, res:0 };
       }
       map[k].est += l.estimativa;
       map[k].eq  += l.custoEquipe;
       map[k].lg  += l.custoLog;
-      map[k].tc  += l.totalCusto;
+      map[k].res += l.resultado;
     }
 
     const keys = Object.keys(map).sort();
-    let total = { est:0, eq:0, lg:0, tc:0 };
+    let total = { est:0, eq:0, lg:0, res:0 };
     let html = `<table>
       <thead>
         <tr>
@@ -410,7 +410,7 @@
           <th>Estimativa Venda</th>
           <th>Custo Equipe</th>
           <th>Custo Logística</th>
-          <th>Total Custo</th>
+          <th>Resultado</th>
           <th>Margem Estimada</th>
         </tr>
       </thead>
@@ -418,14 +418,14 @@
 
     for(const k of keys){
       const s = map[k];
-      total.est += s.est; total.eq += s.eq; total.lg += s.lg; total.tc += s.tc;
+      total.est += s.est; total.eq += s.eq; total.lg += s.lg; total.res += s.res;
       html += `<tr>
         <td class="left">${s.label}</td>
         <td class="right">${BRL(s.est)}</td>
         <td class="right">${BRL(s.eq)}</td>
         <td class="right">${BRL(s.lg)}</td>
-        <td class="right">${BRL(s.tc)}</td>
-        <td>${pctTxt(s.est - s.tc, s.est)}</td>
+        <td class="right">${BRL(s.res)}</td>
+        <td>${pctTxt(s.res, s.est)}</td>
       </tr>`;
     }
 
@@ -436,8 +436,8 @@
           <td class="right"><strong>${BRL(total.est)}</strong></td>
           <td class="right"><strong>${BRL(total.eq)}</strong></td>
           <td class="right"><strong>${BRL(total.lg)}</strong></td>
-          <td class="right"><strong>${BRL(total.tc)}</strong></td>
-          <td><strong>${pctTxt(total.est - total.tc, total.est)}</strong></td>
+          <td class="right"><strong>${BRL(total.res)}</strong></td>
+          <td><strong>${pctTxt(total.res, total.est)}</strong></td>
         </tr>
       </tfoot>
     </table>`;
