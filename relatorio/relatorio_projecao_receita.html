@@ -121,8 +121,7 @@
     if(v === null || v === undefined) return 0;
     if (typeof v === 'number') return v;
     if (typeof v === 'string'){
-      // remove milhares e converte vírgula para ponto
-      const s = v.replace(/\./g,'').replace(',','.');
+      const s = v.replace(/\\./g,'').replace(',', '.');
       const n = parseFloat(s);
       return isNaN(n) ? 0 : n;
     }
@@ -130,7 +129,6 @@
   }
 
   function get(obj, path){
-    // path "a/b/c"
     const segs = path.split('/');
     let cur = obj;
     for(const s of segs){
@@ -154,23 +152,21 @@
 
   function sumValores(maybeArrOrObj){
     if(!maybeArrOrObj) return 0;
-    // array
     if(Array.isArray(maybeArrOrObj)){
       return maybeArrOrObj.reduce((acc, it)=>acc + parseNum(it && (it.valor ?? it.preco ?? it.custo)), 0);
     }
-    // objeto mapeado por id
     if(typeof maybeArrOrObj === 'object'){
       return Object.values(maybeArrOrObj).reduce((acc, it)=>acc + parseNum(it && (it.valor ?? it.preco ?? it.custo)), 0);
     }
     return 0;
-    }
+  }
 
   const pctTxt = (num, den) => den ? ((num/den)*100).toFixed(1)+'%' : '0,0%';
 
   function toISODate(anyDate){
     if(!anyDate) return null;
-    if (typeof anyDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(anyDate)) return anyDate;
-    if (typeof anyDate === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(anyDate)) {
+    if (typeof anyDate === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(anyDate)) return anyDate;
+    if (typeof anyDate === 'string' && /^\\d{2}\\/\\d{2}\\/\\d{4}$/.test(anyDate)) {
       const [d,m,y]=anyDate.split('/'); return `${y}-${m}-${d}`;
     }
     if (typeof anyDate === 'number') {
@@ -182,8 +178,8 @@
 
   function startOfWeekMonday(dateISO){
     const d = new Date(dateISO+"T00:00:00");
-    const day = d.getDay(); // 0 dom .. 6 sáb
-    const diff = (day === 0 ? -6 : 1 - day); // segunda como início
+    const day = d.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
     d.setDate(d.getDate() + diff);
     return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
   }
@@ -205,12 +201,10 @@
     return { ini: fmt(first), fim: fmt(last) };
   }
 
-  // ===== Estado =====
   let eventos = [];
 
-  // ===== Boot =====
   document.addEventListener('DOMContentLoaded', () => {
-    carregarMenu('../');
+    if (typeof carregarMenu === 'function') carregarMenu('../');
     carregarEventos();
     wireFiltros();
   });
@@ -221,11 +215,7 @@
       snap.forEach(child=>{
         const e = child.val() || {};
         e.id = child.key;
-
-        // data em vários campos possíveis
-        const dataISO = toISODate(e.data || e.dataEvento || e.dia || e.dt);
-        e._dataISO = dataISO;
-
+        e._dataISO = toISODate(e.data || e.dataEvento || e.dia || e.dt);
         eventos.push(e);
       });
       popularFiltroNomes();
@@ -234,7 +224,6 @@
     });
   }
 
-  // ===== Filtros =====
   function popularFiltroNomes(){
     const selec = document.getElementById('filtroNomeEvento');
     const nomes = [...new Set(eventos.map(e => e.nomeEvento || e.nome || e.evento).filter(Boolean))]
@@ -269,14 +258,13 @@
     });
     document.getElementById('btnAnoAtual').addEventListener('click', ()=>{
       const y = (new Date()).getFullYear();
-      document.getElementById('filtroDataInicio').value = `${y}-01-01`;
-      document.getElementById('filtroDataFim').value = `${y}-12-31`;
+      document.getElementById('filtroDataInicio').value = `${y}-01-01';
+      document.getElementById('filtroDataFim').value = `${y}-12-31';
       document.getElementById('resumoPeriodo').textContent = `01/01/${y} a 31/12/${y}`;
       aplicarFiltros();
     });
   }
 
-  // ===== Core =====
   function aplicarFiltros(){
     const nomes = [...document.getElementById('filtroNomeEvento').selectedOptions].map(o=>o.value);
     const ini = document.getElementById('filtroDataInicio').value || null;
@@ -288,8 +276,7 @@
     }
 
     const filtrados = eventos.filter(e=>{
-      const dataOK = e._dataISO ? (!ini || e._dataISO >= ini) && (!fim || e._dataISO <= fim)
-                                : (!ini && !fim);
+      const dataOK = e._dataISO ? (!ini || e._dataISO >= ini) && (!fim || e._dataISO <= fim) : (!ini && !fim);
       if(!dataOK) return false;
       const nomeEv = e.nomeEvento || e.nome || e.evento;
       if(nomes.length && !nomes.includes(nomeEv)) return false;
@@ -299,7 +286,6 @@
     });
 
     const linhas = filtrados.map(e=>{
-      // Estimativa – procura em vários caminhos
       const estimativa = firstNumber(e, [
         'estimativaVenda',
         'estimativaVendaSemana',
@@ -309,13 +295,11 @@
         'projecaoReceita'
       ]);
 
-      // Equipe – soma arrays/objetos ou usa total pronto
       let custoEquipe = firstNumber(e, ['totalEquipe', 'custos/equipe/total']);
       if(!custoEquipe){
         custoEquipe += sumValores(e.equipe) + sumValores(e.equipeAlocada);
       }
 
-      // Logística – idem
       let custoLog = firstNumber(e, ['totalLogistica', 'custos/logistica/total']);
       if(!custoLog){
         custoLog += sumValores(e.logistica) + sumValores(e.logisticaAlocada) + sumValores(e.frete);
@@ -342,7 +326,6 @@
     exibirResumoSemanas(linhas);
   }
 
-  // ===== Render =====
   function exibirTabelaEventos(linhas){
     if(!linhas.length){
       document.getElementById('tabelaEventos').innerHTML = '<div class="muted">Nenhum evento no período.</div>';
