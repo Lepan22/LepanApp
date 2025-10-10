@@ -10,17 +10,12 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
   <script src="../assets/menu.js"></script>
   <style>
-    /* ===== Layout ===== */
     .page-header h1 { margin-bottom: 10px; }
-
-    /* ===== Cartão de filtros ===== */
     .card-dashboard{
       background:#fff; border:1px solid #eee; border-radius:10px; padding:10px;
       box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-top:6px;
     }
-    .filtros-grid{
-      display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:10px; align-items:end;
-    }
+    .filtros-grid{ display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:10px; align-items:end; }
     @media (max-width: 1100px){ .filtros-grid{ grid-template-columns:1fr; } }
     .field{ display:flex; flex-direction:column; gap:6px; }
     .field label{ font-size:12px; color:#555; }
@@ -35,8 +30,6 @@
     .btn-outline:hover{ background:#f6f6f6; }
     .quick{ display:flex; gap:6px; margin-right:auto; }
     .quick .btn{ padding:5px 8px; font-size:11px; }
-
-    /* ===== Tabelas ===== */
     table { width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
     th, td { border:1px solid #ddd; padding:6px 8px; text-align:center; }
     th { background-color:#ffcc80; position: sticky; top: 0; z-index: 1; }
@@ -44,17 +37,8 @@
     tfoot td { font-weight: bold; background: #f9f9f9; }
     .right{ text-align:right; }
     .left{ text-align:left; }
-
-    /* ===== Separadores ===== */
-    .section-title{
-      margin-top:14px; font-weight:700; font-size:14px; color:#333;
-      display:flex; align-items:center; gap:8px;
-    }
-    .section-title .pill{
-      font-size:10px; padding:2px 8px; border-radius:999px; background:#ffe9d1; color:#8a3b00;
-    }
-
-    /* Aviso vazio */
+    .section-title{ margin-top:14px; font-weight:700; font-size:14px; color:#333; display:flex; align-items:center; gap:8px; }
+    .section-title .pill{ font-size:10px; padding:2px 8px; border-radius:999px; background:#ffe9d1; color:#8a3b00; }
     .muted { color:#777; font-size:12px; margin-top:8px; }
   </style>
 </head>
@@ -68,7 +52,6 @@
       <div class="muted">Lista todos os eventos no período filtrado e resume por semana (seg → dom).</div>
     </div>
 
-    <!-- ======= Filtros ======= -->
     <div class="card-dashboard">
       <form id="filtrosForm">
         <div class="filtros-grid">
@@ -94,6 +77,8 @@
               <option value="Aberto">Aberto</option>
               <option value="Fechado">Fechado</option>
               <option value="Finalizado">Finalizado</option>
+              <option value="Previsto">Previsto</option>
+              <option value="Confirmado">Confirmado</option>
             </select>
           </div>
         </div>
@@ -109,11 +94,9 @@
       </form>
     </div>
 
-    <!-- ======= Eventos (lista detalhada) ======= -->
     <div class="section-title">Eventos no Período <span class="pill" id="resumoPeriodo"></span></div>
     <div id="tabelaEventos"></div>
 
-    <!-- ======= Resumo por Semana ======= -->
     <div class="section-title">Resumo por Semana (Seg a Dom)</div>
     <div id="tabelaSemanas"></div>
   </main>
@@ -133,8 +116,56 @@
   // ===== Util =====
   const pad2 = n => String(n).padStart(2,'0');
   const BRL = v => (Number(v)||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
-  const pctNum = (num, den) => den ? (num/den*100) : 0;
-  const pctTxt = (num, den) => den ? (num/den*100).toFixed(1)+'%' : '0,0%';
+
+  function parseNum(v){
+    if(v === null || v === undefined) return 0;
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string'){
+      // remove milhares e converte vírgula para ponto
+      const s = v.replace(/\./g,'').replace(',','.');
+      const n = parseFloat(s);
+      return isNaN(n) ? 0 : n;
+    }
+    return 0;
+  }
+
+  function get(obj, path){
+    // path "a/b/c"
+    const segs = path.split('/');
+    let cur = obj;
+    for(const s of segs){
+      if(cur && Object.prototype.hasOwnProperty.call(cur, s)){
+        cur = cur[s];
+      }else{
+        return undefined;
+      }
+    }
+    return cur;
+  }
+
+  function firstNumber(obj, paths){
+    for(const p of paths){
+      const v = get(obj, p);
+      const n = parseNum(v);
+      if (n) return n;
+    }
+    return 0;
+  }
+
+  function sumValores(maybeArrOrObj){
+    if(!maybeArrOrObj) return 0;
+    // array
+    if(Array.isArray(maybeArrOrObj)){
+      return maybeArrOrObj.reduce((acc, it)=>acc + parseNum(it && (it.valor ?? it.preco ?? it.custo)), 0);
+    }
+    // objeto mapeado por id
+    if(typeof maybeArrOrObj === 'object'){
+      return Object.values(maybeArrOrObj).reduce((acc, it)=>acc + parseNum(it && (it.valor ?? it.preco ?? it.custo)), 0);
+    }
+    return 0;
+    }
+
+  const pctTxt = (num, den) => den ? ((num/den)*100).toFixed(1)+'%' : '0,0%';
 
   function toISODate(anyDate){
     if(!anyDate) return null;
@@ -156,27 +187,16 @@
     d.setDate(d.getDate() + diff);
     return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
   }
-
   function endOfWeekSunday(dateISO){
     const begin = new Date(startOfWeekMonday(dateISO)+"T00:00:00");
     begin.setDate(begin.getDate()+6);
     return `${begin.getFullYear()}-${pad2(begin.getMonth()+1)}-${pad2(begin.getDate())}`;
   }
-
   function brLabel(dateISO){
     if(!dateISO) return '-';
     const [y,m,d] = dateISO.split('-');
     return `${d}/${m}/${y}`;
   }
-
-  function labelSemana(dateISO){
-    const ini = startOfWeekMonday(dateISO);
-    const fim = endOfWeekSunday(dateISO);
-    const [yi,mi,di] = ini.split('-');
-    const [yf,mf,df] = fim.split('-');
-    return `${di}/${mi}–${df}/${mf}/${yf}`;
-  }
-
   function getMonthRange(date = new Date()){
     const y = date.getFullYear(), m = date.getMonth();
     const first = new Date(y, m, 1);
@@ -201,7 +221,11 @@
       snap.forEach(child=>{
         const e = child.val() || {};
         e.id = child.key;
-        e._dataISO = toISODate(e.data);
+
+        // data em vários campos possíveis
+        const dataISO = toISODate(e.data || e.dataEvento || e.dia || e.dt);
+        e._dataISO = dataISO;
+
         eventos.push(e);
       });
       popularFiltroNomes();
@@ -213,7 +237,7 @@
   // ===== Filtros =====
   function popularFiltroNomes(){
     const selec = document.getElementById('filtroNomeEvento');
-    const nomes = [...new Set(eventos.map(e => e.nomeEvento).filter(Boolean))]
+    const nomes = [...new Set(eventos.map(e => e.nomeEvento || e.nome || e.evento).filter(Boolean))]
       .sort((a,b)=>a.localeCompare(b,'pt-BR'));
     selec.innerHTML = '';
     nomes.forEach(n=>{
@@ -263,65 +287,62 @@
       document.getElementById('resumoPeriodo').textContent = `${brLabel(ini)} a ${brLabel(fim)}`;
     }
 
-    // Filtra eventos
     const filtrados = eventos.filter(e=>{
       const dataOK = e._dataISO ? (!ini || e._dataISO >= ini) && (!fim || e._dataISO <= fim)
                                 : (!ini && !fim);
       if(!dataOK) return false;
-      if(nomes.length && !nomes.includes(e.nomeEvento)) return false;
-      if(status && e.status !== status) return false;
+      const nomeEv = e.nomeEvento || e.nome || e.evento;
+      if(nomes.length && !nomes.includes(nomeEv)) return false;
+      const st = e.status || e.statusEvento || e.situacao;
+      if(status && st !== status) return false;
       return true;
     });
 
-    // Mapeia linhas (estimativa + custos)
     const linhas = filtrados.map(e=>{
-      // Estimativa de venda pode estar com nomes diferentes: estimativaVenda, estimativa, previsaoVenda…
-      const estimativa = [
-        e.estimativaVenda, e.estimativa, e.previsaoVenda, e.estimativaVendaSemana
-      ].map(v=>parseFloat(v)).find(v=>!isNaN(v)) || 0;
+      // Estimativa – procura em vários caminhos
+      const estimativa = firstNumber(e, [
+        'estimativaVenda',
+        'estimativaVendaSemana',
+        'previsaoVenda',
+        'estimativa',
+        'totais/estimativaVenda',
+        'projecaoReceita'
+      ]);
 
-      const custoEquipe = Array.isArray(e.equipe)
-        ? e.equipe.reduce((acc, it)=> acc + (parseFloat(it.valor)||0), 0) : 0;
+      // Equipe – soma arrays/objetos ou usa total pronto
+      let custoEquipe = firstNumber(e, ['totalEquipe', 'custos/equipe/total']);
+      if(!custoEquipe){
+        custoEquipe += sumValores(e.equipe) + sumValores(e.equipeAlocada);
+      }
 
-      const custoLog = Array.isArray(e.logistica)
-        ? e.logistica.reduce((acc, it)=> acc + (parseFloat(it.valor)||0), 0) : 0;
+      // Logística – idem
+      let custoLog = firstNumber(e, ['totalLogistica', 'custos/logistica/total']);
+      if(!custoLog){
+        custoLog += sumValores(e.logistica) + sumValores(e.logisticaAlocada) + sumValores(e.frete);
+      }
 
-      const totalCusto = custoEquipe + custoLog;
-      const margemPct = pctNum(estimativa - totalCusto, estimativa);
+      const totalCusto = (custoEquipe || 0) + (custoLog || 0);
+      const nomeEvento = e.nomeEvento || e.nome || e.evento || '-';
 
       return {
         id: e.id,
-        data: e._dataISO || (e.data || '-'),
-        nomeEvento: e.nomeEvento || '-',
-        estimativa, custoEquipe, custoLog, totalCusto, margemPct
+        data: e._dataISO || null,
+        nomeEvento,
+        estimativa,
+        custoEquipe,
+        custoLog,
+        totalCusto,
+        margemPct: estimativa ? ((estimativa - totalCusto)/estimativa*100) : 0
       };
     });
 
-    // Ordena por data crescente
     linhas.sort((a,b)=> (a.data || '').localeCompare(b.data || ''));
 
-    // Renderiza tabela detalhada
     exibirTabelaEventos(linhas);
-
-    // Agrupa por semana (seg → dom)
-    const semanas = {};
-    for(const l of linhas){
-      const keyIni = l.data ? startOfWeekMonday(l.data) : 'sem-data';
-      if(!semanas[keyIni]){
-        semanas[keyIni] = {
-          label: l.data ? `${brLabel(keyIni)} a ${brLabel(endOfWeekSunday(l.data))}` : 'Sem data',
-          estimativa: 0, equipe: 0, log: 0, totalCusto: 0
-        };
-      }
-      semanas[keyIni].estimativa += l.estimativa;
-      semanas[keyIni].equipe += l.custoEquipe;
-      semanas[keyIni].log += l.custoLog;
-      semanas[keyIni].totalCusto += l.totalCusto;
-    }
-    exibirResumoSemanas(semanas);
+    exibirResumoSemanas(linhas);
   }
 
-  // ===== Renderizações =====
+  // ===== Render =====
   function exibirTabelaEventos(linhas){
     if(!linhas.length){
       document.getElementById('tabelaEventos').innerHTML = '<div class="muted">Nenhum evento no período.</div>';
@@ -377,15 +398,27 @@
     document.getElementById('tabelaEventos').innerHTML = html;
   }
 
-  function exibirResumoSemanas(mapSemanas){
-    const chaves = Object.keys(mapSemanas).sort(); // por início da semana
-    if(!chaves.length){
+  function exibirResumoSemanas(linhas){
+    if(!linhas.length){
       document.getElementById('tabelaSemanas').innerHTML = '<div class="muted">Semanas não encontradas no período.</div>';
       return;
     }
 
-    let total = { est:0, eq:0, lg:0, tc:0 };
+    const map = {};
+    for(const l of linhas){
+      const k = l.data ? startOfWeekMonday(l.data) : 'sem-data';
+      if(!map[k]){
+        const fim = l.data ? endOfWeekSunday(l.data) : null;
+        map[k] = { label: l.data ? `${brLabel(k)} a ${brLabel(fim)}` : 'Sem data', est:0, eq:0, lg:0, tc:0 };
+      }
+      map[k].est += l.estimativa;
+      map[k].eq  += l.custoEquipe;
+      map[k].lg  += l.custoLog;
+      map[k].tc  += l.totalCusto;
+    }
 
+    const keys = Object.keys(map).sort();
+    let total = { est:0, eq:0, lg:0, tc:0 };
     let html = `<table>
       <thead>
         <tr>
@@ -399,26 +432,18 @@
       </thead>
       <tbody>`;
 
-    for(const k of chaves){
-      const s = mapSemanas[k];
-      const margem = pctTxt(s.estimativa - s.totalCusto, s.estimativa);
-
-      total.est += s.estimativa;
-      total.eq += s.equipe;
-      total.lg += s.log;
-      total.tc += s.totalCusto;
-
+    for(const k of keys){
+      const s = map[k];
+      total.est += s.est; total.eq += s.eq; total.lg += s.lg; total.tc += s.tc;
       html += `<tr>
         <td class="left">${s.label}</td>
-        <td class="right">${BRL(s.estimativa)}</td>
-        <td class="right">${BRL(s.equipe)}</td>
-        <td class="right">${BRL(s.log)}</td>
-        <td class="right">${BRL(s.totalCusto)}</td>
-        <td>${margem}</td>
+        <td class="right">${BRL(s.est)}</td>
+        <td class="right">${BRL(s.eq)}</td>
+        <td class="right">${BRL(s.lg)}</td>
+        <td class="right">${BRL(s.tc)}</td>
+        <td>${pctTxt(s.est - s.tc, s.est)}</td>
       </tr>`;
     }
-
-    const margemTot = pctTxt(total.est - total.tc, total.est);
 
     html += `</tbody>
       <tfoot>
@@ -428,7 +453,7 @@
           <td class="right"><strong>${BRL(total.eq)}</strong></td>
           <td class="right"><strong>${BRL(total.lg)}</strong></td>
           <td class="right"><strong>${BRL(total.tc)}</strong></td>
-          <td><strong>${margemTot}</strong></td>
+          <td><strong>${pctTxt(total.est - total.tc, total.est)}</strong></td>
         </tr>
       </tfoot>
     </table>`;
