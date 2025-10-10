@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Relatório – Projeção de Receita</title>
+  <link rel="stylesheet" href="../assets/base.css" />
+  <link rel="stylesheet" href="../assets/menu-styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="../assets/menu.js"></script>
+  <style>
+    /* ===== Layout ===== */
+    .page-header h1 { margin-bottom: 10px; }
+
+    /* ===== Cartão de filtros ===== */
+    .card-dashboard{
+      background:#fff; border:1px solid #eee; border-radius:10px; padding:10px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-top:6px;
+    }
+    .filtros-grid{
+      display:grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap:10px; align-items:end;
+    }
+    @media (max-width: 1100px){ .filtros-grid{ grid-template-columns:1fr; } }
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    .field label{ font-size:12px; color:#555; }
+    .field input[type="date"], .field select{
+      border:1px solid #ddd; border-radius:8px; padding:7px 9px; font-size:12px; background:#fff;
+    }
+    #filtroNomeEvento{ min-height: 160px; padding:8px; line-height:1.3; }
+    .actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; align-items:center; }
+    .btn{ background:#ff7f00; color:#fff; padding:7px 12px; border:none; border-radius:8px; font-size:12px; cursor:pointer; }
+    .btn:hover{ background:#e96f00; }
+    .btn-outline{ background:#fff; color:#444; border:1px solid #ddd; }
+    .btn-outline:hover{ background:#f6f6f6; }
+    .quick{ display:flex; gap:6px; margin-right:auto; }
+    .quick .btn{ padding:5px 8px; font-size:11px; }
+
+    /* ===== Tabelas ===== */
+    table { width:100%; border-collapse:collapse; margin-top:8px; font-size:12px; }
+    th, td { border:1px solid #ddd; padding:6px 8px; text-align:center; }
+    th { background-color:#ffcc80; position: sticky; top: 0; z-index: 1; }
+    tbody tr:nth-child(even){ background:#fafafa; }
+    tfoot td { font-weight: bold; background: #f9f9f9; }
+    .right{ text-align:right; }
+    .left{ text-align:left; }
+
+    /* ===== Separadores ===== */
+    .section-title{
+      margin-top:14px; font-weight:700; font-size:14px; color:#333;
+      display:flex; align-items:center; gap:8px;
+    }
+    .section-title .pill{
+      font-size:10px; padding:2px 8px; border-radius:999px; background:#ffe9d1; color:#8a3b00;
+    }
+
+    /* Aviso vazio */
+    .muted { color:#777; font-size:12px; margin-top:8px; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" id="menuLateral"></aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1>Projeção de Receita</h1>
+      <div class="muted">Lista todos os eventos no período filtrado e resume por semana (seg → dom).</div>
+    </div>
+
+    <!-- ======= Filtros ======= -->
+    <div class="card-dashboard">
+      <form id="filtrosForm">
+        <div class="filtros-grid">
+          <div class="field">
+            <label for="filtroNomeEvento">Nome do Evento</label>
+            <select id="filtroNomeEvento" multiple></select>
+          </div>
+
+          <div class="field">
+            <label for="filtroDataInicio">Data Início</label>
+            <input type="date" id="filtroDataInicio">
+          </div>
+
+          <div class="field">
+            <label for="filtroDataFim">Data Fim</label>
+            <input type="date" id="filtroDataFim">
+          </div>
+
+          <div class="field">
+            <label for="filtroStatus">Status</label>
+            <select id="filtroStatus">
+              <option value="" selected>Todos</option>
+              <option value="Aberto">Aberto</option>
+              <option value="Fechado">Fechado</option>
+              <option value="Finalizado">Finalizado</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <div class="quick">
+            <button type="button" class="btn btn-outline" id="btnMesAtual">Mês atual</button>
+            <button type="button" class="btn btn-outline" id="btnAnoAtual">Ano atual</button>
+          </div>
+          <button type="submit" class="btn">Aplicar Filtros</button>
+          <button type="button" class="btn btn-outline" id="btnLimpar">Limpar</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ======= Eventos (lista detalhada) ======= -->
+    <div class="section-title">Eventos no Período <span class="pill" id="resumoPeriodo"></span></div>
+    <div id="tabelaEventos"></div>
+
+    <!-- ======= Resumo por Semana ======= -->
+    <div class="section-title">Resumo por Semana (Seg a Dom)</div>
+    <div id="tabelaSemanas"></div>
+  </main>
+</div>
+
+<script>
+  // ===== Firebase =====
+  const firebaseConfig = {
+    apiKey: "AIzaSyBClDBA7f9-jfF6Nz6Ia-YlZ6G-hx3oerY",
+    authDomain: "lepanapp.firebaseapp.com",
+    databaseURL: "https://lepanapp-default-rtdb.firebaseio.com",
+    projectId: "lepanapp"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // ===== Util =====
+  const pad2 = n => String(n).padStart(2,'0');
+  const BRL = v => (Number(v)||0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+  const pctNum = (num, den) => den ? (num/den*100) : 0;
+  const pctTxt = (num, den) => den ? (num/den*100).toFixed(1)+'%' : '0,0%';
+
+  function toISODate(anyDate){
+    if(!anyDate) return null;
+    if (typeof anyDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(anyDate)) return anyDate;
+    if (typeof anyDate === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(anyDate)) {
+      const [d,m,y]=anyDate.split('/'); return `${y}-${m}-${d}`;
+    }
+    if (typeof anyDate === 'number') {
+      const d=new Date(anyDate); if(!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    }
+    const d=new Date(anyDate); if(!isNaN(d)) return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    return null;
+  }
+
+  function startOfWeekMonday(dateISO){
+    const d = new Date(dateISO+"T00:00:00");
+    const day = d.getDay(); // 0 dom .. 6 sáb
+    const diff = (day === 0 ? -6 : 1 - day); // segunda como início
+    d.setDate(d.getDate() + diff);
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+
+  function endOfWeekSunday(dateISO){
+    const begin = new Date(startOfWeekMonday(dateISO)+"T00:00:00");
+    begin.setDate(begin.getDate()+6);
+    return `${begin.getFullYear()}-${pad2(begin.getMonth()+1)}-${pad2(begin.getDate())}`;
+  }
+
+  function brLabel(dateISO){
+    if(!dateISO) return '-';
+    const [y,m,d] = dateISO.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  function labelSemana(dateISO){
+    const ini = startOfWeekMonday(dateISO);
+    const fim = endOfWeekSunday(dateISO);
+    const [yi,mi,di] = ini.split('-');
+    const [yf,mf,df] = fim.split('-');
+    return `${di}/${mi}–${df}/${mf}/${yf}`;
+  }
+
+  function getMonthRange(date = new Date()){
+    const y = date.getFullYear(), m = date.getMonth();
+    const first = new Date(y, m, 1);
+    const last = new Date(y, m+1, 0);
+    const fmt = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    return { ini: fmt(first), fim: fmt(last) };
+  }
+
+  // ===== Estado =====
+  let eventos = [];
+
+  // ===== Boot =====
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarMenu('../');
+    carregarEventos();
+    wireFiltros();
+  });
+
+  function carregarEventos(){
+    db.ref('eventos').once('value').then(snap=>{
+      eventos = [];
+      snap.forEach(child=>{
+        const e = child.val() || {};
+        e.id = child.key;
+        e._dataISO = toISODate(e.data);
+        eventos.push(e);
+      });
+      popularFiltroNomes();
+      setDefaultPeriodoMes();
+      aplicarFiltros();
+    });
+  }
+
+  // ===== Filtros =====
+  function popularFiltroNomes(){
+    const selec = document.getElementById('filtroNomeEvento');
+    const nomes = [...new Set(eventos.map(e => e.nomeEvento).filter(Boolean))]
+      .sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    selec.innerHTML = '';
+    nomes.forEach(n=>{
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      selec.appendChild(opt);
+    });
+  }
+
+  function setDefaultPeriodoMes(){
+    const {ini,fim} = getMonthRange(new Date());
+    document.getElementById('filtroDataInicio').value = ini;
+    document.getElementById('filtroDataFim').value = fim;
+    document.getElementById('resumoPeriodo').textContent = `${brLabel(ini)} a ${brLabel(fim)}`;
+  }
+
+  function wireFiltros(){
+    document.getElementById('filtrosForm').addEventListener('submit', e=>{
+      e.preventDefault(); aplicarFiltros();
+    });
+    document.getElementById('btnLimpar').addEventListener('click', ()=>{
+      document.querySelectorAll('#filtroNomeEvento option').forEach(o=>o.selected=false);
+      document.getElementById('filtroStatus').value='';
+      setDefaultPeriodoMes();
+      aplicarFiltros();
+    });
+    document.getElementById('btnMesAtual').addEventListener('click', ()=>{
+      setDefaultPeriodoMes(); aplicarFiltros();
+    });
+    document.getElementById('btnAnoAtual').addEventListener('click', ()=>{
+      const y = (new Date()).getFullYear();
+      document.getElementById('filtroDataInicio').value = `${y}-01-01`;
+      document.getElementById('filtroDataFim').value = `${y}-12-31`;
+      document.getElementById('resumoPeriodo').textContent = `01/01/${y} a 31/12/${y}`;
+      aplicarFiltros();
+    });
+  }
+
+  // ===== Core =====
+  function aplicarFiltros(){
+    const nomes = [...document.getElementById('filtroNomeEvento').selectedOptions].map(o=>o.value);
+    const ini = document.getElementById('filtroDataInicio').value || null;
+    const fim = document.getElementById('filtroDataFim').value || null;
+    const status = document.getElementById('filtroStatus').value;
+
+    if(ini && fim){
+      document.getElementById('resumoPeriodo').textContent = `${brLabel(ini)} a ${brLabel(fim)}`;
+    }
+
+    // Filtra eventos
+    const filtrados = eventos.filter(e=>{
+      const dataOK = e._dataISO ? (!ini || e._dataISO >= ini) && (!fim || e._dataISO <= fim)
+                                : (!ini && !fim);
+      if(!dataOK) return false;
+      if(nomes.length && !nomes.includes(e.nomeEvento)) return false;
+      if(status && e.status !== status) return false;
+      return true;
+    });
+
+    // Mapeia linhas (estimativa + custos)
+    const linhas = filtrados.map(e=>{
+      // Estimativa de venda pode estar com nomes diferentes: estimativaVenda, estimativa, previsaoVenda…
+      const estimativa = [
+        e.estimativaVenda, e.estimativa, e.previsaoVenda, e.estimativaVendaSemana
+      ].map(v=>parseFloat(v)).find(v=>!isNaN(v)) || 0;
+
+      const custoEquipe = Array.isArray(e.equipe)
+        ? e.equipe.reduce((acc, it)=> acc + (parseFloat(it.valor)||0), 0) : 0;
+
+      const custoLog = Array.isArray(e.logistica)
+        ? e.logistica.reduce((acc, it)=> acc + (parseFloat(it.valor)||0), 0) : 0;
+
+      const totalCusto = custoEquipe + custoLog;
+      const margemPct = pctNum(estimativa - totalCusto, estimativa);
+
+      return {
+        id: e.id,
+        data: e._dataISO || (e.data || '-'),
+        nomeEvento: e.nomeEvento || '-',
+        estimativa, custoEquipe, custoLog, totalCusto, margemPct
+      };
+    });
+
+    // Ordena por data crescente
+    linhas.sort((a,b)=> (a.data || '').localeCompare(b.data || ''));
+
+    // Renderiza tabela detalhada
+    exibirTabelaEventos(linhas);
+
+    // Agrupa por semana (seg → dom)
+    const semanas = {};
+    for(const l of linhas){
+      const keyIni = l.data ? startOfWeekMonday(l.data) : 'sem-data';
+      if(!semanas[keyIni]){
+        semanas[keyIni] = {
+          label: l.data ? `${brLabel(keyIni)} a ${brLabel(endOfWeekSunday(l.data))}` : 'Sem data',
+          estimativa: 0, equipe: 0, log: 0, totalCusto: 0
+        };
+      }
+      semanas[keyIni].estimativa += l.estimativa;
+      semanas[keyIni].equipe += l.custoEquipe;
+      semanas[keyIni].log += l.custoLog;
+      semanas[keyIni].totalCusto += l.totalCusto;
+    }
+    exibirResumoSemanas(semanas);
+  }
+
+  // ===== Renderizações =====
+  function exibirTabelaEventos(linhas){
+    if(!linhas.length){
+      document.getElementById('tabelaEventos').innerHTML = '<div class="muted">Nenhum evento no período.</div>';
+      return;
+    }
+
+    let tot = { est:0, eq:0, lg:0, tc:0 };
+    let html = `<table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th class="left">Nome do Evento</th>
+          <th>Estimativa Venda</th>
+          <th>Custo Equipe</th>
+          <th>Custo Logística</th>
+          <th>Total Custo</th>
+          <th>Margem Estimada</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    for(const l of linhas){
+      tot.est += l.estimativa;
+      tot.eq += l.custoEquipe;
+      tot.lg += l.custoLog;
+      tot.tc += l.totalCusto;
+
+      html += `<tr>
+        <td>${l.data ? brLabel(l.data) : '-'}</td>
+        <td class="left">${l.nomeEvento}</td>
+        <td class="right">${BRL(l.estimativa)}</td>
+        <td class="right">${BRL(l.custoEquipe)}</td>
+        <td class="right">${BRL(l.custoLog)}</td>
+        <td class="right">${BRL(l.totalCusto)}</td>
+        <td>${isFinite(l.margemPct) ? l.margemPct.toFixed(1)+'%' : '0,0%'}</td>
+      </tr>`;
+    }
+
+    const margemTot = pctTxt(tot.est - tot.tc, tot.est);
+    html += `</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" class="right"><strong>TOTAL</strong></td>
+          <td class="right"><strong>${BRL(tot.est)}</strong></td>
+          <td class="right"><strong>${BRL(tot.eq)}</strong></td>
+          <td class="right"><strong>${BRL(tot.lg)}</strong></td>
+          <td class="right"><strong>${BRL(tot.tc)}</strong></td>
+          <td><strong>${margemTot}</strong></td>
+        </tr>
+      </tfoot>
+    </table>`;
+
+    document.getElementById('tabelaEventos').innerHTML = html;
+  }
+
+  function exibirResumoSemanas(mapSemanas){
+    const chaves = Object.keys(mapSemanas).sort(); // por início da semana
+    if(!chaves.length){
+      document.getElementById('tabelaSemanas').innerHTML = '<div class="muted">Semanas não encontradas no período.</div>';
+      return;
+    }
+
+    let total = { est:0, eq:0, lg:0, tc:0 };
+
+    let html = `<table>
+      <thead>
+        <tr>
+          <th>Semana</th>
+          <th>Estimativa Venda</th>
+          <th>Custo Equipe</th>
+          <th>Custo Logística</th>
+          <th>Total Custo</th>
+          <th>Margem Estimada</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    for(const k of chaves){
+      const s = mapSemanas[k];
+      const margem = pctTxt(s.estimativa - s.totalCusto, s.estimativa);
+
+      total.est += s.estimativa;
+      total.eq += s.equipe;
+      total.lg += s.log;
+      total.tc += s.totalCusto;
+
+      html += `<tr>
+        <td class="left">${s.label}</td>
+        <td class="right">${BRL(s.estimativa)}</td>
+        <td class="right">${BRL(s.equipe)}</td>
+        <td class="right">${BRL(s.log)}</td>
+        <td class="right">${BRL(s.totalCusto)}</td>
+        <td>${margem}</td>
+      </tr>`;
+    }
+
+    const margemTot = pctTxt(total.est - total.tc, total.est);
+
+    html += `</tbody>
+      <tfoot>
+        <tr>
+          <td class="right"><strong>TOTAL</strong></td>
+          <td class="right"><strong>${BRL(total.est)}</strong></td>
+          <td class="right"><strong>${BRL(total.eq)}</strong></td>
+          <td class="right"><strong>${BRL(total.lg)}</strong></td>
+          <td class="right"><strong>${BRL(total.tc)}</strong></td>
+          <td><strong>${margemTot}</strong></td>
+        </tr>
+      </tfoot>
+    </table>`;
+
+    document.getElementById('tabelaSemanas').innerHTML = html;
+  }
+</script>
+</body>
+</html>
